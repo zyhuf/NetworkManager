@@ -104,8 +104,6 @@ static gboolean nm_device_supports_wireless_scan (NMDevice *dev)
 	gboolean			can_scan = TRUE;
 	wireless_scan_head	scan_data;
 
-return FALSE;
-	
 	g_return_val_if_fail (dev != NULL, FALSE);
 	g_return_val_if_fail (dev->type == DEVICE_TYPE_WIRELESS_ETHERNET, FALSE);
 
