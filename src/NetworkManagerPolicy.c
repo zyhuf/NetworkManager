@@ -165,6 +165,12 @@ static NMDevice * nm_policy_get_best_device (NMDevice *switch_to_dev, NMData *da
 	if (should_lock_on_activate)
 		*should_lock_on_activate = FALSE;
 
+	if (data->asleep == TRUE)
+	{
+		data->active_device_locked = FALSE;
+		return NULL;
+	}
+
 	/* Prefer a device forced on us by the user */
 	if (switch_to_dev && !nm_device_get_removed (switch_to_dev))
 	{

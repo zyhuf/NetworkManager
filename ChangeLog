@@ -1,8 +1,33 @@
 2005-03-28  Dan Williams <dcbw@redhat.com>
 
+	Merge sleep functionality from HEAD
+
+	* panel-applet/NMWirelessApplet.c
+		- Applet now sticks around when there is no connection
+		- Hook up the "Stop/Start all wireless devices" function
+
+	* src/NetworkManager.c
+		- Don't perform wireless link state updates when asleep or
+			when wireless devices are stopped
+
+	* src/NetworkManagerDbus.c
+		- New "status" value: "asleep"
+
+	* src/NetworkManagerDevice.c
+		- Don't do wireless scans when asleep
+
+	* src/NetworkManagerPolicy.c
+		- When asleep, return no "best" device
+
+	* src/nm-dbus-nm.c
+		- New sleep/wake dbus APIs
+		- Actually hook up the wireless enable stuff so that stopping
+			all wireless devices works
+
+2005-03-28  Dan Williams <dcbw@redhat.com>
+
 	* Merge Peter Jones' completion patch, reducing latency and speeding
 		up wait times for device activation and wireless scanning
-
 
 2005-03-28  Dan Williams <dcbw@redhat.com>
 

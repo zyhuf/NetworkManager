@@ -3667,7 +3667,8 @@ static gboolean nm_device_wireless_scan (gpointer user_data)
 
 	/* Just reschedule ourselves if scanning or all wireless is disabled */
 	if (    (dev->app_data->scanning_enabled == FALSE)
-		|| (dev->app_data->wireless_enabled == FALSE))
+		|| (dev->app_data->wireless_enabled == FALSE)
+		|| (dev->app_data->asleep == TRUE))
 	{
 		dev->options.wireless.scan_interval = 10;
 		goto reschedule;
