@@ -1,5 +1,10 @@
 2005-03-28  Dan Williams <dcbw@redhat.com>
 
+	* panel-applet/NMWirelessApplet.c
+		- Add some more contributors to the About dialog
+
+2005-03-28  Dan Williams <dcbw@redhat.com>
+
 	* src/NetworkManagerDevice.c
 		- (mdio_read): Fix two bugs that caused all devices to fail
 			the MII carrier detection support checks
