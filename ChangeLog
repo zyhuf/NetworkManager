@@ -1,3 +1,10 @@
+2005-03-22  Dan Williams <dcbw@redhat.com>
+
+	Patch from Bill Moss:
+	* src/NetworkManagerInfoDbus.c
+		- (nmi_dbus_update_network_auth_method, nmi_dbus_get_network_properties):
+			free leaked GConf values
+
 2005-03-12  Dan Williams <dcbw@redhat.com>
 
 	Patch from Nathaniel McCallum:
