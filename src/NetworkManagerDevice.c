@@ -1719,7 +1719,10 @@ gboolean nm_device_set_mode (NMDevice *dev, const NMNetworkMode mode)
 			if (err == 0)
 				success = TRUE;
 			else
-				syslog (LOG_ERR, "nm_device_set_mode (%s): error setting card to Infrastructure mode.  errno = %d", nm_device_get_iface (dev), errno);				
+				syslog (LOG_ERR, "nm_device_set_mode (%s): error setting card to %s mode.  errno = %d",
+					nm_device_get_iface (dev),
+					mode == NETWORK_MODE_INFRA ? "Infrastructure" : (mode == NETWORK_MODE_ADHOC ? "adhoc" : "unknown"),
+					errno);
 		}
 		close (sk);
 	}
