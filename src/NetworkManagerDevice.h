@@ -70,7 +70,7 @@ NMNetworkMode	nm_device_get_mode				(NMDevice *dev);
 guint32		nm_device_get_ip4_address		(NMDevice *dev);
 void			nm_device_update_ip4_address		(NMDevice *dev);
 
-void			nm_device_get_hw_address			(NMDevice *dev, unsigned char hw_addr[ETH_ALEN]);
+void			nm_device_get_hw_address			(NMDevice *dev, unsigned char *eth_addr);
 void			nm_device_update_hw_address		(NMDevice *dev);
 
 void			nm_device_get_ip6_address		(NMDevice *dev);

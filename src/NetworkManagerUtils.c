@@ -25,6 +25,9 @@
 #include <sys/socket.h>
 #include <linux/sockios.h>
 #include <syslog.h>
+#include <stdarg.h>
+#include <sys/time.h>
+#include <string.h>
 
 #include "NetworkManager.h"
 #include "NetworkManagerUtils.h"
@@ -167,7 +170,6 @@ int nm_null_safe_strcmp (const char *s1, const char *s2)
 		
 	return (strcmp (s1, s2));
 }
-
 
 
 /*
@@ -331,6 +333,10 @@ NMDriverSupportLevel nm_get_wireless_driver_support_level (LibHalContext *ctx, N
 		g_free (driver_name);
 	}
 
+	/* Check for carrier detection support */
+	if ((level != NM_DRIVER_UNSUPPORTED) && !nm_device_get_supports_wireless_scan (dev))
+		level = NM_DRIVER_NO_WIRELESS_SCAN;
+
 	return (level);
 }
 
@@ -381,6 +387,10 @@ NMDriverSupportLevel nm_get_wired_driver_support_level (LibHalContext *ctx, NMDe
 		level = NM_DRIVER_UNSUPPORTED;
 	}
 
+	/* Check for carrier detection support */
+	if ((level != NM_DRIVER_UNSUPPORTED) && !nm_device_get_supports_carrier_detect(dev))
+		level = NM_DRIVER_NO_CARRIER_DETECT;
+
 	return (level);
 }
 
@@ -406,8 +416,13 @@ NMDriverSupportLevel nm_get_driver_support_level (LibHalContext *ctx, NMDevice *
 
 	switch (level)
 	{
-		case NM_DRIVER_SEMI_SUPPORTED:
-			syslog (LOG_INFO, "%s: Driver support level for '%s' is semi-supported",
+		case NM_DRIVER_NO_CARRIER_DETECT:
+			syslog (LOG_INFO, "%s: Driver '%s' does not support carrier detection.\n"
+						"\tYou must switch to it manually.", nm_device_get_iface (dev), driver);
+			break;
+		case NM_DRIVER_NO_WIRELESS_SCAN:
+			syslog (LOG_INFO, "%s: Driver '%s' does not support wireless scanning.\n"
+						"\tNetworkManager will not be able to fully use the card.",
 						nm_device_get_iface (dev), driver);
 			break;
 		case NM_DRIVER_FULLY_SUPPORTED:

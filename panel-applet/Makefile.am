@@ -8,7 +8,7 @@ INCLUDES = -I${top_srcdir}
 noinst_LTLIBRARIES = libnm_notification_applet.la
 
 gladedir = $(datadir)/NetworkManagerNotification
-glade_DATA = essid.glade
+glade_DATA = wireless-applet.glade
 
 libnm_notification_applet_la_CPPFLAGS = 		\
 	$(DBUS_CFLAGS)					\

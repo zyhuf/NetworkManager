@@ -1,5 +1,40 @@
 2005-03-28  Dan Williams <dcbw@redhat.com>
 
+	Driver Notification patch: notifies the user when their driver
+		sucks.  Gives them the option to ignore further insertions
+		of the card that has the sucky driver.
+
+	* NetworkManager.h
+		- Remove the SEMI_SUPPORTED member from the NMDriverSupportLevel
+			enum and replace it with NO_CARRIER_DETECT and
+			NO_WIRELESS_SCAN
+
+	* panel-applet/NMWirelessApplet.[ch]
+		- Merge essid.glade -> wireless-applet.glade
+		- Implement the "Your driver sucks" notification dialog
+
+	* panel-applet/NMWirelessAppletDbus.c
+		- Change stuff from getSupportsCarrierDetect->getDriverSupportLevel
+		- Grab hardware address for each device from NM too
+		- Check whether the driver for each device sucks or not whenever
+			a new device is noticed
+
+	* panel-applet/NMWirelessAppletOtherNetworkDialog.c
+		- Deal with stuff being in wireless-applet.glade now rather than essid.glade
+
+	* src/NetworkManager.c
+		- Fix a double-unref on device removal
+
+	* src/NetworkManagerUtils.c
+		- Set appropriate driver support level on a device that doesn't
+			support scanning or carrier detection
+
+	* src/nm-dbus-device.c
+		- New "getHWAddress" dbus method on devices
+		- getSupportsCarrierDetect -> getDriverSupportLevel
+
+2005-03-28  Dan Williams <dcbw@redhat.com>
+
 	Merge sleep functionality from HEAD
 
 	* panel-applet/NMWirelessApplet.c

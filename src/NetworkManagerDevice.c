@@ -103,6 +103,8 @@ static gboolean nm_device_supports_wireless_scan (NMDevice *dev)
 	int				err;
 	gboolean			can_scan = TRUE;
 	wireless_scan_head	scan_data;
+
+return FALSE;
 	
 	g_return_val_if_fail (dev != NULL, FALSE);
 	g_return_val_if_fail (dev->type == DEVICE_TYPE_WIRELESS_ETHERNET, FALSE);
@@ -255,9 +257,6 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 	/* Have to bring the device up before checking link status and other stuff */
 	nm_device_bring_up_wait (dev, 0);
 
-	/* Get driver support level */
-	dev->driver_support_level = nm_get_driver_support_level (dev->app_data->hal_ctx, dev);
-
 	/* Initialize wireless-specific options */
 	if (nm_device_is_wireless (dev))
 	{
@@ -308,6 +307,9 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 		if (supports_ethtool_carrier_detect (dev) || supports_mii_carrier_detect (dev))
 			dev->options.wired.has_carrier_detect = TRUE;
 	}
+
+	/* Must be called after carrier detect or wireless scan detect. */
+	dev->driver_support_level = nm_get_driver_support_level (dev->app_data->hal_ctx, dev);
 
 	if (nm_device_get_driver_support_level (dev) != NM_DRIVER_UNSUPPORTED)
 	{
@@ -1420,11 +1422,12 @@ void nm_device_get_ip6_address(NMDevice *dev)
  * Get a device's hardware address
  *
  */
-void nm_device_get_hw_address(NMDevice *dev, unsigned char hw_addr[ETH_ALEN])
+void nm_device_get_hw_address(NMDevice *dev, unsigned char *eth_addr)
 {
+	g_return_if_fail (eth_addr != NULL);
 	g_return_if_fail (dev != NULL);
 
-	memcpy (hw_addr, dev->hw_addr, ETH_ALEN);
+	memcpy (eth_addr, dev->hw_addr, ETH_ALEN);
 }
 
 void nm_device_update_hw_address (NMDevice *dev)
@@ -1454,7 +1457,7 @@ void nm_device_update_hw_address (NMDevice *dev)
 	if (err != 0)
 		return;
 
-      memcpy (dev->hw_addr, req.ifr_hwaddr.sa_data, ETH_ALEN);
+     memcpy (dev->hw_addr, req.ifr_hwaddr.sa_data, ETH_ALEN);
 }
 
 

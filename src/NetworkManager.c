@@ -182,14 +182,13 @@ void nm_remove_device_from_list (NMData *data, const char *udi)
 				nm_device_set_removed (dev, TRUE);
 				nm_device_deactivate (dev, FALSE);
 				nm_device_worker_thread_stop (dev);
+				nm_dbus_signal_device_status_change (data->dbus_connection, dev, DEVICE_LIST_CHANGE);
 				nm_device_unref (dev);
 
 				/* Remove the device entry from the device list and free its data */
 				data->dev_list = g_slist_remove_link (data->dev_list, elt);
-				nm_device_unref (elt->data);
 				g_slist_free (elt);
 				nm_policy_schedule_state_update (data);
-				nm_dbus_signal_device_status_change (data->dbus_connection, dev, DEVICE_LIST_CHANGE);
 				break;
 			}
 		}
