@@ -46,7 +46,7 @@ void fill_common_fields (dhcp_interface *iface, udpipMessage *msg, unsigned char
 	dhcp_msg->htype	= ARPHRD_ETHER;
 	dhcp_msg->hlen		= ETH_ALEN;
 	dhcp_msg->xid		= iface->xid;
-	dhcp_msg->secs		= htons (0);
+	dhcp_msg->secs		= htons (10);
 
 	if (bcast_resp && iface->client_options->do_broadcast_response)
 		dhcp_msg->flags = htons (BROADCAST_FLAG);
