@@ -700,9 +700,16 @@ void nm_ap_list_print_members (NMAccessPointList *list, const char *name)
 	while ((ap = nm_ap_list_iter_next (iter)))
 	{
 		const GTimeVal *timestamp = nm_ap_get_timestamp (ap);
-		syslog (LOG_ERR, "\t%d)\tobj=%p, essid='%s', timestamp=%ld, key='%s', enc=%d, addr=%p, strength=%d, %s=%f, rate=%d, inval=%d, mode=%d",
+		const struct ether_addr	*addr;
+		char				char_addr[20];
+
+		addr = nm_ap_get_address (ap);
+		memset (char_addr, 0, 20);
+		ether_ntoa_r (addr, &char_addr[0]);
+
+		syslog (LOG_ERR, "\t%d)\tobj=%p, essid='%s', timestamp=%ld, key='%s', enc=%d, addr='%s', strength=%d, %s=%f, rate=%d, inval=%d, mode=%d",
 				i, ap, nm_ap_get_essid (ap), timestamp->tv_sec, nm_ap_get_enc_key_source (ap), nm_ap_get_encrypted (ap),
-				nm_ap_get_address (ap), nm_ap_get_strength (ap), (nm_ap_get_freq (ap) < 20) ? "channel" : "freq", nm_ap_get_freq (ap), nm_ap_get_rate (ap),
+				char_addr, nm_ap_get_strength (ap), (nm_ap_get_freq (ap) < 20) ? "channel" : "freq", nm_ap_get_freq (ap), nm_ap_get_rate (ap),
 				nm_ap_get_invalid (ap), nm_ap_get_mode (ap));
 		i++;
 	}

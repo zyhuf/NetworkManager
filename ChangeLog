@@ -1,5 +1,11 @@
 2005-04-01  Dan Williams <dcbw@redhat.com>
 
+	* src/NetworkManagerAPList.c
+		- (nm_ap_list_print_members): print out MAC addresses in text for,
+			not as a hex number
+
+2005-04-01  Dan Williams <dcbw@redhat.com>
+
 	* po/POTFILES.in
 		- Update with new translatables
 
