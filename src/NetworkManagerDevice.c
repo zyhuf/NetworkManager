@@ -2310,12 +2310,6 @@ get_ap:
 	}
 	syslog (LOG_ERR, "Activation (%s/wireless): found access point '%s' to use.", nm_device_get_iface (dev), nm_ap_get_essid (best_ap));
 
-	/* Set ESSID early so that when we send out the DeviceStatusChanged signal below,
-	 * we are able to respond correctly to queries for "getActiveNetwork" against
-	 * our device.  nm_device_get_path_for_ap() uses the /card's/ AP, not the best_ap.
-	 */
-	nm_device_set_essid (dev, nm_ap_get_essid (best_ap));
-
 	/* We grab the scan mutex so that scanning cannot screw up our link detection, since
 	 * a scan can change most any attribute on the card for a period of time.
 	 */
