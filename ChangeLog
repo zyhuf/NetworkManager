@@ -1,5 +1,11 @@
 2005-03-28  Dan Williams <dcbw@redhat.com>
 
+	* Merge Peter Jones' completion patch, reducing latency and speeding
+		up wait times for device activation and wireless scanning
+
+
+2005-03-28  Dan Williams <dcbw@redhat.com>
+
 	Patch from Bill Moss:
 	* src/NetworkManagerPolicy.c
 		- (nm_policy_allowed_ap_list_update): merge properties
