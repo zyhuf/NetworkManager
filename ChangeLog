@@ -1,3 +1,9 @@
+2005-03-12  Dan Williams <dcbw@redhat.com>
+
+	Patch from Nathaniel McCallum:
+	* src/NetworkManagerDevice.c
+		- (nm_device_set_wireless_config): Increase timeout for some devices
+
 2005-03-04  Dan Williams <dcbw@redhat.com>
 
 	Patch from Peter Jones:
