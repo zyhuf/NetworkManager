@@ -14,4 +14,3 @@ panel-applet/eggtrayicon.c
 panel-applet/gtkcellrendererprogress.c
 panel-applet/gtkcellview.c
 panel-applet/wireless-applet.glade
-src/nm-netlink-monitor.c
