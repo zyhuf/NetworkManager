@@ -803,6 +803,8 @@ int main( int argc, char *argv[] )
 	/* Kill the watch functions */
 	g_source_remove (link_source_id);
 
+	nm_print_open_socks ();
+
 	/* Cleanup */
 	if (hal_shutdown (nm_data->hal_ctx) != 0)
 		syslog (LOG_NOTICE, "Error: libhal shutdown failed");
