@@ -1,5 +1,12 @@
 2005-03-28  Dan Williams <dcbw@redhat.com>
 
+	Patch from Bill Moss:
+	* src/NetworkManagerPolicy.c
+		- (nm_policy_allowed_ap_list_update): merge properties
+			for all wireless devices on update, not just active device
+
+2005-03-28  Dan Williams <dcbw@redhat.com>
+
 	* panel-applet/NMWirelessApplet.c
 		- Add some more contributors to the About dialog
 
