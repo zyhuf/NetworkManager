@@ -121,6 +121,7 @@ void			nm_device_ap_list_clear			(NMDevice *dev);
 struct NMAccessPointList *nm_device_ap_list_get	(NMDevice *dev);
 NMAccessPoint *nm_device_ap_list_get_ap_by_essid	(NMDevice *dev, const char *essid);
 NMAccessPoint *nm_device_ap_list_get_ap_by_address(NMDevice *dev, const struct ether_addr *addr);
+void			nm_device_copy_allowed_to_dev_list	(NMDevice *dev, struct NMAccessPointList *allowed_list);
 
 /* System config data accessors */
 gboolean		nm_device_config_get_use_dhcp		(NMDevice *dev);

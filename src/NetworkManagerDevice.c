@@ -191,6 +191,50 @@ NMDevice *nm_get_device_by_iface (NMData *data, const char *iface)
 /* NMDevice object routines                                                  */
 /*****************************************************************************/
 
+
+/*
+ * nm_device_copy_allowed_to_dev_list
+ *
+ * For devices that don't support wireless scanning, copy
+ * the allowed AP list to the device's ap list.
+ *
+ */
+void nm_device_copy_allowed_to_dev_list (NMDevice *dev, NMAccessPointList *allowed_list)
+{
+	NMAPListIter		*iter;
+	NMAccessPoint		*src_ap;
+	NMAccessPointList	*dev_list;
+
+	g_return_if_fail (dev != NULL);
+
+	if (allowed_list == NULL)
+		return;
+
+	nm_device_ap_list_clear (dev);
+	dev->options.wireless.ap_list = nm_ap_list_new (NETWORK_TYPE_ALLOWED);
+
+	if (!(iter = nm_ap_list_iter_new (allowed_list)))
+		return;
+
+	dev_list = nm_device_ap_list_get (dev);
+	while ((src_ap = nm_ap_list_iter_next (iter)))
+	{
+		NMAccessPoint	*dst_ap = nm_ap_new_from_ap (src_ap);
+
+		/* Assume that if the allowed list AP has a saved encryption
+		 * key that the AP is encrypted.
+		 */
+		if (    (nm_ap_get_auth_method (src_ap) == NM_DEVICE_AUTH_METHOD_OPEN_SYSTEM)
+			|| (nm_ap_get_auth_method (src_ap) == NM_DEVICE_AUTH_METHOD_SHARED_KEY))
+			nm_ap_set_encrypted (dst_ap, TRUE);
+
+		nm_ap_list_append_ap (dev_list, dst_ap);
+		nm_ap_unref (dst_ap);
+	}
+	nm_ap_list_iter_free (iter);
+}
+
+
 /*
  * nm_device_new
  *
@@ -275,6 +319,12 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 		nm_register_mutex_desc (opts->best_ap_mutex, "Best AP Mutex");
 
 		opts->supports_wireless_scan = nm_device_supports_wireless_scan (dev);
+
+		/* Non-scanning devices show the entire allowed AP list as their
+		 * available networks.
+		 */
+		if (opts->supports_wireless_scan == FALSE)
+			nm_device_copy_allowed_to_dev_list (dev, app_data->allowed_ap_list);
 
 		if ((sk = iw_sockets_open ()) >= 0)
 		{
@@ -423,8 +473,8 @@ static gpointer nm_device_worker (gpointer user_data)
 		exit (1);
 	}
 
-	/* Do an initial wireless scan */
-	if (nm_device_is_wireless (dev))
+	/* Start the scanning timeout for devices that can do scanning */
+	if (nm_device_is_wireless (dev) && nm_device_get_supports_wireless_scan (dev))
 	{
 		GSource	*source = g_idle_source_new ();
 		guint	 source_id = 0;
@@ -1744,7 +1794,7 @@ gboolean nm_device_set_mode (NMDevice *dev, const NMNetworkMode mode)
  * Schedule an idle routine in the main thread to finish the activation.
  *
  */
-void nm_device_activation_schedule_finish (NMDevice *dev, DeviceStatus activation_result)
+void nm_device_activation_schedule_finish (NMDevice *dev, NMAccessPoint *failed_ap, DeviceStatus activation_result)
 {
 	GSource			*source = NULL;
 	NMActivationResult	*result = NULL;
@@ -1755,6 +1805,7 @@ void nm_device_activation_schedule_finish (NMDevice *dev, DeviceStatus activatio
 	result = g_malloc0 (sizeof (NMActivationResult));
 	nm_device_ref (dev);	/* Ref device for idle handler */
 	result->dev = dev;
+	result->failed_ap = failed_ap;
 	result->result = activation_result;
 
 	source = g_idle_source_new ();
@@ -2426,6 +2477,12 @@ try_connect:
 						nm_device_get_iface (dev), nm_ap_get_essid (best_ap) ? nm_ap_get_essid (best_ap) : "(none)");
 			}
 
+			/* Don't try other APs for non-scanning devices.
+			 * User must pick a new one manually.
+			 */
+			if (!nm_device_get_supports_wireless_scan (dev))
+				goto out;
+
 			/* All applicable modes failed, invalidate current best_ap and get a new one */
 			invalidate_ap (dev, best_ap);
 			goto get_ap;
@@ -2472,6 +2529,12 @@ try_connect:
 			}
 			else
 			{
+				/* Don't try other APs for non-scanning devices.
+				 * User must pick a new one manually.
+				 */
+				if (!nm_device_get_supports_wireless_scan (dev))
+					goto out;
+
 				/* All applicable modes failed, invalidate current best_ap and get a new one */
 				invalidate_ap (dev, best_ap);
 				goto get_ap;
@@ -2569,6 +2632,7 @@ static gboolean nm_device_activate (gpointer user_data)
 	NMDevice			*dev = (NMDevice *)user_data;
 	gboolean			 success = FALSE;
 	gboolean			 finished = FALSE;
+	NMAccessPoint		*failed_best_ap = NULL;
 
 	g_return_val_if_fail (dev  != NULL, FALSE);
 	g_return_val_if_fail (dev->app_data != NULL, FALSE);
@@ -2615,10 +2679,15 @@ static gboolean nm_device_activate (gpointer user_data)
 
 out:
 	syslog (LOG_DEBUG, "Activation (%s) ended.\n", nm_device_get_iface (dev));
+	if (finished)
+	{
+		if (nm_device_is_wireless (dev) && !success)
+			failed_best_ap = nm_device_get_best_ap (dev);
+	}
 	dev->activating = FALSE;
 	dev->quit_activation = FALSE;
 	if (finished)
-		nm_device_activation_schedule_finish (dev, success ? DEVICE_NOW_ACTIVE : DEVICE_ACTIVATION_FAILED);
+		nm_device_activation_schedule_finish (dev, failed_best_ap, success ? DEVICE_NOW_ACTIVE : DEVICE_ACTIVATION_FAILED);
 
 	return FALSE;
 }
@@ -3066,6 +3135,22 @@ void nm_device_update_best_ap (NMDevice *dev)
 	g_return_if_fail (dev->app_data != NULL);
 	g_return_if_fail (nm_device_is_wireless (dev));
 
+	/* Devices that can't scan don't do anything automatic.
+	 * The user must choose the access point from the menu.
+	 */
+	if (!nm_device_get_supports_wireless_scan (dev))
+	{
+		/* If we lost a link to the AP, clear it out.
+		 *
+		 * FIXME: take samples over 5 seconds or so of the
+		 * whether or not the link is active and only blow away
+		 * the best_ap if its been down for 5 seconds or more.
+		 */
+		if (!nm_device_get_link_active (dev))
+			nm_device_set_best_ap (dev, NULL);
+		return;
+	}
+
 	if (!(ap_list = nm_device_ap_list_get (dev)))
 		return;
 
@@ -3276,86 +3361,6 @@ void nm_device_schedule_force_use (NMDevice *dev, const char *network, const cha
 
 
 /*
- * nm_device_do_pseudo_scan
- *
- * Brute-force the allowed access point list to find one that works, if any.
- *
- * FIXME
- * There's probably a better way to do the non-scanning access point discovery
- * than brute forcing it like this, but that makes the state machine here oh so
- * much more complicated.
- */
-static void nm_device_do_pseudo_scan (NMDevice *dev)
-{
-	NMAPListIter		*iter;
-	NMAccessPoint		*ap;
-
-	g_return_if_fail (dev  != NULL);
-	g_return_if_fail (dev->app_data != NULL);
-
-	/* Test devices shouldn't get here since we fake the AP list earlier */
-	g_return_if_fail (!dev->test_device);
-
-	nm_device_ref (dev);
-
-	if (!(iter = nm_ap_list_iter_new (dev->app_data->allowed_ap_list)))
-		return;
-
-	nm_device_set_essid (dev, "");
-	while ((ap = nm_ap_list_iter_next (iter)))
-	{
-		gboolean			valid = FALSE;
-		struct ether_addr	save_ap_addr;
-		struct ether_addr	cur_ap_addr;
-
-		if (!nm_device_is_up (dev));
-			nm_device_bring_up (dev);
-
-		/* Save the MAC address */
-		nm_device_get_ap_address (dev, &save_ap_addr);
-
-		if (nm_ap_get_enc_key_source (ap))
-		{
-			char *hashed_key = nm_ap_get_enc_key_hashed (ap);
-			nm_device_set_enc_key (dev, hashed_key, NM_DEVICE_AUTH_METHOD_SHARED_KEY);
-			g_free (hashed_key);
-		}
-		else
-			nm_device_set_enc_key (dev, NULL, NM_DEVICE_AUTH_METHOD_NONE);
-		nm_device_set_essid (dev, nm_ap_get_essid (ap));
-
-		/* Wait a bit for association */
-		nm_device_is_up_and_associated_wait (dev, 2, 100);
-
-		/* Do we have a valid MAC address? */
-		nm_device_get_ap_address (dev, &cur_ap_addr);
-		valid = nm_ethernet_address_is_valid (&cur_ap_addr);
-
-		/* If the ap address we had before, and the ap address we
-		 * have now, are the same, AP is invalid.  Certain cards (orinoco)
-		 * will let the essid change, but the the card won't actually de-associate
-		 * from the previous access point if it can't associate with the new one
-		 * (ie signal too weak, etc).
-		 */
-		if (valid && (memcmp (&save_ap_addr, &cur_ap_addr, sizeof (struct ether_addr)) == 0))
-			valid = FALSE;
-
-		if (valid)
-		{
-			syslog(LOG_INFO, "%s: setting AP '%s' best", nm_device_get_iface (dev), nm_ap_get_essid (ap));
-
-			nm_device_set_best_ap (dev, ap);
-			nm_policy_schedule_state_update (dev->app_data);
-			break;
-		}
-	}
-
-	nm_ap_list_iter_free (iter);
-	nm_device_unref (dev);
-}
-
-
-/*
  * nm_device_fake_ap_list
  *
  * Fake the access point list, used for test devices.
@@ -3458,25 +3463,8 @@ static gboolean nm_device_wireless_process_scan_results (gpointer user_data)
 	g_return_val_if_fail (results != NULL, FALSE);	
 
 	dev = results->dev;
-
 	if (!dev || !results->scan_head.result)
 		return FALSE;
-
-	/* Test devices get their info faked */
-	if (dev->test_device)
-	{
-		nm_device_fake_ap_list (dev);
-		return FALSE;
-	}
-
-	/* Devices that don't support scanning have their pseudo-scanning done in
-	 * the main thread anyway.
-	 */
-	if (!nm_device_get_supports_wireless_scan (dev))
-	{
-		nm_device_do_pseudo_scan (dev);
-		return FALSE;
-	}
 
 	g_get_current_time (&cur_time);
 
@@ -3686,16 +3674,20 @@ static gboolean nm_device_wireless_scan (gpointer user_data)
 	g_return_val_if_fail (dev != NULL, FALSE);
 	g_return_val_if_fail (dev->app_data != NULL, FALSE);
 
-	/* We don't scan on test devices or devices that don't have scanning support */
-	if (dev->test_device || !nm_device_get_supports_wireless_scan (dev))
-		return FALSE;
-
 	/* Just reschedule ourselves if scanning or all wireless is disabled */
 	if (    (dev->app_data->scanning_enabled == FALSE)
 		|| (dev->app_data->wireless_enabled == FALSE)
 		|| (dev->app_data->asleep == TRUE))
 	{
 		dev->options.wireless.scan_interval = 10;
+		goto reschedule;
+	}
+
+	/* Test devices get a fake ap list */
+	if (dev->test_device)
+	{
+		nm_device_fake_ap_list (dev);
+		dev->options.wireless.scan_interval = 20;
 		goto reschedule;
 	}
 
