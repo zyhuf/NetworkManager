@@ -1,5 +1,14 @@
 2005-04-06  Dan Williams  <dcbw@redhat.com>
 
+	* src/NetworkManagerAPList.[ch]
+		- (nm_ap_list_remove_ap_by_essid): new function
+
+	* src/NetworkManagerDevice.c
+		- (nm_device_wireless_force_use): remove access points from the ignore list
+			when the user forces them
+
+2005-04-06  Dan Williams  <dcbw@redhat.com>
+
 	* dhcpcd/dhcpcd.c
 		- (dhcp_interface_free): fix a file descriptor leak that may have
 			caused network drivers to not unload due to refcounts > 0

@@ -171,7 +171,7 @@ void nm_ap_list_remove_ap (NMAccessPointList *list, NMAccessPoint *ap)
 
 	if (!nm_ap_list_lock (list))
 	{
-		syslog( LOG_ERR, "nm_ap_list_append_ap() could not acquire AP list mutex." );
+		syslog( LOG_ERR, "nm_ap_list_remove_ap() could not acquire AP list mutex." );
 		return;
 	}
 
@@ -180,6 +180,41 @@ void nm_ap_list_remove_ap (NMAccessPointList *list, NMAccessPoint *ap)
 		NMAccessPoint	*list_ap = (NMAccessPoint *)(elt->data);
 
 		if (list_ap == ap)
+		{
+			list->ap_list = g_slist_remove_link (list->ap_list, elt);
+			nm_ap_unref (list_ap);
+			g_slist_free (elt);
+			break;
+		}
+	}
+	nm_ap_list_unlock (list);
+}
+
+
+/*
+ * nm_ap_list_remove_ap_by_essid
+ *
+ * Helper to remove an AP from an AP list by the AP's ESSID.
+ *
+ */
+void nm_ap_list_remove_ap_by_essid (NMAccessPointList *list, const char *network)
+{
+	GSList		*elt = NULL;
+
+	g_return_if_fail (list != NULL);
+	g_return_if_fail (network != NULL);
+
+	if (!nm_ap_list_lock (list))
+	{
+		syslog (LOG_WARNING, "nm_ap_list_remove_ap_by_essid() could not acquire AP list mutex." );
+		return;
+	}
+
+	for (elt = list->ap_list; elt; elt = g_slist_next (elt))
+	{
+		NMAccessPoint	*list_ap = (NMAccessPoint *)(elt->data);
+
+		if (nm_null_safe_strcmp (nm_ap_get_essid (list_ap), network) == 0)
 		{
 			list->ap_list = g_slist_remove_link (list->ap_list, elt);
 			nm_ap_unref (list_ap);
