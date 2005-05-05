@@ -646,7 +646,7 @@ static void nm_v_wait_for_completion_or_timeout(
 		const guint interval_usecs,
 		nm_completion_func test_func,
 		nm_completion_func action_func,
-		va_list args)
+		nm_completion_args args)
 {
 	int try;
 	gboolean finished = FALSE;
@@ -685,21 +685,19 @@ static void nm_v_wait_for_completion_or_timeout(
 	}
 }
 
+/* these should probably be moved to NetworkManagerUtils.h as macros
+ * since they don't do varargs stuff any more */
 void nm_wait_for_completion_or_timeout(
 	const int max_tries,
 	const struct timeval *max_time,
 	const guint interval_usecs,
 	nm_completion_func test_func,
 	nm_completion_func action_func,
-	...)
+	nm_completion_args args)
 {
-	va_list ap;
-	va_start(ap, action_func);
-
 	nm_v_wait_for_completion_or_timeout(max_tries, max_time,
 					    interval_usecs, test_func,
-					    action_func, ap);
-	va_end(ap);
+					    action_func, args);
 }
 
 void nm_wait_for_completion(
@@ -707,15 +705,11 @@ void nm_wait_for_completion(
 		const guint interval_usecs,
 		nm_completion_func test_func,
 		nm_completion_func action_func,
-		...)
+		nm_completion_args args)
 {
-	va_list ap;
-	va_start(ap, action_func);
-
 	nm_v_wait_for_completion_or_timeout(max_tries, NULL,
 					    interval_usecs, test_func,
-					    action_func, ap);
-	va_end(ap);
+					    action_func, args);
 }
 
 void nm_wait_for_timeout(
@@ -723,24 +717,19 @@ void nm_wait_for_timeout(
 		const guint interval_usecs,
 		nm_completion_func test_func,
 		nm_completion_func action_func,
-		...)
+		nm_completion_args args)
 {
-	va_list ap;
-	va_start(ap, action_func);
-
-	nm_v_wait_for_completion_or_timeout(-1, max_time,
-					    interval_usecs, test_func,
-					    action_func, ap);
-	va_end(ap);
+	nm_v_wait_for_completion_or_timeout(-1, max_time, interval_usecs,
+			test_func, action_func, args);
 }
 
 /* you can use these, but they're really just examples */
-gboolean nm_completion_boolean_test(int tries, va_list args)
+gboolean nm_completion_boolean_test(int tries, nm_completion_args args)
 {
-	gboolean *condition = va_arg(args, gboolean *);
-	char *message = va_arg(args, char *);
-	int log_level = va_arg(args, int);
-	int log_interval = va_arg(args, int);
+	gboolean *condition = (gboolean *)args[0];
+	char *message = (char *)args[1];
+	int log_level = (int)args[2];
+	int log_interval = (int)args[3];
 
 	g_return_val_if_fail (condition != NULL, TRUE);
 
@@ -753,14 +742,16 @@ gboolean nm_completion_boolean_test(int tries, va_list args)
 	return FALSE;
 }
 
-gboolean nm_completion_boolean_function1_test(int tries, va_list args)
+gboolean nm_completion_boolean_function1_test(int tries,
+		nm_completion_args args)
 {
-	nm_completion_boolean_function_1 condition =
-		va_arg(args, nm_completion_boolean_function_1);
-	char *message = va_arg(args, char *);
-	int log_level = va_arg(args, int);
-	int log_interval = va_arg(args, int);
-	u_int64_t arg0 = va_arg(args, unsigned long long);
+	nm_completion_boolean_function_1 condition = args[0];
+	char *message = args[1];
+	int log_level = (int)args[2];
+	int log_interval = (int)args[3];
+	u_int64_t arg0;
+	
+	memcpy(&arg0, &args[4], sizeof (arg0));
 
 	g_return_val_if_fail (condition, TRUE);
 
@@ -774,15 +765,17 @@ gboolean nm_completion_boolean_function1_test(int tries, va_list args)
 	return FALSE;
 }
 
-gboolean nm_completion_boolean_function2_test(int tries, va_list args)
+gboolean nm_completion_boolean_function2_test(int tries,
+		nm_completion_args args)
 {
-	nm_completion_boolean_function_2 condition =
-		va_arg(args, nm_completion_boolean_function_2);
-	char *message = va_arg(args, char *);
-	int log_level = va_arg(args, int);
-	int log_interval = va_arg(args, int);
-	u_int64_t arg0 = va_arg(args, unsigned long long);
-	u_int64_t arg1 = va_arg(args, unsigned long long);
+	nm_completion_boolean_function_2 condition = args[0];
+	char *message = args[1];
+	int log_level = (int)args[2];
+	int log_interval = (int)args[3];
+	u_int64_t arg0, arg1;
+
+	memcpy(&arg0, &args[4], sizeof (arg0));
+	memcpy(&arg1, &args[4]+sizeof (arg0), sizeof (arg1));
 
 	g_return_val_if_fail (condition, TRUE);
 

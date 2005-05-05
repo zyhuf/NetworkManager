@@ -1,3 +1,30 @@
+2005-05-05  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-dbus-nm.c: Fix misuse of a g_assert() (Colin Walters)
+
+	Patch from Bill Moss:
+	* src/NetworkManagerDevice.c:
+		- (nm_device_set_up_down): Fix return value checking of ioctl()
+	* src/NetworkManagerPolicy.c:
+		- (nm_policy_allowed_ap_list_update): Improve handling of
+			non-ESSID broadcasting access points
+	* src/NetworkManagerAPList.c:
+		- (nm_ap_list_remove_duplicate_essids):
+		  (nm_ap_list_merge_scanned_ap):
+			Improve handling of non-ESSID broadcasting access points
+
+	Patch from Tom Parker:
+	* src/NetworkManagerDevice.c:
+		- Use g_thread_join() rather than spinning when shutting down
+			device worker threads
+	* src/NetworkMangaer.c:
+		- (nm_data_free): unref the signal handler GIOChannel
+	* src/NetworkManagerAPList.c
+		- (nm_ap_list_unref): don't leak the list object
+
+	Patch from Peter Jones:
+		- Remove usage of varargs so that we work on PPC too
+
 2005-04-06  Dan Williams  <dcbw@redhat.com>
 
 	Add debug code for socket/file descriptor leaks.  We register every socket

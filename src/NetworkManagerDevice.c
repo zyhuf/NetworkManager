@@ -257,6 +257,7 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 	NMDevice	*dev;
 	GError	*error = NULL;
 	char		*msg;
+	nm_completion_args args;
 
 	g_return_val_if_fail (iface != NULL, NULL);
 	g_return_val_if_fail (strlen (iface) > 0, NULL);
@@ -379,7 +380,8 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 		nm_system_device_update_config_info (dev);
 	}
 
-	if (!g_thread_create (nm_device_worker, dev, FALSE, &error))
+	dev->worker = g_thread_create (nm_device_worker, dev, TRUE, &error);
+	if (!dev->worker)
 	{
 		syslog (LOG_CRIT, "nm_device_new (): could not create device worker thread. (glib said: '%s')", error->message);
 		g_error_free (error);
@@ -388,9 +390,12 @@ NMDevice *nm_device_new (const char *iface, const char *udi, gboolean test_dev, 
 
 	/* Block until our device thread has actually had a chance to start. */
 	msg = g_strdup_printf ("%s: waiting for device's worker thread to start...", nm_device_get_iface (dev));
-	nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY,
-			G_USEC_PER_SEC / 20, nm_completion_boolean_test, NULL,
-			&dev->worker_started, msg, LOG_INFO, 0);
+	args[0] = &dev->worker_started;
+	args[1] = msg;
+	args[2] = (void *)LOG_INFO;
+	args[3] = 0;
+ 	nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY,
+			G_USEC_PER_SEC / 20, nm_completion_boolean_test, NULL, args);
 	g_free (msg);
 	syslog (LOG_ERR, "%s: device's worker thread started, continuing.\n", nm_device_get_iface (dev));
 
@@ -511,7 +516,6 @@ static gpointer nm_device_worker (gpointer user_data)
 	dev->loop = NULL;
 	dev->context = NULL;
 
-	dev->worker_done = TRUE;
 	nm_device_unref (dev);
 
 	return NULL;
@@ -524,9 +528,8 @@ void nm_device_worker_thread_stop (NMDevice *dev)
 
 	if (dev->loop)
 		g_main_loop_quit (dev->loop);
-	nm_wait_for_completion(NM_COMPLETION_TRIES_INFINITY, 300,
-			nm_completion_boolean_test, NULL, &dev->worker_done,
-			NULL, NULL, 0);
+	g_thread_join(dev->worker);
+	dev->worker = NULL;
 }
 
 
@@ -1527,8 +1530,7 @@ static void nm_device_set_up_down (NMDevice *dev, gboolean up)
 
 	/* Get flags already there */
 	strcpy (ifr.ifr_name, nm_device_get_iface (dev));
-	err = ioctl (nm_dev_sock_get_fd (sk), SIOCGIFFLAGS, &ifr);
-	if (!err)
+	if (ioctl (nm_dev_sock_get_fd (sk), SIOCGIFFLAGS, &ifr) != -1)
 	{
 		/* If the interface doesn't have those flags already,
 		 * set them on it.
@@ -1537,7 +1539,7 @@ static void nm_device_set_up_down (NMDevice *dev, gboolean up)
 		{
 			ifr.ifr_flags &= ~IFF_UP;
 			ifr.ifr_flags |= IFF_UP & flags;
-			if ((err = ioctl (nm_dev_sock_get_fd (sk), SIOCSIFFLAGS, &ifr)))
+			if (ioctl (nm_dev_sock_get_fd (sk), SIOCSIFFLAGS, &ifr) == -1)
 				syslog (LOG_ERR, "nm_device_set_up_down() could not bring device %s %s.  errno = %d", nm_device_get_iface (dev), (up ? "up" : "down"), errno );
 		}
 		/* Make sure we have a valid MAC address, some cards reload firmware when they
@@ -1582,11 +1584,11 @@ gboolean nm_device_is_up (NMDevice *dev)
 	return (FALSE);
 }
 
-gboolean nm_completion_device_is_up_test (int tries, va_list args)
+gboolean nm_completion_device_is_up_test(int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg (args, NMDevice *);
-	gboolean *err = va_arg (args, gboolean *);
-	gboolean cancelable = va_arg (args, gboolean);
+	NMDevice *dev = args[0];
+	gboolean *err = args[1];
+	gboolean cancelable = (gboolean)args[2];
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 	g_return_val_if_fail (err != NULL, TRUE);
@@ -1612,13 +1614,17 @@ void nm_device_bring_up (NMDevice *dev)
 gboolean nm_device_bring_up_wait (NMDevice *dev, gboolean cancelable)
 {
 	gboolean err = FALSE;
+	nm_completion_args args;
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 
 	nm_device_bring_up (dev);
-	nm_wait_for_completion (400, G_USEC_PER_SEC / 200, NULL,
-			nm_completion_device_is_up_test, dev,
-			&err, cancelable);
+
+	args[0] = dev;
+	args[1] = &err;
+	args[2] = (void *)cancelable;
+	nm_wait_for_completion(400, G_USEC_PER_SEC / 200, NULL,
+			nm_completion_device_is_up_test, args);
 	if (err)
 		syslog (LOG_INFO, "failed to bring device up");
 	return err;
@@ -1631,11 +1637,11 @@ void nm_device_bring_down (NMDevice *dev)
 	nm_device_set_up_down (dev, FALSE);
 }
 
-gboolean nm_completion_device_is_down_test(int tries, va_list args)
+gboolean nm_completion_device_is_down_test(int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg (args, NMDevice *);
-	gboolean *err = va_arg (args, gboolean *);
-	gboolean cancelable = va_arg (args, gboolean);
+	NMDevice *dev = args[0];
+	gboolean *err = args[1];
+	gboolean cancelable = (gboolean)args[2];
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 	g_return_val_if_fail (err != NULL, TRUE);
@@ -1654,13 +1660,17 @@ gboolean nm_completion_device_is_down_test(int tries, va_list args)
 gboolean nm_device_bring_down_wait (NMDevice *dev, gboolean cancelable)
 {
 	gboolean err = FALSE;
+	nm_completion_args args;
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 
 	nm_device_bring_down (dev);
-	nm_wait_for_completion (400, G_USEC_PER_SEC / 200, NULL,
-			nm_completion_device_is_down_test, dev,
-			&err, cancelable);
+
+	args[0] = dev;
+	args[1] = &err;
+	args[2] = (void *)cancelable;
+	nm_wait_for_completion(400, G_USEC_PER_SEC / 200, NULL,
+			nm_completion_device_is_down_test, args);
 	if (err)
 		syslog (LOG_INFO, "failed to bring device down");
 	return err;
@@ -1862,13 +1872,13 @@ static gboolean nm_device_activation_handle_cancel (NMDevice *dev)
 	return (FALSE);
 }
 
-static gboolean nm_dwwfl_test (int tries, va_list args)
+static gboolean nm_dwwfl_test (int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg (args, NMDevice *);
-	guint *assoc_count = va_arg (args, guint *);
-	double *last_freq = va_arg (args, double *);
-	char *essid = va_arg (args, char *);
-	int required = va_arg (args, int);
+	NMDevice *dev = args[0];
+	guint *assoc_count = args[1];
+	double *last_freq = args[2];
+	char *essid = args[3];
+	int required = (int)args[4];
 
 	double cur_freq = nm_device_get_frequency (dev);
 	gboolean assoc = nm_device_wireless_is_associated (dev);
@@ -1916,6 +1926,7 @@ static gboolean nm_device_wireless_wait_for_link (NMDevice *dev, const char *ess
 	double		last_freq = 0;
 	guint		assoc_count = 0;
 	struct timeval	timeout = { .tv_sec = 0, .tv_usec = 0 };
+	nm_completion_args args;
 
 	/* we want to sleep for a very short amount of time, to minimize
 	 * hysteresis on the boundaries of our required time.  But we
@@ -1941,9 +1952,13 @@ static gboolean nm_device_wireless_wait_for_link (NMDevice *dev, const char *ess
 	 * associated, the driver stops scanning.  To detect that, we look
 	 * for the essid and frequency to remain constant for 3 seconds.
 	 * When it remains constant, we assume it's a real link. */
+	args[0] = dev;
+	args[1] = &assoc;
+	args[2] = &last_freq;
+	args[3] = (void *)essid;
+	args[4] = (void *)(required_tries * 2);
 	nm_wait_for_timeout (&timeout, G_USEC_PER_SEC / delay,
-			    nm_dwwfl_test, nm_dwwfl_test, dev, &assoc,
-			    &last_freq, essid, required_tries * 2);
+			    nm_dwwfl_test, nm_dwwfl_test, args);
 
 	/* If we've had a reasonable association count, we say we have a link */
 	if (assoc > required_tries)
@@ -1951,10 +1966,10 @@ static gboolean nm_device_wireless_wait_for_link (NMDevice *dev, const char *ess
 	return FALSE;
 }
 
-static gboolean nm_device_link_test(int tries, va_list args)
+static gboolean nm_device_link_test(int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg(args, NMDevice *);
-	gboolean *err = va_arg(args, gboolean *);
+	NMDevice *dev = args[0];
+	gboolean *err = args[1];
 
 	g_return_val_if_fail(dev != NULL, TRUE);
 	g_return_val_if_fail(err != NULL, TRUE);
@@ -1973,10 +1988,13 @@ static gboolean nm_device_is_up_and_associated_wait (NMDevice *dev, int timeout,
 	gboolean err;
 	const gint delay = (G_USEC_PER_SEC * nm_device_get_association_pause_value (dev)) / interval;
 	const gint max_cycles = timeout * interval;
+	nm_completion_args args;
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 
-	nm_wait_for_completion (max_cycles, delay, NULL, nm_device_link_test, dev, &err);
+	args[0] = dev;
+	args[1] = &err;
+	nm_wait_for_completion (max_cycles, delay, NULL, nm_device_link_test, args);
 	return !err;
 }
 
@@ -2238,11 +2256,11 @@ void invalidate_ap (NMDevice *dev, NMAccessPoint *ap)
 
 
 /* this gets called without the scan mutex held */
-static gboolean nm_wa_test (int tries, va_list args)
+static gboolean nm_wa_test (int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg (args, NMDevice *);
-	NMAccessPoint **best_ap = va_arg (args, NMAccessPoint **);
-	gboolean *err = va_arg (args, gboolean *);
+	NMDevice *dev = args[0];
+	NMAccessPoint **best_ap = args[1];
+	gboolean *err = args[2];
 
 	g_return_val_if_fail(dev != NULL, TRUE);
 	g_return_val_if_fail(best_ap != NULL, TRUE);
@@ -2292,10 +2310,10 @@ static gboolean nm_wa_test (int tries, va_list args)
 }
 
 
-static gboolean nm_dukr_test (int tries, va_list args)
+static gboolean nm_dukr_test (int tries, nm_completion_args args)
 {
-	NMDevice	*dev = va_arg (args, NMDevice *);
-	gboolean	*err = va_arg (args, gboolean *);
+	NMDevice	*dev = args[0];
+	gboolean	*err = args[1];
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 	g_return_val_if_fail (err != NULL, TRUE);
@@ -2330,6 +2348,7 @@ static gboolean nm_device_activate_wireless (NMDevice *dev)
 	gboolean			 need_key = FALSE;
 	gboolean			 found_ap = FALSE;
 	gboolean			 err = FALSE;
+	nm_completion_args	 args;
 
 	g_return_val_if_fail (dev != NULL, FALSE);
 	g_return_val_if_fail (dev->app_data != NULL, FALSE);
@@ -2355,7 +2374,11 @@ get_ap:
 	nm_device_set_now_scanning (dev, TRUE);
 
 	/* Get an access point to connect to */
-	nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY, G_USEC_PER_SEC / 50, nm_wa_test, NULL, dev, &best_ap, &err);
+	args[0] = dev;
+	args[1] = &best_ap;
+	args[2] = &err;
+	nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY, G_USEC_PER_SEC / 50,
+			nm_wa_test, NULL, args);
 	if (err)
 	{
 		/* Wierd as it may seem, we lock here to balance the unlock in "out:" */
@@ -2406,8 +2429,11 @@ need_key:
 
 		/* Wait for the key to come back */
 		syslog (LOG_DEBUG, "Activation (%s/wireless): asking for user key.", nm_device_get_iface (dev));
-		nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY, G_USEC_PER_SEC / 20,
-							nm_dukr_test, nm_dukr_test, dev, &err);
+
+		args[0] = dev;
+		args[1] = &err;
+		nm_wait_for_completion (NM_COMPLETION_TRIES_INFINITY,
+				G_USEC_PER_SEC / 20, nm_dukr_test, nm_dukr_test, args);
 		syslog (LOG_DEBUG, "Activation (%s/wireless): user key received.", nm_device_get_iface (dev));
 
 		/* Done waiting, grab lock again */
@@ -2717,9 +2743,9 @@ gboolean nm_device_activation_should_cancel (NMDevice *dev)
 }
 
 
-static gboolean nm_ac_test (int tries, va_list args)
+static gboolean nm_ac_test (int tries, nm_completion_args args)
 {
-	NMDevice *dev = va_arg (args, NMDevice *);
+	NMDevice *dev = args[0];
 
 	g_return_val_if_fail (dev != NULL, TRUE);
 
@@ -2754,6 +2780,8 @@ static gboolean nm_ac_test (int tries, va_list args)
  */
 void nm_device_activation_cancel (NMDevice *dev)
 {
+	nm_completion_args args;
+
 	g_return_if_fail (dev != NULL);
 
 	if (nm_device_is_activating (dev))
@@ -2765,7 +2793,9 @@ void nm_device_activation_cancel (NMDevice *dev)
 		 * The other problem with waiting here is that we hold up dbus traffic
 		 * that we should respond to.
 		 */
-		nm_wait_for_completion(NM_COMPLETION_TRIES_INFINITY, G_USEC_PER_SEC / 20, nm_ac_test, NULL, dev);
+		args[0] = dev;
+		nm_wait_for_completion(NM_COMPLETION_TRIES_INFINITY,
+				G_USEC_PER_SEC / 20, nm_ac_test, NULL, args);
 		syslog (LOG_DEBUG, "nm_device_activation_cancel(%s): cancelled.", nm_device_get_iface (dev));
 	}
 }
@@ -3629,12 +3659,12 @@ static gboolean nm_device_wireless_process_scan_results (gpointer user_data)
 }
 
 
-static gboolean nm_completion_scan_has_results (int tries, va_list args)
+static gboolean nm_completion_scan_has_results (int tries, nm_completion_args args)
 {
-	NMDevice				*dev = va_arg (args, NMDevice *);
-	gboolean				*err = va_arg (args, gboolean *);
-	NMSock				*sk = va_arg (args, NMSock *);
-	NMWirelessScanResults	*scan_results = va_arg (args, NMWirelessScanResults *);
+	NMDevice				*dev = args[0];
+	gboolean				*err = args[1];
+	NMSock				*sk = args[2];
+	NMWirelessScanResults	*scan_results = args[3];
 	int					 rc;
 
 	g_return_val_if_fail (dev != NULL, TRUE);
@@ -3738,6 +3768,7 @@ static gboolean nm_device_wireless_scan (gpointer user_data)
 			double		orig_freq = 0;
 			int			orig_rate = 0;
 			const int		max_wait = G_USEC_PER_SEC * nm_device_get_association_pause_value (dev) /2;
+			nm_completion_args args;
 
 			orig_mode = nm_device_get_mode (dev);
 			if (orig_mode == NETWORK_MODE_ADHOC)
@@ -3753,9 +3784,13 @@ static gboolean nm_device_wireless_scan (gpointer user_data)
 			nm_device_set_frequency (dev, 0);
 
 			scan_results = g_malloc0 (sizeof (NMWirelessScanResults));
+
+			args[0] = dev;
+			args[1] = &err;
+			args[2] = sk;
+			args[3] = scan_results;
 			nm_wait_for_completion(max_wait, max_wait/20,
-				nm_completion_scan_has_results, NULL,
-				dev, &err, sk, scan_results);
+				nm_completion_scan_has_results, NULL, args);
 
 			nm_device_set_mode (dev, orig_mode);
 			/* Only set frequency if ad-hoc mode */

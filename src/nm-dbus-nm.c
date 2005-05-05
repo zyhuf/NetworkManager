@@ -123,7 +123,10 @@ static DBusMessage *nm_dbus_nm_get_devices (DBusConnection *connection, DBusMess
 		 * (something which should never happen), die.
 		 */
 		if (!appended)
-			g_assert ("Device list existed, but no devices were in it.");
+		{
+			syslog (LOG_ERR, "Device list existed, but no devices were in it.\n");
+			g_assert_not_reached ();
+		}
 
 		nm_unlock_mutex (data->data->dev_list_mutex, __FUNCTION__);
 	}
