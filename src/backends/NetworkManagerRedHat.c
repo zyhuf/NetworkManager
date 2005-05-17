@@ -348,7 +348,6 @@ void nm_system_restart_mdns_responder (void)
 void nm_system_device_add_ip6_link_address (NMDevice *dev)
 {
 	char *buf;
-	char	*addr;
 	unsigned char eui[8];
 
 	nm_device_get_hw_address(dev, &eui[0]);

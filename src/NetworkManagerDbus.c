@@ -424,7 +424,6 @@ void nm_dbus_signal_wireless_network_change (DBusConnection *connection, NMDevic
 	DBusMessage	*message;
 	char			*dev_path;
 	char			*ap_path;
-	const char	*signal;
 
 	g_return_if_fail (connection != NULL);
 	g_return_if_fail (dev != NULL);
@@ -1053,7 +1052,6 @@ gboolean nm_dbus_is_info_daemon_running (DBusConnection *connection)
 DBusConnection *nm_dbus_init (NMData *data)
 {
 	DBusError		 		 error;
-	dbus_bool_t			 success;
 	DBusConnection			*connection;
 	DBusObjectPathVTable	 nm_vtable = {NULL, &nm_dbus_nm_message_handler, NULL, NULL, NULL, NULL};
 	DBusObjectPathVTable	 devices_vtable = {NULL, &nm_dbus_devices_message_handler, NULL, NULL, NULL, NULL};

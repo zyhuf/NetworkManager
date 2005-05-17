@@ -491,7 +491,6 @@ gboolean nm_ap_list_merge_scanned_ap (NMAccessPointList *list, NMAccessPoint *me
 				gboolean *new, gboolean *strength_changed)
 {
 	NMAccessPoint   *list_ap_addr, *list_ap_essid;
-	gboolean                 success = FALSE;
 
 	g_return_val_if_fail (list != NULL, FALSE);
 	g_return_val_if_fail (merge_ap != NULL, FALSE);
@@ -509,14 +508,13 @@ gboolean nm_ap_list_merge_scanned_ap (NMAccessPointList *list, NMAccessPoint *me
 		 * strength, and the time_last_seen. */
 
 		const GTimeVal  *merge_ap_seen = nm_ap_get_last_seen (merge_ap);
-		const GTimeVal *list_ap_addr_seen = nm_ap_get_last_seen (list_ap_addr);
 
 		nm_ap_set_encrypted (list_ap_addr, nm_ap_get_encrypted (merge_ap));
 		nm_ap_set_auth_method (list_ap_addr, nm_ap_get_auth_method (merge_ap));
 		if  (nm_ap_get_strength (merge_ap) != nm_ap_get_strength (list_ap_addr))
 		{
 			nm_ap_set_strength (list_ap_addr, nm_ap_get_strength (merge_ap));
-		*strength_changed = TRUE;
+			*strength_changed = TRUE;
 		}
 		nm_ap_set_last_seen (list_ap_addr, merge_ap_seen);
 	}

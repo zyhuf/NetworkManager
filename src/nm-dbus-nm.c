@@ -488,18 +488,6 @@ static DBusMessage *nm_dbus_nm_get_wireless_enabled (DBusConnection *connection,
 	return reply;
 }
 
-static DBusMessage *nm_dbus_nm_get_asleep (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
-{
-	DBusMessage	*reply = NULL;
-
-	g_return_val_if_fail (data && data->data && connection && message, NULL);
-
-	if ((reply = dbus_message_new_method_return (message)))
-		dbus_message_append_args (reply, DBUS_TYPE_BOOLEAN, &data->data->asleep, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
 {
 	GSList	*elt;
@@ -530,7 +518,6 @@ static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *m
 
 static DBusMessage *nm_dbus_nm_wake (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
 {
-	GSList	*elt;
 	NMData	*app_data;
 
 	g_return_val_if_fail (data && data->data && connection && message, NULL);
