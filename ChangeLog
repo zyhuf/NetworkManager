@@ -1,5 +1,11 @@
 2005-05-16  Dan Williams  <dcbw@redhat.com>
 
+	* dispatcher-daemon/Makefile.am
+	  panel-applet/Makefile.am
+		- Fix dispatcher and applet CFLAGS so they gets compiled with FORTIFY_SOURCE
+
+2005-05-16  Dan Williams  <dcbw@redhat.com>
+
 	* dhcpcd/client.c
 		- (dhcp_handle_transaction): Fix condition that may have resulted
 			in incorrect return of RET_DHCP_SUCCESS when we really timed out.

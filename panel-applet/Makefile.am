@@ -63,7 +63,7 @@ libnm_notification_applet_la_LIBADD =	\
 
 libexec_PROGRAMS = NetworkManagerNotification
 
-NetworkManagerNotification_CFLAGS = $(libnm_notification_applet_la_CPPFLAGS)
+NetworkManagerNotification_CPPFLAGS = $(libnm_notification_applet_la_CPPFLAGS)
 NetworkManagerNotification_SOURCES = main.c
 NetworkManagerNotification_LDADD =						\
 					./libnm_notification_applet.la		\
