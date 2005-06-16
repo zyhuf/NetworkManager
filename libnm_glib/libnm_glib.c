@@ -248,7 +248,7 @@ static DBusHandlerResult libnm_glib_dbus_filter (DBusConnection *connection, DBu
 			}
 		}
 	}
-#elif ((DBUS_VERSION_MAJOR == 0) && ((DBUS_VERSION_MINOR == 30) || (DBUS_VERSION_MINOR == 31)))
+#elif ((DBUS_VERSION_MAJOR == 0) && ((DBUS_VERSION_MINOR == 30) || (DBUS_VERSION_MINOR == 31) || (DBUS_VERSION_MINOR == 32) || (DBUS_VERSION_MINOR == 33)))
 	else if (dbus_message_is_signal (message, DBUS_INTERFACE_DBUS, "NameOwnerChanged"))
 	{
 		/* New signal for dbus 0.23... */
