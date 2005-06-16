@@ -1,3 +1,9 @@
+2005-05-16  Dan Williams  <dcbw@redhat.com>
+
+	* dhcpcd/client.c
+		- (dhcp_handle_transaction): Fix condition that may have resulted
+			in incorrect return of RET_DHCP_SUCCESS when we really timed out.
+
 2005-05-15  Dan Williams  <dcbw@redhat.com>
 
 	* dispatcher-daemon/NetworkManagerDispatcher.c
