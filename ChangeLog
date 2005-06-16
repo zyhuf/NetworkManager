@@ -1,3 +1,11 @@
+2005-05-05  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-dbus-nm.c: Fix misuse of a g_assert() (Colin Walters)
+
+	Patch from Bill Moss:
+	* src/NetworkManagerDevice.c:
+		- (nm_device_set_up_down): Fix return value checking of ioctl()
+
 2005-04-27  Dan Williams  <dcbw@redhat.com>
 
 	Patch from Peter Jones:

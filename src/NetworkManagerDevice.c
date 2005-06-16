@@ -1514,7 +1514,6 @@ static void nm_device_set_up_down (NMDevice *dev, gboolean up)
 {
 	struct ifreq	ifr;
 	NMSock		*sk;
-	int			err;
 	guint32		flags = up ? IFF_UP : ~IFF_UP;
 
 	g_return_if_fail (dev != NULL);
@@ -1531,8 +1530,7 @@ static void nm_device_set_up_down (NMDevice *dev, gboolean up)
 
 	/* Get flags already there */
 	strcpy (ifr.ifr_name, nm_device_get_iface (dev));
-	err = ioctl (nm_dev_sock_get_fd (sk), SIOCGIFFLAGS, &ifr);
-	if (!err)
+	if (ioctl (nm_dev_sock_get_fd (sk), SIOCGIFFLAGS, &ifr) != -1)
 	{
 		/* If the interface doesn't have those flags already,
 		 * set them on it.
@@ -1541,7 +1539,7 @@ static void nm_device_set_up_down (NMDevice *dev, gboolean up)
 		{
 			ifr.ifr_flags &= ~IFF_UP;
 			ifr.ifr_flags |= IFF_UP & flags;
-			if ((err = ioctl (nm_dev_sock_get_fd (sk), SIOCSIFFLAGS, &ifr)))
+			if (ioctl (nm_dev_sock_get_fd (sk), SIOCSIFFLAGS, &ifr) == -1)
 				nm_warning ("nm_device_set_up_down() could not bring device %s %s.  errno = %d", nm_device_get_iface (dev), (up ? "up" : "down"), errno );
 		}
 		/* Make sure we have a valid MAC address, some cards reload firmware when they
