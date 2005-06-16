@@ -1,3 +1,27 @@
+2005-06-10  Dan Williams <dcbw@redhat.com>
+
+	* src/Makefile.am
+		- Add SYSCONFDIR define to compile line
+
+	* src/NetworkManagerSystem.c
+	  src/NetworkManagerSystem.c
+		- (nm_system_device_add_ip4_nameserver): new function
+		- (nm_system_device_clear_ip4_nameservers): new function
+		- (nm_system_device_add_domain_search): new function
+		- (nm_system_device_clear_domain_searches): new function
+
+	* src/backends/NetworkManagerRedHat.c
+		- (get_current_profile_name): new function, grab current network profile name from
+			/etc/sysconfig/network
+		- (set_ip4_config_from_resolv_conf): new function, parse a resolv.conf and
+			update an IP4 Config structure's settings from it
+		- (nm_system_device_setup_static_ip4_config): if we're using static IP on this device,
+			get DNS info from current network profile
+
+	* src/NetworkManagerDevice.c
+		- (nm_device_activation_configure_ip): clear domains and nameservers before setting
+			up static IP on the card, and update our idea of the card's IP address afterwards
+
 2005-05-16  Dan Williams  <dcbw@redhat.com>
 
 	* dispatcher-daemon/Makefile.am

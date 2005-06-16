@@ -202,3 +202,121 @@ gboolean nm_system_device_set_ip4_default_route (NMDevice *dev, int ip4_def_rout
 	return (success);
 }
 
+
+gboolean nm_system_device_add_ip4_nameserver (NMDevice *dev, guint32 ip4_nameserver)
+{
+	gboolean success = FALSE;
+	char *nameserver;
+	GError *error = NULL;
+	NMData *data;
+	guint id;
+
+	g_return_val_if_fail (dev != NULL, FALSE);
+	data = nm_device_get_app_data (dev);
+	g_return_val_if_fail (data != NULL, FALSE);
+
+	nameserver = g_strdup_printf ("%u.%u.%u.%u",
+				      ((unsigned char *)&ip4_nameserver)[0],
+				      ((unsigned char *)&ip4_nameserver)[1],
+				      ((unsigned char *)&ip4_nameserver)[2],
+				      ((unsigned char *)&ip4_nameserver)[3]);
+	nm_info ("Adding nameserver: %s", nameserver);
+
+	if ((id = nm_named_manager_add_nameserver_ipv4 (data->named, nameserver, &error)))
+	{
+		data->nameserver_ids = g_list_prepend (data->nameserver_ids, GUINT_TO_POINTER (id));
+		success = TRUE;
+	}
+	else
+	{
+		nm_warning ("Couldn't add nameserver: %s\n", error->message);
+		g_clear_error (&error);
+	}
+	g_free (nameserver);
+
+	return success;
+}
+
+
+void nm_system_device_clear_ip4_nameservers (NMDevice *dev)
+{
+	GList *elt;
+	GError *error = NULL;
+	NMData *data;
+
+	g_return_if_fail (dev != NULL);
+	data = nm_device_get_app_data (dev);
+	g_return_if_fail (data != NULL);
+
+	/* Reset our nameserver list */
+	for (elt = data->nameserver_ids; elt; elt = elt->next)
+	{
+		if (!nm_named_manager_remove_nameserver_ipv4 (data->named,
+							      GPOINTER_TO_UINT (elt->data),
+							      &error))
+		{
+			nm_warning ("Couldn't remove nameserver: %s", error->message);
+			g_clear_error (&error);
+		}
+	}
+	g_list_free (data->nameserver_ids);
+	data->nameserver_ids = NULL;
+	
+}
+
+
+gboolean nm_system_device_add_domain_search (NMDevice *dev, const char *search)
+{
+	gboolean success = FALSE;
+	guint id;
+	GError *error = NULL;
+	NMData *data;
+
+	g_return_val_if_fail (dev != NULL, FALSE);
+	g_return_val_if_fail (search != NULL, FALSE);
+	g_return_val_if_fail (strlen (search) >= 0, FALSE);
+
+	data = nm_device_get_app_data (dev);
+	g_return_val_if_fail (data != NULL, FALSE);
+
+	nm_warning ("Adding domain search: %s\n", search);
+	if ((id = nm_named_manager_add_domain_search (data->named, search, &error)))
+	{
+		data->domain_search_ids = g_list_append (data->domain_search_ids, GUINT_TO_POINTER (id));
+		success = TRUE;
+	}
+	else
+	{
+		nm_warning ("Couldn't add domain search '%s': %s\n", search, error->message);
+		g_clear_error (&error);
+	}
+
+	return success;
+}
+
+void nm_system_device_clear_domain_searches (NMDevice *dev)
+{
+	GError *error = NULL;
+	GList *elt;
+	NMData *data;
+
+	g_return_if_fail (dev != NULL);
+	data = nm_device_get_app_data (dev);
+	g_return_if_fail (data != NULL);
+
+	/* Reset our domain search list */
+	for (elt = data->domain_search_ids; elt; elt = elt->next)
+	{
+		if (!nm_named_manager_remove_domain_search (data->named,
+							    GPOINTER_TO_UINT (elt->data),
+							    &error))
+		{
+			nm_warning ("Couldn't remove domain search: %s\n", error->message);
+			g_clear_error (&error);
+		}
+	}
+	g_list_free (data->domain_search_ids);
+	data->domain_search_ids = NULL;
+}
+
+
