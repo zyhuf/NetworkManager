@@ -1,3 +1,8 @@
+2005-04-27  Dan Williams  <dcbw@redhat.com>
+
+	Patch from Peter Jones:
+	* Remove usage of varargs to fix crashes on PPC (RH #154336)
+
 2005-04-15  Dan Williams  <dcbw@redhat.com>
 
 	* libnm_glib/libnm_glib: Fix up for dbus-0.32, and remove
