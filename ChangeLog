@@ -13,6 +13,11 @@
 
 2005-05-05  Dan Williams  <dcbw@redhat.com>
 
+	* src/backends/NetworkManagerRedHat.c
+		- Don't force-kill nifd (otherwise SELinux kills us) #rh154391#
+
+2005-05-05  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-dbus-nm.c: Fix misuse of a g_assert() (Colin Walters)
 
 	Patch from Bill Moss:
