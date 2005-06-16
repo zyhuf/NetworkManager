@@ -35,8 +35,6 @@
 struct NMIAppInfo
 {
 	GladeXML		*passphrase_dialog;
-	GtkWidget		*vpn_password_dialog;
-	DBusMessage		*vpn_password_message;
 	char			*orig_label_text;
 	DBusConnection	*connection;
 	GConfClient	*gconf_client;

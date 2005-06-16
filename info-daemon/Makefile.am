@@ -30,8 +30,6 @@ NetworkManagerInfo_SOURCES =	NetworkManagerInfo.h		\
 				NetworkManagerInfoDbus.c				\
 				NetworkManagerInfoPassphraseDialog.c	\
 				NetworkManagerInfoPassphraseDialog.h	\
-				NetworkManagerInfoVPN.c	\
-				NetworkManagerInfoVPN.h	\
 				NetworkManagerInfoNetworksDialog.c		\
 				NetworkManagerInfoNetworksDialog.h
 

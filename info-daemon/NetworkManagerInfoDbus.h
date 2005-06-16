@@ -39,8 +39,6 @@ gboolean		nmi_dbus_nm_get_network_encrypted		(DBusConnection *connection, const 
 void 		nmi_dbus_return_user_key				(DBusConnection *connection, const char *device,
 											 const char *network, const char *passphrase, const int key_type);
 
-void 		nmi_dbus_return_vpn_password (DBusConnection *connection, DBusMessage *message, const char *password);
-
 void			nmi_dbus_signal_update_network 		(DBusConnection *connection, const char *network, NMNetworkType type);
 
 #endif
