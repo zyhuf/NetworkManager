@@ -48,6 +48,11 @@
 		- (update_button_cb): Make sure the OK button is enabled when it should be, fixes
 			problem where it never enabled for ASCII Key and Hex Key types
 
+2005-05-06  Dan Williams  <dcbw@redhat.com>
+
+	* src/backends/shvar.c
+		- (svOpenFile): Open read-only to make SELinux happy
+
 2005-05-05  Dan Williams  <dcbw@redhat.com>
 
 	* src/backends/NetworkManagerRedHat.c
