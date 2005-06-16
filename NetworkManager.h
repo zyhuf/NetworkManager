@@ -133,6 +133,19 @@ typedef enum NMDeviceAuthMethod
 /*
  * Info-daemon specific preference locations
  */
-#define NMI_GCONF_WIRELESS_NETWORKS_PATH		"/system/networking/wireless/networks"
+#define NMI_GCONF_WIRELESS_NETWORKS_PATH	"/system/networking/wireless/networks"
+#define NMI_GCONF_WIRELESS_PATH			"/system/networking/wireless"
+
+/*
+ * Wireless scanning methods
+ *
+ */
+typedef enum NMWirelessScanMethod
+{
+	NM_SCAN_METHOD_UNKNOWN = 0,
+	NM_SCAN_METHOD_ON,
+	NM_SCAN_METHOD_OFF,
+	NM_SCAN_METHOD_AUTO
+} NMWirelessScanMethod;
 
 #endif

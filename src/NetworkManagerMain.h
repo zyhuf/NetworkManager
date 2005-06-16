@@ -37,7 +37,7 @@ typedef struct NMDbusMethodList NMDbusMethodList;
 typedef struct NMData
 {
 	GIOChannel			*sigterm_iochannel;
-	int				 sigterm_pipe[2];
+	int					 sigterm_pipe[2];
 
 	LibHalContext			*hal_ctx;
 
@@ -67,7 +67,7 @@ typedef struct NMData
 
 	gboolean				 forcing_device;
 
-	gboolean				 scanning_enabled;
+	NMWirelessScanMethod	 scanning_method;
 	gboolean				 wireless_enabled;
 	gboolean				 asleep;
 

@@ -507,26 +507,6 @@ static gboolean nmwa_dbus_get_network_encrypted (NMWirelessApplet *applet, char 
 
 
 /*
- * nmwa_dbus_get_scanning_enabled
- */
-static gboolean nmwa_dbus_get_scanning_enabled (NMWirelessApplet *applet)
-{
-	gboolean	enabled = FALSE;
-
-	switch (nmwa_dbus_call_nm_method (applet->connection, NM_DBUS_PATH, "getScanningEnabled", DBUS_TYPE_BOOLEAN, (void **)(&enabled), NULL))
-	{
-		case (RETURN_NO_NM):
-			applet->applet_state = APPLET_STATE_NO_NM;
-			break;
-
-		default:
-			break;			
-	}
-
-	return (enabled);
-}
-
-/*
  * nmwa_dbus_get_wireless_enabled
  */
 static gboolean nmwa_dbus_get_wireless_enabled (NMWirelessApplet *applet)
@@ -736,28 +716,6 @@ void nmwa_dbus_create_network (DBusConnection *connection, const NetworkDevice *
 	}
 	else
 		fprintf (stderr, "nm_dbus_set_device(): Couldn't allocate the dbus message\n");
-}
-
-
-/*
- * nmwa_dbus_enable_scanning
- *
- * Tell NetworkManager to start/stop scanning.
- *
- */
-void nmwa_dbus_enable_scanning (NMWirelessApplet *applet, gboolean enabled)
-{
-	DBusMessage	*message;
-
-	g_return_if_fail (applet != NULL);
-	g_return_if_fail (applet->connection != NULL);
-
-	if ((message = dbus_message_new_method_call (NM_DBUS_SERVICE, NM_DBUS_PATH, NM_DBUS_INTERFACE, "setScanningEnabled")))
-	{
-		dbus_message_append_args (message, DBUS_TYPE_BOOLEAN, &enabled, DBUS_TYPE_INVALID);
-		dbus_connection_send (applet->connection, message, NULL);
-		applet->scanning_enabled = nmwa_dbus_get_scanning_enabled (applet);
-	}
 }
 
 
@@ -1565,7 +1523,6 @@ static void nmwa_dbus_update_devices (NMWirelessApplet *applet)
 
 	nmwa_copy_data_model (applet);
 	applet->is_adhoc = adhoc;
-	applet->scanning_enabled = nmwa_dbus_get_scanning_enabled (applet);
 	applet->wireless_enabled = nmwa_dbus_get_wireless_enabled (applet);
 
 	g_mutex_unlock (applet->data_mutex);

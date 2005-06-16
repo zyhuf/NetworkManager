@@ -493,7 +493,7 @@ static NMData *nm_data_new (gboolean enable_test_devices)
 
 	data->enable_test_devices = enable_test_devices;
 
-	data->scanning_enabled = TRUE;
+	data->scanning_method = NM_SCAN_METHOD_ON;
 	data->wireless_enabled = TRUE;
 
 	nm_policy_schedule_state_update (data);
@@ -849,7 +849,10 @@ int main( int argc, char *argv[] )
 	/* If NMI is running, grab allowed wireless network lists from it ASAP
 	 */
 	if (nm_dbus_is_info_daemon_running (nm_data->dbus_connection))
+	{
 		nm_policy_schedule_allowed_ap_list_update (nm_data);
+		nm_dbus_update_wireless_scan_method (nm_data->dbus_connection, nm_data);
+	}
 
 	/* Right before we init hal, we have to make sure our mainloop
 	 * integration function knows about our GMainContext.  HAL doesn't give

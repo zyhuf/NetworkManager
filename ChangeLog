@@ -1,5 +1,9 @@
 2005-06-16  Dan Williams <dcbw@redhat.com>
 
+	* Backport Wireless Scan Methods from HEAD (see HEAD's changelog for full details)
+
+2005-06-16  Dan Williams <dcbw@redhat.com>
+
 	* Remove the bits of the VPN implementation since this branch
 		will never get it.
 

@@ -33,6 +33,7 @@
 #include "eggtrayicon.h"
 #endif
 #include <net/ethernet.h>
+#include "NetworkManager.h"
 
 typedef enum
 {
@@ -120,7 +121,7 @@ typedef struct
 	GMutex			*data_mutex;
 	AppletState		 applet_state;
 	gboolean			 is_adhoc;
-	gboolean			 scanning_enabled;
+	NMWirelessScanMethod scan_method;
 	gboolean			 wireless_enabled;
 
 	GSList			*gui_device_list;
@@ -160,7 +161,8 @@ typedef struct
 	GtkTooltips		*tooltips;
 
 	GtkWidget			*context_menu;
-	GtkWidget			*pause_scanning_item;
+	GtkWidget			*scanning_item;
+	GtkWidget			*scanning_menu;
 	GtkWidget			*stop_wireless_item;
 
 } NMWirelessApplet;

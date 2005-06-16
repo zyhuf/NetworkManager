@@ -749,6 +749,73 @@ out:
 
 
 /*
+ * nm_dbus_update_wireless_scan_method_cb
+ *
+ * Callback from nm_dbus_update_wireless_scan_method
+ *
+ */
+static void nm_dbus_update_wireless_scan_method_cb (DBusPendingCall *pcall, NMData *data)
+{
+	DBusMessage *			reply;
+	NMWirelessScanMethod	method = NM_SCAN_METHOD_UNKNOWN;
+
+	g_return_if_fail (pcall != NULL);
+	g_return_if_fail (data != NULL);
+
+	if (!dbus_pending_call_get_completed (pcall))
+		goto out;
+
+	if (!(reply = dbus_pending_call_steal_reply (pcall)))
+		goto out;
+
+	if (dbus_message_get_type (reply) == DBUS_MESSAGE_TYPE_ERROR)
+	{
+		dbus_message_unref (reply);
+		goto out;
+	}
+
+	if (dbus_message_get_args (reply, NULL, DBUS_TYPE_UINT32, &method, DBUS_TYPE_INVALID))
+	{
+		if ((method == NM_SCAN_METHOD_ON) || (method == NM_SCAN_METHOD_OFF) || (method == NM_SCAN_METHOD_AUTO))
+			data->scanning_method = method;
+	}
+	dbus_message_unref (reply);
+
+out:
+	dbus_pending_call_unref (pcall);
+}
+
+
+/*
+ * nm_dbus_update_wireless_scan_method
+ *
+ * Get the wireless scan method from NetworkManagerInfo
+ *
+ */
+void nm_dbus_update_wireless_scan_method (DBusConnection *connection, NMData *data)
+{
+	DBusMessage *		message = NULL;
+	DBusPendingCall *	pcall = NULL;
+
+	g_return_if_fail (connection != NULL);
+	g_return_if_fail (data != NULL);
+
+	if (!(message = dbus_message_new_method_call (NMI_DBUS_SERVICE, NMI_DBUS_PATH, NMI_DBUS_INTERFACE, "getWirelessScanMethod")))
+	{
+		nm_warning ("nm_dbus_update_wireless_scan_method(): Couldn't allocate the dbus message");
+		return;
+	}
+
+	if (dbus_connection_send_with_reply (connection, message, &pcall, INT_MAX) && pcall)
+		dbus_pending_call_set_notify (pcall, (DBusPendingCallNotifyFunction) nm_dbus_update_wireless_scan_method_cb, data, NULL);
+	else
+		nm_warning ("nm_dbus_update_wireless_scan_method(): could not send dbus message");
+
+	dbus_message_unref (message);
+}
+
+
+/*
  * nm_dbus_update_network_auth_method
  *
  * Tell NetworkManagerInfo the updated auth_method of the AP
@@ -977,18 +1044,22 @@ static DBusHandlerResult nm_dbus_nmi_filter (DBusConnection *connection, DBusMes
 
 	dbus_error_init (&error);
 
-	if (    (strcmp (object_path, NMI_DBUS_PATH) == 0)
-		&& dbus_message_is_signal (message, NMI_DBUS_INTERFACE, "WirelessNetworkUpdate"))
+	if (strcmp (object_path, NMI_DBUS_PATH) == 0)
 	{
-		char			*network = NULL;
-
-		if (dbus_message_get_args (message, &error, DBUS_TYPE_STRING, &network, DBUS_TYPE_INVALID))
+		if (dbus_message_is_signal (message, NMI_DBUS_INTERFACE, "WirelessNetworkUpdate"))
 		{
-			/* Update a single wireless network's data */
-			nm_debug ("NetworkManagerInfo triggered update of wireless network '%s'", network);
-			nm_ap_list_update_network_from_nmi (data->allowed_ap_list, network, data);
-			handled = TRUE;
+			char *	network = NULL;
+
+			if (dbus_message_get_args (message, &error, DBUS_TYPE_STRING, &network, DBUS_TYPE_INVALID))
+			{
+				/* Update a single wireless network's data */
+				nm_debug ("NetworkManagerInfo triggered update of wireless network '%s'", network);
+				nm_ap_list_update_network_from_nmi (data->allowed_ap_list, network, data);
+				handled = TRUE;
+			}
 		}
+		else if (dbus_message_is_signal (message, NMI_DBUS_INTERFACE, "WirelessScanMethodUpdate"))
+			nm_dbus_update_wireless_scan_method (connection, data);
 	}
 	else if (dbus_message_is_signal (message, DBUS_INTERFACE_DBUS, "NameOwnerChanged"))
 	{
@@ -1007,7 +1078,10 @@ static DBusHandlerResult nm_dbus_nmi_filter (DBusConnection *connection, DBusMes
 			gboolean new_owner_good = (new_owner && (strlen (new_owner) > 0));
 
 			if (!old_owner_good && new_owner_good)
+			{
 				nm_policy_schedule_allowed_ap_list_update (data);
+				nm_dbus_update_wireless_scan_method (connection, data);
+			}
 		}
 	}
 
