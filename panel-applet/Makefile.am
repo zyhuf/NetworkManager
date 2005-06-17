@@ -39,10 +39,6 @@ libnm_notification_applet_la_SOURCES =	\
 	NMWirelessAppletOtherNetworkDialog.h	\
 	menu-info.c			\
 	menu-info.h			\
-	gtkcellview.c			\
-	gtkcellview.h			\
-	gtkcellrendererprogress.c	\
-	gtkcellrendererprogress.h	\
 	$(NULL)
 
 libnm_notification_applet_la_SOURCES +=	\
