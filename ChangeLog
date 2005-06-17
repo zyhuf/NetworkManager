@@ -1,3 +1,9 @@
+2005-06-17  Dan Williams <dcbw@redhat.com>
+
+    Patch from Bill Nottingham:
+    * src/NetworkManagerDevice.c
+        - (nm_device_wireless_activate): fix adhoc mode IP configuration
+
 2005-06-16  Dan Williams <dcbw@redhat.com>
 
     Patch from Robert Love:

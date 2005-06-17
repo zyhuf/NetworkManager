@@ -2457,7 +2457,8 @@ need_key:
 		/* Only do auto-ip on Ad-Hoc connections for now.  We technically
 		 * could do DHCP on them though.
 		 */
-		success = nm_device_activation_configure_ip (dev, TRUE);
+		nm_device_set_wireless_config (dev, best_ap);
+		success = nm_device_activation_configure_ip (dev, FALSE);
 		goto connect_done;
 	}
 
@@ -2469,7 +2470,6 @@ try_connect:
 	{
 		NMAccessPoint	*tmp_ap = NULL;
 		gboolean		 link = FALSE;
-		gboolean		 adhoc = (nm_ap_get_mode (best_ap) == NETWORK_MODE_ADHOC);
 
 		/* If we were told to quit activation, stop the thread and return */
 		if (nm_device_activation_handle_cancel (dev))
@@ -2522,7 +2522,7 @@ try_connect:
 		 * do DHCP and if that fails, fall back to next auth mode and try again.
 		 */
 		success = FALSE;
-		if ((success = nm_device_activation_configure_ip (dev, adhoc)))
+		if ((success = nm_device_activation_configure_ip (dev, FALSE)))
 		{
 			if (nm_device_activation_handle_cancel (dev))
 			{
