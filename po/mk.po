@@ -84,11 +84,6 @@ msgstr "Ascii клуч:"
 msgid "Hex Key:"
 msgstr "Hex клуч:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Морате да се најавите за да пристапите на приватната мрежа %s"
-
 #: panel-applet/NMWirelessApplet.c:293
 msgid "No network connection"
 msgstr "Нема мрежна врска"

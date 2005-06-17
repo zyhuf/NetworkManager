@@ -81,11 +81,6 @@ msgstr "Ascii Kulcs:"
 msgid "Hex Key:"
 msgstr "Hex Kulcs:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:158
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Be kell jelentkeznie a(z) %s magánhálózat eléréséhez "
-
 #: panel-applet/NMWirelessApplet.c:149 panel-applet/NMWirelessApplet.c:167
 msgid "NetworkManager Applet"
 msgstr "NetworkManager kisalkalmazás"

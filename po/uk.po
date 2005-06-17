@@ -81,11 +81,6 @@ msgstr "Ascii-ключ:"
 msgid "Hex Key:"
 msgstr "Шістнадцятковий ключ:"
 
-#: ../info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Для отримання доступу до приватної мережі %s слід увійти у систему"
-
 #: ../panel-applet/NMWirelessApplet.c:141
 #: ../panel-applet/NMWirelessApplet.c:159
 msgid "NetworkManager Applet"

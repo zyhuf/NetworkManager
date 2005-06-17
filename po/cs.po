@@ -82,11 +82,6 @@ msgstr "Klíč v ascii:"
 msgid "Hex Key:"
 msgstr "Klíč šestnáctkově:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Pro přístup k soukromé síti %s se musíte přihlásit"
-
 #: panel-applet/NMWirelessApplet.c:141 panel-applet/NMWirelessApplet.c:159
 msgid "NetworkManager Applet"
 msgstr "Aplet NetworkManager"

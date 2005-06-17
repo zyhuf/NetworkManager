@@ -82,11 +82,6 @@ msgstr "Ascii-nøkkel"
 msgid "Hex Key:"
 msgstr "Heksadesimal nøkkel:"
 
-#: ../info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Du må logge inn for å aksessere privat nettverk %s"
-
 #: ../panel-applet/NMWirelessApplet.c:142
 #: ../panel-applet/NMWirelessApplet.c:160
 msgid "NetworkManager Applet"

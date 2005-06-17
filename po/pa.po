@@ -81,11 +81,6 @@ msgstr "Ascii ਕੁੰਜੀ:"
 msgid "Hex Key:"
 msgstr "Hex ਕੁੰਜੀ:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "ਤੁਹਾਨੂੰ ਨਿੱਜੀ ਨੈਟਵਰਕ %s ਨੂੰ ਵਰਤਣ ਲਈ ਲਾਗਿੰਨ ਕਰਨਾ ਪਵੇਗਾ"
-
 #: panel-applet/NMWirelessApplet.c:142 panel-applet/NMWirelessApplet.c:160
 msgid "NetworkManager Applet"
 msgstr "ਨੈਟਵਰਕਮੈਨੇਜਰ ਐਪਲਿਟ"

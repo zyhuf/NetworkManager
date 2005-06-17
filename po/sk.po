@@ -3,7 +3,7 @@
 # This file is distributed under the same license as the NetworkManager package.
 # Marcel Telka <marcel@telka.sk>, 2004, 2005.
 #
-# $Id: sk.po,v 1.15 2005/04/03 06:51:26 marcel Exp $
+# $Id: sk.po,v 1.15.2.1 2005/06/17 00:59:57 dcbw Exp $
 #
 msgid ""
 msgstr ""
@@ -82,11 +82,6 @@ msgstr "Ascii kľúč:"
 #: panel-applet/NMWirelessAppletOtherNetworkDialog.c:156
 msgid "Hex Key:"
 msgstr "Kľúč v šestnástkovej sústave:"
-
-#: info-daemon/NetworkManagerInfoVPN.c:158
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Musíte sa prihlásiť, aby ste mohli pristupovať k privátnej sieti %s"
 
 #: panel-applet/NMWirelessApplet.c:149 panel-applet/NMWirelessApplet.c:167
 msgid "NetworkManager Applet"

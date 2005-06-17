@@ -82,11 +82,6 @@ msgstr "Chiave ascii:"
 msgid "Hex Key:"
 msgstr "Chiave esadecimale:"
 
-#: ../info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "È necessario effettuare il login per accedere alla rete privata %s"
-
 #: ../panel-applet/NMWirelessApplet.c:142
 #: ../panel-applet/NMWirelessApplet.c:160
 msgid "NetworkManager Applet"

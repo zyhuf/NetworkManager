@@ -83,11 +83,6 @@ msgstr "Ascii 金鑰："
 msgid "Hex Key:"
 msgstr "Hex 金鑰："
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "為了存取私有網路「%s」，你必須先行登入"
-
 #: panel-applet/NMWirelessApplet.c:141 panel-applet/NMWirelessApplet.c:159
 msgid "NetworkManager Applet"
 msgstr ""

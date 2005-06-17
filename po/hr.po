@@ -81,11 +81,6 @@ msgstr "Slovčani ključ"
 msgid "Hex Key:"
 msgstr "Heksadecimalni ključ"
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Prijava je potrebna za pristup na mrežu %s"
-
 #: panel-applet/NMWirelessApplet.c:313
 msgid "No network connection"
 msgstr "Nema spoja na mrežu"

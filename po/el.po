@@ -76,11 +76,6 @@ msgstr "Κλειδί Ascii:"
 msgid "Hex Key:"
 msgstr "Κλειδί Hex:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:158
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "Θα πρέπει να συνδεθείτε για να έχετε πρόσβαση στο ιδιωτκό δίκτυο %s"
-
 #: panel-applet/NMWirelessApplet.c:149 panel-applet/NMWirelessApplet.c:167
 msgid "NetworkManager Applet"
 msgstr "Εφαρμογή NetworkManager"

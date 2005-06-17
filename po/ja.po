@@ -80,12 +80,6 @@ msgstr "ASCII 鍵:"
 msgid "Hex Key:"
 msgstr "16 進鍵:"
 
-#: info-daemon/NetworkManagerInfoVPN.c:157
-#, c-format
-msgid "You must log in to access the private network %s"
-msgstr "プライベートネットワーク %s にアクセスするにはログイン"
-"しなければいけません"
-
 #: panel-applet/NMWirelessApplet.c:293
 msgid "No network connection"
 msgstr "ネットワーク接続なし"
