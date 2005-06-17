@@ -222,7 +222,7 @@ NMNetworkMenuItem *network_menu_item_new (GtkSizeGroup *encryption_size_group)
 	pango_font_metrics_unref (metrics);
 
 	/* size our progress bar to be five ascents long, one high */
-	gtk_widget_set_size_request (item->progress, ascent * 5, (ascent / 2));
+	gtk_widget_set_size_request (item->progress, ascent * 5, -1);
 
 	gtk_box_pack_end (GTK_BOX (hbox), item->progress, FALSE, TRUE, 0);
 
