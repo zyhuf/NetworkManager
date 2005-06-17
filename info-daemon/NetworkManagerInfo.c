@@ -57,11 +57,11 @@ static void nmi_spawn_notification_icon (NMIAppInfo *info);
  */
 NMWirelessScanMethod nmi_gconf_get_wireless_scan_method (NMIAppInfo *info)
 {
-	NMWirelessScanMethod	method = NM_SCAN_METHOD_ON;
+	NMWirelessScanMethod	method = NM_SCAN_METHOD_ALWAYS;
 	GConfEntry *			entry;
 
-	g_return_val_if_fail (info, NM_SCAN_METHOD_ON);
-	g_return_val_if_fail (info->gconf_client, NM_SCAN_METHOD_ON);
+	g_return_val_if_fail (info, NM_SCAN_METHOD_ALWAYS);
+	g_return_val_if_fail (info->gconf_client, NM_SCAN_METHOD_ALWAYS);
 
 	if ((entry = gconf_client_get_entry (info->gconf_client, NMI_GCONF_WIRELESS_PATH "/scan_method", NULL, TRUE, NULL)))
 	{
@@ -71,7 +71,8 @@ NMWirelessScanMethod nmi_gconf_get_wireless_scan_method (NMIAppInfo *info)
 		{
 			NMWirelessScanMethod	temp_method = gconf_value_get_int (value);
 
-			if ((method == NM_SCAN_METHOD_ON) || (method == NM_SCAN_METHOD_OFF) || (method == NM_SCAN_METHOD_AUTO))
+			if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER)
+				|| (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
 				method = temp_method;
 		}
 	}
@@ -107,7 +108,8 @@ void nmi_gconf_prefs_notify_callback (GConfClient *client, guint connection_id, 
 			{
 				NMWirelessScanMethod	method = gconf_value_get_int (value);
 
-				if ((method == NM_SCAN_METHOD_ON) || (method == NM_SCAN_METHOD_OFF) || (method == NM_SCAN_METHOD_AUTO))
+				if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER)
+					|| (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
 					nmi_dbus_signal_update_scan_method (info->connection);
 			}
 		}

@@ -143,9 +143,9 @@ typedef enum NMDeviceAuthMethod
 typedef enum NMWirelessScanMethod
 {
 	NM_SCAN_METHOD_UNKNOWN = 0,
-	NM_SCAN_METHOD_ON,
-	NM_SCAN_METHOD_OFF,
-	NM_SCAN_METHOD_AUTO
+	NM_SCAN_METHOD_ALWAYS,
+	NM_SCAN_METHOD_WHEN_UNASSOCIATED,
+	NM_SCAN_METHOD_NEVER
 } NMWirelessScanMethod;
 
 #endif

@@ -493,7 +493,7 @@ static NMData *nm_data_new (gboolean enable_test_devices)
 
 	data->enable_test_devices = enable_test_devices;
 
-	data->scanning_method = NM_SCAN_METHOD_ON;
+	data->scanning_method = NM_SCAN_METHOD_ALWAYS;
 	data->wireless_enabled = TRUE;
 
 	nm_policy_schedule_state_update (data);

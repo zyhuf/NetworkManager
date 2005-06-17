@@ -192,7 +192,7 @@ void nmi_dbus_signal_update_scan_method (DBusConnection *connection)
 static DBusMessage *nmi_dbus_get_wireless_scan_method (NMIAppInfo *info, DBusMessage *message)
 {
 	DBusMessage *			reply = NULL;
-	NMWirelessScanMethod	method = NM_SCAN_METHOD_ON;
+	NMWirelessScanMethod	method = NM_SCAN_METHOD_ALWAYS;
 	GConfEntry *			entry;
 
 	g_return_val_if_fail (info != NULL, NULL);
