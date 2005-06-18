@@ -219,7 +219,7 @@ gboolean nm_system_device_add_ip4_nameserver (NMDevice *dev, guint32 ip4_nameser
 				      ((unsigned char *)&ip4_nameserver)[1],
 				      ((unsigned char *)&ip4_nameserver)[2],
 				      ((unsigned char *)&ip4_nameserver)[3]);
-	fprintf (stderr, "Adding nameserver: %s", nameserver);
+	syslog (LOG_WARNING, "Adding nameserver: %s", nameserver);
 
 	if ((id = nm_named_manager_add_nameserver_ipv4 (data->named, nameserver, &error)))
 	{
@@ -228,7 +228,7 @@ gboolean nm_system_device_add_ip4_nameserver (NMDevice *dev, guint32 ip4_nameser
 	}
 	else
 	{
-		fprintf (stderr, "Couldn't add nameserver: %s\n", error->message);
+		syslog (LOG_WARNING, "Couldn't add nameserver: %s\n", error->message);
 		g_clear_error (&error);
 	}
 	g_free (nameserver);
@@ -254,7 +254,7 @@ void nm_system_device_clear_ip4_nameservers (NMDevice *dev)
 							      GPOINTER_TO_UINT (elt->data),
 							      &error))
 		{
-			fprintf (stderr, "Couldn't remove nameserver: %s", error->message);
+			syslog (LOG_WARNING, "Couldn't remove nameserver: %s", error->message);
 			g_clear_error (&error);
 		}
 	}
@@ -278,7 +278,7 @@ gboolean nm_system_device_add_domain_search (NMDevice *dev, const char *search)
 	data = nm_device_get_app_data (dev);
 	g_return_val_if_fail (data != NULL, FALSE);
 
-	fprintf (stderr, "Adding domain search: %s\n", search);
+	syslog (LOG_WARNING, "Adding domain search: %s\n", search);
 	if ((id = nm_named_manager_add_domain_search (data->named, search, &error)))
 	{
 		data->domain_search_ids = g_list_append (data->domain_search_ids, GUINT_TO_POINTER (id));
@@ -286,7 +286,7 @@ gboolean nm_system_device_add_domain_search (NMDevice *dev, const char *search)
 	}
 	else
 	{
-		fprintf (stderr, "Couldn't add domain search '%s': %s\n", search, error->message);
+		syslog (LOG_WARNING, "Couldn't add domain search '%s': %s\n", search, error->message);
 		g_clear_error (&error);
 	}
 
@@ -310,7 +310,7 @@ void nm_system_device_clear_domain_searches (NMDevice *dev)
 							    GPOINTER_TO_UINT (elt->data),
 							    &error))
 		{
-			fprintf (stderr, "Couldn't remove domain search: %s\n", error->message);
+			syslog (LOG_WARNING, "Couldn't remove domain search: %s\n", error->message);
 			g_clear_error (&error);
 		}
 	}
