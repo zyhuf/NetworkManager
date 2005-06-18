@@ -64,7 +64,7 @@ typedef struct NMData
 
 	gboolean				 forcing_device;
 
-	gboolean				 scanning_enabled;
+	NMWirelessScanMethod	 scanning_method;
 	gboolean				 wireless_enabled;
 	gboolean				 asleep;
 

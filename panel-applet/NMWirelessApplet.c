@@ -176,6 +176,38 @@ void nmwa_about_cb (NMWirelessApplet *applet)
 #endif
 }
 
+
+/*
+ * nmwa_gconf_get_wireless_scan_method
+ *
+ * Grab the wireless scan method from GConf
+ *
+ */
+NMWirelessScanMethod nmwa_gconf_get_wireless_scan_method (NMWirelessApplet *applet)
+{
+	NMWirelessScanMethod	method = NM_SCAN_METHOD_ALWAYS;
+	GConfEntry *			entry;
+
+	g_return_val_if_fail (applet, NM_SCAN_METHOD_ALWAYS);
+	g_return_val_if_fail (applet->gconf_client, NM_SCAN_METHOD_ALWAYS);
+
+	if ((entry = gconf_client_get_entry (applet->gconf_client, NMI_GCONF_WIRELESS_PATH "/scan_method", NULL, TRUE, NULL)))
+	{
+		GConfValue *	value = gconf_entry_get_value (entry);
+
+		if (value && (value->type == GCONF_VALUE_INT))
+		{
+			NMWirelessScanMethod	temp_method = gconf_value_get_int (value);
+
+			if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER) || (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
+				method = temp_method;
+		}
+	}
+
+	return method;
+}
+
+
 /*
  * nmwa_driver_notify_get_ignored_list
  *
@@ -950,6 +982,50 @@ static void nmwa_menu_item_activate (GtkMenuItem *item, gpointer user_data)
 }
 
 
+static void scanning_menu_update (GtkWidget *menu_item, GtkCheckMenuItem *active_item)
+{
+	g_return_if_fail (active_item != NULL);
+
+	g_object_set_data (G_OBJECT (menu_item), "block-activate", GINT_TO_POINTER(1));
+	gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (menu_item), (GTK_CHECK_MENU_ITEM (menu_item) == active_item) ? TRUE : FALSE);
+	g_object_set_data (G_OBJECT (menu_item), "block-activate", GINT_TO_POINTER(0));
+}
+
+
+/*
+ * nmwa_menu_scanning_item_activate
+ *
+ * Handle a request to change scanning behavior
+ *
+ */
+static void nmwa_menu_scanning_item_activate (GtkMenuItem *item, gpointer user_data)
+{
+	NMWirelessApplet *	applet = (NMWirelessApplet *)user_data;
+	char *			tag;
+
+	g_return_if_fail (item != NULL);
+	g_return_if_fail (applet != NULL);
+
+	if ((tag = g_object_get_data (G_OBJECT (item), "block-activate")))
+		if (GPOINTER_TO_INT(tag) == 1)
+			return;
+
+	if ((tag = g_object_get_data (G_OBJECT (item), "scan_method")))
+	{
+		NMWirelessScanMethod	method = GPOINTER_TO_UINT (tag);
+
+		if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER) || (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
+			gconf_client_set_int (applet->gconf_client, NMI_GCONF_WIRELESS_PATH "/scan_method", method, NULL);
+	}
+
+	/* Check only this menu item */
+	if (!applet->scanning_menu)
+		return;
+
+	gtk_container_foreach (GTK_CONTAINER (applet->scanning_menu), (GtkCallback) scanning_menu_update, (gpointer) item);
+}
+
+
 /*
  * nmwa_menu_add_separator_item
  *
@@ -1196,13 +1272,6 @@ static void nmwa_menu_add_devices (GtkWidget *menu, NMWirelessApplet *applet)
 }
 
 
-static void nmwa_set_scanning_enabled_cb (GtkWidget *widget, NMWirelessApplet *applet)
-{
-	g_return_if_fail (applet != NULL);
-
-	nmwa_dbus_enable_scanning (applet, !applet->scanning_enabled);
-}
-
 static void nmwa_set_wireless_enabled_cb (GtkWidget *widget, NMWirelessApplet *applet)
 {
 	g_return_if_fail (applet != NULL);
@@ -1342,28 +1411,11 @@ static void nmwa_context_menu_update (NMWirelessApplet *applet)
 	GtkWidget *image;	
 
 	g_return_if_fail (applet != NULL);
-	g_return_if_fail (applet->pause_scanning_item != NULL);
 	g_return_if_fail (applet->stop_wireless_item != NULL);
 
 	g_mutex_lock (applet->data_mutex);
 
-	gtk_widget_destroy (applet->pause_scanning_item);
 	gtk_widget_destroy (applet->stop_wireless_item);
-
-	if (applet->scanning_enabled)
-	{
-		applet->pause_scanning_item = gtk_image_menu_item_new_with_label (_("Pause Wireless Scanning"));
-		image = gtk_image_new_from_stock (GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU);
-	}
-	else
-	{
-		applet->pause_scanning_item = gtk_image_menu_item_new_with_label (_("Resume Wireless Scanning"));
-		image = gtk_image_new_from_stock (GTK_STOCK_MEDIA_PLAY, GTK_ICON_SIZE_MENU);
-	}
-	g_signal_connect (G_OBJECT (applet->pause_scanning_item), "activate", G_CALLBACK (nmwa_set_scanning_enabled_cb), applet);
-	gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (applet->pause_scanning_item), image);
-	gtk_menu_shell_insert (GTK_MENU_SHELL (applet->context_menu), applet->pause_scanning_item, 0);
-	gtk_widget_show_all (applet->pause_scanning_item);
 
 	if (applet->wireless_enabled)
 	{
@@ -1395,25 +1447,49 @@ static GtkWidget *nmwa_context_menu_create (NMWirelessApplet *applet)
 	GtkWidget	*menu;
 	GtkWidget	*menu_item;
 	GtkWidget *image;
+	GtkWidget *scanning_subitem;
 	
 	g_return_val_if_fail (applet != NULL, NULL);
 
 	menu = gtk_menu_new ();
 
-	applet->pause_scanning_item = gtk_image_menu_item_new_with_label (_("Pause Wireless Scanning"));
-	g_signal_connect (G_OBJECT (applet->pause_scanning_item), "activate", G_CALLBACK (nmwa_set_scanning_enabled_cb), applet);
-	image = gtk_image_new_from_stock (GTK_STOCK_MEDIA_PAUSE, GTK_ICON_SIZE_MENU);
-	gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (applet->pause_scanning_item), image);
-	gtk_menu_shell_append (GTK_MENU_SHELL (menu), applet->pause_scanning_item);
+	/* Construct the wireless scanning submenu */
+	applet->scan_method = nmwa_gconf_get_wireless_scan_method (applet);
+	applet->scanning_item = gtk_menu_item_new_with_label (_("Wireless Network Discovery"));
+	applet->scanning_menu = gtk_menu_new ();
 
+	scanning_subitem = GTK_WIDGET (gtk_check_menu_item_new_with_label (_("Always Search")));
+	g_object_set_data (G_OBJECT (scanning_subitem), "scan_method", GUINT_TO_POINTER (NM_SCAN_METHOD_ALWAYS));
+	if (applet->scan_method == NM_SCAN_METHOD_ALWAYS)
+		gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (scanning_subitem), TRUE);
+	g_signal_connect (G_OBJECT (scanning_subitem), "activate", G_CALLBACK (nmwa_menu_scanning_item_activate), applet);
+	gtk_menu_shell_append (GTK_MENU_SHELL (applet->scanning_menu), GTK_WIDGET (scanning_subitem));
+
+	scanning_subitem = GTK_WIDGET (gtk_check_menu_item_new_with_label (_("Seach Only When Disconnected")));
+	g_object_set_data (G_OBJECT (scanning_subitem), "scan_method", GINT_TO_POINTER (NM_SCAN_METHOD_WHEN_UNASSOCIATED));
+	if (applet->scan_method == NM_SCAN_METHOD_WHEN_UNASSOCIATED)
+		gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (scanning_subitem), TRUE);
+	g_signal_connect (G_OBJECT (scanning_subitem), "activate", G_CALLBACK (nmwa_menu_scanning_item_activate), applet);
+	gtk_menu_shell_append (GTK_MENU_SHELL (applet->scanning_menu), GTK_WIDGET (scanning_subitem));
+
+	scanning_subitem = GTK_WIDGET (gtk_check_menu_item_new_with_label (_("Never Search")));
+	g_object_set_data (G_OBJECT (scanning_subitem), "scan_method", GINT_TO_POINTER (NM_SCAN_METHOD_NEVER));
+	if (applet->scan_method == NM_SCAN_METHOD_NEVER)
+		gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (scanning_subitem), TRUE);
+	g_signal_connect (G_OBJECT (scanning_subitem), "activate", G_CALLBACK (nmwa_menu_scanning_item_activate), applet);
+	gtk_menu_shell_append (GTK_MENU_SHELL (applet->scanning_menu), GTK_WIDGET (scanning_subitem));
+
+	gtk_menu_item_set_submenu (GTK_MENU_ITEM (applet->scanning_item), applet->scanning_menu);
+	gtk_menu_shell_append (GTK_MENU_SHELL (menu), applet->scanning_item);
+
+	/* Stop All Wireless Devices item */
 	applet->stop_wireless_item = gtk_image_menu_item_new_with_label (_("Stop All Wireless Devices"));
 	g_signal_connect (G_OBJECT (applet->stop_wireless_item), "activate", G_CALLBACK (nmwa_set_wireless_enabled_cb), applet);
 	image = gtk_image_new_from_stock (GTK_STOCK_STOP, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (applet->stop_wireless_item), image);
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), applet->stop_wireless_item);
 
-	menu_item = gtk_separator_menu_item_new ();
-	gtk_menu_shell_append (GTK_MENU_SHELL (menu), menu_item);
+	nmwa_menu_add_separator_item (menu);
 
 	menu_item = gtk_image_menu_item_new_with_label (_("Help"));
 /*	g_signal_connect (G_OBJECT (menu_item), "activate", G_CALLBACK (nmwa_help_cb), applet); */
@@ -1586,6 +1662,8 @@ static GtkWidget * nmwa_get_instance (NMWirelessApplet *applet)
 	applet->thread_context = NULL;
 	applet->thread_loop = NULL;
 	applet->thread_done = FALSE;
+	applet->scanning_menu = NULL;
+	applet->scanning_item = NULL;
 
 	/* Start our dbus thread */
 	if (!(applet->data_mutex = g_mutex_new ()))
