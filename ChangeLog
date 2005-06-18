@@ -1,5 +1,9 @@
 2005-06-17  Dan Williams <dcbw@redhat.com>
 
+	Backport static IP DNS fixup patch from HEAD
+
+2005-06-17  Dan Williams <dcbw@redhat.com>
+
 	Backport Robert Love's applet beautification patch from HEAD
 
 2005-05-16  Dan Williams <dcbw@redhat.com>

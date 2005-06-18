@@ -2623,7 +2623,10 @@ static gboolean nm_device_activation_configure_ip (NMDevice *dev, gboolean do_on
 	else
 	{
 		/* Manually set up the device */
+		nm_system_device_clear_ip4_nameservers (dev);
+		nm_system_device_clear_domain_searches (dev);
 		success = nm_system_device_setup_static_ip4_config (dev);
+		nm_device_update_ip4_address (dev);
 	}
 
 	if (success)
