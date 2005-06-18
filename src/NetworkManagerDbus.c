@@ -649,44 +649,6 @@ out:
 
 
 /*
- * nm_dbus_update_wireless_scan_method_cb
- *
- * Callback from nm_dbus_update_wireless_scan_method
- *
- */
-static void nm_dbus_update_wireless_scan_method_cb (DBusPendingCall *pcall, NMData *data)
-{
-	DBusMessage *			reply;
-	NMWirelessScanMethod	method = NM_SCAN_METHOD_UNKNOWN;
-
-	g_return_if_fail (pcall != NULL);
-	g_return_if_fail (data != NULL);
-
-	if (!dbus_pending_call_get_completed (pcall))
-		goto out;
-
-	if (!(reply = dbus_pending_call_get_reply (pcall)))
-		goto out;
-
-	if (dbus_message_get_type (reply) == DBUS_MESSAGE_TYPE_ERROR)
-	{
-		dbus_message_unref (reply);
-		goto out;
-	}
-
-	if (dbus_message_get_args (reply, NULL, DBUS_TYPE_UINT32, &method, DBUS_TYPE_INVALID))
-	{
-		if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER) || (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
-			data->scanning_method = method;
-	}
-	dbus_message_unref (reply);
-
-out:
-	dbus_pending_call_unref (pcall);
-}
-
-
-/*
  * nm_dbus_update_wireless_scan_method
  *
  * Get the wireless scan method from NetworkManagerInfo
@@ -695,7 +657,7 @@ out:
 void nm_dbus_update_wireless_scan_method (DBusConnection *connection, NMData *data)
 {
 	DBusMessage *		message = NULL;
-	DBusPendingCall *	pcall = NULL;
+	DBusMessage *		reply = NULL;
 
 	g_return_if_fail (connection != NULL);
 	g_return_if_fail (data != NULL);
@@ -706,8 +668,17 @@ void nm_dbus_update_wireless_scan_method (DBusConnection *connection, NMData *da
 		return;
 	}
 
-	if (dbus_connection_send_with_reply (connection, message, &pcall, INT_MAX) && pcall)
-		dbus_pending_call_set_notify (pcall, (DBusPendingCallNotifyFunction) nm_dbus_update_wireless_scan_method_cb, data, NULL);
+	if ((reply = dbus_connection_send_with_reply_and_block (connection, message, -1, NULL)))
+	{
+		NMWirelessScanMethod	method;
+
+		if (dbus_message_get_args (reply, NULL, DBUS_TYPE_UINT32, &method, DBUS_TYPE_INVALID))
+		{
+			if ((method == NM_SCAN_METHOD_ALWAYS) || (method == NM_SCAN_METHOD_NEVER) || (method == NM_SCAN_METHOD_WHEN_UNASSOCIATED))
+				data->scanning_method = method;
+		}
+		dbus_message_unref (reply);
+	}
 	else
 		syslog (LOG_WARNING, "nm_dbus_update_wireless_scan_method(): could not send dbus message");
 
