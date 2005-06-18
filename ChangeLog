@@ -1,5 +1,9 @@
 2005-06-17  Dan Williams <dcbw@redhat.com>
 
+	* Tag 0.3.5 release
+
+2005-06-17  Dan Williams <dcbw@redhat.com>
+
 	* panel-applet/NMWirelessAppletDbus.c
 		- Alphabetize wireless networks in the applet menu
 
