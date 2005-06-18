@@ -1,5 +1,10 @@
 2005-06-17  Dan Williams <dcbw@redhat.com>
 
+	* panel-applet/NMWirelessAppletDbus.c
+		- Alphabetize wireless networks in the applet menu
+
+2005-06-17  Dan Williams <dcbw@redhat.com>
+
 	Backport Wireless Scan Methods from HEAD
 
 2005-06-17  Dan Williams <dcbw@redhat.com>
