@@ -128,7 +128,7 @@ void nmwa_about_cb (NMWirelessApplet *applet)
 		"Colin Walters <walters@redhat.com>",
 		"Dan Williams <dcbw@redhat.com>",
 		"\nAnd others, including:\n",
-		"Bill Moss",
+		"Bill Moss <bmoss@clemson.edu>",
 		"Tom Parker",
 		"j@bootlab.org",
 		"Peter Jones <pjones@redhat.com>",

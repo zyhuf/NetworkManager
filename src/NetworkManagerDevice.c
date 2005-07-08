@@ -2537,6 +2537,8 @@ try_connect:
 		}
 		else
 		{
+			gboolean adhoc = (nm_ap_get_mode (best_ap) == NETWORK_MODE_ADHOC);
+
 			if (nm_device_activation_handle_cancel (dev))
 				goto out;
 

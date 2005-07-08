@@ -1,3 +1,18 @@
+2005-07-07  Dan Williams  <dcbw@redhat.com>
+
+	* Some minor fixups
+
+	Patch from Derek Atkins <warlord@MIT.EDU>
+	* src/nm-dbus-net.c:
+		- (nm_dbus_get_ap_from_object_path): differentiate similar ESSIDs
+
+2005-06-27  Dan Williams <dcbw@redhat.com>
+
+    Patch from Robert Love:
+    * src/nm-dbus-nm.c
+        - (nm_dbus_nm_set_wireless_enabled): fix bug that casued wireless
+		devies not to be re-enabled
+
 2005-06-17  Dan Williams <dcbw@redhat.com>
 
 	* panel-applet/NMWirelessAppletDbus.c
