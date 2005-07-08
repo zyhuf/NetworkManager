@@ -432,17 +432,20 @@ static DBusMessage *nm_dbus_nm_set_wireless_enabled (DBusConnection *connection,
 {
 	gboolean	enabled = FALSE;
 	DBusError	err;
+	NMData	*app_data;
 
 	g_return_val_if_fail (data && data->data && connection && message, NULL);
 
 	dbus_error_init (&err);
-	if (dbus_message_get_args (message, &err, DBUS_TYPE_BOOLEAN, &enabled, DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args (message, &err, DBUS_TYPE_BOOLEAN, &enabled, DBUS_TYPE_INVALID))
+		return NULL;
+
+	app_data = data->data;
+	app_data->wireless_enabled = enabled;
+
+	if (!enabled)
 	{
 		GSList	*elt;
-		NMData	*app_data;
-
-		app_data = data->data;
-		app_data->wireless_enabled = enabled;
 
 		/* Physically down all wireless devices */
 		nm_lock_mutex (app_data->dev_list_mutex, __FUNCTION__);
@@ -456,8 +459,9 @@ static DBusMessage *nm_dbus_nm_set_wireless_enabled (DBusConnection *connection,
 			}
 		}
 		nm_unlock_mutex (app_data->dev_list_mutex, __FUNCTION__);
-		nm_policy_schedule_state_update (app_data);
 	}
+
+	nm_policy_schedule_state_update (data->data);
 
 	return NULL;
 }
