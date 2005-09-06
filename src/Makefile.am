@@ -86,6 +86,18 @@ if TARGET_SLACKWARE
 libnmbackend_la_SOURCES += backends/NetworkManagerSlackware.c
 endif
 
+if TARGET_REDFLAG
+libnmbackend_la_SOURCES += backends/NetworkManagerRedFlag.c \
+		backends/shvar.c	\
+		backends/shvar.h
+endif
+
+if TARGET_NEOSHINE
+libnmbackend_la_SOURCES += backends/NetworkManagerNeoShine.c \
+		backends/shvar.c	\
+		backends/shvar.h
+endif
+
 libnmbackend_la_LIBADD = $(DBUS_LIBS) $(GTHREAD_LIBS)
 libnmbackend_la_CFLAGS = $(NetworkManager_CPPFLAGS)
 

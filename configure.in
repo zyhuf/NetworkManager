@@ -40,7 +40,7 @@ AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE,"$GETTEXT_PACKAGE", [Gettext package])
 ALL_LINGUAS="bs cs da de el en_CA es fr gu hr it ja nb nl no pa pt_BR sk sq sv wa zh_CN zh_TW"
 AM_GLIB_GNU_GETTEXT
 
-AC_ARG_WITH(distro, AC_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, gentoo, debian, or slackware]))
+AC_ARG_WITH(distro, AC_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, gentoo, debian, redflag, neoshine, or slackware]))
 if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/mandrake-release,with_distro="mandrake")
 	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
@@ -48,6 +48,8 @@ if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/gentoo-release,with_distro="gentoo")
 	AC_CHECK_FILE(/etc/debian_version,with_distro="debian")
 	AC_CHECK_FILE(/etc/slackware-version,with_distro="slackware")
+	AC_CHECK_FILE(/etc/redflag-release,with_distro="redflag")
+	AC_CHECK_FILE(/etc/NeoShine-release,with_distro="neoshine")
 fi
 with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]' `
 
@@ -56,7 +58,7 @@ if test "z$with_distro" = "z"; then
 	exit 1
 else
 	case $with_distro in
-		redhat|gentoo|debian|slackware) ;;
+		redhat|gentoo|debian|slackware|redflag|neoshine) ;;
 		*)
 			echo "Your distribution (${with_distro}) is not yet supported!  (patches welcome)"
 			exit 1
@@ -68,6 +70,8 @@ AM_CONDITIONAL(TARGET_GENTOO, test x"$with_distro" = xgentoo)
 AM_CONDITIONAL(TARGET_DEBIAN, test x"$with_distro" = xdebian)
 AM_CONDITIONAL(TARGET_MANDRAKE, test x"$with_distro" = xmandrake)
 AM_CONDITIONAL(TARGET_SLACKWARE, test x"$with_distro" = xslackware)
+AM_CONDITIONAL(TARGET_REDFLAG, test x"$with_distro" = xredflag)
+AM_CONDITIONAL(TARGET_NEOSHINE, test x"$with_distro" = xneoshine)
 
 AC_CHECK_HEADER(iwlib.h, [],
 			[AC_MSG_ERROR(iwlib.h not found. Install wireless-tools.)], [])

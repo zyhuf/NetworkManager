@@ -1,3 +1,12 @@
+2005-09-06  Dan Williams  <dcbw@redhat.com>
+
+	Patch from Suhail Ahmed <suhail.ahmed@intel.com>
+	* src/backends/NetworkManagerNeoShine.c
+	  src/backends/NetworkManagerRedFlag.c
+	  configure.in
+	  Makefile.am
+		- Add Red Flat Linux and NeoShine backends
+
 2005-07-07  Dan Williams  <dcbw@redhat.com>
 
 	Patch from Derek Atkins <warlord@MIT.EDU>
