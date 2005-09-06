@@ -149,15 +149,14 @@ NMDevice *nm_get_device_by_udi (NMData *data, const char *udi)
 
 	for (elt = data->dev_list; elt; elt = g_slist_next (elt))
 	{
-		dev = (NMDevice *)(elt->data);
-		if (dev)
+		if ((dev = (NMDevice *)(elt->data)))
 		{
 			if (nm_null_safe_strcmp (nm_device_get_udi (dev), udi) == 0)
-				break;
+				return dev;
 		}
 	}
 
-	return (dev);
+	return NULL;
 }
 
 
