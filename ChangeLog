@@ -1,3 +1,17 @@
+2006-07-25  Tim Niemueller  <tim@niemueller.de>
+
+	* src/Makefile.am: Added ppp-manager subdirectory
+	* src/ppp-manager/Makefile.am
+	  src/ppp-manager/nm-pppd-plugin.c
+	  src/ppp-manager/nm-pppd-plugin.h
+	  src/ppp-manager/nm-ppp.h
+	  src/ppp-manager/nm-ppp-service.c
+	  src/ppp-manager/nm-ppp-service.h:
+		Initial revision of some code for Google SoC 2006
+		just basic code, compiles, now going to have some QA app
+		to actually check the code and fix bugs, working on
+		extra branch SoC_2006
+
 2006-07-24  Dan Williams  <dcbw@redhat.com>
 
 	Patch from Timothée Lecomte <timothee.lecomte@ens.fr>
