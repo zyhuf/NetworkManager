@@ -177,7 +177,8 @@ nm_chap_check_hook(void)
       return 0;
     }
 
-    return 1;
+    // for now we do no authenticate the peer
+    return 0;
 }
 
 int
@@ -234,7 +235,8 @@ nm_pap_check_hook(void)
       return 0;
     }
 
-    return 1;
+    // for now we do authenticate the peer
+    return 0;
 }
 
 int
@@ -249,27 +251,27 @@ nm_pap_passwd_hook(char *username, char *password)
 
     if (password == NULL) {
       info("nm-pppd-plugin: pppd didn't provide password buffer");
-      return -1;
+      return 1;
     }
 
     if (plugin_data.username == NULL) {
       info("nm-pppd-plugin: PAP username not set");
-      return -1;
+      return 0;
     }
 
     if (plugin_data.password == NULL) {
       info("nm-pppd-plugin: PAP password not set");
-      return -1;
+      return 0;
     }
 
     if (strlen(plugin_data.username) >= MAXNAMELEN) {
       info("nm-pppd-plugin: PAP username too long!");
-      return -1;
+      return 0;
     }
 
     if (strlen(plugin_data.password) >= MAXSECRETLEN) {
       info("nm-pppd-plugin: PAP password too long!");
-      return -1;
+      return 0;
     }
 
     strncpy(username, plugin_data.username, MAXNAMELEN);
@@ -277,7 +279,7 @@ nm_pap_passwd_hook(char *username, char *password)
     strncpy(password, plugin_data.password, MAXSECRETLEN);
     password[MAXSECRETLEN-1]='\0';
 
-    return 0;
+    return 1;
 }
 
 
@@ -304,16 +306,18 @@ nm_ip_up(void *opaque, int arg)
   DBusMessage		*message;
 
   char *	ppp_ifname        = NULL;
-  guint32 *	ip4_dns   = NULL;
-  guint32	ip4_dns_len  = 0;
-  guint32 *	ip4_wins  = NULL;
-  guint32	ip4_wins_len = 0;
+  guint32	ip4_dns_1   = 0;
+  guint32	ip4_dns_2   = 0;
+  guint32	ip4_wins_1  = 0;
+  guint32	ip4_wins_2  = 0;
   guint32	ip4_address  = 0;
   guint32	ip4_ptp_address  = 0;
   guint32	ip4_netmask  = 0xFFFFFFFF; /* Default mask of 255.255.255.255 */
 
  
   g_return_if_fail (con != NULL);
+  if (!nm_dbus_prepare_connection(data)) return;
+
   if (ipcp_gotoptions[ifunit].ouraddr==0) {
     info ("nm-pppd-plugin: didn't receive an Internal IP4 Address from ppp.");
     send_config_error (con, "IP4 Address");
@@ -321,77 +325,64 @@ nm_ip_up(void *opaque, int arg)
   }
   ip4_address=ipcp_gotoptions[ifunit].ouraddr;
   
-  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP, NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, "signalIP4Config")))
+  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP,
+						NM_DBUS_PATH_PPP,
+						NM_DBUS_INTERFACE_PPP,
+						"signalIP4Config")))
     {
-      info ("send_config_error(): Couldn't allocate the dbus message");
+      info ("nm-pppd-plugin::nm_ip_up(): Couldn't allocate the dbus message");
       return;
     }
 
 
-  if (ipcp_gotoptions[ifunit].dnsaddr) {
-    if (ipcp_gotoptions[ifunit].dnsaddr[0] != 0) {
-      ip4_dns_len++; 
-      if (ipcp_gotoptions[ifunit].dnsaddr[1] != 0) {
-	ip4_dns_len++; 
-      }
-    }
+  if (ipcp_gotoptions[ifunit].dnsaddr[0] != 0) {
+    ip4_dns_1 = ipcp_gotoptions[ifunit].dnsaddr[0];
+  }
+  if (ipcp_gotoptions[ifunit].dnsaddr[1] != 0) {
+    ip4_dns_2 = ipcp_gotoptions[ifunit].dnsaddr[1];
   }
 
-  if ( ip4_dns_len > 0 ) {
-    ip4_dns = (guint32 *)malloc( ip4_dns_len * sizeof(guint32) );
-    if (ipcp_gotoptions[ifunit].dnsaddr[0] != 0) {
-      ip4_dns[0] = ipcp_gotoptions[ifunit].dnsaddr[0];
-      if (ipcp_gotoptions[ifunit].dnsaddr[1] != 0) {
-	ip4_dns[1] = ipcp_gotoptions[ifunit].dnsaddr[1];
-      }
-    }
+  if (ipcp_gotoptions[ifunit].winsaddr[0] != 0) {
+    ip4_wins_1 = ipcp_gotoptions[ifunit].winsaddr[0];
+  }
+  if (ipcp_gotoptions[ifunit].winsaddr[1] != 0) {
+    ip4_wins_2 = ipcp_gotoptions[ifunit].winsaddr[1];
   }
 
-  if (ipcp_gotoptions[ifunit].winsaddr) {
-    if (ipcp_gotoptions[ifunit].winsaddr[0] != 0) {
-      ip4_wins_len++; 
-      if (ipcp_gotoptions[ifunit].winsaddr[1] != 0) {
-	ip4_wins_len++; 
-      }
-    }
-  }
 
-  if ( ip4_wins_len > 0 ) {
-    ip4_wins = (guint32 *)malloc( ip4_wins_len * sizeof(guint32) );
-    if (ipcp_gotoptions[ifunit].winsaddr[0] != 0) {
-      ip4_wins[0] = ipcp_gotoptions[ifunit].winsaddr[0];
-      if (ipcp_gotoptions[ifunit].winsaddr[1] != 0) {
-	ip4_wins[1] = ipcp_gotoptions[ifunit].winsaddr[1];
-      }
-    }
-  }
 
-  if (ifname==NULL) {
+  if (ifname == NULL) {
     info ("nm-pppd-plugin: didn't receive a tunnel device name.");
     send_config_error (con, "IP4 Address");
     goto out;
   }
   ppp_ifname = g_strdup(ifname);
 
-  dbus_message_append_args (message, 
-			    DBUS_TYPE_STRING, &ppp_ifname,
-			    DBUS_TYPE_UINT32, &ip4_address,
-			    DBUS_TYPE_UINT32, &ip4_ptp_address,
-			    DBUS_TYPE_UINT32, &ip4_netmask,
-			    DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_dns, &ip4_dns_len,
-			    DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_wins, &ip4_wins_len,
-			    DBUS_TYPE_INVALID);
+  info("nm-pppd-plugin: sending ip4 config information");
+
+  if (! dbus_message_append_args (message, 
+				  DBUS_TYPE_STRING, &ppp_ifname,
+				  DBUS_TYPE_UINT32, &ip4_address,
+				  DBUS_TYPE_UINT32, &ip4_ptp_address,
+				  DBUS_TYPE_UINT32, &ip4_netmask,
+				  DBUS_TYPE_UINT32, &ip4_dns_1,
+				  DBUS_TYPE_UINT32, &ip4_dns_2,
+				  DBUS_TYPE_UINT32, &ip4_wins_1,
+				  DBUS_TYPE_UINT32, &ip4_wins_2,
+				  DBUS_TYPE_INVALID)) {
+    info("nm-pppd-plugin::nm_ip_up(): could not append message args");
+    goto out;
+  }
 
   if (!dbus_connection_send (con, message, NULL)) {
-    info ("nm_ip_up(): could not send dbus message");
-    dbus_message_unref (message);
+    info ("nm-pppd-plugin::nm_ip_up(): could not send dbus message");
     goto out;
+  } else {
+    info ("nm-pppd-plugin::nm_ip_up(): successfully sent dbus message");
   }
   
  out:
   g_free(ppp_ifname);
-  g_free(ip4_dns);
-  g_free(ip4_wins);
   dbus_message_unref (message);
   return;
 }
@@ -411,7 +402,10 @@ send_config_error (DBusConnection *con, const char *item)
   g_return_if_fail (con != NULL);
   g_return_if_fail (item != NULL);
 
-  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP, NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, "signalConfigError")))
+  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP,
+						NM_DBUS_PATH_PPP,
+						NM_DBUS_INTERFACE_PPP,
+						"signalConfigError")))
     {
       info ("send_config_error(): Couldn't allocate the dbus message");
       return;
@@ -442,25 +436,29 @@ nm_notify_pid (NmPPPData *data)
       return;
    
   con = data->con;
-  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP, NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, "notifyPID")))
+  if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP,
+						NM_DBUS_PATH_PPP,
+						NM_DBUS_INTERFACE_PPP,
+						"notifyPID")))
   {
     info ("nm-pppd-plugin: Couldn't allocate the notifyPID dbus message");
     return;
   }
 
   dbus_message_append_args (message, 
-        DBUS_TYPE_UINT32, &(data->pppd_pid),
-        DBUS_TYPE_INVALID);
+			    DBUS_TYPE_UINT32, &(data->pppd_pid),
+			    DBUS_TYPE_INVALID);
 
-  if (!dbus_connection_send (con, message, NULL)) {
-    info ("nm_ip_up(): could not send dbus message");
-    dbus_message_unref (message);
-    return;
+  if ( ! dbus_connection_send (con, message, NULL)) {
+    info ("nm-pppd-plugin::nm_notify_pid(): could not send dbus message");
+  } else {
+    //  info("Sent notify message: %d",data->pppd_pid);
   }
- 
-//  info("Sent notify message: %d",data->pppd_pid);
+
   dbus_message_unref (message);
 }
+
+
 /*
  * nm_get_auth_items
  *
@@ -486,7 +484,10 @@ nm_get_auth_items (NmPPPData *data)
     con = data->con;
 
     g_return_val_if_fail (con != NULL,FALSE);
-    if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP, NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, "getAuthInfo")))
+    if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPP,
+						  NM_DBUS_PATH_PPP,
+						  NM_DBUS_INTERFACE_PPP,
+						  "getAuthInfo")))
       {
 	info("nm-pppd-plugin: failed to create getAuthInfo message.");
 	return FALSE;
@@ -513,12 +514,10 @@ nm_get_auth_items (NmPPPData *data)
 
     if (!nm_store_auth_info (data, username, password))
       {
-	//dbus_free_string_array (auth_items);
 	dbus_message_unref (reply);
 	return FALSE;
       }
 
-    //dbus_free_string_array (auth_items);
     dbus_message_unref (reply);
     return TRUE;
   }
@@ -550,40 +549,20 @@ nm_store_auth_info (NmPPPData *data, char *username, char *password)
 int
 plugin_init()
 {
-//    DBusConnection *	con = NULL;
-//    DBusMessage *	message = NULL;
-//    DBusError		error;
+  memset(&plugin_data, 0, sizeof(plugin_data));
+  nm_dbus_prepare_connection( &plugin_data );
 
-//    g_type_init ();
-//    if (!g_thread_supported ())
-//      g_thread_init (NULL);
-    
-//    dbus_error_init (&error);
-//    con = dbus_bus_get (DBUS_BUS_SYSTEM, &error);
-//    if ((con == NULL) || dbus_error_is_set (&error))
-//      {
-//        dbus_error_free (&error);
-//        info("Could not get the system bus.  Make sure the message bus daemon is running?");
-//        return -1;
-//      }
-//    dbus_connection_set_exit_on_disconnect (con, FALSE);
-//
-//
-//    dbus_error_free (&error);
+  chap_check_hook = nm_chap_check_hook;
+  chap_passwd_hook = nm_chap_passwd_hook;
 
-//    add_options(ppp_options);
+  pap_check_hook = nm_pap_check_hook;
+  pap_passwd_hook = nm_pap_passwd_hook;
 
-    chap_check_hook = nm_chap_check_hook;
-    chap_passwd_hook = nm_chap_passwd_hook;
+  add_notifier(&ip_down_notifier, nm_ip_down, (void *) &plugin_data);
+  add_notifier(&ip_up_notifier, nm_ip_up, (void *) &plugin_data);
+  add_notifier(&exitnotify, nm_exit_notify, (void *) &plugin_data);
 
-    pap_check_hook = nm_pap_check_hook;
-    pap_passwd_hook = nm_pap_passwd_hook;
-
-    add_notifier(&ip_down_notifier, nm_ip_down, (void *) &plugin_data);
-    add_notifier(&ip_up_notifier, nm_ip_up, (void *) &plugin_data);
-    add_notifier(&exitnotify, nm_exit_notify, (void *) &plugin_data);
-
-    info("nm-pppd-plugin: plugin initialized.");
-    return 0;
+  info("nm-pppd-plugin: plugin initialized.");
+  return 0;
 }
 

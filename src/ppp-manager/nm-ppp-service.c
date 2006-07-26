@@ -427,7 +427,7 @@ write_config_option (int fd, const char *format, ...)
 
   va_start (args, format);
   string = g_strdup_vprintf (format, args);
-  printf("Writing config: %s\n", string);
+  printf("Writing config: %s", string);
   x = write (fd, string, strlen (string));
   g_free (string);
   va_end (args);
@@ -527,6 +527,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       }
     } else if ( strcmp( data_items[i], "plugin" ) == 0) {
       plugin = data_items[++i];
+    } else if ( strcmp( data_items[i], "username" ) == 0) {
+      username = data_items[++i];
     }
 
 
@@ -554,6 +556,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       return -1;
     }
 
+    wvdial_argv = g_ptr_array_new ();
+
     // create wvdial command line
     g_ptr_array_add (wvdial_argv, (gpointer) (wvdial_binary));
     g_ptr_array_add (wvdial_argv, "--config-stdin");
@@ -573,8 +577,7 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       GString *fc = g_string_new( flowcontrol );
       fc = g_string_ascii_up( fc );
 
-
-      write_config_option (stdin_fd, "[Dialer Default]\n");
+      write_config_option (stdin_fd, "[Dialer Defaults]\n");
       write_config_option (stdin_fd, "Modem = %s\n", tty);
       write_config_option (stdin_fd, "Baud = %s\n", speed);
       write_config_option (stdin_fd, "SetVolume = %s\n", volume);
@@ -614,6 +617,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
 	write_config_option (stdin_fd, "Init9 = %s\n", init_9);
       }
 
+      write_config_option (stdin_fd, "PPPD Option 1 = %s\n", "plugin");
+      write_config_option (stdin_fd, "PPPD Option 2 = %s\n", "nm-pppd-plugin.so");
 
       g_string_free( fc, TRUE );
       g_ptr_array_free (wvdial_argv, TRUE);
@@ -697,6 +702,21 @@ nm_ppp_config_options_validate (char **data_items, int num_items)
     { "modem",				OPT_TYPE_ASCII },
     { "crtscts",			OPT_TYPE_ASCII },
     { "asyncmap",			OPT_TYPE_ASCII },
+    { "init_1",				OPT_TYPE_ASCII },
+    { "init_2",				OPT_TYPE_ASCII },
+    { "init_3",				OPT_TYPE_ASCII },
+    { "init_4",				OPT_TYPE_ASCII },
+    { "init_5",				OPT_TYPE_ASCII },
+    { "init_6",				OPT_TYPE_ASCII },
+    { "init_7",				OPT_TYPE_ASCII },
+    { "init_8",				OPT_TYPE_ASCII },
+    { "init_9",				OPT_TYPE_ASCII },
+    { "ttyname",			OPT_TYPE_ASCII },
+    { "username",			OPT_TYPE_ASCII },
+    { "volume",				OPT_TYPE_ASCII },
+    { "flowcontrol",			OPT_TYPE_ASCII },
+    { "number",				OPT_TYPE_ASCII },
+    { "plugin",				OPT_TYPE_ASCII },
     { NULL,				OPT_TYPE_UNKNOWN } };
   
   unsigned int	i;
@@ -783,8 +803,6 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
   int		num_items = -1;
   char **		password_items = NULL;
   int		num_passwords = -1;
-  const char *	name = NULL;
-  const char *	user_name = NULL;
   DBusError		error;
   gboolean		success = FALSE;
   gint			ppp_fd = -1;	
@@ -796,8 +814,6 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
 
   dbus_error_init (&error);
   if (!dbus_message_get_args (message, &error,
-			      DBUS_TYPE_STRING, &name,
-			      DBUS_TYPE_STRING, &user_name,
 			      DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &password_items, &num_passwords,
 			      DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &data_items, &num_items,
 			      DBUS_TYPE_INVALID))
@@ -1012,39 +1028,85 @@ nm_ppp_dbus_process_helper_ip4_config (DBusConnection *con, DBusMessage *message
   guint32		ip4_address;
   guint32		ip4_ptpaddr;
   guint32		ip4_netmask;
+  guint32 		ip4_dns_1;
+  guint32 		ip4_dns_2;
   guint32 *		ip4_dns;
   guint32		ip4_dns_len;
+  guint32 		ip4_nbns_1;
+  guint32 		ip4_nbns_2;
   guint32 *		ip4_nbns;
   guint32		ip4_nbns_len;
   gboolean		success = FALSE;
+  guint32               ip4_zero = 0;
 
   g_return_if_fail (data != NULL);
   g_return_if_fail (con != NULL);
   g_return_if_fail (message != NULL);
   
   /* Only accept the config info if we're in STARTING state */
-  if (data->state != NM_PPP_STATE_STARTING)
+  if (data->state != NM_PPP_STATE_STARTING) {
+    nm_warning ("IP4 config received while not in STARTING state");
     return;
+  }
 
   nm_ppp_cancel_helper_timer (data);
 
+  nm_info ("Processing ip4 config message");
+
   if (dbus_message_get_args(message, NULL,
-			    DBUS_TYPE_UINT32, &ifname,
-			    DBUS_TYPE_UINT32, &ip4_gateway,
+			    DBUS_TYPE_STRING, &ifname,
 			    DBUS_TYPE_UINT32, &ip4_address,
 			    DBUS_TYPE_UINT32, &ip4_ptpaddr,
 			    DBUS_TYPE_UINT32, &ip4_netmask,
-			    DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_dns, &ip4_dns_len,
-			    DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_nbns, &ip4_nbns_len,
-			    DBUS_TYPE_INVALID))
-    {
-      DBusMessage	*sig;
+			    DBUS_TYPE_UINT32, &ip4_dns_1,
+			    DBUS_TYPE_UINT32, &ip4_dns_2,
+			    DBUS_TYPE_UINT32, &ip4_nbns_1,
+			    DBUS_TYPE_UINT32, &ip4_nbns_2,
+			    DBUS_TYPE_INVALID)) {
 
-      if (!(sig = dbus_message_new_signal (NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, NM_DBUS_PPP_SIGNAL_IP4_CONFIG)))
-	{
-	  nm_warning ("Not enough memory for new dbus message!");
-	  goto out;
-	}
+    DBusMessage	*sig;
+
+    if (!(sig = dbus_message_new_signal (NM_DBUS_PATH_PPP, NM_DBUS_INTERFACE_PPP, NM_DBUS_PPP_SIGNAL_IP4_CONFIG))) {
+      nm_warning ("Not enough memory for new dbus message!");
+    } else {
+
+      GArray *ip4_dns_buf = g_array_new(TRUE, TRUE, sizeof(guint32));
+      GArray *ip4_nbns_buf = g_array_new(TRUE, TRUE, sizeof(guint32));
+
+      guint32 *tmp;
+
+      if ( ip4_dns_1 != 0 ) {
+	tmp = &ip4_dns_1;
+	g_array_append_val ( ip4_dns_buf, tmp );
+      }
+      if ( ip4_dns_2 != 0 ) {
+	tmp = &ip4_dns_2;
+	g_array_append_val ( ip4_dns_buf, tmp );
+      }
+      if ( ip4_dns_buf->len == 0 ) {
+	// we have to have a dummy at least
+	tmp = &ip4_zero;
+	g_array_append_val ( ip4_dns_buf, tmp );
+      }
+
+      if ( ip4_nbns_1 != 0 ) {
+	tmp = &ip4_nbns_1;
+	g_array_append_val ( ip4_nbns_buf, tmp );
+      }
+      if ( ip4_nbns_2 != 0 ) {
+	tmp = &ip4_nbns_2;
+	g_array_append_val ( ip4_nbns_buf, tmp );
+      }
+      if ( ip4_nbns_buf->len == 0 ) {
+	// we have to have a dummy at least
+	tmp = &ip4_zero;
+	g_array_append_val ( ip4_nbns_buf, tmp );
+      }
+
+      ip4_dns = (guint32 *)ip4_dns_buf->data;
+      ip4_nbns = (guint32 *)ip4_nbns_buf->data;
+      ip4_dns_len = ip4_dns_buf->len;
+      ip4_nbns_len = ip4_nbns_buf->len;
 
       dbus_message_append_args (sig,
 				DBUS_TYPE_STRING, &ifname,
@@ -1055,18 +1117,24 @@ nm_ppp_dbus_process_helper_ip4_config (DBusConnection *con, DBusMessage *message
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_dns, ip4_dns_len,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32, &ip4_nbns, ip4_nbns_len,
 				DBUS_TYPE_INVALID);
-
+      
       nm_warning("Sending IP configuration");
-      if (!dbus_connection_send (data->con, sig, NULL))
-	{
-	  nm_warning ("Could not raise the "NM_DBUS_PPP_SIGNAL_IP4_CONFIG" signal!");
-	  goto out;
-	}
+      if (!dbus_connection_send (data->con, sig, NULL)) {
+	nm_warning ("Could not raise the "NM_DBUS_PPP_SIGNAL_IP4_CONFIG" signal!");
+	goto out;
+      }
 
       dbus_message_unref (sig);
+
+      g_array_free( ip4_dns_buf, FALSE );
+      g_array_free( ip4_nbns_buf, FALSE );
+
       nm_ppp_set_state (data, NM_PPP_STATE_STARTED);
       success = TRUE;
     }
+  } else {
+    nm_warning("Could not parse args for signalIP4Config");
+  }
 
 out:
   if (!success)
@@ -1104,13 +1172,14 @@ nm_ppp_dbus_get_auth_info (DBusConnection *con, DBusMessage *message, NmPPPData 
     return NULL;
   }
 
-  if ((reply = dbus_message_new_method_return (message)))
+  if ((reply = dbus_message_new_method_return (message))) {
     dbus_message_append_args (reply, 
 			      DBUS_TYPE_STRING, &(data->io_data->username),
 			      DBUS_TYPE_STRING, &(data->io_data->password),
 			      DBUS_TYPE_INVALID);
-  if (!reply)
+  } else {
     nm_info("Build of getAuthInfo reply failed ");
+  }
 
   return reply;
 }
@@ -1139,7 +1208,7 @@ nm_ppp_dbus_message_handler (DBusConnection *con, DBusMessage *message, void *us
   method = dbus_message_get_member (message);
   path = dbus_message_get_path (message);
 
-  /* nm_info ("nm_ppp_dbus_message_handler() got method '%s' for path '%s'.", method, path); */
+  nm_info ("nm_ppp_dbus_message_handler() got method '%s' for path '%s'.", method, path);
 
   /* If we aren't ready to accept dbus messages, don't */
   if ((data->state == NM_PPP_STATE_INIT) || (data->state == NM_PPP_STATE_SHUTDOWN))
@@ -1161,7 +1230,7 @@ nm_ppp_dbus_message_handler (DBusConnection *con, DBusMessage *message, void *us
   else if (strcmp ("signalIP4Config", method) == 0)
     nm_ppp_dbus_process_helper_ip4_config (con, message, data);
   else if (strcmp ("getAuthInfo", method) == 0)
-    nm_ppp_dbus_get_auth_info (con, message, data);
+    reply = nm_ppp_dbus_get_auth_info (con, message, data);
   else
     handled = FALSE;
   

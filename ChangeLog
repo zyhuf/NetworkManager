@@ -1,3 +1,29 @@
+2006-07-27  Tim Niemueller  <tim@niemueller.de>
+
+	* src/ppp-manager/.cvsignore: Added mandatory cvsignore file
+	* src/ppp-manager/nm-ppp.conf: Added dbus config for ppp-manager
+	* src/ppp-manager/nm-ppp-service.c:
+		- check for username in transmitted options
+		- create wvdial argument array appropriately
+		- fixed some typos
+		- Add plugin option for pppd to wvdial call
+		- update list of allowed data items
+		- update message handling with NM-core and pppd plugin
+		- send reply for getAuthInfo
+	* src/ppp-manager/nm-pppd-plugin.c:
+		- changed return values, the pppd PLUGINS documentation seems
+		  to be wrong from what I have read in pppd and example plugin
+		  sources
+		- correctly send out ip config after a connection has been
+		  established
+		- minors
+	* test/nm-dialup.c: initial revision of a test program, used to
+	  to debug the existing code up to now, first successful GPRS
+	  connection has been established
+	* test/Makefile.am: added nm-dialup target
+	* test/.cvsignore: added nm-dialup
+	* test/libnm-util/.cvsignore: added test-dbus-dict-helpers
+
 2006-07-25  Tim Niemueller  <tim@niemueller.de>
 
 	* src/Makefile.am: Added ppp-manager subdirectory
