@@ -352,6 +352,9 @@ src/Makefile
 src/named-manager/Makefile
 src/vpn-manager/Makefile
 src/dhcp-manager/Makefile
+src/dialup/Makefile
+src/dialup/manager/Makefile
+src/dialup/ppp/Makefile
 src/backends/Makefile
 libnm-util/libnm-util.pc
 libnm-util/Makefile
@@ -362,6 +365,12 @@ gnome/applet/icons/Makefile
 gnome/libnm_glib/libnm_glib.pc
 gnome/libnm_glib/Makefile
 gnome/vpn-properties/Makefile
+gnome/dialup-auth/Makefile
+gnome/dialup-auth/common/Makefile
+gnome/dialup-auth/ppp/Makefile
+gnome/dialup-properties/Makefile
+gnome/dialup-properties/modem/Makefile
+gnome/dialup-properties/btgprs/Makefile
 test/Makefile
 test/test-common/Makefile
 test/libnm-util/Makefile
