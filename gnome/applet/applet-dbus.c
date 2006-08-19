@@ -35,8 +35,10 @@
 #include "applet-dbus.h"
 #include "applet-dbus-devices.h"
 #include "applet-dbus-vpn.h"
+#include "applet-dbus-dialup.h"
 #include "applet-dbus-info.h"
 #include "vpn-connection.h"
+#include "dialup-connection.h"
 #include "passphrase-dialog.h"
 #include "nm-utils.h"
 
@@ -216,8 +218,8 @@ static DBusHandlerResult nma_dbus_filter (DBusConnection *connection, DBusMessag
 					nma_set_state (applet, NM_STATE_DISCONNECTED);
 					nma_dbus_update_nm_state (applet);
 					nma_dbus_update_devices (applet);
-					nma_dbus_update_dialup (applet);
 					nma_dbus_vpn_update_vpn_connections (applet);
+					nma_dbus_dialup_update_dialup_connections (applet);
 				}
 				else if (old_owner_good && !new_owner_good)
 				{
@@ -235,6 +237,8 @@ static DBusHandlerResult nma_dbus_filter (DBusConnection *connection, DBusMessag
 		if (dbus_message_get_args (message, NULL, DBUS_TYPE_UINT32, &state, DBUS_TYPE_INVALID))
 		{
 			NetworkDevice *act_dev = nma_get_first_active_device (applet->device_list);
+
+			nm_info ("State changed to %i", state);
 
 			/* If we've switched to connecting, update the active device to ensure that we have
 			 * valid wireless network information for it.
@@ -307,6 +311,33 @@ static DBusHandlerResult nma_dbus_filter (DBusConnection *connection, DBusMessag
 		if (dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID))
 			nma_dbus_vpn_remove_one_vpn_connection (applet, name);
 	}
+	else if (    dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, "DialupConnectionAdded")
+			|| dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, "DialupConnectionUpdate"))	/* dialup connection properties changed */
+	{
+		char *name = NULL;
+
+		if (dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID))
+			nma_dbus_dialup_update_one_dialup_connection (applet, name);
+	}
+	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, "DialupConnectionStateChange"))	/* Active dialup connection changed */
+	{
+		char *		name = NULL;
+		NMDialupActStage	dialup_stage;
+		dbus_uint32_t	dialup_stage_int;
+
+		if (dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_UINT32, &dialup_stage_int, DBUS_TYPE_INVALID))
+		{
+			dialup_stage = (NMDialupActStage) dialup_stage_int;
+			nma_dbus_dialup_update_dialup_connection_stage (applet, name, dialup_stage);
+		}
+	}
+	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, "DialupConnectionRemoved"))
+	{
+		char *name = NULL;
+
+		if (dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID))
+			nma_dbus_dialup_remove_one_dialup_connection (applet, name);
+	}
 	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "WirelessNetworkAppeared"))
 	{
 		char *dev_path = NULL;
@@ -368,6 +399,21 @@ static DBusHandlerResult nma_dbus_filter (DBusConnection *connection, DBusMessag
 
 			/* set the 'last_attempt_success' key in gconf so we DON'T prompt for password next time */
 			nma_dbus_vpn_set_last_attempt_status (applet, vpn_name, TRUE);
+		}
+	}
+	else if (    dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, NM_DBUS_DIALUP_SIGNAL_LOGIN_FAILED)
+			|| dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, NM_DBUS_DIALUP_SIGNAL_LAUNCH_FAILED)
+			|| dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, NM_DBUS_DIALUP_SIGNAL_CONNECT_FAILED)
+			|| dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, NM_DBUS_DIALUP_SIGNAL_DIALUP_CONFIG_BAD)
+			|| dbus_message_is_signal (message, NM_DBUS_INTERFACE_DIALUP, NM_DBUS_DIALUP_SIGNAL_IP_CONFIG_BAD))
+	{
+		char *dialup_name;
+		char *error_msg;
+
+		if (dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &dialup_name, DBUS_TYPE_STRING, &error_msg, DBUS_TYPE_INVALID)) {
+			nma_show_dialup_failure_alert (applet, member, dialup_name, error_msg);
+			/* clear the 'last_attempt_success' key in gconf so we prompt for password next time */
+			nma_dbus_dialup_set_last_attempt_status (applet, dialup_name, FALSE);
 		}
 	}
 	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "DeviceActivationFailed"))
@@ -501,6 +547,15 @@ static DBusConnection * nma_dbus_init (NMApplet *applet)
 	if (dbus_error_is_set (&error))
 		dbus_error_free (&error);
 
+	dbus_bus_add_match(connection,
+				"type='signal',"
+				"interface='" NM_DBUS_INTERFACE_DIALUP "',"
+				"path='" NM_DBUS_PATH_DIALUP "',"
+				"sender='" NM_DBUS_SERVICE "'",
+				&error);
+	if (dbus_error_is_set (&error))
+		dbus_error_free (&error);
+
 	return (connection);
 }
 
@@ -527,8 +582,8 @@ static gboolean nma_dbus_connection_watcher (gpointer user_data)
 				nma_set_state (applet, NM_STATE_DISCONNECTED);
 				nma_dbus_update_nm_state (applet);
 				nma_dbus_update_devices (applet);
-				nma_dbus_update_dialup (applet);
 				nma_dbus_vpn_update_vpn_connections (applet);
+				nma_dbus_dialup_update_dialup_connections (applet);
 			}
 		}
 	}
@@ -564,7 +619,7 @@ void nma_dbus_init_helper (NMApplet *applet)
 		applet->nm_running = TRUE;
 		nma_dbus_update_nm_state (applet);
 		nma_dbus_update_devices (applet);
-		nma_dbus_update_dialup (applet);
+		nma_dbus_dialup_update_dialup_connections (applet);
 		nma_dbus_vpn_update_vpn_connections (applet);
 	}
 

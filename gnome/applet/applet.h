@@ -49,9 +49,11 @@
 #define GCONF_PATH_WIRELESS			"/system/networking/wireless"
 #define GCONF_PATH_VPN_CONNECTIONS		"/system/networking/vpn_connections"
 #define GCONF_PATH_PREFS				"/apps/NetworkManagerApplet"
+#define GCONF_PATH_DIALUP_CONNECTIONS		"/system/networking/dialup_connections"
 
 
 typedef struct VPNConnection VPNConnection;
+typedef struct DialupConnection DialupConnection;
 
 
 #define NM_TYPE_APPLET			(nma_get_type())
@@ -79,6 +81,7 @@ typedef struct
 	GConfClient *		gconf_client;
 	guint		 	gconf_prefs_notify_id;
 	guint		 	gconf_vpn_notify_id;
+	guint		 	gconf_dialup_notify_id;
 	char	*			glade_file;
 	guint			redraw_timeout_id;
 
@@ -89,12 +92,13 @@ typedef struct
 
 	NMState			nm_state;
 	GSList *			device_list;
-	GSList *			dialup_list;
 	GSList *			vpn_connections;
+	GSList *			dialup_connections;
 
 	GdkPixbuf *		no_connection_icon;
 	GdkPixbuf *		wired_icon;
 	GdkPixbuf *		adhoc_icon;
+	GdkPixbuf *		dialup_icon;
 	GdkPixbuf *		wireless_00_icon;
 	GdkPixbuf *		wireless_25_icon;
 	GdkPixbuf *		wireless_50_icon;
@@ -105,6 +109,8 @@ typedef struct
 	GdkPixbuf *		network_connecting_icons[NUM_CONNECTING_STAGES][NUM_CONNECTING_FRAMES];
 #define NUM_VPN_CONNECTING_FRAMES 14
 	GdkPixbuf *		vpn_connecting_icons[NUM_VPN_CONNECTING_FRAMES];
+#define NUM_DIALUP_CONNECTING_FRAMES 16
+	GdkPixbuf *		dialup_connecting_icons[NUM_DIALUP_CONNECTING_FRAMES];
 	GdkPixbuf *		vpn_lock_icon;
 
 	/* Animation stuff */
@@ -116,6 +122,7 @@ typedef struct
 	GtkWidget *		top_menu_item;
 	GtkWidget *		dropdown_menu;
 	GtkWidget *		vpn_menu;
+	GtkWidget *		dialup_menu;
 	GtkWidget *		event_box;
 	GtkSizeGroup *		encryption_size_group;
 	GtkTooltips *		tooltips;
@@ -145,9 +152,11 @@ void				nma_schedule_warning_dialog			(NMApplet *applet, const char *msg);
 gboolean			nma_driver_notify					(gpointer user_data);
 void				nma_show_vpn_failure_alert			(NMApplet *applet, const char *member, const char *vpn_name, const char *error_msg);
 void				nma_show_vpn_login_banner			(NMApplet *applet, const char *vpn_name, const char *banner);
+void				nma_show_dialup_failure_alert			(NMApplet *applet, const char *member, const char *dialup_name, const char *error_msg);
 
 NetworkDevice *	nma_get_first_active_device			(GSList *dev_list);
 VPNConnection *	nma_get_first_active_vpn_connection	(NMApplet *applet);
+DialupConnection *	nma_get_first_active_dialup_connection	(NMApplet *applet);
 
 void				nma_enable_wireless_set_active		(NMApplet *applet);
 

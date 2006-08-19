@@ -38,9 +38,6 @@ gboolean		nma_dbus_update_device_strength			(NMApplet *applet);
 void			nma_dbus_update_nm_state				(NMApplet *applet);
 
 void			nma_dbus_update_devices					(NMApplet *applet);
-void			nma_dbus_update_dialup					(NMApplet *applet);
-void			nma_dbus_dialup_activate_connection		(NMApplet *applet, const char *name);
-void			nma_dbus_dialup_deactivate_connection		(NMApplet *applet, const char *name);
 void			nma_dbus_device_update_one_device			(NMApplet *applet, const char *dev_path);
 void			nma_dbus_device_activated				(NMApplet *applet, const char *dev_path, const char *essid);
 void			nma_dbus_device_deactivated				(NMApplet *applet, const char *dev_path);

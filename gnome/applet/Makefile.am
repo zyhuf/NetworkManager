@@ -23,6 +23,7 @@ nm_applet_CPPFLAGS =									\
 	-DSYSCONFDIR=\""$(sysconfdir)"\"						\
 	-DAUTOSTARTDIR=\""$(datadir)/gnome/autostart"\"			\
 	-DVPN_NAME_FILES_DIR=\""$(sysconfdir)/NetworkManager/VPN"\"	\
+	-DDIALUP_NAME_FILES_DIR=\""$(sysconfdir)/NetworkManager/dialup"\"	\
 	-DDBUS_API_SUBJECT_TO_CHANGE							\
 	-DG_DISABLE_DEPRECATED								\
 	-DGDK_DISABLE_DEPRECATED								\
@@ -47,6 +48,8 @@ nm_applet_SOURCES =			\
 	applet-dbus-devices.h	\
 	applet-dbus-vpn.c		\
 	applet-dbus-vpn.h		\
+	applet-dbus-dialup.c		\
+	applet-dbus-dialup.h		\
 	applet-dbus-info.c		\
 	applet-dbus-info.h		\
 	wireless-network.c		\
@@ -65,6 +68,10 @@ nm_applet_SOURCES =			\
 	vpn-password-dialog.h	\
 	vpn-connection.c		\
 	vpn-connection.h		\
+	dialup-password-dialog.c	\
+	dialup-password-dialog.h	\
+	dialup-connection.h		\
+	dialup-connection.c		\
 	wireless-security-manager.c	\
 	wireless-security-manager.h	\
 	wireless-security-option.c	\

@@ -809,6 +809,242 @@ nmi_dbus_get_vpn_connection_routes (DBusConnection *connection,
 
 
 /*
+ * nmi_dbus_signal_update_dialup_connection
+ *
+ * Signal NetworkManager that it needs to update info associated with a particular
+ * dialup connection.
+ *
+ */
+void nmi_dbus_signal_update_dialup_connection (DBusConnection *connection, const char *name)
+{
+	DBusMessage		*message;
+
+	g_return_if_fail (connection != NULL);
+	g_return_if_fail (name != NULL);
+
+	message = dbus_message_new_signal (NMI_DBUS_PATH, NMI_DBUS_INTERFACE, "DialupConnectionUpdate");
+	dbus_message_append_args (message, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID);
+	if (!dbus_connection_send (connection, message, NULL))
+		nm_warning ("Could not raise the 'DialupConnectionUpdate' signal!");
+
+	dbus_message_unref (message);
+}
+
+
+/*
+ * nmi_dbus_get_dialup_connections
+ *
+ * Grab a list of dialup connections from GConf and return it in the form
+ * of a string array in a dbus message.
+ *
+ */
+static DBusMessage *
+nmi_dbus_get_dialup_connections (DBusConnection *connection,
+						   DBusMessage *message,
+						   void *user_data)
+{
+	NMApplet *	applet = (NMApplet *) user_data;
+	GSList *			dir_list = NULL;
+	GSList *			elt = NULL;
+	DBusMessage *		reply = NULL;
+	DBusMessageIter	iter;
+	DBusMessageIter	iter_array;
+	gboolean			value_added = FALSE;
+
+	g_return_val_if_fail (applet != NULL, NULL);
+	g_return_val_if_fail (message != NULL, NULL);
+
+	/* List all dialup connections that gconf knows about */
+	if (!(dir_list = gconf_client_all_dirs (applet->gconf_client, GCONF_PATH_DIALUP_CONNECTIONS, NULL)))
+	{
+		reply = nmu_create_dbus_error_message (message, NMI_DBUS_SERVICE, "NoDialupConnections",
+							"There are no dialup connections stored.");
+		goto out;
+	}
+
+	reply = dbus_message_new_method_return (message);
+	dbus_message_iter_init_append (reply, &iter);
+
+	/* Append the essid of every allowed or ignored access point we know of 
+	 * to a string array in the dbus message.
+	 */
+	dbus_message_iter_open_container (&iter, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &iter_array);
+	for (elt = dir_list; elt; elt = g_slist_next (elt))
+	{
+		char			key[100];
+		GConfValue *	value;
+		char *		dir = (char *) (elt->data);
+
+		g_snprintf (&key[0], 99, "%s/name", dir);
+		if ((value = gconf_client_get (applet->gconf_client, key, NULL)))
+		{
+			if (value->type == GCONF_VALUE_STRING)
+			{
+				const gchar *conn_name = gconf_value_get_string (value);
+				dbus_message_iter_append_basic (&iter_array, DBUS_TYPE_STRING, &conn_name);
+				nm_info ("Added connection name %s", conn_name);
+				value_added = TRUE;
+			}
+			gconf_value_free (value);
+		}
+		g_free (dir);
+	}
+	g_slist_free (dir_list);
+	dbus_message_iter_close_container (&iter, &iter_array);
+
+	if (!value_added)
+	{
+		dbus_message_unref (reply);
+		reply = nmu_create_dbus_error_message (message, NMI_DBUS_SERVICE, "NoDialupConnections",
+						"There are no dialup connections stored.");
+	}
+
+out:
+	return reply;
+}
+
+
+/*
+ * nmi_dbus_get_dialup_connection_properties
+ *
+ * Returns the properties of a specific dialup connection from gconf
+ *
+ */
+static DBusMessage *
+nmi_dbus_get_dialup_connection_properties (DBusConnection *connection,
+								   DBusMessage *message,
+								   void *user_data)
+{
+	NMApplet *	applet = (NMApplet *) user_data;
+	DBusMessage *	reply = NULL;
+	char *		dialup_connection = NULL;
+	char *		escaped_name = NULL;
+	char *		name = NULL;
+	char *		service_name = NULL;
+	const char *	user_name = NULL;
+	DBusMessageIter iter;
+	GConfClient *	client;
+
+	g_return_val_if_fail (applet != NULL, NULL);
+	g_return_val_if_fail (message != NULL, NULL);
+
+	client = applet->gconf_client;
+
+	if (    !dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &dialup_connection, DBUS_TYPE_INVALID)
+		|| (strlen (dialup_connection) <= 0))
+	{
+		return new_invalid_args_error (message, __func__);
+	}
+
+	escaped_name = gconf_escape_key (dialup_connection, strlen (dialup_connection));
+
+	/* User-visible name of connection */
+	if (!nm_gconf_get_string_helper (client, GCONF_PATH_DIALUP_CONNECTIONS, "name", escaped_name, &name) || !name)
+	{
+		nm_warning ("%s:%d - couldn't get 'name' item from GConf.", __FILE__, __LINE__);
+		goto out;
+	}
+
+	/* Service name of connection */
+	if (!nm_gconf_get_string_helper (client, GCONF_PATH_DIALUP_CONNECTIONS, "service_name", escaped_name, &service_name) || !service_name)
+	{
+		nm_warning ("%s:%d - couldn't get 'service_name' item from GConf.", __FILE__, __LINE__);
+		goto out;
+	}
+
+	/* User name of connection - use the logged in user */
+	user_name = g_get_user_name ();
+
+	reply = dbus_message_new_method_return (message);
+	dbus_message_iter_init_append (reply, &iter);
+	dbus_message_iter_append_basic (&iter, DBUS_TYPE_STRING, &name);
+	dbus_message_iter_append_basic (&iter, DBUS_TYPE_STRING, &service_name);
+	dbus_message_iter_append_basic (&iter, DBUS_TYPE_STRING, &user_name);
+
+out:
+	g_free (service_name);
+	g_free (name);
+	g_free (escaped_name);
+
+	return reply;
+}
+
+
+/*
+ * nmi_dbus_get_dialup_connection_dialup_data
+ *
+ * Returns dialup specific properties for a particular dialup connection.
+ *
+ */
+static DBusMessage *
+nmi_dbus_get_dialup_connection_dialup_data (DBusConnection *connection,
+								    DBusMessage *message,
+								    void *user_data)
+{
+	NMApplet *	applet = (NMApplet *) user_data;
+	DBusMessage *	reply = NULL;
+	gchar *		gconf_key = NULL;
+	char *		name = NULL;
+	GConfValue *	dialup_data_value = NULL;
+	GConfValue *	value = NULL;
+	char *		escaped_name;
+	DBusMessageIter iter, array_iter;
+	GSList *		elt;
+
+	g_return_val_if_fail (applet != NULL, NULL);
+	g_return_val_if_fail (message != NULL, NULL);
+
+	if (!dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID) || (strlen (name) <= 0))
+		return new_invalid_args_error (message, __func__);
+
+	escaped_name = gconf_escape_key (name, strlen (name));
+
+	/* User-visible name of connection */
+	gconf_key = g_strdup_printf ("%s/%s/name", GCONF_PATH_DIALUP_CONNECTIONS, escaped_name);
+	if (!(value = gconf_client_get (applet->gconf_client, gconf_key, NULL)))
+	{
+		reply = nmu_create_dbus_error_message (message, "BadDialupConnectionData",
+						"NetworkManagerInfo::getDialupConnectionDialupData could not access the name for connection '%s'", name);
+		return reply;
+	}
+	gconf_value_free (value);
+	g_free (gconf_key);
+
+	/* Grab dialup specific data */
+	gconf_key = g_strdup_printf ("%s/%s/dialup_data", GCONF_PATH_DIALUP_CONNECTIONS, escaped_name);
+	if (!(dialup_data_value = gconf_client_get (applet->gconf_client, gconf_key, NULL))
+		|| !(dialup_data_value->type == GCONF_VALUE_LIST)
+		|| !(gconf_value_get_list_type (dialup_data_value) == GCONF_VALUE_STRING))
+	{
+		reply = nmu_create_dbus_error_message (message, "BadDialupConnectionData",
+						"NetworkManagerInfo::getDialupConnectionDialupData could not access the dialup data for connection '%s'", name);
+		if (dialup_data_value)
+			gconf_value_free (dialup_data_value);
+		return reply;
+	}
+	g_free (gconf_key);
+
+	reply = dbus_message_new_method_return (message);
+	dbus_message_iter_init_append (reply, &iter);
+	dbus_message_iter_open_container (&iter, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &array_iter);
+
+	for (elt = gconf_value_get_list (dialup_data_value); elt; elt = g_slist_next (elt))
+	{
+		const char *string = gconf_value_get_string ((GConfValue *)elt->data);
+		if (string)
+			dbus_message_iter_append_basic (&array_iter, DBUS_TYPE_STRING, &string);
+	}
+
+	dbus_message_iter_close_container (&iter, &array_iter);
+
+	gconf_value_free (dialup_data_value);
+	g_free (escaped_name);
+
+	return reply;
+}
+
+
+/*
  * nmi_save_network_info
  *
  * Save information about a wireless network in gconf and the gnome keyring.
@@ -1097,6 +1333,9 @@ DBusMethodDispatcher *nmi_dbus_nmi_methods_setup (void)
 	dbus_method_dispatcher_register_method (dispatcher, "getVPNConnectionProperties",nmi_dbus_get_vpn_connection_properties);
 	dbus_method_dispatcher_register_method (dispatcher, "getVPNConnectionVPNData",   nmi_dbus_get_vpn_connection_vpn_data);
 	dbus_method_dispatcher_register_method (dispatcher, "getVPNConnectionRoutes",    nmi_dbus_get_vpn_connection_routes);
+	dbus_method_dispatcher_register_method (dispatcher, "getDialupConnections",         nmi_dbus_get_dialup_connections);
+	dbus_method_dispatcher_register_method (dispatcher, "getDialupConnectionProperties",nmi_dbus_get_dialup_connection_properties);
+	dbus_method_dispatcher_register_method (dispatcher, "getDialupConnectionDialupData",   nmi_dbus_get_dialup_connection_dialup_data);
 
 	return dispatcher;
 }

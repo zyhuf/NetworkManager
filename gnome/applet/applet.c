@@ -53,12 +53,15 @@
 #include "applet-dbus-devices.h"
 #include "applet-dbus-vpn.h"
 #include "applet-dbus-info.h"
+#include "applet-dbus-dialup.h"
 #include "applet-notifications.h"
 #include "other-network-dialog.h"
 #include "passphrase-dialog.h"
 #include "menu-items.h"
 #include "vpn-password-dialog.h"
 #include "vpn-connection.h"
+#include "dialup-password-dialog.h"
+#include "dialup-connection.h"
 #include "nm-utils.h"
 #include "dbus-method-dispatcher.h"
 
@@ -372,14 +375,14 @@ static void nma_about_cb (GtkMenuItem *mi, NMApplet *applet)
 
 #ifndef ENABLE_NOTIFY
 /*
- * nma_show_vpn_failure_dialog
+ * nma_show_failure_dialog
  *
- * Present the VPN failure dialog.
+ * Present a failure dialog.
  *
  */
 static void
-nma_show_vpn_failure_dialog (const char *title,
-                              const char *msg)
+nma_show_failure_dialog (const char *title,
+					const char *msg)
 {
 	GtkWidget	*dialog;
 
@@ -454,7 +457,7 @@ void nma_show_vpn_failure_alert (NMApplet *applet, const char *member, const cha
 #else
 		msg = g_strdup_printf ("<span weight=\"bold\" size=\"larger\">%s</span>\n\n"
 			"%s\n\n%s", title, desc, error_msg);
-		nma_show_vpn_failure_dialog (title, msg);
+		nma_show_failure_dialog (title, msg);
 #endif
 		g_free (msg);
 	}
@@ -521,6 +524,69 @@ void nma_show_vpn_login_banner (NMApplet *applet, const char *vpn_name, const ch
 	nma_show_vpn_login_banner_dialog (title, msg);
 #endif
 	g_free (msg);
+}
+
+
+/*
+ * nma_schedule_dialup_failure_alert
+ *
+ * Schedule display of a dialup failure message.
+ *
+ */
+void nma_show_dialup_failure_alert (NMApplet *applet, const char *member, const char *dialup_name, const char *error_msg)
+{
+	char *title = NULL;
+	char *desc = NULL;
+
+	g_return_if_fail (applet != NULL);
+	g_return_if_fail (member != NULL);
+	g_return_if_fail (dialup_name != NULL);
+	g_return_if_fail (error_msg != NULL);
+
+	if (!strcmp (member, NM_DBUS_DIALUP_SIGNAL_LOGIN_FAILED))
+	{
+		title = g_strdup (_("Dialup Login Failure"));
+		desc = g_strdup_printf (_("Could not start the dialup connection '%s' due to a login failure."), dialup_name);
+	}
+	else if (!strcmp (member, NM_DBUS_DIALUP_SIGNAL_LAUNCH_FAILED))
+	{
+		title = g_strdup (_("Dialup Start Failure"));
+		desc = g_strdup_printf (_("Could not start the dialup connection '%s' due to a failure launching the dialup program."), dialup_name);
+	}
+	else if (!strcmp (member, NM_DBUS_DIALUP_SIGNAL_CONNECT_FAILED))
+	{
+		title = g_strdup (_("Dialup Connect Failure"));
+		desc = g_strdup_printf (_("Could not start the dialup connection '%s' due to a connection error."), dialup_name);
+	}
+	else if (!strcmp (member, NM_DBUS_DIALUP_SIGNAL_DIALUP_CONFIG_BAD))
+	{
+		title = g_strdup (_("Dialup Configuration Error"));
+		desc = g_strdup_printf (_("The dialup connection '%s' was not correctly configured."), dialup_name);
+	}
+	else if (!strcmp (member, NM_DBUS_DIALUP_SIGNAL_IP_CONFIG_BAD))
+	{
+		title = g_strdup (_("Dialup Connect Failure"));
+		desc = g_strdup_printf (_("Could not start the dialup connection '%s' because the dialup server did not return an adequate network configuration."), dialup_name);
+	}
+
+	if (title && desc)
+	{
+		char * msg;
+
+#ifdef ENABLE_NOTIFY
+		msg = g_strdup_printf ("\n%s\n%s", desc, error_msg);
+		nma_send_event_notification (applet, NOTIFY_URGENCY_CRITICAL,
+			title, msg, "gnome-lockscreen");
+#else
+		msg = g_strdup_printf ("<span weight=\"bold\" size=\"larger\">%s</span>\n\n"
+			"%s\n\n%s", title, desc, error_msg);
+		nma_show_vpn_failure_dialog (title, msg);
+#endif
+		g_free (msg);
+	}
+
+	g_free (title);
+	g_free (desc);
 }
 
 
@@ -801,6 +867,31 @@ VPNConnection *nma_get_first_active_vpn_connection (NMApplet *applet)
 	return NULL;
 }
 
+
+/*
+ * nma_get_first_active_dialup_connection
+ *
+ * Return the first active dialup connection, if any.
+ *
+ */
+DialupConnection *nma_get_first_active_dialup_connection (NMApplet *applet)
+{
+	DialupConnection *	dialup;
+	NMDialupActStage		dialup_state;
+	GSList *			elt;
+
+	for (elt = applet->dialup_connections; elt; elt = g_slist_next (elt))
+	{
+		dialup = (DialupConnection*) elt->data;
+		dialup_state = nma_dialup_connection_get_stage (dialup);
+		if (dialup_state == NM_DIALUP_ACT_STAGE_ACTIVATED)
+			return dialup;
+	}
+
+	return NULL;
+}
+
+
 static VPNConnection *nma_get_first_activating_vpn_connection (NMApplet *applet)
 {
 	VPNConnection *	vpn;
@@ -976,6 +1067,26 @@ static GdkPixbuf * nma_act_stage_to_pixbuf (NMApplet *applet, NetworkDevice *dev
 }
 
 
+static GdkPixbuf *
+nma_dialup_act_stage_to_pixbuf (NMApplet *applet, char **tip)
+{
+	GdkPixbuf *pixbuf = NULL;
+
+	g_return_val_if_fail (applet != NULL, NULL);
+	g_return_val_if_fail (tip != NULL, NULL);
+
+	if (applet->animation_step >= NUM_DIALUP_CONNECTING_FRAMES)
+		   applet->animation_step = 0;
+
+	// should mentiond dialup connection name later on
+	*tip = g_strdup_printf("Connecting to dialup");
+
+	pixbuf = applet->dialup_connecting_icons[applet->animation_step];
+
+	return pixbuf;
+}
+
+
 /*
  * animation_timeout
  *
@@ -997,42 +1108,56 @@ static gboolean animation_timeout (NMApplet *applet)
 		return FALSE;
 	}
 
-	act_dev = nma_get_first_active_device (applet->device_list);
-	if (!act_dev)
+	if (applet->nm_state == NM_STATE_DIALUP_CONNECTING)
 	{
-		applet->animation_step = 0;
-		applet->animation_id = 0;
-		return FALSE;
-	}
-
-	if (applet->nm_state == NM_STATE_CONNECTING)
-	{
-		if (act_dev)
-		{
-			char *tip = NULL;
-			pixbuf = nma_act_stage_to_pixbuf (applet, act_dev, NULL, &tip);
-			g_free (tip);
-
-			if (pixbuf)
-				nma_set_icon (applet, pixbuf, NULL);
-		}
-		applet->animation_step ++;
-	}
-	else if (nma_get_first_activating_vpn_connection (applet) != NULL)
-	{
-		pixbuf = nma_get_connected_icon (applet, act_dev);
-
-		if (applet->animation_step >= NUM_VPN_CONNECTING_FRAMES)
-			applet->animation_step = 0;
-
-		nma_set_icon (applet, pixbuf, applet->vpn_connecting_icons[applet->animation_step]);
-		applet->animation_step ++;
+		   char *tip = NULL;
+		   pixbuf = nma_dialup_act_stage_to_pixbuf(applet, &tip);
+		   if (pixbuf)
+				 nma_set_icon (applet, pixbuf, NULL);
+		   g_free(tip);
+		   applet->animation_step++;
+		   if (applet->animation_step >= NUM_DIALUP_CONNECTING_FRAMES)
+				 applet->animation_step = 0;
 	}
 	else
 	{
-		applet->animation_step = 0;
-		nma_update_state (applet);
-		return FALSE;
+		   act_dev = nma_get_first_active_device (applet->device_list);
+		   if (!act_dev)
+		   {
+				 applet->animation_step = 0;
+				 applet->animation_id = 0;
+				 return FALSE;
+		   }
+
+		   if (applet->nm_state == NM_STATE_CONNECTING)
+		   {
+				 if (act_dev)
+				 {
+					    char *tip = NULL;
+					    pixbuf = nma_act_stage_to_pixbuf (applet, act_dev, NULL, &tip);
+					    g_free (tip);
+					    
+					    if (pixbuf)
+							  nma_set_icon (applet, pixbuf, NULL);
+				 }
+				 applet->animation_step ++;
+		   }
+		   else if (nma_get_first_activating_vpn_connection (applet) != NULL)
+		   {
+				 pixbuf = nma_get_connected_icon (applet, act_dev);
+				 
+				 if (applet->animation_step >= NUM_VPN_CONNECTING_FRAMES)
+					    applet->animation_step = 0;
+				 
+				 nma_set_icon (applet, pixbuf, applet->vpn_connecting_icons[applet->animation_step]);
+				 applet->animation_step ++;
+		   }
+		   else
+		   {
+				 applet->animation_step = 0;
+				 nma_update_state (applet);
+				 return FALSE;
+		   }
 	}
 
 	return TRUE;
@@ -1105,6 +1230,16 @@ static void nma_update_state (NMApplet *applet)
 				need_animation = TRUE;
 			}
 			break;
+
+           case NM_STATE_DIALUP_CONNECTING:
+		     pixbuf = nma_dialup_act_stage_to_pixbuf (applet, &tip);
+		     need_animation = TRUE;
+		     break;
+
+           case NM_STATE_DIALUP_CONNECTED:
+			pixbuf = applet->dialup_icon;
+			tip = g_strdup (_("Connection via dialup"));
+		     break;
 
 		default:
 			break;
@@ -1341,49 +1476,88 @@ static void nma_menu_vpn_item_activate (GtkMenuItem *item, gpointer user_data)
 }
 
 
-/*
- * nma_menu_connect_item_activate
- *
- * Signal function called when user clicks on a dialup menu item
- *
- */
-static void nma_menu_dialup_connect_item_activate (GtkMenuItem *item, gpointer user_data)
+static void
+nma_menu_dialup_item_activate (GtkMenuItem *item, gpointer user_data)
 {
-	NMApplet *applet = (NMApplet *) user_data;
-	const char *dialup;
+	NMApplet	*applet = (NMApplet *)user_data;
+	char				*tag;
 
 	g_return_if_fail (item != NULL);
 	g_return_if_fail (applet != NULL);
 
-	dialup = g_object_get_data (G_OBJECT (item), "dialup");
-	if (!dialup)
-		return;
+	if ((tag = g_object_get_data (G_OBJECT (item), "dialup")))
+	{
+		DialupConnection	*dialup = (DialupConnection *)tag;
+		const char		*name = nma_dialup_connection_get_name (dialup);
+		GSList         	*user_pass;
+		DialupConnection	*active_dialup = nma_get_first_active_dialup_connection (applet);
 
-	nma_dbus_dialup_activate_connection (applet, dialup);
+		if (dialup != active_dialup)
+		{
+			char *gconf_key;
+			char *escaped_name;
+			gboolean last_attempt_success;
+			gboolean reprompt;
+
+			escaped_name = gconf_escape_key (name, strlen (name));
+			gconf_key = g_strdup_printf ("%s/%s/last_attempt_success", GCONF_PATH_DIALUP_CONNECTIONS, escaped_name);
+			last_attempt_success = gconf_client_get_bool (applet->gconf_client, gconf_key, NULL);
+			g_free (gconf_key);
+			g_free (escaped_name);
+
+			reprompt = ! last_attempt_success; /* it's obvious, but.. */
+
+			if ((user_pass = nma_dialup_request_username_and_password (applet, 
+														    name, 
+														    nma_dialup_connection_get_service (dialup), 
+														    reprompt)) != NULL)
+			{
+				nma_dbus_dialup_activate_connection (applet->connection, name, user_pass);
+
+				g_slist_foreach (user_pass, (GFunc)g_free, NULL);
+				g_slist_free (user_pass);
+			}
+		}
+	}
 
 	nmi_dbus_signal_user_interface_activated (applet->connection);
 }
 
 
 /*
- * nma_menu_dialup_hangup_activate
+ * nma_menu_configure_dialup_item_activate
  *
- * Signal function called when user clicks on a dialup menu item
+ * Signal function called when user clicks "Configure Dialup..."
  *
  */
-static void nma_menu_dialup_disconnect_item_activate (GtkMenuItem *item, gpointer user_data)
+static void
+nma_menu_configure_dialup_item_activate (GtkMenuItem *item, gpointer user_data)
 {
-	NMApplet *applet = (NMApplet *) user_data;
-	const char *dialup;
+	NMApplet	*applet = (NMApplet *)user_data;
+	const char *argv[] = { BINDIR "/nm-dialup-properties", NULL};
 
 	g_return_if_fail (item != NULL);
 	g_return_if_fail (applet != NULL);
 
-	dialup = g_object_get_data (G_OBJECT (item), "dialup");
-	if (!dialup)
-		return;
+	g_spawn_async (NULL, (gchar **) argv, NULL, 0, NULL, NULL, NULL, NULL);
 
-	nma_dbus_dialup_deactivate_connection (applet, dialup);
+	nmi_dbus_signal_user_interface_activated (applet->connection);
+}
+
+/*
+ * nma_menu_disconnect_dialup_item_activate
+ *
+ * Signal function called when user clicks "Disconnect Dialup..."
+ *
+ */
+static void nma_menu_disconnect_dialup_item_activate (GtkMenuItem *item, gpointer user_data)
+{
+	NMApplet	*applet = (NMApplet *)user_data;
+
+	g_return_if_fail (item != NULL);
+	g_return_if_fail (applet != NULL);
+
+	nma_dbus_dialup_deactivate_connection (applet->connection);
 
 	nmi_dbus_signal_user_interface_activated (applet->connection);
 }
@@ -1737,14 +1911,18 @@ static void nma_menu_add_vpn_menu (GtkWidget *menu, NMApplet *applet)
 
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), GTK_WIDGET (item));
 	gtk_widget_show_all (GTK_WIDGET (item));
+
+	applet->vpn_menu = GTK_WIDGET (vpn_menu);
 }
 
 
 static void nma_menu_add_dialup_menu (GtkWidget *menu, NMApplet *applet)
 {
 	GtkMenuItem *item;
+	GtkMenuItem *other_item;
 	GtkMenu *dialup_menu;
 	GSList *elt;
+	DialupConnection	*active_dialup;
 
 	g_return_if_fail (menu != NULL);
 	g_return_if_fail (applet != NULL);
@@ -1752,30 +1930,57 @@ static void nma_menu_add_dialup_menu (GtkWidget *menu, NMApplet *applet)
 	item = GTK_MENU_ITEM (gtk_menu_item_new_with_mnemonic (_("_Dial Up Connections")));
 
 	dialup_menu = GTK_MENU (gtk_menu_new ());
-	for (elt = applet->dialup_list; elt; elt = g_slist_next (elt))
+	active_dialup = nma_get_first_active_dialup_connection (applet);
+
+	for (elt = applet->dialup_connections; elt; elt = g_slist_next (elt))
 	{
-		GtkMenuItem *connect_item, *disconnect_item;
-		char *name = elt->data;
-		const char *label;
+		GtkCheckMenuItem  *dialup_item;
+		DialupConnection  *dialup = (DialupConnection *)elt->data;
+		const char	   *dialup_name = nma_dialup_connection_get_name (dialup);
 
-		/* FIXME: We should save and then check the state of the devices and show Connect _or_ Disconnect for each item */
+		dialup_item = GTK_CHECK_MENU_ITEM (gtk_check_menu_item_new_with_label (dialup_name));
+		gtk_check_menu_item_set_draw_as_radio (dialup_item, TRUE);
 
-		label = g_strdup_printf (_("Connect to %s..."), name);
-		connect_item = GTK_MENU_ITEM (gtk_menu_item_new_with_label (label));
-		g_object_set_data (G_OBJECT (connect_item), "dialup", name);
-		g_signal_connect (G_OBJECT (connect_item), "activate", G_CALLBACK (nma_menu_dialup_connect_item_activate), applet);
-		gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (connect_item));
+		nma_dialup_connection_ref (dialup);
+		g_object_set_data (G_OBJECT (dialup_item), "dialup", dialup);
 
-		label = g_strdup_printf (_("Disconnect from %s..."), name);
-		disconnect_item = GTK_MENU_ITEM (gtk_menu_item_new_with_label (label));
-		g_object_set_data (G_OBJECT (disconnect_item), "dialup", name);
-		g_signal_connect (G_OBJECT (disconnect_item), "activate", G_CALLBACK (nma_menu_dialup_disconnect_item_activate), applet);
-		gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (disconnect_item));
+		// only one dialup connection may be enabled at a time
+		if (active_dialup)
+		{
+			if (active_dialup == dialup)
+				gtk_check_menu_item_set_active (dialup_item, TRUE);
+			else
+				gtk_widget_set_sensitive (GTK_WIDGET (dialup_item), FALSE);
+		}
+
+
+		g_signal_connect (G_OBJECT (dialup_item), "activate", G_CALLBACK (nma_menu_dialup_item_activate), applet);
+		gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (dialup_item));
 	}
+
+	/* Draw a seperator, but only if we have dialup connections above it */
+	if (applet->dialup_connections)
+	{
+		other_item = GTK_MENU_ITEM (gtk_separator_menu_item_new ());
+		gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (other_item));
+	}
+
+	other_item = GTK_MENU_ITEM (gtk_menu_item_new_with_mnemonic (_("_Configure Dialup...")));
+	g_signal_connect (G_OBJECT (other_item), "activate", G_CALLBACK (nma_menu_configure_dialup_item_activate), applet);
+	gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (other_item));
+
+	other_item = GTK_MENU_ITEM (gtk_menu_item_new_with_mnemonic (_("_Disconnect Dialup...")));
+	g_signal_connect (G_OBJECT (other_item), "activate", G_CALLBACK (nma_menu_disconnect_dialup_item_activate), applet);
+	if (!active_dialup)
+		gtk_widget_set_sensitive (GTK_WIDGET (other_item), FALSE);
+	gtk_menu_shell_append (GTK_MENU_SHELL (dialup_menu), GTK_WIDGET (other_item));
+
 
 	gtk_menu_item_set_submenu (item, GTK_WIDGET (dialup_menu));
 	gtk_menu_shell_append (GTK_MENU_SHELL (menu), GTK_WIDGET (item));
 	gtk_widget_show_all (GTK_WIDGET (item));
+
+	applet->dialup_menu = GTK_WIDGET (dialup_menu);
 }
 
 
@@ -1798,6 +2003,28 @@ static gboolean is_vpn_available (void)
 
 	return result;
 }
+
+
+/** Returns TRUE if, and only if, we have dialup support installed
+ *
+ *  Algorithm: just check whether any files exist in the directory
+ *  /etc/NetworkManager/dialup
+ */
+static gboolean is_dialup_available (void)
+{
+	GDir *dir;
+	gboolean result;
+
+	result = FALSE;
+	if ((dir = g_dir_open (DIALUP_NAME_FILES_DIR, 0, NULL)) != NULL) {
+		if (g_dir_read_name (dir) != NULL)
+			result = TRUE;
+		g_dir_close (dir);
+	}
+
+	return result;
+}
+
 
 /*
  * nma_menu_add_devices
@@ -1883,9 +2110,9 @@ static void nma_menu_add_devices (GtkWidget *menu, NMApplet *applet)
 		}
 	}
 
-	/* Add the VPN and Dial Up menus and their associated seperator */
+	/* Add the VPN and dialup menus and their associated seperator */
 	vpn_available = is_vpn_available ();
-	dialup_available = !! applet->dialup_list;
+	dialup_available = is_dialup_available();
 	if (vpn_available || dialup_available)
 	{
 		nma_menu_add_separator_item (menu);
@@ -1965,6 +2192,12 @@ static void nma_menu_item_data_free (GtkWidget *menu_item, gpointer data)
 	{
 		g_object_set_data (G_OBJECT (menu_item), "vpn", NULL);
 		nma_vpn_connection_unref ((VPNConnection *)tag);
+	}
+
+	if ((tag = g_object_get_data (G_OBJECT (menu_item), "dialup")))
+	{
+		g_object_set_data (G_OBJECT (menu_item), "dialup", NULL);
+		nma_dialup_connection_unref ((DialupConnection *)tag);
 	}
 
 	if ((tag = g_object_get_data (G_OBJECT (menu_item), "disconnect")))
@@ -2434,6 +2667,64 @@ static void nma_gconf_vpn_connections_notify_callback (GConfClient *client, guin
 
 
 /*
+ * nma_gconf_dialup_connections_notify_callback
+ *
+ * Callback from gconf when dialup connection values have changed.
+ *
+ */
+static void nma_gconf_dialup_connections_notify_callback (GConfClient *client, guint connection_id, GConfEntry *entry, gpointer user_data)
+{
+	NMApplet *	applet = (NMApplet *)user_data;
+	const char *		key = NULL;
+
+	g_debug ("Entering nma_gconf_dialup_connections_notify_callback, key='%s'", gconf_entry_get_key (entry));
+
+	g_return_if_fail (client != NULL);
+	g_return_if_fail (entry != NULL);
+	g_return_if_fail (applet != NULL);
+
+	if ((key = gconf_entry_get_key (entry)))
+	{
+		int	path_len = strlen (GCONF_PATH_DIALUP_CONNECTIONS) + 1;
+
+		if (strncmp (GCONF_PATH_DIALUP_CONNECTIONS"/", key, path_len) == 0)
+		{
+			char 	 *name = g_strdup ((key + path_len));
+			char		 *slash_pos;
+			char	 	 *unescaped_name;
+			char       *name_path;
+			GConfValue *value;
+
+			// If its a key under the the dialup name, zero out the slash so we
+			// are left with only the dialup name.
+			//
+			if ((slash_pos = strchr (name, '/')))
+				*slash_pos = '\0';
+			unescaped_name = gconf_unescape_key (name, strlen (name));
+
+			// Check here if the name entry is gone so we can remove the conn from the UI
+			name_path = g_strdup_printf ("%s/%s/name", GCONF_PATH_DIALUP_CONNECTIONS, name);
+			gconf_client_clear_cache (client);
+			value = gconf_client_get (client, name_path, NULL);
+			if (value == NULL) {
+				// g_debug ("removing '%s' from UI", name_path);
+				nma_dbus_dialup_remove_one_dialup_connection (applet, unescaped_name);
+			} else {
+				gconf_value_free (value);
+			}
+			g_free (name_path);
+
+			nmi_dbus_signal_update_dialup_connection (applet->connection, unescaped_name);
+
+			g_free (unescaped_name);
+			g_free (name);
+		}
+
+	}
+}
+
+
+/*
  * nma_destroy
  *
  * Destroy the applet and clean up its data
@@ -2472,6 +2763,7 @@ static void G_GNUC_NORETURN nma_destroy (NMApplet *applet)
 
 	gconf_client_notify_remove (applet->gconf_client, applet->gconf_prefs_notify_id);
 	gconf_client_notify_remove (applet->gconf_client, applet->gconf_vpn_notify_id);
+	gconf_client_notify_remove (applet->gconf_client, applet->gconf_dialup_notify_id);
 	g_object_unref (G_OBJECT (applet->gconf_client));
 
 	dbus_method_dispatcher_unref (applet->nmi_methods);
@@ -2493,7 +2785,7 @@ static GtkWidget * nma_get_instance (NMApplet *applet)
 	applet->nm_running = FALSE;
 	applet->device_list = NULL;
 	applet->vpn_connections = NULL;
-	applet->dialup_list = NULL;
+	applet->dialup_connections = NULL;
 	applet->nm_state = NM_STATE_DISCONNECTED;
 	applet->tooltips = NULL;
 	applet->passphrase_dialog = NULL;
@@ -2523,6 +2815,10 @@ static GtkWidget * nma_get_instance (NMApplet *applet)
 	gconf_client_add_dir (applet->gconf_client, GCONF_PATH_VPN_CONNECTIONS, GCONF_CLIENT_PRELOAD_NONE, NULL);
 	applet->gconf_vpn_notify_id = gconf_client_notify_add (applet->gconf_client, GCONF_PATH_VPN_CONNECTIONS,
 						nma_gconf_vpn_connections_notify_callback, applet, NULL, NULL);
+
+	gconf_client_add_dir (applet->gconf_client, GCONF_PATH_DIALUP_CONNECTIONS, GCONF_CLIENT_PRELOAD_NONE, NULL);
+	applet->gconf_dialup_notify_id = gconf_client_notify_add (applet->gconf_client, GCONF_PATH_DIALUP_CONNECTIONS,
+												   nma_gconf_dialup_connections_notify_callback, applet, NULL, NULL);
 
 	/* Convert old-format stored network entries to the new format.
 	 * Must be RUN BEFORE DBUS INITIALIZATION since we have to do
@@ -2579,6 +2875,7 @@ static void nma_icons_zero (NMApplet *applet)
 	applet->no_connection_icon = NULL;
 	applet->wired_icon = NULL;
 	applet->adhoc_icon = NULL;
+	applet->dialup_icon = NULL;
 	applet->vpn_lock_icon = NULL;
 
 	applet->wireless_00_icon = NULL;
@@ -2597,6 +2894,9 @@ static void nma_icons_zero (NMApplet *applet)
 
 	for (i = 0; i < NUM_VPN_CONNECTING_FRAMES; i++)
 		applet->vpn_connecting_icons[i] = NULL;
+
+	for (i = 0; i < NUM_DIALUP_CONNECTING_FRAMES; i++)
+		applet->dialup_connecting_icons[i] = NULL;
 
 }
 
@@ -2627,6 +2927,7 @@ nma_icons_load_from_disk (NMApplet *applet, GtkIconTheme *icon_theme)
 	ICON_LOAD(applet->no_connection_icon, "nm-no-connection");
 	ICON_LOAD(applet->wired_icon, "nm-device-wired");
 	ICON_LOAD(applet->adhoc_icon, "nm-adhoc");
+	ICON_LOAD(applet->dialup_icon, "nm-dialup");
 	ICON_LOAD(applet->vpn_lock_icon, "nm-vpn-lock");
 
 	ICON_LOAD(applet->wireless_00_icon, "nm-signal-00");
@@ -2655,6 +2956,15 @@ nma_icons_load_from_disk (NMApplet *applet, GtkIconTheme *icon_theme)
 
 		name = g_strdup_printf ("nm-vpn-connecting%02d", i+1);
 		ICON_LOAD(applet->vpn_connecting_icons[i], name);
+		g_free (name);
+	}
+
+	for (i = 0; i < NUM_DIALUP_CONNECTING_FRAMES; i++)
+	{
+		char *name;
+
+		name = g_strdup_printf ("nm-dialup-connecting%02d", i+1);
+		ICON_LOAD(applet->dialup_connecting_icons[i], name);
 		g_free (name);
 	}
 

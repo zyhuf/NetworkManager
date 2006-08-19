@@ -1,7 +1,8 @@
 /* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
 /* NetworkManager Wireless Applet -- Display wireless access points and allow user control
  *
- * Dan Williams <dcbw@redhat.com>
+ * Tim Niemueller [www.niemueller.de]
+ * based on work by Dan Williams <dcbw@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,29 +19,24 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  * (C) Copyright 2004-2005 Red Hat, Inc.
+ * (C) Copyright 2006      Tim Niemueller
  */
 
-#ifndef APPLET_DBUS_INFO_H
-#define APPLET_DBUS_INFO_H
+#ifndef APPLET_DBUS_DIALUP_H
+#define APPLET_DBUS_DIALUP_H
 
+#include <glib.h>
 #include <dbus/dbus.h>
-#include "nm-device.h"
-#include "wireless-network.h"
-#include "NetworkManager.h"
-#include "nm-gconf-wso.h"
+#include "dialup-connection.h"
 
-DBusHandlerResult	nmi_dbus_info_message_handler			(DBusConnection *connection, DBusMessage *message, void *user_data);
+void		nma_dbus_dialup_set_last_attempt_status				(NMApplet *applet, const char *dialup_name, gboolean last_attempt_success);
 
-void				nmi_dbus_return_user_key				(DBusConnection *connection, DBusMessage *message, NMGConfWSO *security);
+void		nma_dbus_dialup_update_one_dialup_connection			(NMApplet *applet, const char *dialup_name);
+void		nma_dbus_dialup_update_dialup_connections			(NMApplet *applet);
+void		nma_dbus_dialup_remove_one_dialup_connection			(NMApplet *applet, const char *dialup_name);
 
-void				nmi_dbus_signal_update_network		(DBusConnection *connection, const char *network, NMNetworkType type);
-
-void				nmi_dbus_signal_update_vpn_connection	(DBusConnection *connection, const char *name);
-
-void				nmi_dbus_signal_update_dialup_connection	(DBusConnection *connection, const char *name);
-
-void				nmi_dbus_signal_user_interface_activated	(DBusConnection *connection);
-
-DBusMethodDispatcher *	nmi_dbus_nmi_methods_setup		(void);
+void		nma_dbus_dialup_activate_connection				(DBusConnection *connection, const char *name, GSList *user_pass);
+void		nma_dbus_dialup_deactivate_connection				(DBusConnection *connection);
+void		nma_dbus_dialup_update_dialup_connection_stage		(NMApplet *applet, const char *dialup_name, NMDialupActStage dialup_state);
 
 #endif

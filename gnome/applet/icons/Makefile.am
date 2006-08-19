@@ -10,6 +10,7 @@ smallicon_DATA=		\
 	nm-no-connection.png\
 	nm-device-wired.png	\
 	nm-adhoc.png		\
+	nm-dialup.png		\
 	nm-stage01-connecting01.png	\
 	nm-stage01-connecting02.png	\
 	nm-stage01-connecting03.png	\
@@ -62,6 +63,22 @@ smallicon_DATA=		\
 	nm-vpn-connecting12.png	\
 	nm-vpn-connecting13.png	\
 	nm-vpn-connecting14.png	\
+	nm-dialup-connecting01.png	\
+	nm-dialup-connecting02.png	\
+	nm-dialup-connecting03.png	\
+	nm-dialup-connecting04.png	\
+	nm-dialup-connecting05.png	\
+	nm-dialup-connecting06.png	\
+	nm-dialup-connecting07.png	\
+	nm-dialup-connecting08.png	\
+	nm-dialup-connecting09.png	\
+	nm-dialup-connecting10.png	\
+	nm-dialup-connecting11.png	\
+	nm-dialup-connecting12.png	\
+	nm-dialup-connecting13.png	\
+	nm-dialup-connecting14.png	\
+	nm-dialup-connecting15.png	\
+	nm-dialup-connecting16.png	\
 	nm-vpn-lock.png	\
 	$(NULL)
 
