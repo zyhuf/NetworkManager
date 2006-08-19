@@ -38,6 +38,7 @@
 #include "nm-dbus-nmi.h"
 #include "nm-device-802-11-wireless.h"
 #include "nm-device-802-3-ethernet.h"
+#include "nm-dialup-manager.h"
 
 
 /*
@@ -188,6 +189,10 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 	g_return_val_if_fail (ap != NULL, NULL);
 
 	if (data->asleep)
+		return NULL;
+
+	if (nm_dialup_manager_is_connecting(data->dialup_manager) ||
+	    nm_dialup_manager_is_connected(data->dialup_manager) )
 		return NULL;
 
 	for (elt = data->dev_list; elt != NULL; elt = g_slist_next (elt))

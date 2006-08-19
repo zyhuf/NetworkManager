@@ -31,7 +31,6 @@
 #include "NetworkManagerDbusUtils.h"
 #include "NetworkManagerUtils.h"
 #include "NetworkManagerPolicy.h"
-#include "NetworkManagerDialup.h"
 #include "NetworkManagerSystem.h"
 #include "NetworkManager.h"
 #include "nm-ap-security.h"
@@ -94,123 +93,6 @@ static DBusMessage *nm_dbus_nm_get_devices (DBusConnection *connection, DBusMess
 	}
 
 	return (reply);
-}
-
-
-static DBusMessage *nm_dbus_nm_get_dialup (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
-{
-	DBusMessage *reply = NULL;
-	DBusMessageIter iter;
-
-	g_return_val_if_fail (data != NULL, NULL);
-	g_return_val_if_fail (data->data != NULL, NULL);
-	g_return_val_if_fail (connection != NULL, NULL);
-	g_return_val_if_fail (message != NULL, NULL);
-
-	/* Check for no dialup devices */
-	if (!data->data->dialup_list)
-		return (nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "NoDialup",
-					"There are no available dialup devices."));
-
-	reply = dbus_message_new_method_return (message);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append (reply, &iter);
-	if (nm_try_acquire_mutex (data->data->dialup_list_mutex, __FUNCTION__))
-	{
-		DBusMessageIter iter_array;
-		GSList *elt;
-
-		dbus_message_iter_open_container (&iter, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &iter_array);
-
-		for (elt = data->data->dialup_list; elt; elt = g_slist_next (elt))
-		{
-			NMDialUpConfig *config = (NMDialUpConfig *) elt->data;
-			dbus_message_iter_append_basic (&iter_array, DBUS_TYPE_STRING, &config->name);
-		}
-
-		dbus_message_iter_close_container (&iter, &iter_array);
-		nm_unlock_mutex (data->data->dialup_list_mutex, __FUNCTION__);
-	}
-	else
-	{
-		dbus_message_unref (reply);
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "Retry",
-						"NetworkManager could not lock dialup list, try again.");
-	}
-
-	return reply;
-}
-
-
-static DBusMessage *nm_dbus_nm_activate_dialup (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
-{
-	DBusMessage *reply = NULL;
-	NMData *nm_data = (NMData *) data->data;
-	const char *dialup;
-
-	g_return_val_if_fail (data != NULL, NULL);
-	g_return_val_if_fail (data->data != NULL, NULL);
-	g_return_val_if_fail (connection != NULL, NULL);
-	g_return_val_if_fail (message != NULL, NULL);
-
-	reply = dbus_message_new_method_return (message);
-	if (!reply)
-		return NULL;
-
-	if (!dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &dialup, DBUS_TYPE_INVALID))
-	{
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidArguments",
-									   "NetworkManager::activateDialup called with invalid arguments.");
-		goto out;
-	}
-
-	nm_lock_mutex (nm_data->dialup_list_mutex, __FUNCTION__);
-	if (!nm_system_activate_dialup (nm_data->dialup_list, dialup))
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "ActivationFailed",
-									   "Failed to activate the dialup device.");
-	else
-		nm_data->modem_active = TRUE;
-	nm_unlock_mutex (nm_data->dialup_list_mutex, __FUNCTION__);
-
-out:
-	return reply;
-}
-
-
-static DBusMessage *nm_dbus_nm_deactivate_dialup (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
-{
-	DBusMessage *reply = NULL;
-	NMData *nm_data = (NMData *) data->data;
-	const char *dialup;
-
-	g_return_val_if_fail (data != NULL, NULL);
-	g_return_val_if_fail (data->data != NULL, NULL);
-	g_return_val_if_fail (connection != NULL, NULL);
-	g_return_val_if_fail (message != NULL, NULL);
-
-	reply = dbus_message_new_method_return (message);
-	if (!reply)
-		return NULL;
-
-	if (!dbus_message_get_args (message, NULL, DBUS_TYPE_STRING, &dialup, DBUS_TYPE_INVALID))
-	{
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidArguments",
-									   "NetworkManager::deactivateDialup called with invalid arguments.");
-		goto out;
-	}
-
-	nm_lock_mutex (nm_data->dialup_list_mutex, __FUNCTION__);
-	if (!nm_system_deactivate_dialup (nm_data->dialup_list, dialup))
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "DeactivationFailed",
-									   "Failed to deactivate the dialup device.");
-	else
-		nm_data->modem_active = FALSE;
-	nm_unlock_mutex (nm_data->dialup_list_mutex, __FUNCTION__);
-
-out:
-	return reply;
 }
 
 
@@ -563,10 +445,6 @@ static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *m
 		}
 		nm_unlock_mutex (app_data->dev_list_mutex, __FUNCTION__);
 
-		nm_lock_mutex (app_data->dialup_list_mutex, __FUNCTION__);
-		nm_system_deactivate_all_dialup (app_data->dialup_list);
-		app_data->modem_active = FALSE;
-		nm_unlock_mutex (app_data->dialup_list_mutex, __FUNCTION__);
 	}
 
 	return NULL;
@@ -625,9 +503,6 @@ NMDbusMethodList *nm_dbus_nm_methods_setup (void)
 	NMDbusMethodList	*list = nm_dbus_method_list_new (NULL);
 
 	nm_dbus_method_list_add_method (list, "getDevices",			nm_dbus_nm_get_devices);
-	nm_dbus_method_list_add_method (list, "getDialup",			nm_dbus_nm_get_dialup);
-	nm_dbus_method_list_add_method (list, "activateDialup",		nm_dbus_nm_activate_dialup);
-	nm_dbus_method_list_add_method (list, "deactivateDialup",		nm_dbus_nm_deactivate_dialup);
 	nm_dbus_method_list_add_method (list, "setActiveDevice",		nm_dbus_nm_set_active_device);
 	nm_dbus_method_list_add_method (list, "createWirelessNetwork",	nm_dbus_nm_create_wireless_network);
 	nm_dbus_method_list_add_method (list, "setWirelessEnabled",		nm_dbus_nm_set_wireless_enabled);

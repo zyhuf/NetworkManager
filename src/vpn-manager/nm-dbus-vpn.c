@@ -660,8 +660,10 @@ static DBusMessage *nm_dbus_vpn_get_vpn_connection_properties (DBusConnection *c
 				if (req && (nm_vpn_act_request_get_connection (req) == vpn))
 					stage = nm_vpn_act_request_get_stage (req);
 
-				dbus_message_append_args (reply, DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &user_name,
-								DBUS_TYPE_STRING, &service_name, DBUS_TYPE_UINT32, &stage, DBUS_TYPE_INVALID);
+				dbus_message_append_args (reply,
+							  DBUS_TYPE_STRING, &name,
+							  DBUS_TYPE_STRING, &user_name,
+							  DBUS_TYPE_STRING, &service_name, DBUS_TYPE_UINT32, &stage, DBUS_TYPE_INVALID);
 				good = TRUE;
 			}
 		}

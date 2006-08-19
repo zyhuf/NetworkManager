@@ -1,10 +1,11 @@
-SUBDIRS=named-manager vpn-manager dhcp-manager ppp-manager backends
+SUBDIRS=named-manager vpn-manager dhcp-manager dialup backends
 
 INCLUDES = -I${top_srcdir}                   \
            -I${top_srcdir}/include           \
            -I${top_srcdir}/src/named-manager \
            -I${top_srcdir}/src/vpn-manager   \
            -I${top_srcdir}/src/dhcp-manager  \
+           -I${top_srcdir}/src/dialup/manager  \
            -I${top_srcdir}/utils			\
            -I${top_srcdir}/libnm-util
 
@@ -121,6 +122,7 @@ NetworkManager_LDADD = 							\
 			./named-manager/libnamed-manager.la	\
 			./vpn-manager/libvpn-manager.la		\
 			./dhcp-manager/libdhcp-manager.la		\
+			./dialup/manager/libdialup-manager.la		\
 			./backends/libnmbackend.la			\
 			$(top_builddir)/libnm-util/libnm-util.la
 

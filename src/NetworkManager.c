@@ -52,6 +52,8 @@
 #include "nm-named-manager.h"
 #include "nm-vpn-act-request.h"
 #include "nm-dbus-vpn.h"
+#include "nm-dialup-act-request.h"
+#include "nm-dbus-dialup.h"
 #include "nm-netlink-monitor.h"
 #include "nm-dhcp-manager.h"
 #include "nm-logging.h"
@@ -447,15 +449,13 @@ static NMData *nm_data_new (gboolean enable_test_devices)
 
 	/* Initialize the device list mutex to protect additions/deletions to it. */
 	data->dev_list_mutex = g_mutex_new ();
-	data->dialup_list_mutex = g_mutex_new ();
-	if (!data->dev_list_mutex || !data->dialup_list_mutex)
+	if (!data->dev_list_mutex)
 	{
 		nm_data_free (data);
 		nm_warning ("could not initialize data structure locks.");
 		return NULL;
 	}
 	nm_register_mutex_desc (data->dev_list_mutex, "Device List Mutex");
-	nm_register_mutex_desc (data->dialup_list_mutex, "DialUp List Mutex");
 
 	/* Initialize the access point lists */
 	data->allowed_ap_list = nm_ap_list_new (NETWORK_TYPE_ALLOWED);
@@ -499,13 +499,17 @@ static void device_stop_and_free (NMDevice *dev, gpointer user_data)
  */
 static void nm_data_free (NMData *data)
 {
-	NMVPNActRequest *req;
+	NMVPNActRequest *vpn_act_req;
+	NMDialupActRequest *dialup_act_req;
 
 	g_return_if_fail (data != NULL);
 
 	/* Kill any active VPN connection */
-	if ((req = nm_vpn_manager_get_vpn_act_request (data->vpn_manager)))
-		nm_vpn_manager_deactivate_vpn_connection (data->vpn_manager, nm_vpn_act_request_get_parent_dev (req));
+	if ((vpn_act_req = nm_vpn_manager_get_vpn_act_request (data->vpn_manager)))
+		nm_vpn_manager_deactivate_vpn_connection (data->vpn_manager, nm_vpn_act_request_get_parent_dev (vpn_act_req));
+
+	if ((dialup_act_req = nm_dialup_manager_get_dialup_act_request (data->dialup_manager)))
+		nm_dialup_manager_deactivate_dialup_connection (data->dialup_manager);
 
 	if (data->netlink_monitor)
 	{
@@ -527,6 +531,7 @@ static void nm_data_free (NMData *data)
 	nm_vpn_manager_dispose (data->vpn_manager);
 	nm_dhcp_manager_dispose (data->dhcp_manager);
 	g_object_unref (data->named_manager);
+	nm_dialup_manager_dispose (data->dialup_manager);
 
 	g_main_loop_unref (data->main_loop);
 	g_main_context_unref (data->main_context);
@@ -769,12 +774,14 @@ int main( int argc, char *argv[] )
 	nm_data->vpn_manager = nm_vpn_manager_new (nm_data);
 	nm_data->dhcp_manager = nm_dhcp_manager_new (nm_data);
 	nm_data->named_manager = nm_named_manager_new (nm_data->dbus_connection);
+	nm_data->dialup_manager = nm_dialup_manager_new (nm_data);
 
 	/* If NMI is running, grab allowed wireless network lists from it ASAP */
 	if (nm_dbus_is_info_daemon_running (nm_data->dbus_connection))
 	{
 		nm_policy_schedule_allowed_ap_list_update (nm_data);
 		nm_dbus_vpn_schedule_vpn_connections_update (nm_data);
+		nm_dbus_dialup_schedule_dialup_connections_update (nm_data);
 	}
 
 	/* Right before we init hal, we have to make sure our mainloop
@@ -797,7 +804,7 @@ int main( int argc, char *argv[] )
 	nm_system_enable_loopback ();
 
 	/* Get modems, ISDN, and so on's configuration from the system */
-	nm_data->dialup_list = nm_system_get_dialup_config ();
+	// nm_data->dialup_list = nm_system_get_dialup_config ();
 
 	/* Run the main loop */
 	nm_policy_schedule_device_change_check (nm_data);

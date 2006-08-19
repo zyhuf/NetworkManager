@@ -40,9 +40,11 @@
 #include "nm-dbus-device.h"
 #include "nm-dbus-net.h"
 #include "nm-dbus-vpn.h"
+#include "nm-dbus-dialup.h"
 #include "nm-dbus-nmi.h"
 #include "nm-utils.h"
 #include "nm-dhcp-manager.h"
+#include "nm-dialup-manager.h"
 
 static char *get_nmi_match_string (const char *owner);
 
@@ -300,8 +302,24 @@ NMState nm_get_app_state_from_data (NMData *data)
 		return NM_STATE_ASLEEP;
 
 	act_dev = nm_get_active_device (data);
-	if (!act_dev && !data->modem_active)
-		return NM_STATE_DISCONNECTED;
+	if (!act_dev)
+	{
+		nm_info ("AppState: No active device");
+
+		if ( nm_dialup_manager_is_connecting(data->dialup_manager) )
+		{
+			nm_info ("AppState: dialup is connecting");
+			return NM_STATE_DIALUP_CONNECTING;
+		}
+		else if ( nm_dialup_manager_is_connected(data->dialup_manager) )
+		{
+			nm_info ("AppState: dialup is connected");
+			return NM_STATE_DIALUP_CONNECTED;
+		}
+		else
+			return NM_STATE_DISCONNECTED;
+
+	}
 
 	if (nm_device_is_activating (act_dev))
 		return NM_STATE_CONNECTING;
@@ -486,6 +504,17 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 				handled = TRUE;
 			}
 		}
+		else if (dbus_message_is_signal (message, NMI_DBUS_INTERFACE, "DialupConnectionUpdate"))
+		{
+			char	*name = NULL;
+
+			if (dbus_message_get_args (message, &error, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID))
+			{
+				nm_debug ("NetworkManagerInfo triggered update of dialup connection '%s'", name);
+				nm_dbus_dialup_update_one_dialup_connection (data->dbus_connection, name, data);
+				handled = TRUE;
+			}
+		}
 		else if (dbus_message_is_signal (message, NMI_DBUS_INTERFACE, "UserInterfaceActivated"))
 		{
 			nm_device_802_11_wireless_set_scan_interval (data, NULL, NM_WIRELESS_SCAN_INTERVAL_ACTIVE);
@@ -521,6 +550,7 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 					dbus_bus_add_match (connection, match, NULL);
 					nm_policy_schedule_allowed_ap_list_update (data);
 					nm_dbus_vpn_schedule_vpn_connections_update (data);
+					nm_dbus_dialup_schedule_dialup_connections_update (data);
 					g_free (match);
 					handled = TRUE;
 				}
@@ -548,6 +578,8 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 				handled = TRUE;
 			else if (nm_vpn_manager_process_name_owner_changed (data->vpn_manager, service, old_owner, new_owner) == TRUE)
 				handled = TRUE;
+			else if (nm_dialup_manager_process_name_owner_changed (data->dialup_manager, service, old_owner, new_owner) == TRUE)
+				handled = TRUE;
 			else if (nm_named_manager_process_name_owner_changed (data->named_manager, service, old_owner, new_owner) == TRUE)
 				handled = TRUE;
 		}
@@ -555,6 +587,8 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 	else if (nm_dhcp_manager_process_signal (data->dhcp_manager, message) == TRUE)
 		handled = TRUE;
 	else if (nm_vpn_manager_process_signal (data->vpn_manager, message) == TRUE)
+		handled = TRUE;
+	else if (nm_dialup_manager_process_signal (data->dialup_manager, message) == TRUE)
 		handled = TRUE;
 
 	if (dbus_error_is_set (&error))
@@ -679,6 +713,37 @@ static DBusHandlerResult nm_dbus_vpn_message_handler (DBusConnection *connection
 
 
 /*
+ * nm_dbus_dialup_message_handler
+ *
+ * Dispatch messages against our NetworkManager DialupConnections object
+ *
+ */
+static DBusHandlerResult nm_dbus_dialup_message_handler (DBusConnection *connection, DBusMessage *message, void *user_data)
+{
+	NMData			*data = (NMData *)user_data;
+	gboolean			 handled = TRUE;
+	DBusMessage		*reply = NULL;
+	NMDbusCBData		 cb_data;
+
+	g_return_val_if_fail (data != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
+	g_return_val_if_fail (data->vpn_methods != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
+	g_return_val_if_fail (connection != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
+	g_return_val_if_fail (message != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
+
+	cb_data.data = data;
+	cb_data.dev = NULL;
+	handled = nm_dbus_method_dispatch (data->dialup_methods, connection, message, &cb_data, &reply);
+	if (reply)
+	{
+		dbus_connection_send (connection, reply, NULL);
+		dbus_message_unref (reply);
+	}
+
+	return (handled ? DBUS_HANDLER_RESULT_HANDLED : DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
+}
+
+
+/*
  * nm_dbus_is_info_daemon_running
  *
  * Ask dbus whether or not the info daemon is providing its dbus service
@@ -777,6 +842,7 @@ DBusConnection *nm_dbus_init (NMData *data)
 	DBusObjectPathVTable	nm_vtable = {NULL, &nm_dbus_nm_message_handler, NULL, NULL, NULL, NULL};
 	DBusObjectPathVTable	devices_vtable = {NULL, &nm_dbus_devices_message_handler, NULL, NULL, NULL, NULL};
 	DBusObjectPathVTable	vpn_vtable = {NULL, &nm_dbus_vpn_message_handler, NULL, NULL, NULL, NULL};
+	DBusObjectPathVTable	dialup_vtable = {NULL, &nm_dbus_dialup_message_handler, NULL, NULL, NULL, NULL};
 	char *				owner;
 	int					flags, ret;
 
@@ -798,10 +864,12 @@ DBusConnection *nm_dbus_init (NMData *data)
 	data->device_methods = nm_dbus_device_methods_setup ();
 	data->net_methods = nm_dbus_net_methods_setup ();
 	data->vpn_methods = nm_dbus_vpn_methods_setup ();
+	data->dialup_methods = nm_dbus_dialup_methods_setup ();
 
 	if (    !dbus_connection_register_object_path (connection, NM_DBUS_PATH, &nm_vtable, data)
 		|| !dbus_connection_register_fallback (connection, NM_DBUS_PATH_DEVICES, &devices_vtable, data)
-		|| !dbus_connection_register_object_path (connection, NM_DBUS_PATH_VPN, &vpn_vtable, data))
+		|| !dbus_connection_register_object_path (connection, NM_DBUS_PATH_VPN, &vpn_vtable, data)
+		|| !dbus_connection_register_object_path (connection, NM_DBUS_PATH_DIALUP, &dialup_vtable, data))
 	{
 		nm_error ("nm_dbus_init() could not register D-BUS handlers.  Cannot continue.");
 		connection = NULL;

@@ -50,6 +50,8 @@ typedef struct NMActRequest NMActRequest;
 typedef struct NMVPNActRequest NMVPNActRequest;
 typedef struct NMVPNManager NMVPNManager;
 typedef struct NMDHCPManager NMDHCPManager;
+typedef struct NMDialupActRequest NMDialupActRequest;
+typedef struct NMDialupManager NMDialupManager;
 
 #define DHCP_SERVICE_NAME	"com.redhat.dhcp"
 #define DHCP_OBJECT_PATH		"/com/redhat/dhcp"
@@ -66,12 +68,14 @@ typedef struct NMData
 	NMNamedManager *		named_manager;
 	NMVPNManager *			vpn_manager;
 	NMDHCPManager *		dhcp_manager;
+	NMDialupManager *		dialup_manager;
 
 	DBusConnection *		dbus_connection;
 	NMDbusMethodList *		nm_methods;
 	NMDbusMethodList *		device_methods;
 	NMDbusMethodList *		net_methods;
 	NMDbusMethodList *		vpn_methods;
+	NMDbusMethodList *		dialup_methods;
 
 	GMainContext *			main_context;
 	GMainLoop *			main_loop;
@@ -83,11 +87,7 @@ typedef struct NMData
 	GMutex *				dev_list_mutex;
 
 	gboolean				wireless_enabled;
-	gboolean				modem_active;
 	gboolean				asleep;
-
-	GSList *				dialup_list;
-	GMutex *				dialup_list_mutex;
 
 	struct NMAccessPointList	*allowed_ap_list;
 	struct NMAccessPointList	*invalid_ap_list;
