@@ -1,3 +1,64 @@
+2006-08-19  Tim Niemueller  <tim@niemueller.de>
+
+	* src/dialup/*: New directory that holds NM core dialup support
+	* src/dialup/manager/*: Added new dialup manager, full ability to
+	                        start and control connections
+	* src/dialup/ppp/*: PPP connection service, handles connections via
+	                    pppd, stuff from old ppp-manager directory
+	* src/ppp-manager/*: removed, now in src/dialup/manager
+	                     and src/dialup/ppp
+	* src/backends/NetworkManagerArch.c
+	  src/backends/NetworkManagerDebian.c
+	  src/backends/NetworkManagerGeneric.c
+	  src/backends/NetworkManagerGeneric.h
+	  src/backends/NetworkManagerGentoo.c
+	  src/backends/NetworkManagerPaldo.c
+	  src/backends/NetworkManagerRedHat.c
+	  src/backends/NetworkManagerSlackware.c
+	  src/backends/NetworkManagerSuSE.c:
+		Removed hooks for old dialup support
+	* src/vpn-manager/nm-dbus-vpn.c: Readability fixes
+	* configure.in: Added all the new Makefiles that have to be created
+	* gnome/Makefile.am: Added new dialup-auth and dialup-properties
+	                     subdirectories that have to be build
+	* gnome/applet/applet-dbus-dialup.c
+	  gnome/applet/applet-dbus-dialup.h
+	  gnome/applet/dialup-connection.c
+	  gnome/applet/dialup-connection.h
+	  gnome/applet/dialup-password-dialog.c
+	  gnome/applet/dialup-password-dialog.h
+	  gnome/applet/applet-dbus-devices.c
+	  gnome/applet/applet-dbus-devices.h
+	  gnome/applet/applet-dbus-info.c
+	  gnome/applet/applet-dbus-info.h
+	  gnome/applet/applet-dbus.c
+	  gnome/applet/applet.c
+	  gnome/applet/applet.h: Added support for handling dialup connections
+	* gnome/applet/icons/nm-dialup-*.png
+	  gnome/applet/icons/Makefile.am: Added new icons for dialup connections
+	* include/NetworkManager.h: Added new states DIALUP_CONNECTING and
+	                            DIALUP_CONNECTED
+	* include/NetworkManagerDialup.h: Shared definitions for dialup
+	                                  connections
+	* src/NetworkManager.c
+	  src/NetworkManagerDbus.c
+	  src/NetworkManagerMain.h
+	  src/NetworkManagerPolicy.c
+	  src/NetworkManagerSystem.h
+	  src/nm-dbus-nm.c: Remove old dialup code, add support for new
+	                    dialup manager
+	* src/NetworkManagerDialup.h: removed, belonged to old dialup system
+	* gnome/dialup-auth/*: Added authentication modules for dialup.
+	* gnome/dialup-auth/common: Common authentication stuff in a lib, for
+	                            now contains password dialog
+	* gnome/dialup-auth/ppp: Authentication for PPP-like connections, just
+	                         queries for username and password
+	* gnome/dialup-properties/*: Dialup properties dialog
+	* gnome/dialup-properties/modem/*: Dialup properties dialog for modem
+	                                   connections
+	* gnome/dialup-properties/btbgrs/*: Dialup properties dialog for GPRS
+	                                    connections over mobile via BT
+
 2006-07-27  Tim Niemueller  <tim@niemueller.de>
 
 	* src/ppp-manager/.cvsignore: Added mandatory cvsignore file
