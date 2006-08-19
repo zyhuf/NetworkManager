@@ -518,35 +518,6 @@ NMIP4Config *nm_system_device_new_ip4_system_config (NMDevice *dev)
 }
 
 
-void nm_system_deactivate_all_dialup (GSList *list)
-{
-	/* FIXME: implement for paldo */
-}
-
-
-gboolean nm_system_deactivate_dialup (GSList *list, const char *dialup)
-{
-	/* FIXME: implement for paldo */
-
-	return FALSE;
-}
-
-
-gboolean nm_system_activate_dialup (GSList *list, const char *dialup)
-{
-	/* FIXME: implement for paldo */
-
-	return FALSE;
-}
-
-
-GSList * nm_system_get_dialup_config (void)
-{
-	/* FIXME: implement for paldo */
-
-	return NULL;
-}
-
 /*
  * nm_system_activate_nis
  *
