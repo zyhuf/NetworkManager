@@ -1,3 +1,52 @@
+2006-08-25  Tim Niemueller  <tim@niemueller.de>
+
+	* gnome/dialup-auth/pppoe/*: Authentication app for
+	  PPPoE, has the extra login form for T-Online the same way that
+	  system-config-network from Fedora has it, very handy in Germany
+	* gnome/dialup-properties/pppoe/*: Properties dialog for PPPoE
+	  DSL connections
+	* configure.in: Added new Makefiles and service files hat have to
+	  be generated
+	* Makefile.am: Added dialup-services subdir
+	* gnome/dialup-auth/Makefile.am: New subdir for pppoe
+	* gnome/dialup-auth/common/gnome-two-password-dialog.(h|c):
+	  Extended to allow for an extra button with an arbitrary callback,
+	  used for instance in PPPoE auth to have an additional T-Online
+	  button
+	* gnome/dialup-properties/Makefile.am: Added pppoe subdir
+	* gnome/dialup-properties/nm-dialup-properties.c: Added support for
+	  a dbus connection, given to the plugins. Used for instance in
+	  pppoe properties to fetch a list of wired network interfaces
+	* gnome/dialup-properties/nm-dialup-ui-interface.h:
+	  Extended by a method to set a dbus connection
+	* gnome/dialup-properties/btgprs/nm-btgprs-properties.c:
+	  - Added support for set_dbus_connection
+	  - Fixes to correctly display saved btdevice and btchannel
+	* gnome/dialup-properties/btgprs/Makefile.am
+	  gnome/dialup-properties/modem/Makefile.am: Added CFLAGS and
+	  libs for dbus
+	* gnome/dialup-properties/modem/nm-modem-properties.c
+	  gnome/dialup-properties/modem/nm-modem-dialog.glade:
+	  - Changed "Use x compression" to "Disable x compression" to reflect
+	    pppd reality of handling compression
+	* test/Makefile.am
+	  test/nm-dialup.h: Updated for new structure
+	* src/dialup/ppp/Makefile.am: Fixed command to extract PPP version
+	* src/dialup/ppp/nm-ppp-service.c:
+	  - Added support for pppoe
+	  - More warnings and error checks where appropriate
+	  - Changed effect of compression flags: pppd has everything on by
+	    default and has flags to disable certain compression features,
+	    reflect that by disabling a compression if not requested
+	* patches/wvstreams-4.2.1-conffd.patch: Allow for opening a config
+	  file from an file descriptor (on non win32 systems)
+	* patches/wvdial-1.54-cfgstdin.patch:
+	  This adds a flag --config-stdin which makes wvdial read the config
+	  file from stdin, will wait up to 10 seconds for data to arrive
+	* patches/wvdial-1.54-pppdoptions.patch: Allow up to 10 pppd options
+	  instead of just one
+	* dialup-services/*: Added dialup service files
+
 2006-08-19  Tim Niemueller  <tim@niemueller.de>
 
 	* src/dialup/*: New directory that holds NM core dialup support
