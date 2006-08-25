@@ -1,0 +1,8 @@
+[Dialup Connection]
+name=modem
+service=org.freedesktop.NetworkManager.ppp
+program=@BINDIR@/nm-ppp-service
+
+[GNOME]
+auth-dialog=@LIBEXECDIR@/nm-ppp-auth-dialog
+properties=@LIBDIR@/libnm-modem-properties
