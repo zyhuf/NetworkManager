@@ -50,6 +50,7 @@
 #include "nm-utils.h"
 
 #define NM_PPPD_PLUGIN		"nm-pppd-plugin.so"
+#define NM_PPPOE_PIDFILE        LOCALSTATEDIR"/run/NetworkManager-pppoe.pid"
 
 typedef struct _NmPPP_IOData
 {
@@ -66,6 +67,7 @@ typedef struct _NmPPPData
   DBusConnection       *con;
   NMDialupState		state;
   gboolean              use_wvdial;
+  gboolean              use_pppoe;
   GPid			pid;
   guint			quit_timer;
   guint			helper_timer;
@@ -441,7 +443,7 @@ write_config_option (int fd, const char *format, ...)
 static gint
 nm_ppp_start_pppd_binary (NmPPPData *data,
 				 char **data_items, const int num_items,
-				 char **passwords, const int num_passwords
+				 char **userpass, const int num_userpass
 				 )
 {
   GPid	        pid;
@@ -453,8 +455,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
   gint          stderr_fd = -1;
   int           i = 0;
 
-  char         *speed = NULL;
-  char         *tty = NULL;
+  char         *baudrate = NULL;
+  char         *device = NULL;
   char         *flowcontrol = NULL;
   char         *plugin = NULL;
   char         *number = NULL;
@@ -468,10 +470,32 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
   char         *init_8 = NULL;
   char         *init_9 = NULL;
   char         *volume = "0";
+  char         *pty    = NULL;
+  char         *mtu    = NULL;
+  char         *mru    = NULL;
+  char         *asyncmap = NULL;
+  gboolean      use_lock = FALSE;
+  gboolean      use_comp_vjheader = FALSE;
+  gboolean      use_comp_vjcid = FALSE;
+  gboolean      use_comp_acc = FALSE;
+  gboolean      use_comp_pfc = FALSE;
+  gboolean      use_comp_deflate = FALSE;
+  gboolean      use_comp_bsd = FALSE;
+  gboolean      use_comp_ccp = FALSE;
+  char         *lcp_echo_interval = NULL;
+  char         *lcp_echo_failure = NULL;
+  char         *pppoe_stt = NULL;
+  char         *pppoe_mss = NULL;
+  char         *pppoe_service_name = NULL;
+  char         *pppoe_ac_name = NULL;
+  char         *pppoe_interface = NULL;
+  gboolean      pppoe_synchronous = FALSE;
 
   g_return_val_if_fail (data != NULL, -1);
 
   data->pid = 0;
+
+  nm_info ("Starting binary");
 
   if ( (num_items == 0) || (data_items == NULL) ) {
     return -1;
@@ -487,13 +511,73 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
   // Note that it should be guaranteed that num_items % 2 == 0
   // Parse parameters
   for (i = 0; i < num_items; ++i) {
+    /* wvdial */
     if ( (strcmp( data_items[i], "wvdial" ) == 0) &&
 		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      if ( data->use_wvdial ) {
+	nm_warning ("Wvdial and PPPoE cannot be used at the same time!");
+	return -2;
+      }
+      if ( pty != NULL ) {
+	nm_warning ("Custom pty cannot be used with wvdial or PPPoE!");
+	return -4;
+      }
       data->use_wvdial = TRUE;
+
+    /* pppoe */
+    } else if ( (strcmp( data_items[i], "pppoe" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      if ( data->use_pppoe ) {
+	nm_warning ("Wvdial and PPPoE cannot be used at the same time!");
+	return -2;
+      }
+      if ( pty != NULL ) {
+	nm_warning ("Custom pty cannot be used with wvdial or PPPoE!");
+	return -4;
+      }
+      data->use_pppoe = TRUE;
+
+    /* pty */
+    } else if ( strcmp( data_items[i], "pty" ) == 0) {
+      if ( device != NULL ) {
+	nm_warning ("Device and a pty cannot be supplied at the same time!");
+	return -3;
+      }
+      if ( data->use_wvdial || data->use_pppoe ) {
+	nm_warning ("Custom pty cannot be used with wvdial or PPPoE!");
+	return -4;
+      }
+      pty = data_items[++i];
+
+    } else if ( strcmp( data_items[i], "mtu" ) == 0) {
+      mtu = data_items[++i];
+    } else if ( strcmp( data_items[i], "mru" ) == 0) {
+      mru = data_items[++i];
     } else if ( strcmp( data_items[i], "baudrate" ) == 0) {
-      speed = data_items[++i];
+      baudrate = data_items[++i];
     } else if ( strcmp( data_items[i], "number" ) == 0) {
       number = data_items[++i];
+    } else if ( strcmp( data_items[i], "volume" ) == 0) {
+      volume = data_items[++i];
+    } else if ( strcmp( data_items[i], "flowcontrol" ) == 0) {
+      ++i;
+      if ( (strcmp( data_items[i], "crtscts" ) == 0) ||
+	   (strcmp( data_items[i], "xonxoff" ) == 0) ) {
+	flowcontrol = data_items[i];
+      }
+    } else if ( strcmp( data_items[i], "plugin" ) == 0) {
+      plugin = data_items[++i];
+    } else if ( (strcmp( data_items[i], "lock" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_lock = TRUE;
+    } else if ( strcmp( data_items[i], "device" ) == 0) {
+      if ( pty != NULL ) {
+	nm_warning ("Device and a pty cannot be supplied at the same time!");
+	return -3;
+      }
+      device = data_items[++i];
+    } else if ( strcmp( data_items[i], "asyncmap" ) == 0) {
+      asyncmap = data_items[++i];
     } else if ( strcmp( data_items[i], "init_1" ) == 0) {
       init_1 = data_items[++i];
     } else if ( strcmp( data_items[i], "init_2" ) == 0) {
@@ -512,33 +596,46 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       init_8 = data_items[++i];
     } else if ( strcmp( data_items[i], "init_9" ) == 0) {
       init_9 = data_items[++i];
-    } else if ( strcmp( data_items[i], "device" ) == 0) {
-      tty = data_items[++i];
-    } else if ( strcmp( data_items[i], "volume" ) == 0) {
-      volume = data_items[++i];
-    } else if ( strcmp( data_items[i], "flowcontrol" ) == 0) {
-      ++i;
-      if ( (strcmp( data_items[i], "crtscts" ) == 0) ||
-	   (strcmp( data_items[i], "xonxoff" ) == 0) ) {
-	flowcontrol = data_items[i];
-      }
-    } else if ( strcmp( data_items[i], "plugin" ) == 0) {
-      plugin = data_items[++i];
+    } else if ( (strcmp( data_items[i], "comp-vjheader" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_vjheader = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-vjcid" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_vjcid = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-acc" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_acc = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-pfc" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_pfc = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-deflate" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_deflate = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-bsd" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_bsd = TRUE;
+    } else if ( (strcmp( data_items[i], "comp-ccp" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      use_comp_ccp = TRUE;
+    } else if ( strcmp( data_items[i], "lcp_echo_interval" ) == 0) {
+      lcp_echo_interval = data_items[++i];
+    } else if ( strcmp( data_items[i], "lcp_echo_failure" ) == 0) {
+      lcp_echo_failure = data_items[++i];
+    } else if ( strcmp( data_items[i], "pppoe-session-traffic-timeout" ) == 0) {
+      pppoe_stt = data_items[++i];
+    } else if ( strcmp( data_items[i], "pppoe-mss" ) == 0) {
+      pppoe_mss = data_items[++i];
+    } else if ( strcmp( data_items[i], "pppoe-service-name" ) == 0) {
+      pppoe_service_name = data_items[++i];
+    } else if ( strcmp( data_items[i], "pppoe-ac-name" ) == 0) {
+      pppoe_ac_name = data_items[++i];
+    } else if ( strcmp( data_items[i], "pppoe-interface" ) == 0) {
+      pppoe_interface = data_items[++i];
+    } else if ( (strcmp( data_items[i], "pppoe-synchronous" ) == 0) &&
+		(strcmp( data_items[++i], "yes" ) == 0) ) {
+      pppoe_synchronous = TRUE;
     }
 
-
-    
-    /*
-    // Device, either tun or tap
-    g_ptr_array_add (ppp_argv, (gpointer) "--dev");
-    if ( (dev != NULL) ) {
-      g_ptr_array_add (ppp_argv, (gpointer) dev);
-    } else {
-      // Versions prior to 0.3.0 didn't set this so we default for
-      // tun for these configs
-      g_ptr_array_add (ppp_argv, (gpointer) "tun");
-    }
-    */    
   }
 
   if ( data->use_wvdial ) {
@@ -550,6 +647,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       nm_info ("Could not find wvdial binary.");
       return -1;
     }
+
+    nm_info ("Starting wvdial connection");
 
     wvdial_argv = g_ptr_array_new ();
 
@@ -573,12 +672,12 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
       fc = g_string_ascii_up( fc );
 
       write_config_option (stdin_fd, "[Dialer Defaults]\n");
-      write_config_option (stdin_fd, "Modem = %s\n", tty);
-      write_config_option (stdin_fd, "Baud = %s\n", speed);
+      write_config_option (stdin_fd, "Modem = %s\n", device);
+      write_config_option (stdin_fd, "Baud = %s\n", baudrate);
       write_config_option (stdin_fd, "SetVolume = %s\n", volume);
       write_config_option (stdin_fd, "Dial Command = %s\n", "ATDT");
-      write_config_option (stdin_fd, "Username = %s\n", passwords[0]);
-      write_config_option (stdin_fd, "Password = %s\n", passwords[1]);
+      write_config_option (stdin_fd, "Username = %s\n", userpass[0]);
+      write_config_option (stdin_fd, "Password = %s\n", userpass[1]);
       write_config_option (stdin_fd, "Phone = %s\n", number);
 
       if ( flowcontrol != NULL ) {
@@ -614,19 +713,195 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
 
       write_config_option (stdin_fd, "PPPD Option 1 = %s\n", "plugin");
       write_config_option (stdin_fd, "PPPD Option 2 = %s\n", "nm-pppd-plugin.so");
+      write_config_option (stdin_fd, "PPPD Option 3 = %s\n", ((use_comp_vjheader) ? "" : "novj"));
+      write_config_option (stdin_fd, "PPPD Option 4 = %s\n", ((use_comp_vjcid) ? "" : "novjccomp"));
+      write_config_option (stdin_fd, "PPPD Option 5 = %s\n", ((use_comp_acc) ? "" : "noaccomp"));
+      write_config_option (stdin_fd, "PPPD Option 6 = %s\n", ((use_comp_pfc) ? "" : "nopcomp"));
+      write_config_option (stdin_fd, "PPPD Option 7 = %s\n", ((use_comp_deflate) ? "" : "nodeflate"));
+      write_config_option (stdin_fd, "PPPD Option 8 = %s\n", ((use_comp_bsd) ? "" : "nobsdcomp"));
+      write_config_option (stdin_fd, "PPPD Option 9 = %s\n", ((use_comp_ccp) ? "" : "noccp"));
 
       g_string_free( fc, TRUE );
       g_ptr_array_free (wvdial_argv, TRUE);
     }
+
+  } else if ( data->use_pppoe ) {
+    GPtrArray    *ppp_argv;
+    GPtrArray    *pppoe_argv;
+    gchar *pppoe_pty;
+    gchar *ppp_cmdline;
+
+    nm_info ("Starting pppoe connection");
+
+    if ( pppoe_interface == NULL ) {
+      nm_warning ("No interface supplied for PPPoE connection");
+      return -6;
+    }
+
+    // Create pppoe command line
+    pppoe_argv = g_ptr_array_new ();
+    g_ptr_array_add (pppoe_argv, "-p");
+    g_ptr_array_add (pppoe_argv, NM_PPPOE_PIDFILE);
+    g_ptr_array_add (pppoe_argv, "-U");
+    g_ptr_array_add (pppoe_argv, "-I");
+    g_ptr_array_add (pppoe_argv, pppoe_interface);
+    if ( pppoe_synchronous ) {
+      g_ptr_array_add (pppoe_argv, "-s");
+    }
+    if ( (pppoe_stt != NULL)  && (strlen(pppoe_stt) > 0) ) {
+      g_ptr_array_add (pppoe_argv, "-T");
+      g_ptr_array_add (pppoe_argv, pppoe_stt);
+    }
+    if ( (pppoe_mss != NULL) && (strlen(pppoe_mss) > 0) ) {
+      g_ptr_array_add (pppoe_argv, "-m");
+      g_ptr_array_add (pppoe_argv, pppoe_mss);
+    }
+    if ( (pppoe_service_name != NULL)  && (strlen(pppoe_service_name) > 0) ) {
+      g_ptr_array_add (pppoe_argv, "-S");
+      g_ptr_array_add (pppoe_argv, pppoe_service_name);
+    }
+    if ( (pppoe_ac_name != NULL) && (strlen(pppoe_ac_name) > 0) ) {
+      g_ptr_array_add (pppoe_argv, "-C");
+      g_ptr_array_add (pppoe_argv, pppoe_ac_name);
+    }
+    g_ptr_array_add (pppoe_argv, NULL);
+    pppoe_pty = g_strjoinv(" ", (gchar **)pppoe_argv->pdata);
+    g_ptr_array_free (pppoe_argv, TRUE);
+
+    // Create pppd command line
+    ppp_argv = g_ptr_array_new ();
+    g_ptr_array_add (ppp_argv, (gpointer) (ppp_binary));
+    g_ptr_array_add (ppp_argv, "nodetach");
+    g_ptr_array_add (ppp_argv, "pty");
+    g_ptr_array_add (ppp_argv, pppoe_pty);
+    if ( (mtu != NULL) && (strlen(mtu) > 0) ) {
+      g_ptr_array_add (ppp_argv, "mtu");
+      g_ptr_array_add (ppp_argv, mtu);
+    }
+    if ( (mru != NULL) && (strlen(mru) > 0) ) {
+      g_ptr_array_add (ppp_argv, "mru");
+      g_ptr_array_add (ppp_argv, mru);
+    }
+    if ( (lcp_echo_interval != NULL) && (strlen(lcp_echo_interval) > 0) ) {
+      g_ptr_array_add (ppp_argv, "lcp-echo-interval");
+      g_ptr_array_add (ppp_argv, lcp_echo_interval);
+    }
+    if ( (lcp_echo_failure != NULL) && (strlen(lcp_echo_failure) > 0) ) {
+      g_ptr_array_add (ppp_argv, "lcp-echo-failure");
+      g_ptr_array_add (ppp_argv, lcp_echo_failure);
+    }
+    if ( pppoe_synchronous ) {
+      g_ptr_array_add (ppp_argv, "sync");
+    }
+    g_ptr_array_add (ppp_argv, "nodeflate");
+    g_ptr_array_add (ppp_argv, "novj");
+    g_ptr_array_add (ppp_argv, "novjccomp");
+    g_ptr_array_add (ppp_argv, "noaccomp");
+    g_ptr_array_add (ppp_argv, "nopcomp");
+    g_ptr_array_add (ppp_argv, "nobsdcomp");
+    g_ptr_array_add (ppp_argv, "noccp");
+
+    g_ptr_array_add (ppp_argv, "user");
+    g_ptr_array_add (ppp_argv, userpass[0]);
+
+    g_ptr_array_add (ppp_argv, NULL);
+
+    ppp_cmdline = g_strjoinv (" ", (gchar **)ppp_argv->pdata);
+    nm_warning ("Starting pppd with cmdline '%s'", ppp_cmdline);
+    g_free (ppp_cmdline);
+    
+    if (!g_spawn_async_with_pipes (NULL, (char **) ppp_argv->pdata, NULL,
+				   G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin_fd,
+				   &stdout_fd, &stderr_fd, &error))
+      {
+	g_ptr_array_free (ppp_argv, TRUE);
+	nm_warning ("ppp failed to start.  error: '%s'", error->message);
+	g_error_free(error);
+	return -1;
+      }
+    g_ptr_array_free (ppp_argv, TRUE);
+    g_free (pppoe_pty);
+    nm_info ("ppp (pppoe) started with pid %d", pid);
+
   } else {
     GPtrArray    *ppp_argv;
 
-    // Create pppd command line
+    nm_info ("Starting plain pppd connection");
 
+    // Create pppd command line
     ppp_argv = g_ptr_array_new ();
     g_ptr_array_add (ppp_argv, (gpointer) (ppp_binary));
-    g_ptr_array_add (ppp_argv, NULL);
     
+    if ( pty != NULL ) {
+      g_ptr_array_add (ppp_argv, "pty");
+      g_ptr_array_add (ppp_argv, pty);
+    }
+    if ( device != NULL ) {
+      g_ptr_array_add (ppp_argv, device);
+    }
+    if ( baudrate != NULL ) {
+      g_ptr_array_add (ppp_argv, baudrate);
+    }
+    g_ptr_array_add (ppp_argv, "nodetach");
+    if ( mtu != NULL ) {
+      g_ptr_array_add (ppp_argv, "mtu");
+      g_ptr_array_add (ppp_argv, mtu);
+    }
+    if ( mru != NULL ) {
+      g_ptr_array_add (ppp_argv, "mru");
+      g_ptr_array_add (ppp_argv, mru);
+    }
+    if ( plugin != NULL ) {
+      g_ptr_array_add (ppp_argv, "plugin");
+      g_ptr_array_add (ppp_argv, plugin);
+    }
+    if ( use_lock ) {
+      g_ptr_array_add (ppp_argv, "lock");
+    }
+    if ( asyncmap != NULL ) {
+      if ( strcmp(asyncmap, "default") == 0) {
+	g_ptr_array_add (ppp_argv, "default-asyncmap");
+      } else {
+	g_ptr_array_add (ppp_argv, "asyncmap");
+	g_ptr_array_add (ppp_argv, plugin);
+      }
+    }
+    if ( lcp_echo_interval != NULL ) {
+      g_ptr_array_add (ppp_argv, "lcp-echo-interval");
+      g_ptr_array_add (ppp_argv, lcp_echo_interval);
+    }
+    if ( lcp_echo_failure != NULL ) {
+      g_ptr_array_add (ppp_argv, "lcp-echo-failure");
+      g_ptr_array_add (ppp_argv, lcp_echo_failure);
+    }
+    if ( pppoe_synchronous ) {
+      g_ptr_array_add (ppp_argv, "sync");
+    }
+    if ( ! use_comp_vjheader ) {
+      g_ptr_array_add (ppp_argv, "novj");
+    }
+    if ( ! use_comp_vjcid ) {
+      g_ptr_array_add (ppp_argv, "novjccomp");
+    }
+    if ( ! use_comp_acc ) {
+      g_ptr_array_add (ppp_argv, "noaccomp");
+    }
+    if ( ! use_comp_pfc ) {
+      g_ptr_array_add (ppp_argv, "nopcomp");
+    }
+    if ( ! use_comp_deflate ) {
+      g_ptr_array_add (ppp_argv, "nodeflate");
+    }
+    if ( ! use_comp_bsd ) {
+      g_ptr_array_add (ppp_argv, "nobsdcomp");
+    }
+    if ( ! use_comp_ccp ) {
+      g_ptr_array_add (ppp_argv, "noccp");
+    }
+    g_ptr_array_add (ppp_argv, "user");
+    g_ptr_array_add (ppp_argv, userpass[0]);
+
+
     if (!g_spawn_async_with_pipes (NULL, (char **) ppp_argv->pdata, NULL,
 				   G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin_fd,
 				   &stdout_fd, &stderr_fd, &error))
@@ -653,8 +928,8 @@ nm_ppp_start_pppd_binary (NmPPPData *data,
     io_data->child_stdin_fd  = stdin_fd;
     io_data->child_stdout_fd = stdout_fd;
     io_data->child_stderr_fd = stderr_fd;
-    io_data->username        = g_strdup(passwords[0]);
-    io_data->password        = g_strdup(passwords[1]);
+    io_data->username        = g_strdup(userpass[0]);
+    io_data->password        = g_strdup(userpass[1]);
   
     data->io_data = io_data;
   }
@@ -672,6 +947,7 @@ typedef enum OptType
 	OPT_TYPE_ADDRESS,
 	OPT_TYPE_ASCII,
 	OPT_TYPE_INTEGER,
+	OPT_TYPE_BOOL,
 	OPT_TYPE_NONE
 } OptType;
 
@@ -691,32 +967,43 @@ static gboolean
 nm_ppp_config_options_validate (char **data_items, int num_items)
 {
   Option	allowed_opts[] = {
-    { "wvdial",				OPT_TYPE_ASCII },
+    { "wvdial",				OPT_TYPE_BOOL    },
+    { "pppoe",				OPT_TYPE_BOOL    },
+    { "pty",				OPT_TYPE_BOOL    },
+    { "mtu",				OPT_TYPE_INTEGER },
+    { "mru",				OPT_TYPE_INTEGER },
     { "baudrate",			OPT_TYPE_INTEGER },
-    { "lock",				OPT_TYPE_ASCII },
-    { "device",				OPT_TYPE_ASCII },
-    { "crtscts",			OPT_TYPE_ASCII },
-    { "asyncmap",			OPT_TYPE_ASCII },
-    { "init_1",				OPT_TYPE_ASCII },
-    { "init_2",				OPT_TYPE_ASCII },
-    { "init_3",				OPT_TYPE_ASCII },
-    { "init_4",				OPT_TYPE_ASCII },
-    { "init_5",				OPT_TYPE_ASCII },
-    { "init_6",				OPT_TYPE_ASCII },
-    { "init_7",				OPT_TYPE_ASCII },
-    { "init_8",				OPT_TYPE_ASCII },
-    { "init_9",				OPT_TYPE_ASCII },
-    { "ttyname",			OPT_TYPE_ASCII },
-    { "volume",				OPT_TYPE_ASCII },
-    { "flowcontrol",			OPT_TYPE_ASCII },
-    { "number",				OPT_TYPE_ASCII },
-    { "plugin",				OPT_TYPE_ASCII },
-    { "comp-vjheader",			OPT_TYPE_ASCII },
-    { "comp-vjcid",			OPT_TYPE_ASCII },
-    { "comp-acc",			OPT_TYPE_ASCII },
-    { "comp-pfc",			OPT_TYPE_ASCII },
-    { "comp-bsd",			OPT_TYPE_ASCII },
-    { "comp-ccp",			OPT_TYPE_ASCII },
+    { "number",				OPT_TYPE_ASCII   },
+    { "volume",				OPT_TYPE_ASCII   },
+    { "flowcontrol",			OPT_TYPE_ASCII   },
+    { "plugin",				OPT_TYPE_ASCII   },
+    { "lock",				OPT_TYPE_ASCII   },
+    { "device",				OPT_TYPE_ASCII   },
+    { "asyncmap",			OPT_TYPE_ASCII   },
+    { "init_1",				OPT_TYPE_ASCII   },
+    { "init_2",				OPT_TYPE_ASCII   },
+    { "init_3",				OPT_TYPE_ASCII   },
+    { "init_4",				OPT_TYPE_ASCII   },
+    { "init_5",				OPT_TYPE_ASCII   },
+    { "init_6",				OPT_TYPE_ASCII   },
+    { "init_7",				OPT_TYPE_ASCII   },
+    { "init_8",				OPT_TYPE_ASCII   },
+    { "init_9",				OPT_TYPE_ASCII   },
+    { "comp-vjheader",			OPT_TYPE_BOOL    },
+    { "comp-vjcid",			OPT_TYPE_BOOL    },
+    { "comp-acc",			OPT_TYPE_BOOL    },
+    { "comp-pfc",			OPT_TYPE_BOOL    },
+    { "comp-bsd",			OPT_TYPE_BOOL    },
+    { "comp-ccp",			OPT_TYPE_BOOL    },
+    { "lcp-echo-interval",		OPT_TYPE_INTEGER },
+    { "lcp-echo-failure",		OPT_TYPE_INTEGER },
+    // PPPoE specific
+    { "pppoe-session-traffic-timeout",	OPT_TYPE_INTEGER },
+    { "pppoe-mss",			OPT_TYPE_INTEGER },
+    { "pppoe-service-name",		OPT_TYPE_ASCII   },
+    { "pppoe-ac-name",			OPT_TYPE_ASCII   },
+    { "pppoe-interface",		OPT_TYPE_ASCII   },
+    { "pppoe-synchronous",		OPT_TYPE_BOOL    },
     { NULL,				OPT_TYPE_UNKNOWN } };
   
   unsigned int	i;
@@ -768,6 +1055,15 @@ nm_ppp_config_options_validate (char **data_items, int num_items)
       case OPT_TYPE_ASCII:
 	/* What other characters should we reject?? */
 	break;
+
+      case OPT_TYPE_BOOL:
+	if ( (strcmp( opt_value, "yes" ) != 0) &&
+	     (strcmp( opt_value, "no" ) != 0) ) {
+	  nm_warning ("Invalid bool option '%s'='%s'", data_items[i], opt_value);
+	  return FALSE;
+	}
+	break;
+	  
 	  
       case OPT_TYPE_NONE:
 	/* These have blank data */
@@ -801,8 +1097,8 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
 {
   char **		data_items = NULL;
   int		num_items = -1;
-  char **		password_items = NULL;
-  int		num_passwords = -1;
+  char **		userpass_items = NULL;
+  int		num_userpass = -1;
   DBusError		error;
   gboolean		success = FALSE;
   gint			ppp_fd = -1;
@@ -816,7 +1112,7 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
   dbus_error_init (&error);
   if (!dbus_message_get_args (message, &error,
 			      DBUS_TYPE_STRING, &name,
-			      DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &password_items, &num_passwords,
+			      DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &userpass_items, &num_userpass,
 			      DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &data_items, &num_items,
 			      DBUS_TYPE_INVALID))
     {
@@ -826,7 +1122,7 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
       goto out;
     }
 
-  if ( num_passwords < 2 ) {
+  if ( num_userpass < 2 ) {
     nm_ppp_dbus_signal_failure (data, NM_DBUS_DIALUP_SIGNAL_DIALUP_CONFIG_BAD);
     goto out;
   }
@@ -837,14 +1133,14 @@ nm_ppp_dbus_handle_start_pppd (DBusMessage *message, NmPPPData *data)
   }
 
   /* Now we can finally try to activate the PPP */
-  if ((ppp_fd = nm_ppp_start_pppd_binary (data, data_items, num_items, password_items, num_passwords)) >= 0) {
+  if ((ppp_fd = nm_ppp_start_pppd_binary (data, data_items, num_items, userpass_items, num_userpass)) >= 0) {
     // Everything ok
     success = TRUE;
   }
 
 out:
   dbus_free_string_array (data_items);
-  dbus_free_string_array (password_items);
+  dbus_free_string_array (userpass_items);
   if (!success)
     nm_ppp_set_state (data, NM_DIALUP_STATE_STOPPED);
   return success;

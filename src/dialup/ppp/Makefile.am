@@ -5,22 +5,22 @@ INCLUDES = -I${top_srcdir}                       \
 
 bin_PROGRAMS = nm-ppp-service
 
-AM_CPPFLAGS =							\
-				$(DBUS_CFLAGS)						\
-				$(GTHREAD_CFLAGS)					\
-				$(HAL_CFLAGS)					\
-				-Wall							\
-				-DDBUS_API_SUBJECT_TO_CHANGE				\
-				-DG_DISABLE_DEPRECATED					\
-				-DBINDIR=\"$(bindir)\"					\
-				-DPREFIX=\""$(prefix)"\"				\
-				-DSYSCONFDIR=\""$(sysconfdir)"\"			\
-				-DVERSION="\"$(VERSION)\""				\
-				-DLIBDIR=\""$(libdir)"\"				\
-				-DLIBEXECDIR=\""$(libexecdir)"\"			\
-				-DLOCALSTATEDIR=\""$(localstatedir)"\"		 	\
-				-DDATADIR=\"$(datadir)\"				\
-				-fPIC
+AM_CPPFLAGS =								\
+		$(DBUS_CFLAGS)						\
+		$(GTHREAD_CFLAGS)					\
+		$(HAL_CFLAGS)						\
+		-Wall							\
+		-DDBUS_API_SUBJECT_TO_CHANGE				\
+		-DG_DISABLE_DEPRECATED					\
+		-DBINDIR=\"$(bindir)\"					\
+		-DPREFIX=\""$(prefix)"\"				\
+		-DSYSCONFDIR=\""$(sysconfdir)"\"			\
+		-DVERSION="\"$(VERSION)\""				\
+		-DLIBDIR=\""$(libdir)"\"				\
+		-DLIBEXECDIR=\""$(libexecdir)"\"			\
+		-DLOCALSTATEDIR=\""$(localstatedir)"\"		 	\
+		-DDATADIR=\"$(datadir)\"				\
+		-fPIC
 
 nm_ppp_service_SOURCES =				\
 				nm-ppp-service.c	\
@@ -30,7 +30,7 @@ nm_ppp_service_LDADD = 						\
 				$(DBUS_LIBS)			\
 				$(GTHREAD_LIBS)
 
-nm_pppd_plugindir = $(libdir)/pppd/`grep VERSION $(incdir)/pppd/patchlevel.h  | awk -F\" '{ print $$2 }'`
+nm_pppd_plugindir = $(libdir)/pppd/`grep VERSION $(includedir)/pppd/patchlevel.h | sed 's/"//g' | awk '{ print $$3 }'`
 nm_pppd_plugin_PROGRAMS = nm-pppd-plugin.so
 
 nm_pppd_plugin_so_SOURCES =				\
