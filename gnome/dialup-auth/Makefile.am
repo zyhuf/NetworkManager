@@ -1,1 +1,1 @@
-SUBDIRS=common ppp
+SUBDIRS=common ppp pppoe
