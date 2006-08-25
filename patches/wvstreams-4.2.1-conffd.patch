@@ -1,0 +1,84 @@
+diff -ur wvstreams-4.2.1/configfile/wvconf.cc wvstreams-4.2.1.conffd/configfile/wvconf.cc
+--- wvstreams-4.2.1/configfile/wvconf.cc	2005-11-17 21:44:57.000000000 +0100
++++ wvstreams-4.2.1.conffd/configfile/wvconf.cc	2006-07-26 12:29:18.000000000 +0200
+@@ -173,16 +173,14 @@
+ 	setint(section, entry, value);
+ }
+ 
+- 
+-void WvConf::load_file(WvStringParm filename)
++void
++WvConf::load_file(WvFile &file)
+ {
+     char *p;
+     char *from_file;
+     WvConfigSection *sect = &globalsection;
+     bool quick_mode = false;
+ 
+-    WvFile file(filename, O_RDONLY);
+-
+     #ifdef _WIN32
+     //FIXME: Windows doesn't have a sticky bit so we can't use that to signal other processes that
+     //  the file is being written to. Just be careful :).
+@@ -199,7 +197,7 @@
+     {
+ 	file.close();
+ 	file.seterr(EAGAIN);
+-    }
++    } 
+     #endif
+ 
+     if (!file.isok())
+@@ -215,7 +213,7 @@
+ 
+     while ((from_file = trim_string(file.getline())) != NULL)
+     {
+-
++	printf("Read from file: %s\n", from_file);
+ 	if ((p = parse_section(from_file)) != NULL)
+ 	{
+ 	    quick_mode = false;
+@@ -257,6 +255,21 @@
+     loaded_once = true;
+ }
+ 
++ 
++void WvConf::load_file(WvStringParm filename)
++{
++    WvFile file(filename, O_RDONLY);
++    load_file( file );
++}
++
++#ifndef _WIN32  // since win32 doesn't support fcntl
++void WvConf::load_file(int rwfd)
++{
++  WvFile file( rwfd );
++  load_file( file );
++}
++#endif
++
+ 
+ WvConf::~WvConf()
+ {
+diff -ur wvstreams-4.2.1/include/wvconf.h wvstreams-4.2.1.conffd/include/wvconf.h
+--- wvstreams-4.2.1/include/wvconf.h	2005-11-17 21:45:04.000000000 +0100
++++ wvstreams-4.2.1.conffd/include/wvconf.h	2006-07-18 17:56:12.000000000 +0200
+@@ -17,6 +17,7 @@
+ #include "wvlog.h"
+ #include "wvstringlist.h"
+ #include "wvcallback.h"
++#include "wvfile.h"
+ 
+ 
+ #ifdef __WVCONFEMU_H
+@@ -194,6 +195,10 @@
+     void load_file() // append the contents of the real config file
+         { load_file(filename); }
+     void load_file(WvStringParm filename); // append any config file
++    void load_file(WvFile &file); // append any config file
++#ifndef _WIN32
++    void load_file(int rwfd); // append any config file
++#endif
+ 
+     // Gets a user's password and decrypts it.  This isn't defined in wvconf.cc.
+     WvString get_passwd(WvStringParm sect, WvStringParm user);
