@@ -17,8 +17,8 @@
 #include <dbus/dbus-glib.h>
 
 #include "NetworkManager.h"
-#include "../src/ppp-manager/nm-ppp.h"
-#include "../src/ppp-manager/nm-ppp-service.h"
+#include "NetworkManagerDialup.h"
+#include "../src/dialup/ppp/nm-ppp-service.h"
 
 typedef struct 
 {
@@ -36,7 +36,7 @@ dbus_filter (DBusConnection *connection G_GNUC_UNUSED,
 
   dbus_error_init (&error);
 
-  if (dbus_message_is_signal (message, NM_DBUS_INTERFACE_PPP, NM_DBUS_PPP_SIGNAL_STATE_CHANGE)) {
+  if (dbus_message_is_signal (message, NM_DBUS_INTERFACE_PPP, NM_DBUS_DIALUP_SIGNAL_STATE_CHANGE)) {
     int old_state = -1;
     int new_state = -1;
     if (! dbus_message_get_args (message, &error,
@@ -50,22 +50,22 @@ dbus_filter (DBusConnection *connection G_GNUC_UNUSED,
     handled = TRUE;
   } else if ( dbus_message_is_signal (message,
 				      NM_DBUS_INTERFACE_PPP,
-				      NM_DBUS_PPP_SIGNAL_LOGIN_FAILED)) {
+				      NM_DBUS_DIALUP_SIGNAL_LOGIN_FAILED)) {
     printf("Signal: login failed\n");
     handled = TRUE;
   } else if ( dbus_message_is_signal (message,
 				      NM_DBUS_INTERFACE_PPP,
-				      NM_DBUS_PPP_SIGNAL_LAUNCH_FAILED)) {
+				      NM_DBUS_DIALUP_SIGNAL_LAUNCH_FAILED)) {
     printf("Signal: launch failed\n");
     handled = TRUE;
   } else if ( dbus_message_is_signal (message,
 				      NM_DBUS_INTERFACE_PPP,
-				      NM_DBUS_PPP_SIGNAL_CONNECT_FAILED)) {
+				      NM_DBUS_DIALUP_SIGNAL_CONNECT_FAILED)) {
     printf("Signal: connect failed\n");
     handled = TRUE;
   } else if ( dbus_message_is_signal (message,
 				      NM_DBUS_INTERFACE_PPP,
-				      NM_DBUS_PPP_SIGNAL_PPP_CONFIG_BAD)) {
+				      NM_DBUS_DIALUP_SIGNAL_DIALUP_CONFIG_BAD)) {
     printf("Signal: ppp config bad\n");
     handled = TRUE;
   }

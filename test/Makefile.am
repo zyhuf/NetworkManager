@@ -3,7 +3,8 @@ SUBDIRS=test-common libnm-util
 INCLUDES = -I${top_srcdir}                    \
            -I${top_srcdir}/gnome/libnm_glib   \
            -I${top_srcdir}/utils              \
-           -I${top_srcdir}/include
+           -I${top_srcdir}/include		\
+           -I${top_srcdir}/src
 
 AM_CPPFLAGS =						\
 	$(DBUS_CFLAGS)					\
