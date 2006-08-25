@@ -8,7 +8,8 @@ SUBDIRS = 				\
 	   test				\
 	   po				\
 	   man				\
-	   include
+	   include			\
+	   dialup-services
 
 EXTRA_DIST =				\
 	CONTRIBUTING			\
