@@ -368,9 +368,11 @@ gnome/vpn-properties/Makefile
 gnome/dialup-auth/Makefile
 gnome/dialup-auth/common/Makefile
 gnome/dialup-auth/ppp/Makefile
+gnome/dialup-auth/pppoe/Makefile
 gnome/dialup-properties/Makefile
 gnome/dialup-properties/modem/Makefile
 gnome/dialup-properties/btgprs/Makefile
+gnome/dialup-properties/pppoe/Makefile
 test/Makefile
 test/test-common/Makefile
 test/libnm-util/Makefile
