@@ -38,6 +38,7 @@
 #endif
 
 #include <gtk/gtk.h>
+#include <dbus/dbus.h>
 
 struct _NetworkManagerDialupUI;
 typedef struct _NetworkManagerDialupUI NetworkManagerDialupUI;
@@ -58,6 +59,8 @@ struct _NetworkManagerDialupUI {
 	void (*set_validity_changed_callback) (NetworkManagerDialupUI *self, 
 					       NetworkManagerDialupUIDialogValidityCallback cb,
 					       gpointer user_data);
+
+	void (*set_dbus_connection) (NetworkManagerDialupUI *self, DBusConnection *con);
 
 	gboolean (*is_valid) (NetworkManagerDialupUI *self);
 
