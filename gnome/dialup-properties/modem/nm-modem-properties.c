@@ -40,28 +40,30 @@ struct _NetworkManagerDialupUIImpl {
   NetworkManagerDialupUI parent;
 
   NetworkManagerDialupUIDialogValidityCallback callback;
-  gpointer callback_user_data;
+  gpointer           callback_user_data;
 
-  gchar    *last_fc_dir;
+  gchar             *last_fc_dir;
 
-  GladeXML *xml;
+  DBusConnection    *dbus;
 
-  GtkWidget *widget;
+  GladeXML          *xml;
+  GtkWidget         *widget;
 
-  GtkEntry       *w_connection_name;
-  GtkEntry       *w_device;
-  GtkEntry       *w_number;
-  GtkComboBox    *w_baudrate;
-  GtkComboBox    *w_flowcontrol;
-  GtkComboBox    *w_volume;
-  GtkExpander    *w_comp_info_expander;
-  GtkCheckButton *w_use_vjheader;
-  GtkCheckButton *w_use_vjcid;
-  GtkCheckButton *w_use_acc;
-  GtkCheckButton *w_use_pfc;
-  GtkCheckButton *w_use_bsd;
-  GtkCheckButton *w_use_ccp;
-  GtkButton      *w_import_button;
+  GtkEntry          *w_connection_name;
+  GtkEntry          *w_device;
+  GtkEntry          *w_number;
+  GtkComboBox       *w_baudrate;
+  GtkComboBox       *w_flowcontrol;
+  GtkComboBox       *w_volume;
+  GtkExpander       *w_comp_info_expander;
+  GtkCheckButton    *w_disable_vjheader;
+  GtkCheckButton    *w_disable_vjcid;
+  GtkCheckButton    *w_disable_acc;
+  GtkCheckButton    *w_disable_pfc;
+  GtkCheckButton    *w_disable_deflate;
+  GtkCheckButton    *w_disable_bsd;
+  GtkCheckButton    *w_disable_ccp;
+  GtkButton         *w_import_button;
 };
 
 
@@ -169,12 +171,13 @@ modem_clear_widget (NetworkManagerDialupUIImpl *impl)
   gtk_combo_box_set_active (GTK_COMBO_BOX (impl->w_baudrate), 3);
   gtk_combo_box_set_active (GTK_COMBO_BOX (impl->w_flowcontrol), 0);
   gtk_combo_box_set_active (GTK_COMBO_BOX (impl->w_volume), 0);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjheader), FALSE);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjcid), FALSE);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_acc), FALSE);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_pfc), FALSE);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_bsd), FALSE);
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_ccp), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjheader), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjcid), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_acc), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_pfc), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_deflate), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_bsd), FALSE);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_ccp), FALSE);
   gtk_expander_set_expanded (impl->w_comp_info_expander, FALSE);
 }
 
@@ -242,33 +245,38 @@ impl_get_widget (NetworkManagerDialupUI *self, GSList *properties, const char *c
       }
 
     } else if ( (strcmp (key, "comp-vjheader") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjheader), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjheader), TRUE);
       should_expand = TRUE;
 
     } else if ( (strcmp (key, "comp-vjcid") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjcid), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjcid), TRUE);
       should_expand = TRUE;
 
     } else if ( (strcmp (key, "comp-acc") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_acc), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_acc), TRUE);
       should_expand = TRUE;
 
     } else if ( (strcmp (key, "comp-pfc") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_pfc), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_pfc), TRUE);
+      should_expand = TRUE;
+
+    } else if ( (strcmp (key, "comp-deflate") == 0) &&
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_deflate), TRUE);
       should_expand = TRUE;
 
     } else if ( (strcmp (key, "comp-bsd") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_bsd), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_bsd), TRUE);
       should_expand = TRUE;
 
     } else if ( (strcmp (key, "comp-ccp") == 0) &&
-		(strcmp (value, "yes") == 0) ) {
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_ccp), TRUE);
+		(strcmp (value, "no") == 0) ) {
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_ccp), TRUE);
       should_expand = TRUE;
     }
   }
@@ -288,24 +296,26 @@ impl_get_properties (NetworkManagerDialupUI *self)
   const char *number;
   const char *device;
   gint        baudrate_index;
-  gboolean    use_vjheader;
-  gboolean    use_vjcid;
-  gboolean    use_acc;
-  gboolean    use_pfc;
-  gboolean    use_bsd;
-  gboolean    use_ccp;
+  gboolean    disable_vjheader;
+  gboolean    disable_vjcid;
+  gboolean    disable_acc;
+  gboolean    disable_pfc;
+  gboolean    disable_deflate;
+  gboolean    disable_bsd;
+  gboolean    disable_ccp;
 
   connection_name  = gtk_entry_get_text (impl->w_connection_name);
   device           = gtk_entry_get_text (impl->w_device);
   number           = gtk_entry_get_text (impl->w_number);
   baudrate_index   = gtk_combo_box_get_active (GTK_COMBO_BOX (impl->w_baudrate));
 
-  use_vjheader     = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_vjheader));
-  use_vjcid        = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_vjcid));
-  use_acc          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_acc));
-  use_pfc          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_pfc));
-  use_bsd          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_bsd));
-  use_ccp          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_ccp));
+  disable_vjheader     = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjheader));
+  disable_vjcid        = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjcid));
+  disable_acc          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_acc));
+  disable_pfc          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_pfc));
+  disable_deflate      = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_deflate));
+  disable_bsd          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_bsd));
+  disable_ccp          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_ccp));
 
   data = NULL;
 
@@ -332,22 +342,25 @@ impl_get_properties (NetworkManagerDialupUI *self)
   data = g_slist_append (data, g_strdup_printf ("%i", gtk_combo_box_get_active (GTK_COMBO_BOX (impl->w_volume))));
 
   data = g_slist_append (data, g_strdup ("comp-vjheader"));
-  data = g_slist_append (data, use_vjheader ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_vjheader ? g_strdup ("no") : g_strdup("yes"));
 
   data = g_slist_append (data, g_strdup ("comp-vjcid"));
-  data = g_slist_append (data, use_vjcid ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_vjcid ? g_strdup ("no") : g_strdup("yes"));
 
   data = g_slist_append (data, g_strdup ("comp-acc"));
-  data = g_slist_append (data, use_acc ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_acc ? g_strdup ("no") : g_strdup("yes"));
 
   data = g_slist_append (data, g_strdup ("comp-pfc"));
-  data = g_slist_append (data, use_pfc ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_pfc ? g_strdup ("no") : g_strdup("yes"));
+
+  data = g_slist_append (data, g_strdup ("comp-deflate"));
+  data = g_slist_append (data, disable_deflate ? g_strdup ("no") : g_strdup("yes"));
 
   data = g_slist_append (data, g_strdup ("comp-bsd"));
-  data = g_slist_append (data, use_bsd ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_bsd ? g_strdup ("no") : g_strdup("yes"));
 
   data = g_slist_append (data, g_strdup ("comp-ccp"));
-  data = g_slist_append (data, use_ccp ? g_strdup ("yes") : g_strdup("no"));
+  data = g_slist_append (data, disable_ccp ? g_strdup ("no") : g_strdup("yes"));
 
   return data;
 }
@@ -420,6 +433,16 @@ impl_set_validity_changed_callback (NetworkManagerDialupUI *self,
   impl->callback_user_data = user_data;
 }
 
+
+static void
+impl_set_dbus_connection (NetworkManagerDialupUI *self, DBusConnection *con)
+{
+  NetworkManagerDialupUIImpl *impl = (NetworkManagerDialupUIImpl *) self->data;
+
+  impl->dbus = con;
+}
+
+
 static void
 impl_get_confirmation_details (NetworkManagerDialupUI *self, gchar **retval)
 {
@@ -431,24 +454,26 @@ impl_get_confirmation_details (NetworkManagerDialupUI *self, gchar **retval)
   gint        baudrate_index;
   const char *baudrate;
   gint        flowcontrol_index;
-  gboolean    use_vjheader;
-  gboolean    use_vjcid;
-  gboolean    use_acc;
-  gboolean    use_pfc;
-  gboolean    use_bsd;
-  gboolean    use_ccp;
+  gboolean    disable_vjheader;
+  gboolean    disable_vjcid;
+  gboolean    disable_acc;
+  gboolean    disable_pfc;
+  gboolean    disable_deflate;
+  gboolean    disable_bsd;
+  gboolean    disable_ccp;
 
   connection_name        = gtk_entry_get_text (impl->w_connection_name);
   device                 = gtk_entry_get_text (impl->w_device);
   number                 = gtk_entry_get_text (impl->w_number);
   baudrate_index         = gtk_combo_box_get_active( GTK_COMBO_BOX (impl->w_baudrate) );
   flowcontrol_index      = gtk_combo_box_get_active( GTK_COMBO_BOX (impl->w_flowcontrol) );
-  use_vjheader           = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_vjheader));
-  use_vjcid              = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_vjcid));
-  use_acc                = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_acc));
-  use_pfc                = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_pfc));
-  use_bsd                = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_bsd));
-  use_ccp                = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_use_ccp));
+  disable_vjheader       = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjheader));
+  disable_vjcid          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjcid));
+  disable_acc            = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_acc));
+  disable_pfc            = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_pfc));
+  disable_deflate        = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_deflate));
+  disable_bsd            = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_bsd));
+  disable_ccp            = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (impl->w_disable_ccp));
 
   if ( baudrate_index == -1 ) {
     baudrate = gtk_combo_box_get_active_text( GTK_COMBO_BOX (impl->w_baudrate) );
@@ -474,24 +499,27 @@ impl_get_confirmation_details (NetworkManagerDialupUI *self, gchar **retval)
   g_string_append_printf (buf, _("Flow Control:  %s"), flowcontrol_itos (flowcontrol_index));
   g_string_append (buf, "\n\t");
 
-  if ( use_vjheader ||
-       use_vjcid ||
-       use_acc ||
-       use_pfc ||
-       use_bsd ||
-       use_ccp ) {
+  if ( disable_vjheader ||
+       disable_vjcid ||
+       disable_acc ||
+       disable_pfc ||
+       disable_deflate ||
+       disable_bsd ||
+       disable_ccp ) {
 
-    g_string_append_printf( buf, _("Use VJ TCP/IP Header Compression: %s"), ((use_vjheader) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable VJ TCP/IP Header Compression: %s"), ((disable_vjheader) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
-    g_string_append_printf( buf, _("Use VJ Connection-ID Compression: %s"), ((use_vjcid) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable VJ Connection-ID Compression: %s"), ((disable_vjcid) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
-    g_string_append_printf( buf, _("Use Access/Control Compression: %s"), ((use_acc) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable Access/Control Compression: %s"), ((disable_acc) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
-    g_string_append_printf( buf, _("Use Protocol Field Compression: %s"), ((use_pfc) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable Protocol Field Compression: %s"), ((disable_pfc) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
-    g_string_append_printf( buf, _("Use BSD Compression: %s"), ((use_bsd) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable Deflate Compression: %s"), ((disable_deflate) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
-    g_string_append_printf( buf, _("Use CCP Compression Control Protocol: %s"), ((use_ccp) ? _("Yes") : _("No")));
+    g_string_append_printf( buf, _("Disable BSD Compression: %s"), ((disable_bsd) ? _("Yes") : _("No")));
+    g_string_append (buf, "\n\t");
+    g_string_append_printf( buf, _("Disable CCP Compression Control Protocol: %s"), ((disable_ccp) ? _("Yes") : _("No")));
     g_string_append (buf, "\n\t");
   }
 
@@ -520,6 +548,7 @@ import_from_file (NetworkManagerDialupUIImpl *impl, const char *path)
     char *comp_vjcid = NULL;
     char *comp_acc = NULL;
     char *comp_pfc = NULL;
+    char *comp_deflate = NULL;
     char *comp_bsd = NULL;
     char *comp_ccp = NULL;
     gboolean should_expand;
@@ -535,6 +564,7 @@ import_from_file (NetworkManagerDialupUIImpl *impl, const char *path)
     comp_vjcid      = g_key_file_get_string (keyfile, "modem", "comp-vjcid", NULL);
     comp_acc        = g_key_file_get_string (keyfile, "modem", "comp-acc", NULL);
     comp_pfc        = g_key_file_get_string (keyfile, "modem", "comp-pfc", NULL);
+    comp_deflate    = g_key_file_get_string (keyfile, "modem", "comp-deflate", NULL);
     comp_bsd        = g_key_file_get_string (keyfile, "modem", "comp-bsd", NULL);
     comp_ccp        = g_key_file_get_string (keyfile, "modem", "comp-ccp", NULL);
 
@@ -607,33 +637,38 @@ import_from_file (NetworkManagerDialupUIImpl *impl, const char *path)
 	gtk_combo_box_set_active (GTK_COMBO_BOX (impl->w_volume), atoi(volume));
       }
 
-      if ( (comp_vjheader != NULL) && (strcmp(comp_vjheader, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjheader), TRUE);
+      if ( (comp_vjheader != NULL) && (strcmp(comp_vjheader, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjheader), TRUE);
 	should_expand = TRUE;
       }
 
-      if ( (comp_vjcid != NULL) && (strcmp(comp_vjcid, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_vjcid), TRUE);
+      if ( (comp_vjcid != NULL) && (strcmp(comp_vjcid, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_vjcid), TRUE);
 	should_expand = TRUE;
       }
 
-      if ( (comp_acc != NULL) && (strcmp(comp_acc, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_acc), TRUE);
+      if ( (comp_acc != NULL) && (strcmp(comp_acc, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_acc), TRUE);
 	should_expand = TRUE;
       }
 
-      if ( (comp_pfc != NULL) && (strcmp(comp_pfc, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_pfc), TRUE);
+      if ( (comp_pfc != NULL) && (strcmp(comp_pfc, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_pfc), TRUE);
 	should_expand = TRUE;
       }
 
-      if ( (comp_bsd != NULL) && (strcmp(comp_bsd, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_bsd), TRUE);
+      if ( (comp_deflate != NULL) && (strcmp(comp_deflate, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_deflate), TRUE);
 	should_expand = TRUE;
       }
 
-      if ( (comp_ccp != NULL) && (strcmp(comp_ccp, "yes") == 0) ) {
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_use_ccp), TRUE);
+      if ( (comp_bsd != NULL) && (strcmp(comp_bsd, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_bsd), TRUE);
+	should_expand = TRUE;
+      }
+
+      if ( (comp_ccp != NULL) && (strcmp(comp_ccp, "no") == 0) ) {
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (impl->w_disable_ccp), TRUE);
 	should_expand = TRUE;
       }
 
@@ -665,6 +700,7 @@ import_from_file (NetworkManagerDialupUIImpl *impl, const char *path)
     g_free (comp_vjcid);
     g_free (comp_acc);
     g_free (comp_pfc);
+    g_free (comp_deflate);
     g_free (comp_bsd);
     g_free (comp_ccp);
   }
@@ -877,15 +913,16 @@ impl_get_object (void)
     impl->w_volume                 = GTK_COMBO_BOX (glade_xml_get_widget (impl->xml, "modem-volume"));
 
 
-    impl->w_comp_info_expander     = GTK_EXPANDER (glade_xml_get_widget (impl->xml, "modem-comp-information-expander"));
+    impl->w_comp_info_expander     = GTK_EXPANDER (glade_xml_get_widget (impl->xml, "modem-compression-information-expander"));
 
-    impl->w_use_vjheader           = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-vjheader"));
-    impl->w_use_vjcid              = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-vjcid"));
-    impl->w_use_acc                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-acc"));
-    impl->w_use_pfc                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-pfc"));
-    impl->w_use_bsd                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-bsd"));
-    impl->w_use_ccp                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-use-ccp"));
-    impl->w_import_button          = GTK_BUTTON (glade_xml_get_widget (impl->xml, "modem-import-button"));
+    impl->w_disable_vjheader           = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-vjheader"));
+    impl->w_disable_vjcid              = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-vjcid"));
+    impl->w_disable_acc                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-acc"));
+    impl->w_disable_pfc                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-pfc"));
+    impl->w_disable_deflate            = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-deflate"));
+    impl->w_disable_bsd                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-bsd"));
+    impl->w_disable_ccp                = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "modem-disable-ccp"));
+    impl->w_import_button          = GTK_BUTTON (glade_xml_get_widget (impl->xml, "modem-import"));
 
     impl->callback                 = NULL;
 
@@ -912,6 +949,7 @@ impl_get_object (void)
     impl->parent.get_connection_name           = impl_get_connection_name;
     impl->parent.get_properties                = impl_get_properties;
     impl->parent.set_validity_changed_callback = impl_set_validity_changed_callback;
+    impl->parent.set_dbus_connection           = impl_set_dbus_connection;
     impl->parent.is_valid                      = impl_is_valid;
     impl->parent.get_confirmation_details      = impl_get_confirmation_details;
     impl->parent.can_export                    = impl_can_export;

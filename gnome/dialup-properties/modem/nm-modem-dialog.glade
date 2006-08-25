@@ -483,7 +483,7 @@ Very High</property>
 	<widget class="GtkExpander" id="modem-compression-information-expander">
 	  <property name="visible">True</property>
 	  <property name="can_focus">True</property>
-	  <property name="expanded">False</property>
+	  <property name="expanded">True</property>
 	  <property name="spacing">3</property>
 
 	  <child>
@@ -507,7 +507,7 @@ Very High</property>
 		  <child>
 		    <widget class="GtkLabel" id="label40">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes">Note that your provider must support the compression settings that you give here.</property>
+		      <property name="label" translatable="yes">By default compression settings are negotiated automatically with your internet service provider. Disable compression features below if you cannot establish a connection.</property>
 		      <property name="use_underline">False</property>
 		      <property name="use_markup">False</property>
 		      <property name="justify">GTK_JUSTIFY_LEFT</property>
@@ -530,10 +530,10 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-vjheader">
+		    <widget class="GtkCheckButton" id="modem-disable-vjheader">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable VJ TCP/IP _Header Compression</property>
+		      <property name="label" translatable="yes">Disable VJ TCP/IP _Header Compression</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
@@ -549,10 +549,10 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-vjcid">
+		    <widget class="GtkCheckButton" id="modem-disable-vjcid">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable VJ Connection-_ID Compression</property>
+		      <property name="label" translatable="yes">Disable VJ TCP/IP _Header Compression</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
@@ -568,10 +568,10 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-acc">
+		    <widget class="GtkCheckButton" id="modem-disable-acc">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable _Address/Control Compression</property>
+		      <property name="label" translatable="yes">Disable _Address/Control Compression</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
@@ -587,10 +587,10 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-pfc">
+		    <widget class="GtkCheckButton" id="modem-disable-deflate">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable _Protocol Field Compression</property>
+		      <property name="label" translatable="yes">Disable Def_late Compression</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
@@ -606,10 +606,10 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-bsd">
+		    <widget class="GtkCheckButton" id="modem-disable-pfc">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable _BSD Compression</property>
+		      <property name="label" translatable="yes">Disable _Protocol Field Compression</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
@@ -625,10 +625,29 @@ Very High</property>
 		  </child>
 
 		  <child>
-		    <widget class="GtkCheckButton" id="modem-use-ccp">
+		    <widget class="GtkCheckButton" id="modem-disable-bsd">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="label" translatable="yes">Enable _CCP Compression Control Protocol</property>
+		      <property name="label" translatable="yes">Disable _BSD Compression</property>
+		      <property name="use_underline">True</property>
+		      <property name="relief">GTK_RELIEF_NORMAL</property>
+		      <property name="focus_on_click">True</property>
+		      <property name="active">False</property>
+		      <property name="inconsistent">False</property>
+		      <property name="draw_indicator">True</property>
+		    </widget>
+		    <packing>
+		      <property name="padding">0</property>
+		      <property name="expand">False</property>
+		      <property name="fill">False</property>
+		    </packing>
+		  </child>
+
+		  <child>
+		    <widget class="GtkCheckButton" id="modem-disable-ccp">
+		      <property name="visible">True</property>
+		      <property name="can_focus">True</property>
+		      <property name="label" translatable="yes">Disable _CCP Compression Control Protocol</property>
 		      <property name="use_underline">True</property>
 		      <property name="relief">GTK_RELIEF_NORMAL</property>
 		      <property name="focus_on_click">True</property>
