@@ -60,6 +60,8 @@ typedef enum {
 	GNOME_TWO_PASSWORD_DIALOG_REMEMBER_FOREVER
 } GnomeTwoPasswordDialogRemember;
 
+typedef gint (*GnomeTwoPasswordExtraCallback) (GnomeTwoPasswordDialog *dialog);
+
 
 GtkType    gnome_two_password_dialog_get_type (void);
 GtkWidget* gnome_two_password_dialog_new      (const char *dialog_title,
@@ -104,6 +106,12 @@ void                           gnome_two_password_dialog_set_remember           
 GnomeTwoPasswordDialogRemember gnome_two_password_dialog_get_remember              (GnomeTwoPasswordDialog         *password_dialog);
 void                           gnome_two_password_dialog_set_show_userpass_buttons (GnomeTwoPasswordDialog         *password_dialog,
 										    gboolean                        show_userpass_buttons);
+
+void gnome_two_password_dialog_set_extra_button		(GnomeTwoPasswordDialog *password_dialog,
+							 const gchar *label,
+							 GnomeTwoPasswordExtraCallback ballback);
+void gnome_two_password_dialog_set_show_extra		(GnomeTwoPasswordDialog  *password_dialog,
+							 gboolean                 show_extra);
 
 /* Attribute accessors */
 char *     gnome_two_password_dialog_get_username            (GnomeTwoPasswordDialog *password_dialog);

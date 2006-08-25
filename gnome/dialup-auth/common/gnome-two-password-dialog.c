@@ -73,6 +73,10 @@ struct GnomeTwoPasswordDialogDetails
 	GtkWidget *connect_with_no_userpass_button;
 	GtkWidget *connect_with_userpass_button;
 
+	GtkWidget *extra_button;
+	gchar     *extra_label;
+	GnomeTwoPasswordExtraCallback extra_callback;
+
 	gboolean anon_support_on;
 
 	char *primary_password_label;
@@ -167,6 +171,7 @@ gnome_two_password_dialog_finalize (GObject *object)
 	g_free (password_dialog->details->primary_password_label);
 	g_free (password_dialog->details->secondary_password_label);
 
+	g_free (password_dialog->details->extra_label);
 	g_free (password_dialog->details);
 
 	if (G_OBJECT_CLASS (parent_class)->finalize != NULL)
@@ -216,6 +221,19 @@ userpass_radio_button_clicked (GtkWidget *widget, gpointer callback_data)
                         password_dialog->details->table, TRUE);
 	}	
 }
+
+static void
+extra_button_clicked (GtkWidget *widget, gpointer callback_data)
+{
+	GnomeTwoPasswordDialog *password_dialog;
+
+	password_dialog = GNOME_TWO_PASSWORD_DIALOG (callback_data);
+
+	if ( password_dialog->details->extra_callback != NULL ) {
+		password_dialog->details->extra_callback(password_dialog);
+	}
+}
+
 
 static void
 add_row (GtkWidget *table, int row, const char *label_text, GtkWidget *entry, int offset)
@@ -319,10 +337,10 @@ domain_entry_activate (GtkWidget *widget, GtkWidget *dialog)
 /* Public GnomeTwoPasswordDialog methods */
 GtkWidget *
 gnome_two_password_dialog_new (const char	*dialog_title,
-			   const char	*message,
-			   const char	*username,
-			   const char	*password,
-			   gboolean	 readonly_username)
+			       const char	*message,
+			       const char	*username,
+			       const char	*password,
+			       gboolean	         readonly_username)
 {
 	GnomeTwoPasswordDialog *password_dialog;
 	GtkWidget *table;
@@ -453,6 +471,12 @@ gnome_two_password_dialog_new (const char	*dialog_title,
 	gtk_box_pack_start (GTK_BOX (vbox), table, 
 			    TRUE, TRUE, 5);
 
+	password_dialog->details->extra_button = gtk_button_new_with_label("Extra Information");
+	gtk_box_pack_start(GTK_BOX (vbox), password_dialog->details->extra_button,
+			   TRUE, TRUE, 5);
+	g_signal_connect (password_dialog->details->extra_button, "clicked",
+                          G_CALLBACK (extra_button_clicked), password_dialog);
+
 	/* Configure the table */
 	gtk_container_set_border_width (GTK_CONTAINER (table),
 					CAPTION_TABLE_BORDER_WIDTH);
@@ -466,6 +490,7 @@ gnome_two_password_dialog_new (const char	*dialog_title,
 			    0);       	/* padding */
 	
 	gtk_widget_show_all (GTK_DIALOG (password_dialog)->vbox);
+	gtk_widget_hide (GTK_WIDGET (password_dialog->details->extra_button));
 
 	password_dialog->details->remember_session_button =
 		gtk_check_button_new_with_mnemonic (_("_Remember password for this session"));
@@ -758,5 +783,32 @@ void gnome_two_password_dialog_set_password_secondary_label (GnomeTwoPasswordDia
 
 	if (password_dialog->details->show_password_secondary) {
 		add_table_rows (password_dialog);
+	}
+}
+
+
+void
+gnome_two_password_dialog_set_extra_button (GnomeTwoPasswordDialog *password_dialog,
+					    const gchar *label,
+					    GnomeTwoPasswordExtraCallback callback)
+{
+	g_return_if_fail (password_dialog != NULL);
+	g_return_if_fail (GNOME_IS_TWO_PASSWORD_DIALOG (password_dialog));
+
+	password_dialog->details->extra_label = g_strdup( label );
+	gtk_button_set_label (GTK_BUTTON (password_dialog->details->extra_button),
+			      password_dialog->details->extra_label);
+	password_dialog->details->extra_callback = callback;
+}
+
+
+void
+gnome_two_password_dialog_set_show_extra (GnomeTwoPasswordDialog  *password_dialog,
+					  gboolean                 show_extra)
+{
+	if (show_extra) {
+		gtk_widget_show (password_dialog->details->extra_button);
+	} else {
+		gtk_widget_hide (password_dialog->details->extra_button);
 	}
 }
