@@ -42,22 +42,23 @@ struct _NetworkManagerDialupUIImpl {
   NetworkManagerDialupUIDialogValidityCallback callback;
   gpointer callback_user_data;
 
-  gchar    *last_fc_dir;
+  gchar             *last_fc_dir;
 
-  GladeXML *xml;
+  DBusConnection    *dbus;
 
-  GtkWidget *widget;
+  GladeXML          *xml;
+  GtkWidget         *widget;
 
-  GtkEntry       *w_connection_name;
-  GtkEntry       *w_device;
-  GtkEntry       *w_channel;
-  GtkEntry       *w_apn;
-  GtkComboBox    *w_baudrate;
-  GtkComboBox    *w_flowcontrol;
-  GtkExpander    *w_comp_info_expander;
-  GtkCheckButton *w_use_gprs_header_comp;
-  GtkCheckButton *w_use_gprs_data_comp;
-  GtkButton      *w_import_button;
+  GtkEntry          *w_connection_name;
+  GtkEntry          *w_device;
+  GtkEntry          *w_channel;
+  GtkEntry          *w_apn;
+  GtkComboBox       *w_baudrate;
+  GtkComboBox       *w_flowcontrol;
+  GtkExpander       *w_comp_info_expander;
+  GtkCheckButton    *w_use_gprs_header_comp;
+  GtkCheckButton    *w_use_gprs_data_comp;
+  GtkButton         *w_import_button;
 };
 
 
@@ -207,10 +208,10 @@ impl_get_widget (NetworkManagerDialupUI *self, GSList *properties, const char *c
     key = i->data;
     value = (g_slist_next (i))->data;
 
-    if (strcmp (key, "device") == 0) {
+    if (strcmp (key, "btdevice") == 0) {
       gtk_entry_set_text (impl->w_device, value);
 
-    } else if (strcmp (key, "channel") == 0) {
+    } else if (strcmp (key, "btchannel") == 0) {
       gtk_entry_set_text (impl->w_channel, value);
 
     } else if (strcmp (key, "apn") == 0) {
@@ -377,6 +378,16 @@ impl_set_validity_changed_callback (NetworkManagerDialupUI *self,
   impl->callback_user_data = user_data;
 }
 
+
+static void
+impl_set_dbus_connection (NetworkManagerDialupUI *self, DBusConnection *con)
+{
+  NetworkManagerDialupUIImpl *impl = (NetworkManagerDialupUIImpl *) self->data;
+
+  impl->dbus = con;
+}
+
+
 static void
 impl_get_confirmation_details (NetworkManagerDialupUI *self, gchar **retval)
 {
@@ -463,8 +474,8 @@ import_from_file (NetworkManagerDialupUIImpl *impl, const char *path)
     int   baudrate_index = -1;
 
     connection_name  = g_key_file_get_string (keyfile, "btgprs", "description", NULL);
-    device           = g_key_file_get_string (keyfile, "btgprs", "device", NULL);
-    channel          = g_key_file_get_string (keyfile, "btgprs", "channel", NULL);
+    device           = g_key_file_get_string (keyfile, "btgprs", "btdevice", NULL);
+    channel          = g_key_file_get_string (keyfile, "btgprs", "btchannel", NULL);
     apn              = g_key_file_get_string (keyfile, "btgprs", "apn", NULL);
     baudrate         = g_key_file_get_string (keyfile, "btgprs", "baudrate", NULL);
     flowcontrol      = g_key_file_get_string (keyfile, "btgprs", "flowcontrol", NULL);
@@ -639,9 +650,9 @@ export_to_file (NetworkManagerDialupUIImpl *impl, const char *path,
     k = i->data;
     value = (g_slist_next (i))->data;
 
-    if (strcmp (k, "device") == 0) {
+    if (strcmp (k, "btdevice") == 0) {
       device = value;
-    } else if (strcmp (k, "channel") == 0) {
+    } else if (strcmp (k, "btchannel") == 0) {
       channel = value;
     } else if (strcmp (k, "apn") == 0) {
       apn = value;
@@ -663,8 +674,8 @@ export_to_file (NetworkManagerDialupUIImpl *impl, const char *path,
     fprintf (f,
 	     "[btgprs]\n"
 	     "description=%s\n"
-	     "device=%s\n"
-	     "channel=%s\n"
+	     "btdevice=%s\n"
+	     "btchannel=%s\n"
 	     "apn=%s\n"
 	     "baudrate=%s\n"
 	     "flowcontrol=%s\n"
@@ -785,11 +796,11 @@ impl_get_object (void)
     impl->w_flowcontrol            = GTK_COMBO_BOX (glade_xml_get_widget (impl->xml, "btgprs-flowcontrol"));
 
 
-    impl->w_comp_info_expander     = GTK_EXPANDER (glade_xml_get_widget (impl->xml, "btgprs-comp-information-expander"));
+    impl->w_comp_info_expander     = GTK_EXPANDER (glade_xml_get_widget (impl->xml, "btgprs-compression-information-expander"));
 
     impl->w_use_gprs_header_comp   = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "btgprs-use-header-comp"));
     impl->w_use_gprs_data_comp     = GTK_CHECK_BUTTON (glade_xml_get_widget (impl->xml, "btgprs-use-data-comp"));
-    impl->w_import_button          = GTK_BUTTON (glade_xml_get_widget (impl->xml, "btgprs-import-button"));
+    impl->w_import_button          = GTK_BUTTON (glade_xml_get_widget (impl->xml, "btgprs-import"));
 
     impl->callback                 = NULL;
 
@@ -818,6 +829,7 @@ impl_get_object (void)
     impl->parent.get_connection_name           = impl_get_connection_name;
     impl->parent.get_properties                = impl_get_properties;
     impl->parent.set_validity_changed_callback = impl_set_validity_changed_callback;
+    impl->parent.set_dbus_connection           = impl_set_dbus_connection;
     impl->parent.is_valid                      = impl_is_valid;
     impl->parent.get_confirmation_details      = impl_get_confirmation_details;
     impl->parent.can_export                    = impl_can_export;
