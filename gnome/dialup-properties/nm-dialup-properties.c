@@ -40,6 +40,11 @@
 #include <glade/glade.h>
 #include <gconf/gconf-client.h>
 #include <glib/gi18n.h>
+#include <dbus/dbus.h>
+#include <dbus/dbus-glib-lowlevel.h>
+#include <dbus/dbus-glib.h>
+
+#include "NetworkManager.h"
 
 #define NM_DIALUP_API_SUBJECT_TO_CHANGE
 #include "nm-dialup-ui-interface.h"
@@ -47,21 +52,22 @@
 
 #define NM_GCONF_DIALUP_CONNECTIONS_PATH "/system/networking/dialup_connections"
 
-static GladeXML *xml;
-static GConfClient *gconf_client;
-static GtkWidget *dialog;
-static GtkWindow *druid_window;
-static GtkTreeView *dialup_conn_view;
-static GtkListStore *dialup_conn_list;
-static GtkWidget *dialup_edit;
-static GtkWidget *dialup_export;
-static GtkWidget *dialup_delete;
-static GnomeDruid *druid;
-static GnomeDruidPageEdge *druid_confirm_page;
-static GtkComboBox *dialup_type_combo_box;
-static GtkVBox *dialup_type_details;
-static GtkDialog *edit_dialog;
-static GSList *dialup_types;
+static GladeXML            *xml;
+static GConfClient         *gconf_client;
+static GtkWidget           *dialog;
+static GtkWindow           *druid_window;
+static GtkTreeView         *dialup_conn_view;
+static GtkListStore        *dialup_conn_list;
+static GtkWidget           *dialup_edit;
+static GtkWidget           *dialup_export;
+static GtkWidget           *dialup_delete;
+static GnomeDruid          *druid;
+static GnomeDruidPageEdge  *druid_confirm_page;
+static GtkComboBox         *dialup_type_combo_box;
+static GtkVBox             *dialup_type_details;
+static GtkDialog           *edit_dialog;
+static GSList              *dialup_types;
+static DBusConnection      *dbus;
 
 static NetworkManagerDialupUI *
 find_dialup_ui_by_service_type (const char *service_type)
@@ -898,6 +904,8 @@ load_properties_module (GSList **dialup_types_list, const char *path)
 		goto out;
 	}
 
+	impl->set_dbus_connection(impl, dbus);
+
 	*dialup_types_list = g_slist_append (*dialup_types_list, impl);
 
 out:
@@ -963,7 +971,7 @@ init_app (void)
 				if ((so_path = g_key_file_get_string (keyfile, 
 								      "GNOME", 
 								      "properties", NULL)) != NULL) {
-					load_properties_module (&dialup_types, so_path);
+					load_properties_module (&(dialup_types), so_path);
 					g_free (so_path);
 				}
 			}
@@ -1046,19 +1054,35 @@ init_app (void)
 
 	/* Edit dialog */
 	edit_dialog = GTK_DIALOG (gtk_dialog_new_with_buttons (_("Edit dialup Connection"),
-							       NULL,
-							       GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-							       GTK_STOCK_CANCEL,
-							       GTK_RESPONSE_REJECT,
-							       GTK_STOCK_APPLY,
-							       GTK_RESPONSE_ACCEPT,
-							       NULL));
+								     NULL,
+								     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+								     GTK_STOCK_CANCEL,
+								     GTK_RESPONSE_REJECT,
+								     GTK_STOCK_APPLY,
+								     GTK_RESPONSE_ACCEPT,
+								     NULL));
 
 	/* update "Edit" and "Delete" for current selection */
 	update_edit_del_sensitivity ();
 
 	return TRUE;
 }
+
+
+static void
+dbus_init()
+{
+	DBusError  error;
+	dbus_error_init (&error);
+
+	if (! (dbus = dbus_bus_get (DBUS_BUS_SYSTEM, &error))) {
+		fprintf(stderr, "Could not open dbus connection");
+		return;
+	}
+
+	dbus_connection_setup_with_g_main(dbus, NULL);
+}
+
 
 int
 main (int argc, char *argv[])
@@ -1114,7 +1138,9 @@ main (int argc, char *argv[])
 		goto out;
 	}
 
-	if (init_app () == FALSE) {
+	dbus_init();
+
+	if (init_app() == FALSE) {
 		ret = EXIT_FAILURE;
 		goto out;
 	}
@@ -1122,7 +1148,7 @@ main (int argc, char *argv[])
 	if (do_import)
 		import_settings (import_svc, import_file);
 
-	gtk_main ();
+	gtk_main();
 
 	ret = EXIT_SUCCESS;
 
