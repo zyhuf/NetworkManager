@@ -13,8 +13,10 @@ libnm_modem_properties_la_CFLAGS =                          \
         $(GTK_CFLAGS)                                   \
         $(GCONF_CFLAGS)                                 \
         $(LIBGNOMEUI_CFLAGS)                            \
+	$(DBUS_CFLAGS)					\
         -DICONDIR=\""$(datadir)/pixmaps"\"              \
         -DGLADEDIR=\""$(gladedir)"\"                    \
+	-DDBUS_API_SUBJECT_TO_CHANGE			\
         -DG_DISABLE_DEPRECATED                          \
         -DGDK_DISABLE_DEPRECATED                        \
         -DGNOME_DISABLE_DEPRECATED                      \
