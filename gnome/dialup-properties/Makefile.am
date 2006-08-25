@@ -1,4 +1,6 @@
-SUBDIRS = modem btgprs
+SUBDIRS = modem btgprs pppoe
+
+INCLUDES = -I${top_srcdir}/include
 
 bin_PROGRAMS = nm-dialup-properties
 
@@ -22,12 +24,14 @@ nm_dialup_properties_CFLAGS =                              \
         $(GCONF_CFLAGS)                                 \
         $(GMODULE_CFLAGS)                               \
         $(LIBGNOMEUI_CFLAGS)                            \
+	$(DBUS_CFLAGS)					\
         -DSYSCONFDIR=\"$(sysconfdir)\"			\
         -DICONDIR=\""$(datadir)/pixmaps"\"              \
         -DGLADEDIR=\""$(gladedir)"\"                    \
         -DG_DISABLE_DEPRECATED                          \
         -DGDK_DISABLE_DEPRECATED                        \
         -DGNOME_DISABLE_DEPRECATED                      \
+	-DDBUS_API_SUBJECT_TO_CHANGE			\
 	-DGNOMELOCALEDIR=\"$(datadir)/locale\"		\
         -DVERSION=\"$(VERSION)\" \
 	-DDIALUP_NAME_FILES_DIR=\""$(sysconfdir)/NetworkManager/dialup"\"	\
@@ -39,6 +43,7 @@ nm_dialup_properties_LDADD =               \
         $(GCONF_LIBS)                   \
         $(GMODULE_LIBS)                 \
         $(LIBGNOMEUI_LIBS)              \
+	$(DBUS_LIBS)			\
         $(NULL)
 
 CLEANFILES = $(server_DATA) *.bak *.gladep *~
