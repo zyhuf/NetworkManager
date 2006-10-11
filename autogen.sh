@@ -13,6 +13,7 @@ PKG_NAME=NetworkManager
     exit 1
 }
 
+ACLOCAL_FLAGS="-I . $ACLOCAL_FLAGS"
 
 which gnome-autogen.sh || {
     echo "You need to install gnome-common from the GNOME CVS"

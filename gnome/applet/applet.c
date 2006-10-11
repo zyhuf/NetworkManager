@@ -147,6 +147,9 @@ static void nma_class_init (NMAppletClass *klass)
 {
 	GObjectClass *gobject_class;
 
+	gtk_icon_theme_append_search_path (gtk_icon_theme_get_default (),
+								ICONDIR);
+
 	gobject_class = G_OBJECT_CLASS (klass);
 	gobject_class->constructor = nma_constructor;
 }
@@ -580,7 +583,7 @@ void nma_show_dialup_failure_alert (NMApplet *applet, const char *member, const 
 #else
 		msg = g_strdup_printf ("<span weight=\"bold\" size=\"larger\">%s</span>\n\n"
 			"%s\n\n%s", title, desc, error_msg);
-		nma_show_vpn_failure_dialog (title, msg);
+		nma_show_failure_dialog (title, msg);
 #endif
 		g_free (msg);
 	}

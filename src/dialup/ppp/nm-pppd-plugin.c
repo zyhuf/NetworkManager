@@ -36,7 +36,7 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <dbus/dbus-glib.h>
-#include <NetworkManager/NetworkManager.h>
+#include <NetworkManager.h>
 
 #include "nm-ppp-service.h"
 #include "nm-pppd-plugin.h"

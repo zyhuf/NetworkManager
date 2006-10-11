@@ -1,3 +1,43 @@
+2006-10-11  Tambet Ingo  <tambet@ximian.com>
+
+	* dialup-services/Makefile: Remove from CVS.
+
+	* dialup-services/Makefile.am: New file.
+
+	* src/backends/NetworkManager*: Fix includes.
+
+	* src/dialup/ppp/nm-pppd-plugin.c: Ditto.
+
+	* src/dialup/ppp/nm-ppp-service.c: Ditto.
+
+	* gnome/applet/applet.c (nma_class_init): Append our icon directory to
+	theme search path.
+	Fix a typo.
+
+	* gnome/applet/Makefile.am: Use the correct path to icons.
+
+	* gnome/vpn-properties/Makefile.am: Ditto.
+
+	* gnome/dialup-properties/pppoe/Makefile.am: Ditto.
+
+	* gnome/dialup-properties/modem/Makefile.am: Ditto.
+
+	* gnome/dialup-properties/btgprs/Makefile.am: Ditto.
+
+	* gnome/dialup-properties/Makefile.am: Ditto.
+
+	* gnome/dialup-auth/pppoe/Makefile.am: Ditto.
+
+	* gnome/dialup-auth/ppp/Makefile.am: Ditto.
+
+	* configure.in: Remove local hacks and replace them with AS_AC_EXPAND.
+	Expand all variables that are used in .in files.
+
+	* autogen.sh: Include . to aclocal's search path to get
+	as-ac-expand.m4 included.
+
+	* as-ac-expand.m4: New file.
+
 2006-08-25  Tim Niemueller  <tim@niemueller.de>
 
 	* gnome/dialup-auth/pppoe/*: Authentication app for

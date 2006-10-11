@@ -48,7 +48,6 @@
 #include "nm-device.h"
 #include "nm-device-802-3-ethernet.h"
 #include "nm-device-802-11-wireless.h"
-#include "NetworkManagerDialupConfig.h"
 #include "interface_parser.h"
 #include "nm-utils.h"
 

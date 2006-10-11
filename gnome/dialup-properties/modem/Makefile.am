@@ -8,13 +8,13 @@ libnm_modem_properties_la_SOURCES = 			\
 gladedir = $(datadir)/gnome-dialup-properties
 glade_DATA = nm-modem-dialog.glade
 
-libnm_modem_properties_la_CFLAGS =                          \
+libnm_modem_properties_la_CFLAGS =                      \
         $(GLADE_CFLAGS)                                 \
         $(GTK_CFLAGS)                                   \
         $(GCONF_CFLAGS)                                 \
         $(LIBGNOMEUI_CFLAGS)                            \
 	$(DBUS_CFLAGS)					\
-        -DICONDIR=\""$(datadir)/pixmaps"\"              \
+        -DICONDIR=\""$(datadir)/icons"\"                \
         -DGLADEDIR=\""$(gladedir)"\"                    \
 	-DDBUS_API_SUBJECT_TO_CHANGE			\
         -DG_DISABLE_DEPRECATED                          \

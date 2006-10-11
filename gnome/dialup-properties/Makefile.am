@@ -26,7 +26,7 @@ nm_dialup_properties_CFLAGS =                              \
         $(LIBGNOMEUI_CFLAGS)                            \
 	$(DBUS_CFLAGS)					\
         -DSYSCONFDIR=\"$(sysconfdir)\"			\
-        -DICONDIR=\""$(datadir)/pixmaps"\"              \
+        -DICONDIR=\""$(datadir)/icons"\"              \
         -DGLADEDIR=\""$(gladedir)"\"                    \
         -DG_DISABLE_DEPRECATED                          \
         -DGDK_DISABLE_DEPRECATED                        \

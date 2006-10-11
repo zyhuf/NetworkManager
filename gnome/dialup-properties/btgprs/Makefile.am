@@ -8,13 +8,13 @@ libnm_btgprs_properties_la_SOURCES = 			\
 gladedir = $(datadir)/gnome-dialup-properties
 glade_DATA = nm-btgprs-dialog.glade
 
-libnm_btgprs_properties_la_CFLAGS =                          \
+libnm_btgprs_properties_la_CFLAGS =                     \
         $(GLADE_CFLAGS)                                 \
         $(GTK_CFLAGS)                                   \
         $(GCONF_CFLAGS)                                 \
         $(LIBGNOMEUI_CFLAGS)                            \
 	$(DBUS_CFLAGS)					\
-        -DICONDIR=\""$(datadir)/pixmaps"\"              \
+        -DICONDIR=\""$(datadir)/icons"\"                \
         -DGLADEDIR=\""$(gladedir)"\"                    \
         -DG_DISABLE_DEPRECATED                          \
         -DGDK_DISABLE_DEPRECATED                        \
@@ -23,7 +23,7 @@ libnm_btgprs_properties_la_CFLAGS =                          \
 	-DGNOMELOCALEDIR=\"$(datadir)/locale\"		\
         -DVERSION=\"$(VERSION)\"
 
-libnm_btgprs_properties_la_LIBADD =       \
+libnm_btgprs_properties_la_LIBADD =     \
         $(GLADE_LIBS)                   \
         $(GTK_LIBS)                     \
         $(GCONF_LIBS)                   \

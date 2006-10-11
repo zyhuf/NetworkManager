@@ -7,7 +7,7 @@ nm_ppp_auth_dialog_CPPFLAGS =			\
 	$(GTK_CFLAGS)				\
 	$(LIBGNOMEUI_CFLAGS)			\
 	$(GNOMEKEYRING_CFLAGS)			\
-	-DICONDIR=\""$(datadir)/pixmaps"\"	\
+	-DICONDIR=\""$(datadir)/icons"\"	\
 	-DGLADEDIR=\""$(gladedir)"\"		\
 	-DBINDIR=\""$(bindir)"\"		\
 	-DDBUS_API_SUBJECT_TO_CHANGE		\
@@ -15,7 +15,7 @@ nm_ppp_auth_dialog_CPPFLAGS =			\
 	-DGDK_DISABLE_DEPRECATED		\
 	-DGNOME_DISABLE_DEPRECATED		\
 	-DGNOMELOCALEDIR=\"$(datadir)/locale\"	\
-	-DVERSION=\"$(VERSION)\"			\
+	-DVERSION=\"$(VERSION)\"		\
 	$(NULL)
 
 nm_ppp_auth_dialog_SOURCES =			\

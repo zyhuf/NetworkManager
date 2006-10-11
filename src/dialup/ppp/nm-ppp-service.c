@@ -44,7 +44,7 @@
 #include <arpa/inet.h>
 #include <ctype.h>
 
-#include <NetworkManager/NetworkManager.h>
+#include <NetworkManager.h>
 
 #include "nm-ppp-service.h"
 #include "nm-utils.h"
