@@ -1,3 +1,8 @@
+2007-03-19  Dan Williams  <dcbw@redhat.com>
+
+	- Fill in most of Mesh device class
+	- Add infrastructure for using avahi-autoipd for IPv4 Link Local addresses
+
 2007-03-18  Dan Williams  <dcbw@redhat.com>
 
 	- Add a skeleton OLPC Mesh device

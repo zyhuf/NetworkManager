@@ -1810,6 +1810,18 @@ out:
 }
 
 
+void
+nm_device_handle_autoip_event (NMDevice * self,
+                               const char * event,
+                               const char * addr)
+{
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (event != NULL);
+
+	if (NM_DEVICE_GET_CLASS (self)->handle_autoip_event)
+		NM_DEVICE_GET_CLASS (self)->handle_autoip_event (self, event, addr);
+}
+
 /*
  * nm_device_set_up_down
  *

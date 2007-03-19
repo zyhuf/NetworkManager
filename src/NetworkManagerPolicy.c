@@ -189,6 +189,8 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 	NMDevice80211Wireless *	best_wireless_dev = NULL;
 	guint				best_wireless_prio = 0;
 	NMDevice *			highest_priority_dev = NULL;
+	NMDevice80211MeshOLPC * best_mesh_dev = NULL;
+	guint				best_mesh_prio = 0;
 
 	g_return_val_if_fail (data != NULL, NULL);
 	g_return_val_if_fail (ap != NULL, NULL);
@@ -253,11 +255,23 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 		}
 		else if (nm_device_is_802_11_mesh_olpc (dev) && data->wireless_enabled)
 		{
-			nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
+			if (link_active)
+				prio += 1;
+
+			if (nm_device_get_act_request (dev) && link_active)
+				prio += 3;
+
+			if (prio > best_mesh_prio)
+			{
+				best_mesh_dev = NM_DEVICE_802_11_MESH_OLPC (dev);
+				best_mesh_prio = prio;
+			}
 		}
 	}
 
-	if (best_wired_dev)
+	if (best_mesh_dev)
+		highest_priority_dev = NM_DEVICE (best_mesh_dev);
+	else if (best_wired_dev)
 		highest_priority_dev = NM_DEVICE (best_wired_dev);
 	else if (best_wireless_dev)
 	{
@@ -426,19 +440,21 @@ nm_policy_device_change_check (NMData *data)
 			}
 			else if (nm_device_is_802_11_mesh_olpc (new_dev))
 			{
-				nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
+				if (!old_user_requested)
+					do_switch = TRUE;
 			}
 		}
 		else if (nm_device_is_802_11_mesh_olpc (old_dev))
 		{
-			nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
+			if (!nm_device_is_802_11_mesh_olpc (new_dev))
+				do_switch = TRUE;
 		}
 	}
 
 	if (   do_switch
 	    && (nm_device_is_802_3_ethernet (new_dev)
-	    || (nm_device_is_802_11_wireless (new_dev) && ap))
-	    || (nm_device_is_802_11_mesh_olpc (new_dev)))
+	    || (nm_device_is_802_11_wireless (new_dev) && ap)
+	    || nm_device_is_802_11_mesh_olpc (new_dev)))
 	{
 		NMActRequest *	act_req = NULL;
 
