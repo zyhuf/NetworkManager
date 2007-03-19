@@ -36,6 +36,7 @@
 #include "nm-dbus-device.h"
 #include "nm-device-802-3-ethernet.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 
 
 static DBusMessage *nm_dbus_device_get_name (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
@@ -142,8 +143,8 @@ static DBusMessage *nm_dbus_device_get_mode (DBusConnection *connection, DBusMes
 	dev = data->dev;
 	if (!nm_device_is_802_11_wireless (dev))
 	{
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "DeviceNotWireless",
-				"Wired devices cannot see wireless networks.");
+		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidDeviceType",
+				"Request is not valid for this device type.");
 	}
 	else if ((reply = dbus_message_new_method_return (message)))
 	{
@@ -185,8 +186,8 @@ static DBusMessage *nm_dbus_device_get_active_network (DBusConnection *connectio
 	dev = data->dev;
 	if (!nm_device_is_802_11_wireless (dev))
 	{
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "DeviceNotWireless",
-				"Wired devices cannot have active networks.");
+		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidDeviceType",
+				"Request is not valid for this device type.");
 	}
 	else if ((reply = dbus_message_new_method_return (message)))
 	{
@@ -228,8 +229,8 @@ static DBusMessage *nm_dbus_device_get_networks (DBusConnection *connection, DBu
 	dev = data->dev;
 	if (!nm_device_is_802_11_wireless (dev))
 	{
-		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "DeviceNotWireless",
-				"Wired devices cannot see wireless networks.");
+		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidDeviceType",
+				"Request is not valid for this device type.");
 	}
 	else if ((reply = dbus_message_new_method_return (message)))
 	{
@@ -448,8 +449,10 @@ static DBusMessage *nm_dbus_device_get_properties (DBusConnection *connection, D
 				}
 			}
 		}
-		else
+		else if (nm_device_is_802_3_ethernet (dev))
+		{
 			speed = nm_device_802_3_ethernet_get_speed (NM_DEVICE_802_3_ETHERNET (dev));
+		}
 
 		if (!active_network_path)
 			active_network_path = g_strdup ("");

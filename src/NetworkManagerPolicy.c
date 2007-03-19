@@ -37,6 +37,7 @@
 #include "nm-utils.h"
 #include "nm-dbus-nmi.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 #include "nm-device-802-3-ethernet.h"
 
 
@@ -250,6 +251,10 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 				best_wireless_prio = prio;
 			}
 		}
+		else if (nm_device_is_802_11_mesh_olpc (dev) && data->wireless_enabled)
+		{
+			nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
+		}
 	}
 
 	if (best_wired_dev)
@@ -419,10 +424,21 @@ nm_policy_device_change_check (NMData *data)
 				if (!old_user_requested)
 					do_switch = TRUE;
 			}
+			else if (nm_device_is_802_11_mesh_olpc (new_dev))
+			{
+				nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
+			}
+		}
+		else if (nm_device_is_802_11_mesh_olpc (old_dev))
+		{
+			nm_info ("%s/%s (%d): device decision", __FILE__, __func__, __LINE__);
 		}
 	}
 
-	if (do_switch && (nm_device_is_802_3_ethernet (new_dev) || (nm_device_is_802_11_wireless (new_dev) && ap)))
+	if (   do_switch
+	    && (nm_device_is_802_3_ethernet (new_dev)
+	    || (nm_device_is_802_11_wireless (new_dev) && ap))
+	    || (nm_device_is_802_11_mesh_olpc (new_dev)))
 	{
 		NMActRequest *	act_req = NULL;
 

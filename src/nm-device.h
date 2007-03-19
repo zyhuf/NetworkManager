@@ -112,6 +112,9 @@ struct _NMDeviceClass
 											 struct NMActRequest *req);
 
 	gboolean		(* can_interrupt_activation)		(NMDevice *self);
+
+	void			(* notify_device_added)		(NMDevice * self, NMDevice *added_dev);
+	void			(* notify_device_removed)	(NMDevice * self, NMDevice *removed_dev);
 };
 
 
@@ -199,6 +202,8 @@ void			nm_device_activation_success_handler	(NMDevice *dev,
 											 struct NMActRequest *req);
 
 gboolean		nm_device_can_interrupt_activation		(NMDevice *self);
+
+const char *	nm_device_get_physical_device_udi		(NMDevice *dev);
 
 G_END_DECLS
 

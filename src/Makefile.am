@@ -18,6 +18,8 @@ NetworkManager_SOURCES =				\
 		nm-device-802-3-ethernet.h	\
 		nm-device-802-11-wireless.c	\
 		nm-device-802-11-wireless.h	\
+		nm-device-802-11-mesh-olpc.c	\
+		nm-device-802-11-mesh-olpc.h	\
 		NetworkManagerAP.c			\
 		NetworkManagerAP.h			\
 		NetworkManagerAPList.c		\

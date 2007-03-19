@@ -29,6 +29,7 @@
 #include "nm-device-private.h"
 #include "nm-device-802-3-ethernet.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 #include "NetworkManagerDbus.h"
 #include "NetworkManagerPolicy.h"
 #include "NetworkManagerUtils.h"
@@ -50,6 +51,7 @@ struct _NMDevicePrivate
 	NMDeviceType		type;
 	guint32			capabilities;
 	char *			driver;
+	char *			phys_dev_udi;
 	gboolean			removed;
 
 	struct ether_addr	hw_addr;
@@ -84,7 +86,7 @@ static void		nm_device_activate_schedule_stage5_ip_config_commit (NMActRequest *
  *
  */
 static NMDeviceType
-discover_device_type (LibHalContext *ctx, const char *udi)
+discover_device_type (LibHalContext *ctx, const char *udi, const char *iface)
 {
 	char * category = NULL;
 	NMDeviceType type = DEVICE_TYPE_UNKNOWN;
@@ -94,10 +96,14 @@ discover_device_type (LibHalContext *ctx, const char *udi)
 
 	if (category)
 	{
-		if (!strcmp (category, "net.80211"))
-			type = DEVICE_TYPE_802_11_WIRELESS;
-		else if (!strcmp (category, "net.80203"))
+		if (!strcmp (category, "net.80211")) {
+			if ((strlen (iface) > 3) && (strncmp (iface, "msh", 3) == 0))
+				type = DEVICE_TYPE_802_11_MESH_OLPC;
+			else
+				type = DEVICE_TYPE_802_11_WIRELESS;
+		} else if (!strcmp (category, "net.80203")) {
 			type = DEVICE_TYPE_802_3_ETHERNET;
+		}
 
 		libhal_free_string (category);
 	}
@@ -112,22 +118,22 @@ discover_device_type (LibHalContext *ctx, const char *udi)
  *
  */
 static char *
-nm_get_device_driver_name (LibHalContext *ctx, const char *udi)
+nm_get_device_driver_name (LibHalContext *ctx,
+                           const char *phys_dev_udi,
+                           const char *udi)
 {
-	char	*	driver_name = NULL;
-	char *	physdev_udi = NULL;
+	char * driver_name = NULL;
 
 	g_return_val_if_fail (ctx != NULL, NULL);
 	g_return_val_if_fail (udi != NULL, NULL);
 
-	physdev_udi = libhal_device_get_property_string (ctx, udi, "net.physical_device", NULL);
-	if (physdev_udi && libhal_device_property_exists (ctx, physdev_udi, "info.linux.driver", NULL))
+	if (   phys_dev_udi
+	    && libhal_device_property_exists (ctx, phys_dev_udi, "info.linux.driver", NULL))
 	{
-		char *drv = libhal_device_get_property_string (ctx, physdev_udi, "info.linux.driver", NULL);
+		char *drv = libhal_device_get_property_string (ctx, phys_dev_udi, "info.linux.driver", NULL);
 		driver_name = g_strdup (drv);
 		g_free (drv);
 	}
-	g_free (physdev_udi);
 
 	return driver_name;
 }
@@ -149,9 +155,12 @@ nm_device_new (const char *iface,
 	g_return_val_if_fail (strlen (iface) > 0, NULL);
 	g_return_val_if_fail (app_data != NULL, NULL);
 
-	type = discover_device_type (app_data->hal_ctx, udi);
+	type = discover_device_type (app_data->hal_ctx, udi, iface);
 	switch (type)
 	{
+		case DEVICE_TYPE_802_11_MESH_OLPC:
+			dev = NM_DEVICE (g_object_new (NM_TYPE_DEVICE_802_11_MESH_OLPC, NULL));
+			break;
 		case DEVICE_TYPE_802_11_WIRELESS:
 			dev = NM_DEVICE (g_object_new (NM_TYPE_DEVICE_802_11_WIRELESS, NULL));
 			break;
@@ -166,9 +175,16 @@ nm_device_new (const char *iface,
 	g_assert (dev);
 	dev->priv->iface = g_strdup (iface);
 	dev->priv->udi = g_strdup (udi);
-	dev->priv->driver = nm_get_device_driver_name (app_data->hal_ctx, udi);
 	dev->priv->app_data = app_data;
 	dev->priv->type = type;
+
+	dev->priv->phys_dev_udi = libhal_device_get_property_string (app_data->hal_ctx,
+	                                                             udi,
+	                                                             "net.physical_device",
+	                                                             NULL);
+	dev->priv->driver = nm_get_device_driver_name (app_data->hal_ctx,
+	                                               dev->priv->phys_dev_udi,
+	                                               udi);
 
 	dev->priv->capabilities |= NM_DEVICE_GET_CLASS (dev)->get_generic_capabilities (dev);
 	if (!(dev->priv->capabilities & NM_DEVICE_CAP_NM_SUPPORTED))
@@ -234,6 +250,7 @@ nm_device_init (NMDevice * self)
 	self->priv->type = DEVICE_TYPE_UNKNOWN;
 	self->priv->capabilities = NM_DEVICE_CAP_NONE;
 	self->priv->driver = NULL;
+	self->priv->phys_dev_udi = NULL;
 	self->priv->removed = FALSE;
 
 	self->priv->link_active = FALSE;
@@ -574,6 +591,29 @@ nm_device_has_active_link (NMDevice *self)
 	g_return_val_if_fail (self != NULL, FALSE);
 
 	return self->priv->link_active;
+}
+
+
+void
+nm_device_notify_device_added (NMDevice *self,
+                               NMDevice *added_dev)
+{
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (added_dev != NULL);
+
+	if (NM_DEVICE_GET_CLASS (self)->notify_device_added)
+		NM_DEVICE_GET_CLASS (self)->notify_device_added (self, added_dev);
+}
+
+void
+nm_device_notify_device_removed (NMDevice *self,
+                                 NMDevice *removed_dev)
+{
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (removed_dev != NULL);
+
+	if (NM_DEVICE_GET_CLASS (self)->notify_device_removed)
+		NM_DEVICE_GET_CLASS (self)->notify_device_removed (self, removed_dev);
 }
 
 void
@@ -1725,6 +1765,15 @@ nm_device_update_ip4_address (NMDevice *self)
 }
 
 
+const char *
+nm_device_get_physical_device_udi (NMDevice *self)
+{
+	g_return_val_if_fail (self != NULL, NULL);
+
+	return self->priv->phys_dev_udi;
+}
+
+
 void
 nm_device_get_hw_address (NMDevice *self,
                           struct ether_addr *addr)
@@ -1989,6 +2038,7 @@ nm_device_finalize (GObject *object)
 	g_free (self->priv->udi);
 	g_free (self->priv->iface);
 	g_free (self->priv->driver);
+	g_free (self->priv->phys_dev_udi);
 
 	/* Chain up to the parent class */
 	klass = NM_DEVICE_CLASS (g_type_class_peek (NM_TYPE_DEVICE));

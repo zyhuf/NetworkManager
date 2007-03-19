@@ -37,6 +37,7 @@
 #include "nm-ap-security.h"
 #include "nm-device-802-3-ethernet.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 
 
 /*
@@ -302,6 +303,10 @@ static DBusMessage *nm_dbus_nm_set_active_device (DBusConnection *connection, DB
 	{
 		nm_info ("User Switch: %s", dev_path);
 	}
+	else if (nm_device_is_802_11_mesh_olpc (dev))
+	{
+		nm_info ("User Switch: %s", dev_path);
+	}
 
 	nm_device_deactivate (dev);
 	nm_schedule_state_change_signal_broadcast (data->data);
@@ -507,7 +512,7 @@ static DBusMessage *nm_dbus_nm_set_wireless_enabled (DBusConnection *connection,
 		for (elt = app_data->dev_list; elt; elt = g_slist_next (elt))
 		{
 			NMDevice	*dev = (NMDevice *)(elt->data);
-			if (nm_device_is_802_11_wireless (dev))
+			if (nm_device_is_802_11_wireless (dev) || nm_device_is_802_11_mesh_olpc (dev))
 			{
 				nm_device_deactivate (dev);
 				nm_device_bring_down (dev);

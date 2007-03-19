@@ -38,6 +38,7 @@
 #include "nm-utils.h"
 #include "nm-device.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 #include "nm-device-802-3-ethernet.h"
 #include "wpa_ctrl.h"
 
@@ -450,6 +451,10 @@ void nm_print_device_capabilities (NMDevice *dev)
 						nm_device_get_iface (dev), driver);
 			full_support = FALSE;
 		}
+	}
+	else if (nm_device_is_802_11_mesh_olpc (dev))
+	{
+		;
 	}
 
 	if (full_support)

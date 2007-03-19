@@ -44,6 +44,7 @@
 #include "nm-device.h"
 #include "nm-device-802-3-ethernet.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 #include "NetworkManagerPolicy.h"
 #include "NetworkManagerDbus.h"
 #include "NetworkManagerAP.h"
@@ -136,11 +137,29 @@ NMDevice * nm_create_device_and_add_to_list (NMData *data, const char *udi, cons
 		 */
 		if (nm_try_acquire_mutex (data->dev_list_mutex, __FUNCTION__))
 		{
-			nm_info ("Now managing %s device '%s'.",
-				nm_device_is_802_11_wireless (dev) ? "wireless (802.11)" : "wired Ethernet (802.3)", nm_device_get_iface (dev));
+			const char * iface = nm_device_get_iface (dev);
+			GSList * elt;
+
+			if (nm_device_is_802_11_wireless (dev)) {
+				nm_info ("Now managing wireless (802.11) device '%s'.", iface);
+			} else if (nm_device_is_802_11_mesh_olpc (dev)) {
+				nm_info ("Now managing OLPC Mesh (802.11) device '%s'.", iface);
+			} else if (nm_device_is_802_3_ethernet (dev)) {
+				nm_info ("Now managing wired Ethernet (802.3) device '%s'.", iface);
+			} else {
+				g_assert_not_reached ();
+			}
 
 			data->dev_list = g_slist_append (data->dev_list, dev);
 			nm_device_deactivate (dev);
+
+			/* Notify other devices of the new device */
+			for (elt = data->dev_list; elt; elt = g_slist_next (elt)) {
+				NMDevice * iter_dev = (NMDevice *) (elt->data);
+				if (iter_dev == dev)
+					continue;
+				nm_device_notify_device_added (iter_dev, dev);
+			}
 
 			nm_unlock_mutex (data->dev_list_mutex, __FUNCTION__);
 
@@ -168,6 +187,8 @@ NMDevice * nm_create_device_and_add_to_list (NMData *data, const char *udi, cons
  */
 void nm_remove_device (NMData *data, NMDevice *dev)
 {
+	GSList * elt;
+
 	g_return_if_fail (data != NULL);
 	g_return_if_fail (dev != NULL);
 
@@ -176,6 +197,12 @@ void nm_remove_device (NMData *data, NMDevice *dev)
 	nm_dbus_schedule_device_status_change_signal (data, dev, NULL, DEVICE_REMOVED);
 
 	g_object_unref (G_OBJECT (dev));
+
+	/* Notify other devices of the new device */
+	for (elt = data->dev_list; elt; elt = g_slist_next (elt)) {
+		NMDevice * iter_dev = (NMDevice *) (elt->data);
+		nm_device_notify_device_removed (iter_dev, dev);
+	}
 
 	/* Remove the device entry from the device list and free its data */
 	data->dev_list = g_slist_remove (data->dev_list, dev);
