@@ -42,6 +42,15 @@
 
 #define NM_DEVICE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE, NMDevicePrivate))
 
+enum
+{
+	ACTIVATION_STARTED = 0,
+	ACTIVATION_DONE,
+	NUMBER_OF_SIGNALS
+};
+
+static guint nm_device_signals[NUMBER_OF_SIGNALS];
+
 struct _NMDevicePrivate
 {
 	gboolean	dispose_has_run;
@@ -703,6 +712,8 @@ nm_device_activation_start (NMActRequest *req)
 
 	nm_info ("Activation (%s) started...", nm_device_get_iface (self));
 
+	g_signal_emit (G_OBJECT (self), nm_device_signals[ACTIVATION_STARTED], 0);
+
 	nm_act_request_set_stage (req, NM_ACT_STAGE_DEVICE_PREPARE);
 	nm_device_activate_schedule_stage1_device_prepare (req);
 
@@ -1357,6 +1368,9 @@ activation_handle_cancel_helper (NMActRequest *req)
 		self->priv->act_request = NULL;
 		nm_act_request_unref (req);
 	}
+
+	g_signal_emit (G_OBJECT (self), nm_device_signals[ACTIVATION_DONE], 0);
+
 	nm_schedule_state_change_signal_broadcast (self->priv->app_data);
 
 	nm_info ("Activation (%s) cancellation handled.", nm_device_get_iface (self));
@@ -1644,6 +1658,8 @@ nm_device_activation_failure_handler (NMDevice *self,
 
 	if (NM_DEVICE_GET_CLASS (self)->activation_failure_handler)
 		NM_DEVICE_GET_CLASS (self)->activation_failure_handler (self, req);
+
+	g_signal_emit (G_OBJECT (self), nm_device_signals[ACTIVATION_DONE], 0);
 }
 
 
@@ -1655,6 +1671,8 @@ void nm_device_activation_success_handler (NMDevice *self,
 
 	if (NM_DEVICE_GET_CLASS (self)->activation_success_handler)
 		NM_DEVICE_GET_CLASS (self)->activation_success_handler (self, req);
+
+	g_signal_emit (G_OBJECT (self), nm_device_signals[ACTIVATION_DONE], 0);
 }
 
 gboolean
@@ -2077,6 +2095,24 @@ nm_device_class_init (NMDeviceClass *klass)
 	klass->act_stage3_ip_config_start = real_act_stage3_ip_config_start;
 	klass->act_stage4_get_ip4_config = real_act_stage4_get_ip4_config;
 	klass->act_stage4_ip_config_timeout = real_act_stage4_ip_config_timeout;
+
+	nm_device_signals[ACTIVATION_STARTED] =
+		g_signal_new ("activation-started",
+			G_OBJECT_CLASS_TYPE (object_class),
+			G_SIGNAL_RUN_LAST,
+			G_STRUCT_OFFSET (NMDeviceClass, activation_started),
+			NULL, NULL, g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 0);
+	klass->activation_started = NULL;
+
+	nm_device_signals[ACTIVATION_DONE] =
+		g_signal_new ("activation-done",
+			G_OBJECT_CLASS_TYPE (object_class),
+			G_SIGNAL_RUN_LAST,
+			G_STRUCT_OFFSET (NMDeviceClass, activation_done),
+			NULL, NULL, g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 0);
+	klass->activation_done = NULL;
 
 	g_type_class_add_private (object_class, sizeof (NMDevicePrivate));
 }

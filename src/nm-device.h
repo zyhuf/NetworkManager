@@ -117,6 +117,10 @@ struct _NMDeviceClass
 	void			(* notify_device_removed)	(NMDevice * self, NMDevice *removed_dev);
 
 	void			(* handle_autoip_event)		(NMDevice * self, const char * event, const char * addr);
+
+	/* Signals */
+	void (* activation_started) (NMDevice * dev);
+	void (* activation_done)    (NMDevice * dev);
 };
 
 

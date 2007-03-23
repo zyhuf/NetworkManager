@@ -54,6 +54,14 @@ struct _autoipd
 	guint32		ip4_addr;
 };
 
+struct _ethdev {
+	NMDevice80211Wireless * dev;
+	gulong		scan_started_id;
+	gulong		scan_done_id;
+	gulong		activation_started_id;
+	gulong		activation_done_id;
+};
+
 struct _NMDevice80211MeshOLPCPrivate
 {
 	gboolean	dispose_has_run;
@@ -61,7 +69,7 @@ struct _NMDevice80211MeshOLPCPrivate
 
 	guint32		capabilities;
 
-	NMDevice80211Wireless * ethdev;
+	struct _ethdev ethdev;
 
 	struct _autoipd	aipd;
 };
@@ -84,13 +92,161 @@ real_init (NMDevice *dev)
 	self->priv->capabilities = 0;
 }
 
+static gboolean
+ethdev_scan_approval_hook (NMDevice80211Wireless *ethdev,
+                           gpointer user_data)
+{
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	g_return_val_if_fail (ethdev != NULL, TRUE);
+	g_return_val_if_fail (self != NULL, TRUE);
+
+fprintf (stderr, "%s: allowing scan for %s\n",
+         nm_device_get_iface (NM_DEVICE (self)),
+         nm_device_get_iface (NM_DEVICE (ethdev)));
+
+	return TRUE;
+}
+
+static void
+ethdev_scan_started_cb (GObject * obj,
+                        gpointer user_data)
+{
+	NMDevice80211Wireless * ethdev = NM_DEVICE_802_11_WIRELESS (obj);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (ethdev != NULL);
+
+	fprintf (stderr, "%s: scan started event for %s\n",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+}
+
+static void
+ethdev_scan_done_cb (GObject * obj,
+                     gpointer user_data)
+{
+	NMDevice80211Wireless * ethdev = NM_DEVICE_802_11_WIRELESS (obj);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (ethdev != NULL);
+
+	fprintf (stderr, "%s: scan done event for %s\n",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+}
+
+static void
+ethdev_activation_started_cb (GObject * obj,
+                              gpointer user_data)
+{
+	NMDevice80211Wireless * ethdev = NM_DEVICE_802_11_WIRELESS (obj);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (ethdev != NULL);
+
+	fprintf (stderr, "%s: activation started event for %s\n",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+}
+
+static void
+ethdev_activation_done_cb (GObject * obj,
+                           gpointer user_data)
+{
+	NMDevice80211Wireless * ethdev = NM_DEVICE_802_11_WIRELESS (obj);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (ethdev != NULL);
+
+	fprintf (stderr, "%s: activation done event for %s\n",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+}
+
+static void
+setup_ethdev (NMDevice80211MeshOLPC *self,
+              NMDevice80211Wireless *ethdev)
+{
+	struct _ethdev	* ethdev_rec;
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (ethdev != NULL);
+
+	g_object_ref (ethdev);
+	self->priv->ethdev.dev = NM_DEVICE_802_11_WIRELESS (ethdev);
+	nm_info ("%s: found 802.11 companion device %s.",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+
+	if (nm_device_802_11_wireless_is_scanning (ethdev))
+		ethdev_scan_started_cb (G_OBJECT (ethdev), (gpointer) self);
+
+	nm_device_802_11_wireless_register_scan_approval_hook (ethdev,
+	        ethdev_scan_approval_hook, self);
+
+	ethdev_rec = &self->priv->ethdev;
+	ethdev_rec->scan_started_id =
+				g_signal_connect (G_OBJECT (ethdev),
+	                              "scan-started",
+	                              G_CALLBACK (ethdev_scan_started_cb),
+	                              self);
+	ethdev_rec->scan_done_id =
+				g_signal_connect (G_OBJECT (ethdev),
+	                              "scan-done",
+	                              G_CALLBACK (ethdev_scan_done_cb),
+	                              self);
+	ethdev_rec->activation_started_id =
+				g_signal_connect (G_OBJECT (NM_DEVICE (ethdev)),
+	                              "activation-started",
+	                              G_CALLBACK (ethdev_activation_started_cb),
+	                              self);
+	ethdev_rec->activation_done_id =
+				g_signal_connect (G_OBJECT (NM_DEVICE (ethdev)),
+	                              "activation-done",
+	                              G_CALLBACK (ethdev_activation_done_cb),
+	                              self);
+}
+
+static void
+cleanup_ethdev (NMDevice80211MeshOLPC *self)
+{
+	NMDevice80211Wireless * ethdev;
+	struct _ethdev	* ethdev_rec;
+
+	g_return_if_fail (self != NULL);
+
+	ethdev_rec = &self->priv->ethdev;
+	ethdev = ethdev_rec->dev;
+
+	nm_device_802_11_wireless_register_scan_approval_hook (ethdev, NULL, NULL);
+
+	g_signal_handler_disconnect (G_OBJECT (ethdev), ethdev_rec->scan_started_id);
+	ethdev_rec->scan_started_id = 0;
+	g_signal_handler_disconnect (G_OBJECT (ethdev), ethdev_rec->scan_done_id);
+	ethdev_rec->scan_done_id = 0;
+	g_signal_handler_disconnect (G_OBJECT (ethdev), ethdev_rec->activation_started_id);
+	ethdev_rec->activation_started_id = 0;
+	g_signal_handler_disconnect (G_OBJECT (ethdev), ethdev_rec->activation_done_id);
+	ethdev_rec->activation_done_id = 0;
+
+	nm_info ("%s: 802.11 companion device %s removed.",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (NM_DEVICE (ethdev)));
+	g_object_unref (ethdev);
+	ethdev_rec->dev = NULL;
+}
+
 static void
 real_start (NMDevice *dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMData * data = nm_device_get_app_data (dev);
 	const char * mesh_physdev = nm_device_get_physical_device_udi (dev);
-	NMDevice * found_ethdev = NULL;
 	GSList * elt;
 
 	g_assert (mesh_physdev);
@@ -99,31 +255,26 @@ real_start (NMDevice *dev)
 	nm_lock_mutex (data->dev_list_mutex, __FUNCTION__);
 
 	for (elt = data->dev_list; elt != NULL; elt = g_slist_next (elt)) {
-		NMDevice * eth_dev = (NMDevice *)(elt->data);
+		NMDevice * ethdev = (NMDevice *)(elt->data);
 		const char * eth_physdev;
 
-		if (!nm_device_is_802_11_wireless (eth_dev))
+		if (!nm_device_is_802_11_wireless (ethdev))
 			continue;
-		eth_physdev = nm_device_get_physical_device_udi (eth_dev);
+		eth_physdev = nm_device_get_physical_device_udi (ethdev);
 		if (!eth_physdev)
 			continue;
 		if (strcmp (mesh_physdev, eth_physdev) == 0) {
-			found_ethdev = eth_dev;
+			setup_ethdev (self, NM_DEVICE_802_11_WIRELESS (ethdev));
 			break;
 		}
 	}
 
-	if (found_ethdev) {
-		g_object_ref (found_ethdev);
-		self->priv->ethdev = NM_DEVICE_802_11_WIRELESS (found_ethdev);
-		nm_info ("%s: found 802.11 companion device %s.", nm_device_get_iface (dev),
-				nm_device_get_iface (found_ethdev));
-	}
-
 	nm_unlock_mutex (data->dev_list_mutex, __FUNCTION__);
 
+#if 0
 	if (self->priv->ethdev)
 		nm_device_set_active_link (NM_DEVICE (self), TRUE);
+#endif
 }
 
 static void
@@ -138,7 +289,7 @@ real_notify_device_added (NMDevice *dev,
 	if (dev == added_dev)
 		return;
 
-	if (self->priv->ethdev || !nm_device_is_802_11_wireless (added_dev))
+	if (self->priv->ethdev.dev || !nm_device_is_802_11_wireless (added_dev))
 		return;
 
 	eth_physdev = nm_device_get_physical_device_udi (added_dev);
@@ -148,10 +299,11 @@ real_notify_device_added (NMDevice *dev,
 	if (strcmp (mesh_physdev, eth_physdev) != 0)
 		return;
 
-	g_object_ref (added_dev);
-	self->priv->ethdev = NM_DEVICE_802_11_WIRELESS (added_dev);
-	nm_info ("%s: found 802.11 companion device %s.", nm_device_get_iface (dev),
-			nm_device_get_iface (added_dev));
+	setup_ethdev (self, NM_DEVICE_802_11_WIRELESS (added_dev));
+
+#if 0
+	nm_device_set_active_link (NM_DEVICE (self), TRUE);
+#endif
 }
 
 static void
@@ -164,17 +316,14 @@ real_notify_device_removed (NMDevice *dev,
 	if (dev == removed_dev)
 		return;
 
-	if (!self->priv->ethdev)
+	if (!self->priv->ethdev.dev)
 		return;
 
 	if (   !nm_device_is_802_11_wireless (removed_dev)
-	    || (self->priv->ethdev != NM_DEVICE_802_11_WIRELESS (removed_dev)))
+	    || (self->priv->ethdev.dev != NM_DEVICE_802_11_WIRELESS (removed_dev)))
 		return;
 
-	nm_info ("%s: 802.11 companion device %s removed.", nm_device_get_iface (dev),
-			nm_device_get_iface (removed_dev));
-	self->priv->ethdev = NULL;
-	g_object_unref (removed_dev);
+	cleanup_ethdev (self);
 
 	nm_device_set_active_link (NM_DEVICE (self), FALSE);
 }
@@ -373,6 +522,110 @@ out:
 	return success;
 }
 
+
+static double
+get_80211_freq (NMDevice80211MeshOLPC *self)
+{
+	NMSock * sk;
+	int err;
+	double freq = 0;
+	struct iwreq wrqu;
+	const char * iface;
+
+	g_return_val_if_fail (self != NULL, -1);
+
+	iface = nm_device_get_iface (NM_DEVICE (self));
+	sk = nm_dev_sock_open (NM_DEVICE (self), DEV_WIRELESS, __func__, NULL);
+	if (!sk) {
+		nm_warning ("%s: failed to open device socket.", iface);
+		return -1;
+	}
+
+	err = iw_get_ext (nm_dev_sock_get_fd (sk),
+	                  iface,
+	                  SIOCGIWFREQ,
+	                  &wrqu);
+	if (err) {
+		nm_warning ("%s: failed to get frequency (errno: %d).",
+		            iface,
+		            errno);
+		goto out;
+	}
+
+	freq = iw_freq2float (&wrqu.u.freq);
+
+out:
+	nm_dev_sock_close (sk);
+	return freq;
+}
+
+static gboolean
+set_80211_frequency (NMDevice80211MeshOLPC *self,
+                     const double freq)
+{
+	NMSock * sk;
+	int err;
+	struct iwreq wrqu;
+	gboolean success = FALSE;
+	int skfd;
+	const char * iface;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	if ((freq > 0) && (get_80211_frequency (self) == freq))
+		return FALSE;
+
+	iface = nm_device_get_iface (NM_DEVICE (self));
+
+	sk = nm_dev_sock_open (NM_DEVICE (self), DEV_WIRELESS, __func__, NULL);
+	if (!sk) {
+		nm_warning ("%s: failed to open device socket.", iface);
+		return FALSE;
+	}
+
+	if (freq <= 0) {
+		/* Try 0 for "auto" first, fall back to -1 below of 0 doesn't work */
+		wrqu.u.freq.m = 0;
+		wrqu.u.freq.e = 0;
+		wrqu.u.freq.flags = 0;
+	} else {
+		/* Fixed */
+		wrqu.u.freq.flags = IW_FREQ_FIXED;
+		iw_float2freq (freq, &wrqu.u.freq);
+	}
+
+	skfd = nm_dev_sock_get_fd (sk);
+	err = iw_set_ext (skfd, iface, SIOCSIWFREQ, &wrqu);
+	if (err) {
+		if ((freq <= 0) && ((errno == EINVAL) || (errno == EOPNOTSUPP))) {
+			/* Ok, try "auto" the other way */
+			wrqu.u.freq.m = -1;
+			wrqu.u.freq.e = 0;
+			wrqu.u.freq.flags = 0;
+			err = iw_set_ext (skfd, iface, SIOCSIWFREQ, &wrqu);
+			if (err) {
+				nm_warning ("%s: failed to set frequency to auto (errno: %d)",
+				            iface,
+				            errno);
+				goto out;
+			}
+		} else {
+			nm_warning ("%s: failed to set frequency to %f (errno: %d)",
+			            iface,
+			            freq,
+			            errno);
+			goto out;
+		}
+	}
+
+	success = TRUE;
+
+out:
+	nm_dev_sock_close (sk);
+	return success;
+}
+
+
 /*************************************************************/
 /* avahi-autoipd babysitting junk because it doesn't do DBus */
 /*************************************************************/
@@ -540,6 +793,8 @@ aipd_monitor_start (NMDevice80211MeshOLPC *self)
 out:
 	return success;
 }
+
+/*************************************************************/
 
 static NMActStageReturn
 real_act_stage2_config (NMDevice *dev,

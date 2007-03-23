@@ -45,6 +45,8 @@ G_BEGIN_DECLS
 typedef struct _NMDevice80211Wireless NMDevice80211Wireless;
 #endif
 
+typedef gboolean (*NMScanApprovalHook)(NMDevice80211Wireless *dev, gpointer user_data);
+
 typedef struct _NMDevice80211WirelessClass NMDevice80211WirelessClass;
 typedef struct _NMDevice80211WirelessPrivate NMDevice80211WirelessPrivate;
 
@@ -59,6 +61,10 @@ struct _NMDevice80211Wireless
 struct _NMDevice80211WirelessClass
 {
 	NMDeviceClass parent;
+
+	/* Signals */
+	void (* scan_started) (NMDevice80211Wireless * dev);
+	void (* scan_done)    (NMDevice80211Wireless * dev);
 };
 
 
@@ -96,6 +102,8 @@ void			nm_device_802_11_wireless_set_scan_interval (struct NMData *data,
                                                             NMDevice80211Wireless *dev,
                                                             NMWirelessScanInterval interval);
 
+gboolean		nm_device_802_11_wireless_is_scanning (NMDevice80211Wireless *dev);
+
 void	nm_device_802_11_wireless_copy_allowed_to_dev_list (NMDevice80211Wireless *self,
 											  struct NMAccessPointList *allowed_list);
 
@@ -114,6 +122,9 @@ int		nm_device_802_11_wireless_get_mode (NMDevice80211Wireless *self);
 
 gint8	nm_device_802_11_wireless_get_signal_strength (NMDevice80211Wireless *self);
 
+void	nm_device_802_11_wireless_register_scan_approval_hook (NMDevice80211Wireless *self,
+                                                               NMScanApprovalHook hook,
+                                                               gpointer user_data);
 
 G_END_DECLS
 

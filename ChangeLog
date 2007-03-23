@@ -1,3 +1,23 @@
+2007-03-22  Dan Williams  <dcbw@redhat.com>
+
+	There needs to be some coordination between the mesh device and the
+	normal 802.11 device.  The normal device shouldn't scan when the mesh
+	device is active, and the mesh device shouldn't be searching for mesh
+	channels when the 802.11 device is scanning or activating.
+
+	- src/nm-device.c
+		- Add 'activation-started'/'activation-done' signals on devices
+
+	- src/nm-device-802-11-wireless.c
+		- Add 'scan-started' and 'scan-done' signals
+		- Add a scan approval hook that allows other devices to delay
+			scans on the 802.11 wireless device
+
+	- src/nm-device-802-11-mesh-olpc.c
+		- Add bits to allow inhibiting of scans on the 802.11 wireless
+			device when the mesh device is active
+		- Add get/set frequency functions
+
 2007-03-19  Dan Williams  <dcbw@redhat.com>
 
 	- Fill in most of Mesh device class
