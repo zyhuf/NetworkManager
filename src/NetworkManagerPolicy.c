@@ -132,7 +132,7 @@ static gboolean nm_policy_activation_failed (NMActRequest *req)
         ap = nm_act_request_get_ap (req);
 
 	nm_info ("Activation (%s) failed.", nm_device_get_iface (dev));
-	nm_dbus_schedule_device_status_change_signal	(data, dev, ap, DEVICE_ACTIVATION_FAILED);
+	nm_dbus_schedule_device_status_change_signal (data, dev, ap, DEVICE_ACTIVATION_FAILED);
 
 	nm_device_deactivate (dev);
 	nm_schedule_state_change_signal_broadcast (data);
