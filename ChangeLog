@@ -1,3 +1,21 @@
+2007-03-27  Dan Williams  <dcbw@redhat.com>
+
+	* include/NetworkManager.h
+		- Add a "post-ip" stage in activation that happens after an IP address
+			has been configured.  Mesh bits will look for a mesh portal here,
+			or it could be used to log in to a Wi-Fi portal or something.
+
+	* src/nm-device.[ch]
+		- Add the "post-ip" activation stage
+
+	* src/nm-device-802-11-mesh-olpc.[ch]
+		- Implement mesh portal (MPP) detection
+		- Random channel on interface startup
+		- Fix scanning inhibition & interaction between ethernet and mesh device
+		- get/set_80211_freq() -> get/set_80211_channel()
+		- Kill avahi-autoipd instead of telling it to terminate, because it's
+			UNBIND/STOP signal comes in way to late.  Sort of a hack.
+
 2007-03-22  Dan Williams  <dcbw@redhat.com>
 
 	There needs to be some coordination between the mesh device and the

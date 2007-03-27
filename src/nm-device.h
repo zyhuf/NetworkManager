@@ -101,6 +101,8 @@ struct _NMDeviceClass
 	NMActStageReturn	(* act_stage4_ip_config_timeout)	(NMDevice *self,
 												 struct NMActRequest *req,
 												 NMIP4Config **config);
+	NMActStageReturn	(* act_stage6_post_ip_start)(NMDevice *self,
+											 struct NMActRequest *req);
 	void			(* deactivate)			(NMDevice *self);
 	void			(* deactivate_quickly)	(NMDevice *self);
 

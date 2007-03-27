@@ -24,6 +24,8 @@
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <signal.h>
 
 #include "nm-device.h"
@@ -41,6 +43,8 @@
 #define IPV4LL_BROADCAST 0xA9FEFFFFL
 
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
+static void mpp_discovery_cleanup (NMDevice80211MeshOLPC *self);
+static gboolean mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self);
 
 
 #define NM_DEVICE_802_11_MESH_OLPC_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_802_11_MESH_OLPC, NMDevice80211MeshOLPCPrivate))
@@ -60,6 +64,15 @@ struct _ethdev {
 	gulong		scan_done_id;
 	gulong		activation_started_id;
 	gulong		activation_done_id;
+	gboolean	scanning;
+};
+
+struct _mpp {
+	GIOChannel *	chan;
+	GSource *		chan_src;
+	int				sk;
+	guint32			tries;
+	GSource *		timeout_src;
 };
 
 struct _NMDevice80211MeshOLPCPrivate
@@ -69,9 +82,13 @@ struct _NMDevice80211MeshOLPCPrivate
 
 	guint32		capabilities;
 
-	struct _ethdev ethdev;
-
+	struct _ethdev	ethdev;
 	struct _autoipd	aipd;
+	struct _mpp		mpp;
+
+	guint32		channel;
+
+	struct iw_range	range;
 };
 
 
@@ -83,13 +100,51 @@ nm_device_802_11_mesh_olpc_init (NMDevice80211MeshOLPC * self)
 	self->priv->is_initialized = FALSE;
 }
 
+guint32 get_random_channel (void)
+{
+	GRand * rand;
+	guint32 num;
+
+	rand = g_rand_new ();
+ 	if (!rand) {
+		srandom ((int) time (NULL));
+		num = random ();
+	} else {
+		num = g_rand_int (rand);
+		g_rand_free (rand);
+	}
+
+	/* Return a random channel of [1, 6, 11] */
+	return ((num % 3) * 5) + 1;
+}
+
 static void
 real_init (NMDevice *dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
+	struct iwreq wrq;
+	NMSock * sk;
 
 	self->priv->is_initialized = TRUE;
 	self->priv->capabilities = 0;
+	self->priv->channel = get_random_channel ();
+	
+
+	sk = nm_dev_sock_open (NM_DEVICE (dev), DEV_WIRELESS, __func__, NULL);
+	if (sk) {
+		memset (&wrq, 0, sizeof (wrq));
+		strncpy (wrq.ifr_name, nm_device_get_iface (dev), IFNAMSIZ);
+		wrq.u.data.pointer = (caddr_t) &(self->priv->range);
+		wrq.u.data.length = sizeof (struct iw_range);
+		if (ioctl (nm_dev_sock_get_fd (sk), SIOCGIWRANGE, &wrq) < 0) {
+			nm_warning ("%s: couldn't get range information.",
+			            nm_device_get_iface (dev));
+		}
+		nm_dev_sock_close (sk);
+	} else {
+		nm_warning ("%s: couldn't open device socket.",
+			    nm_device_get_iface (dev));
+	}
 }
 
 static gboolean
@@ -100,6 +155,9 @@ ethdev_scan_approval_hook (NMDevice80211Wireless *ethdev,
 
 	g_return_val_if_fail (ethdev != NULL, TRUE);
 	g_return_val_if_fail (self != NULL, TRUE);
+
+	if (nm_device_is_activating (NM_DEVICE (self)))
+		return FALSE;
 
 fprintf (stderr, "%s: allowing scan for %s\n",
          nm_device_get_iface (NM_DEVICE (self)),
@@ -121,6 +179,8 @@ ethdev_scan_started_cb (GObject * obj,
 	fprintf (stderr, "%s: scan started event for %s\n",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
+
+	self->priv->ethdev.scanning = TRUE;
 }
 
 static void
@@ -136,6 +196,15 @@ ethdev_scan_done_cb (GObject * obj,
 	fprintf (stderr, "%s: scan done event for %s\n",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
+
+	self->priv->ethdev.scanning = FALSE;
+
+	if (nm_device_is_activating (NM_DEVICE (self))) {
+		NMActRequest * req = nm_device_get_act_request (NM_DEVICE (self));
+		if (nm_act_request_get_stage (req) == NM_ACT_STAGE_DEVICE_PREPARE) {
+			nm_device_activate_schedule_stage2_device_config (req);
+		}
+	}
 }
 
 static void
@@ -234,6 +303,8 @@ cleanup_ethdev (NMDevice80211MeshOLPC *self)
 	g_signal_handler_disconnect (G_OBJECT (ethdev), ethdev_rec->activation_done_id);
 	ethdev_rec->activation_done_id = 0;
 
+	ethdev_rec->scanning = FALSE;
+
 	nm_info ("%s: 802.11 companion device %s removed.",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
@@ -271,10 +342,14 @@ real_start (NMDevice *dev)
 
 	nm_unlock_mutex (data->dev_list_mutex, __FUNCTION__);
 
-#if 0
-	if (self->priv->ethdev)
+	if (self->priv->ethdev.dev)
 		nm_device_set_active_link (NM_DEVICE (self), TRUE);
-#endif
+}
+
+static gboolean
+link_active_cb (gpointer user_data)
+{
+	nm_device_set_active_link (NM_DEVICE (user_data), TRUE);
 }
 
 static void
@@ -285,6 +360,7 @@ real_notify_device_added (NMDevice *dev,
 	NMData * data = nm_device_get_app_data (dev);
 	const char * mesh_physdev = nm_device_get_physical_device_udi (dev);
 	const char * eth_physdev = NULL;
+	GSource * source;
 
 	if (dev == added_dev)
 		return;
@@ -301,9 +377,19 @@ real_notify_device_added (NMDevice *dev,
 
 	setup_ethdev (self, NM_DEVICE_802_11_WIRELESS (added_dev));
 
-#if 0
-	nm_device_set_active_link (NM_DEVICE (self), TRUE);
-#endif
+	/* schedule a link change for later since this function
+	 * is called with the device list lock held.
+	 */
+	source = g_idle_source_new ();
+	g_source_set_callback (source, link_active_cb, self, NULL);
+	g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
+	g_source_unref (source);
+}
+
+static gboolean
+link_inactive_cb (gpointer user_data)
+{
+	nm_device_set_active_link (NM_DEVICE (user_data), FALSE);
 }
 
 static void
@@ -312,6 +398,7 @@ real_notify_device_removed (NMDevice *dev,
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMData * data = nm_device_get_app_data (dev);
+	GSource * source;
 
 	if (dev == removed_dev)
 		return;
@@ -325,7 +412,13 @@ real_notify_device_removed (NMDevice *dev,
 
 	cleanup_ethdev (self);
 
-	nm_device_set_active_link (NM_DEVICE (self), FALSE);
+	/* schedule a link change for later since this function
+	 * is called with the device list lock held.
+	 */
+	source = g_idle_source_new ();
+	g_source_set_callback (source, link_inactive_cb, self, NULL);
+	g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
+	g_source_unref (source);
 }
 
 static void
@@ -333,6 +426,7 @@ real_deactivate_quickly (NMDevice *dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
+	mpp_discovery_cleanup (self);
 	aipd_cleanup (self);
 }
 
@@ -523,12 +617,13 @@ out:
 }
 
 
-static double
-get_80211_freq (NMDevice80211MeshOLPC *self)
+static int
+get_80211_channel (NMDevice80211MeshOLPC *self)
 {
 	NMSock * sk;
 	int err;
 	double freq = 0;
+	int channel = 0;
 	struct iwreq wrqu;
 	const char * iface;
 
@@ -541,10 +636,7 @@ get_80211_freq (NMDevice80211MeshOLPC *self)
 		return -1;
 	}
 
-	err = iw_get_ext (nm_dev_sock_get_fd (sk),
-	                  iface,
-	                  SIOCGIWFREQ,
-	                  &wrqu);
+	err = iw_get_ext (nm_dev_sock_get_fd (sk), iface, SIOCGIWFREQ, &wrqu);
 	if (err) {
 		nm_warning ("%s: failed to get frequency (errno: %d).",
 		            iface,
@@ -553,15 +645,20 @@ get_80211_freq (NMDevice80211MeshOLPC *self)
 	}
 
 	freq = iw_freq2float (&wrqu.u.freq);
+	channel = iw_freq_to_channel (freq, &(self->priv->range));
+	if (channel == -1) {
+		/* Already a channel # */
+		channel = (int) freq;
+	}
 
 out:
 	nm_dev_sock_close (sk);
-	return freq;
+	return channel;
 }
 
 static gboolean
-set_80211_frequency (NMDevice80211MeshOLPC *self,
-                     const double freq)
+set_80211_channel (NMDevice80211MeshOLPC *self,
+                   int channel)
 {
 	NMSock * sk;
 	int err;
@@ -572,8 +669,8 @@ set_80211_frequency (NMDevice80211MeshOLPC *self,
 
 	g_return_val_if_fail (self != NULL, FALSE);
 
-	if ((freq > 0) && (get_80211_frequency (self) == freq))
-		return FALSE;
+	if ((channel > 0) && (get_80211_channel (self) == channel))
+		return TRUE;
 
 	iface = nm_device_get_iface (NM_DEVICE (self));
 
@@ -583,7 +680,7 @@ set_80211_frequency (NMDevice80211MeshOLPC *self,
 		return FALSE;
 	}
 
-	if (freq <= 0) {
+	if (channel == 0) {
 		/* Try 0 for "auto" first, fall back to -1 below of 0 doesn't work */
 		wrqu.u.freq.m = 0;
 		wrqu.u.freq.e = 0;
@@ -591,13 +688,14 @@ set_80211_frequency (NMDevice80211MeshOLPC *self,
 	} else {
 		/* Fixed */
 		wrqu.u.freq.flags = IW_FREQ_FIXED;
-		iw_float2freq (freq, &wrqu.u.freq);
+		wrqu.u.freq.e = 0;
+		wrqu.u.freq.m = channel;
 	}
 
 	skfd = nm_dev_sock_get_fd (sk);
 	err = iw_set_ext (skfd, iface, SIOCSIWFREQ, &wrqu);
 	if (err) {
-		if ((freq <= 0) && ((errno == EINVAL) || (errno == EOPNOTSUPP))) {
+		if ((channel == 0) && ((errno == EINVAL) || (errno == EOPNOTSUPP))) {
 			/* Ok, try "auto" the other way */
 			wrqu.u.freq.m = -1;
 			wrqu.u.freq.e = 0;
@@ -605,15 +703,12 @@ set_80211_frequency (NMDevice80211MeshOLPC *self,
 			err = iw_set_ext (skfd, iface, SIOCSIWFREQ, &wrqu);
 			if (err) {
 				nm_warning ("%s: failed to set frequency to auto (errno: %d)",
-				            iface,
-				            errno);
+				            iface, errno);
 				goto out;
 			}
 		} else {
-			nm_warning ("%s: failed to set frequency to %f (errno: %d)",
-			            iface,
-			            freq,
-			            errno);
+			nm_warning ("%s: failed to set channel to %d (errno: %d)",
+			            iface, channel, errno);
 			goto out;
 		}
 	}
@@ -650,7 +745,7 @@ aipd_cleanup (NMDevice80211MeshOLPC *self)
 
 	if (self->priv->aipd.pid > 0)
 	{
-		kill (self->priv->aipd.pid, SIGTERM);
+		kill (self->priv->aipd.pid, SIGKILL);
 		self->priv->aipd.pid = -1;
 	}
 	if (self->priv->aipd.watch)
@@ -751,7 +846,6 @@ static gboolean
 aipd_timeout_cb (gpointer user_data)
 {
 	NMDevice * dev = NM_DEVICE (user_data);
- 	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);	
 
 	g_assert (dev);
 
@@ -797,17 +891,37 @@ out:
 /*************************************************************/
 
 static NMActStageReturn
+real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
+{
+	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
+
+	/* Have to wait until ethdev is done scanning before continuing */
+	if (self->priv->ethdev.scanning)
+		return NM_ACT_STAGE_RETURN_POSTPONE;
+
+	return NM_ACT_STAGE_RETURN_SUCCESS;
+}
+
+static NMActStageReturn
 real_act_stage2_config (NMDevice *dev,
                         NMActRequest *req)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
 
+	nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) using "
+	         "channel %d.",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         self->priv->channel);
+
+	if (!clear_80211_keys (self))
+		goto out;
+
 	/* Mesh interface should be in adhoc mode */
 	if (!set_80211_mode (self, IW_MODE_ADHOC))
 		goto out;
 
-	if (!clear_80211_keys (self))
+	if (!set_80211_channel (self, self->priv->channel))
 		goto out;
 
 #define MESH_SSID "olpc-mesh"
@@ -869,6 +983,347 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 	return NM_ACT_STAGE_RETURN_SUCCESS;
 }
 
+
+/*************************************************************/
+/* MPP discovery stuff                                       */
+/*************************************************************/
+
+static void
+mpp_discovery_cleanup_timeout_source (NMDevice80211MeshOLPC *self)
+{
+	if (!self->priv->mpp.timeout_src)
+		return;
+
+	g_source_destroy (self->priv->mpp.timeout_src);
+	g_source_unref (self->priv->mpp.timeout_src);
+	self->priv->mpp.timeout_src = NULL;
+}
+
+static void
+mpp_discovery_cleanup (NMDevice80211MeshOLPC *self)
+{
+	g_return_if_fail (self != NULL);
+
+	if (self->priv->mpp.chan) {
+		g_io_channel_shutdown (self->priv->mpp.chan, FALSE, NULL);
+		g_io_channel_unref (self->priv->mpp.chan);		
+		self->priv->mpp.chan = NULL;
+	}
+
+	if (self->priv->mpp.chan_src) {
+		g_source_destroy (self->priv->mpp.chan_src);
+		g_source_unref (self->priv->mpp.chan_src);
+		self->priv->mpp.chan_src = NULL;
+	}
+
+	if (self->priv->mpp.sk >= 0) {
+		close (self->priv->mpp.sk	);
+		self->priv->mpp.sk = -1;
+	}
+
+	mpp_discovery_cleanup_timeout_source (self);
+
+	self->priv->mpp.tries = 0;
+}
+
+static gboolean
+interpret_address (NMDevice * dev,
+                   const char * line,
+                   struct in_addr * addr,
+                   const char * errmsg)
+{
+	const char * iface;
+
+	g_return_val_if_fail (dev != NULL, FALSE);
+	g_return_val_if_fail (addr != NULL, FALSE);
+	g_return_val_if_fail (errmsg != NULL, FALSE);
+
+	iface = nm_device_get_iface (dev);
+
+	if (!line) {
+		nm_debug ("Activation (%s/mesh): %s.  Empty reply message line.",
+		          iface, errmsg);
+		return FALSE;
+	}
+
+	if (strlen (line) > 15) {
+		nm_debug ("Activation (%s/mesh): %s.  Invalid address; too long.",
+		          iface, errmsg);
+		return FALSE;
+	}
+
+	if (inet_aton (line, addr) == 0) {
+		nm_debug ("Activation (%s/mesh): %s.  Invalid address.", iface, errmsg);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+#define MESSAGE_LEN	100
+
+static gboolean
+mpp_discovery_receive_cb (GIOChannel *source,
+                          GIOCondition condition,
+                          gpointer user_data)
+{
+	NMDevice *			dev = NM_DEVICE (user_data);
+	NMDevice80211MeshOLPC *self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+	NMActRequest * 		req;
+	char				message[MESSAGE_LEN];
+	gsize				bytes_read = 0;
+	GError				*error = NULL;
+	GIOStatus			status;
+	gchar **			lines = NULL;
+	const char *		iface = nm_device_get_iface (dev);
+	struct in_addr		addr;
+	NMIP4Config *		ip4_config;
+	gboolean			retry = TRUE;
+	NMData *			app_data;
+
+	/* Do nothing if we're supposed to be canceling activation.
+	 * We'll get cleaned up by the cancellation handlers later.
+	 */
+	if (nm_device_activation_should_cancel (dev))
+		return TRUE;
+
+	req = nm_device_get_act_request (NM_DEVICE (self));
+
+	memset (message, 0, sizeof (message));
+	status = g_io_channel_read_chars (self->priv->mpp.chan,
+	                                  &message[0],
+	                                  sizeof (message),
+	                                  &bytes_read,
+	                                  &error);
+	if (status != G_IO_STATUS_NORMAL) {
+		nm_debug ("Activation (%s/mesh): error reading from MPP discovery "
+		          "socket. status: %d, error: %d '%s'",
+		          iface, status,
+		          error ? error->code : -1, error ? error->message : "<none>");
+		g_error_free (error);
+		goto out;
+	}
+
+	nm_debug ("Activation (%s/mesh): MPP discovery returned '%s'", iface, message);
+
+	lines = g_strsplit (message, "\n", 5);
+	if (lines == NULL) {
+		nm_debug ("Activation (%s/mesh): empty MPPREQ reply.", iface);
+		goto out;
+	}
+
+	if (!lines[0] || strcmp (lines[0], "IPv4-0")) {
+		nm_debug ("Activation (%s/mesh): invalid MPPREQ header.", iface);
+		goto out;
+	}
+
+	ip4_config = nm_device_get_ip4_config (dev);
+
+	if (!interpret_address (dev, lines[1], &addr, "invalid MPPREQ gateway"))
+		goto out;
+	nm_ip4_config_set_gateway (ip4_config, addr.s_addr);
+
+	if (!interpret_address (dev, lines[2], &addr, "invalid MPPREQ nameserver #1"))
+		goto out;
+	nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
+
+	if (lines[3]) {
+		if (!interpret_address (dev, lines[3], &addr, "invalid MPPREQ nameserver #2"))
+			goto out;
+		nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
+	}
+
+	/* Only cancel timeout now, so that errors above trigger retries */
+	mpp_discovery_cleanup_timeout_source (self);
+
+	app_data = nm_device_get_app_data (dev);
+	nm_named_manager_remove_ip4_config (app_data->named_manager, ip4_config);
+	if (!nm_system_device_set_from_ip4_config (dev)) {
+		nm_debug ("Activation (%s/mesh): failed to set IP4 config.", iface);
+		nm_policy_schedule_activation_failed (req);
+		goto out;
+	}
+
+	nm_policy_schedule_activation_finish (req);
+
+out:
+	g_strfreev (lines);
+	return TRUE;
+}
+
+static void
+mpp_discovery_receive_done (gpointer user_data)
+{
+	NMDevice80211MeshOLPC *self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	self->priv->mpp.chan_src = NULL;
+}
+
+static gboolean
+mpp_discovery_rreq_timeout_cb (gpointer user_data)
+{
+	NMDevice80211MeshOLPC *self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+
+	self->priv->mpp.tries++;
+
+	if (self->priv->mpp.tries < 5) {
+		mpp_discovery_cleanup_timeout_source (self);
+		mpp_discovery_send_rreq (self);
+	} else {
+		NMActRequest * req = nm_device_get_act_request (NM_DEVICE (self));
+		mpp_discovery_cleanup (self);
+		nm_policy_schedule_activation_failed (req);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
+{
+#define MPPREQ_MSG	"MPPREQ"
+#define MPPREQ_PORT	953
+#define MPPREQ_IP4	"192.168.2.99"
+	const char * msg = MPPREQ_MSG;
+	const char * iface;
+	struct sockaddr_in sin;
+	int ret;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+	g_return_val_if_fail (self->priv->mpp.sk >= 0, FALSE);
+
+	iface = nm_device_get_iface (NM_DEVICE (self));
+
+	memset (&sin, 0, sizeof (sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = htonl (0xc0a80263L); /* MPPREQ_IP4 (192.168.2.99) */
+	sin.sin_port = htons (MPPREQ_PORT);
+	ret = sendto (self->priv->mpp.sk, msg, strlen (msg), 0,
+	              (struct sockaddr *) &sin, sizeof (sin));
+	if (ret < 0) {
+		nm_debug ("Activation (%s/mesh): could not send route request. errno: %d.",
+		          iface, errno);
+		goto done;
+	} else if (ret < strlen (msg)) {
+		nm_debug ("Activation (%s/mesh): couldn't send entire route request "
+		          "message.  Sent %d bytes.",
+		          iface, ret);
+		goto done;
+	}
+
+	nm_debug ("Activation (%s/mesh): sent route request %d.",
+	          iface,
+	          self->priv->mpp.tries + 1);
+
+	mpp_discovery_cleanup_timeout_source (self);
+	self->priv->mpp.timeout_src = g_timeout_source_new (2000);
+	g_source_set_callback (self->priv->mpp.timeout_src,
+	                       mpp_discovery_rreq_timeout_cb,
+	                       self,
+	                       NULL);
+	g_source_attach (self->priv->mpp.timeout_src,
+	                 nm_device_get_main_context (NM_DEVICE (self)));
+
+done:
+	return TRUE;
+}
+
+static gboolean
+mpp_discovery_start (NMDevice80211MeshOLPC *self)
+{
+	struct timeval tv = { 2, 0 };
+	struct sockaddr_in sin;
+	int err, opt = 1;
+	NMIP4Config * ip4_config;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	mpp_discovery_cleanup (self);
+
+	ip4_config = nm_device_get_ip4_config (NM_DEVICE (self));
+	g_return_val_if_fail (ip4_config != NULL, FALSE);
+
+	/* Open the MPP discovery socket */
+	self->priv->mpp.sk = socket (AF_INET, SOCK_DGRAM, 0);
+	if (self->priv->mpp.sk < 0) {
+		nm_debug ("Activation (%s/mesh): could not open socket for MPP "
+		          "discovery. errno: %d.",
+		          nm_device_get_iface (NM_DEVICE (self)),
+		          errno);
+		goto error;
+	}
+
+	if (setsockopt (self->priv->mpp.sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt)) < 0) {
+		nm_debug ("Activation (%s/mesh): error setting socket options for MPP "
+		          "discovery. errno: %d.",
+		          nm_device_get_iface (NM_DEVICE (self)),
+		          errno);
+		goto error;
+	}
+
+	/* Set send & receive timeouts */
+	if (setsockopt(self->priv->mpp.sk, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
+		nm_debug ("Activation (%s/mesh): error setting socket send timeout for MPP "
+		          "discovery. errno: %d.",
+		          nm_device_get_iface (NM_DEVICE (self)),
+		          errno);
+		goto error;
+	}
+	if (setsockopt(self->priv->mpp.sk, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+		nm_debug ("Activation (%s/mesh): error setting socket receive for MPP "
+		          "discovery. errno: %d.",
+		          nm_device_get_iface (NM_DEVICE (self)),
+		          errno);
+		goto error;
+	}
+
+	memset (&sin, 0, sizeof (sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+	if (bind(self->priv->mpp.sk, (struct sockaddr*)&sin, sizeof (sin)) < 0) {
+		nm_debug ("Activation (%s/mesh): error binding socket for MPP "
+		          "discovery. errno: %d.",
+		          nm_device_get_iface (NM_DEVICE (self)),
+		          errno);
+		goto error;
+	}
+
+	/* Wait for an MPP reply */
+	self->priv->mpp.chan = g_io_channel_unix_new (self->priv->mpp.sk);
+	g_io_channel_set_flags (self->priv->mpp.chan, G_IO_FLAG_NONBLOCK, NULL);
+	self->priv->mpp.chan_src = g_io_create_watch (self->priv->mpp.chan, G_IO_IN | G_IO_ERR);
+	g_source_set_callback (self->priv->mpp.chan_src,
+						   (GSourceFunc) mpp_discovery_receive_cb,
+						   self,
+						   mpp_discovery_receive_done);
+	g_source_attach (self->priv->mpp.chan_src, nm_device_get_main_context (NM_DEVICE (self)));
+	return TRUE;
+
+error:
+	mpp_discovery_cleanup (self);
+	return FALSE;
+}
+
+
+static NMActStageReturn
+real_act_stage6_post_ip_start (NMDevice *dev,
+                               NMActRequest *req)
+{	
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (dev);
+
+	nm_system_device_add_route_via_device_with_iface (nm_device_get_iface (dev),
+			"192.168.0.0/16");
+
+	if (!mpp_discovery_start (self))
+		return NM_ACT_STAGE_RETURN_FAILURE;
+
+	/* Send first packet */
+	if (!mpp_discovery_send_rreq (self))
+		return NM_ACT_STAGE_RETURN_FAILURE;
+
+	return NM_ACT_STAGE_RETURN_POSTPONE;
+}
+
 static void
 real_activation_success_handler (NMDevice *dev,
                                  NMActRequest *req)
@@ -878,8 +1333,6 @@ real_activation_success_handler (NMDevice *dev,
 
 	app_data = nm_act_request_get_data (req);
 	g_assert (app_data);
-
-	/* FIXME: start route request stuff */
 
 	nm_device_set_active_link (dev, TRUE);
 }
@@ -895,7 +1348,9 @@ real_activation_failure_handler (NMDevice *dev,
 	app_data = nm_act_request_get_data (req);
 	g_assert (app_data);
 
-	/* FIXME: whatever */
+	self->priv->channel += 5;
+	if (self->priv->channel > 11)
+		self->priv->channel = 1;
 }
 
 static void
@@ -945,9 +1400,10 @@ real_handle_autoip_event (NMDevice *dev,
 			nm_policy_schedule_activation_failed (req);
 		}		
 	} else {
-		nm_warning ("%s: autoip address %s no longer valid.",
+		nm_warning ("%s: autoip address %s no longer valid because '%s'.",
 		         nm_device_get_iface (dev),
-		         addr);
+		         addr,
+		         event);
 
 		/* The LL address is gone.  Terminate the connection or fail
 		 * activation.
@@ -1012,9 +1468,11 @@ nm_device_802_11_mesh_olpc_class_init (NMDevice80211MeshOLPCClass *klass)
 	parent_class->notify_device_added = real_notify_device_added;
 	parent_class->notify_device_removed = real_notify_device_removed;
 
+	parent_class->act_stage1_prepare = real_act_stage1_prepare;
 	parent_class->act_stage2_config = real_act_stage2_config;
 	parent_class->act_stage3_ip_config_start = real_act_stage3_ip_config_start;
 	parent_class->act_stage4_get_ip4_config = real_act_stage4_get_ip4_config;
+	parent_class->act_stage6_post_ip_start = real_act_stage6_post_ip_start;
 	parent_class->activation_failure_handler = real_activation_failure_handler;
 	parent_class->activation_success_handler = real_activation_success_handler;
 
