@@ -1,5 +1,17 @@
 2007-03-27  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-mesh-olpc.c
+		- Implement mesh "discovery" and a two-pass attempt to connect to
+			the mesh before giving up
+		- Ensure that GSources are valid before using them
+
+2007-03-27  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManagerSystem.c
+		- Don't use invalid netlink handles; return error instead
+
+2007-03-27  Dan Williams  <dcbw@redhat.com>
+
 	* include/NetworkManager.h
 		- Add a "post-ip" stage in activation that happens after an IP address
 			has been configured.  Mesh bits will look for a mesh portal here,

@@ -247,7 +247,10 @@ nm_system_get_rtnl_index_from_iface (const char *iface)
 	int				i = RTNL_LINK_NOT_FOUND;
 
 	nlh = new_nl_handle ();
-	if (nlh && (cache = get_link_cache (nlh)))
+	if (!nlh)
+		return RTNL_LINK_NOT_FOUND;
+
+	if (cache = get_link_cache (nlh))
 		i = rtnl_link_name2i (cache, iface);
 	nl_close (nlh);
 	nl_handle_destroy (nlh);
@@ -265,8 +268,10 @@ nm_system_get_iface_from_rtnl_index (int rtnl_index)
 	char *			buf = NULL;
 
 	nlh = new_nl_handle ();
-	if (nlh && (cache = get_link_cache (nlh)))
-	{
+	if (!nlh)
+		return NULL;
+
+	if (cache = get_link_cache (nlh)) {
 		buf = g_malloc0 (MAX_IFACE_LEN);
 		if (!rtnl_link_i2name (cache, rtnl_index, buf, MAX_IFACE_LEN - 1))
 		{
@@ -303,12 +308,14 @@ gboolean nm_system_device_set_from_ip4_config (NMDevice *dev)
 	config = nm_device_get_ip4_config (dev);
 	g_return_val_if_fail (config != NULL, FALSE);
 
+	nlh = new_nl_handle ();
+	if (!nlh)
+		return FALSE;
+
 	nm_system_delete_default_route ();
 	nm_system_device_flush_addresses (dev);
 	nm_system_device_flush_routes (dev);
 	nm_system_flush_arp_cache ();
-
-	nlh = new_nl_handle ();
 
 	if ((addr = nm_ip4_config_to_rtnl_addr (config, NM_RTNL_ADDR_DEFAULT)))
 	{
@@ -423,6 +430,10 @@ gboolean nm_system_vpn_device_set_from_ip4_config (NMNamedManager *named, NMDevi
 
 	g_return_val_if_fail (config != NULL, FALSE);
 
+	nlh = new_nl_handle ();
+	if (!nlh)
+		return FALSE;
+
 	/* Set up a route to the VPN gateway through the real network device */
 	if (active_device && (ad_config = nm_device_get_ip4_config (active_device)))
 		nm_system_device_set_ip4_route (active_device, nm_ip4_config_get_gateway (ad_config), nm_ip4_config_get_gateway (config), 0xFFFFFFFF, nm_ip4_config_get_mss (config));
@@ -430,8 +441,6 @@ gboolean nm_system_vpn_device_set_from_ip4_config (NMNamedManager *named, NMDevi
 	if (iface != NULL && strlen (iface))
 	{
 		nm_system_device_set_up_down_with_iface (iface, TRUE);
-
-		nlh = new_nl_handle ();
 
 		if ((addr = nm_ip4_config_to_rtnl_addr (config, NM_RTNL_ADDR_PTP_DEFAULT)))
 		{
