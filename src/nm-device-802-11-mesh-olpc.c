@@ -42,6 +42,7 @@
 #define IPV4LL_HOSTMASK 0x0000FFFFL
 #define IPV4LL_BROADCAST 0xA9FEFFFFL
 
+static void mesh_search_cleanup (NMDevice80211MeshOLPC *self);
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
 static void mpp_discovery_cleanup (NMDevice80211MeshOLPC *self);
 static gboolean mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self);
@@ -67,6 +68,13 @@ struct _ethdev {
 	gboolean	scanning;
 };
 
+struct _msearch {
+	GSource *		check;
+	guint32			check_tries;
+
+	GHashTable *	fwt;
+};
+
 struct _mpp {
 	GIOChannel *	chan;
 	GSource *		chan_src;
@@ -85,8 +93,43 @@ struct _NMDevice80211MeshOLPCPrivate
 	struct _ethdev	ethdev;
 	struct _autoipd	aipd;
 	struct _mpp		mpp;
+	struct _msearch	msearch;
 
+	/* Theory of operation:
+	 *
+	 * There are 2 attempts to connect to a mesh.  Each attempt
+	 * goes through channels 1, 6, and 11.  The first attempt tries mesh
+	 * 'discovery' by checking the mesh firmware forwarding table for changes
+	 * to quickly identify the presence of a mesh on the channel.  The second
+	 * attempt just tries to do MPP discovery on each channel in case there
+	 * are not enough mesh members sending traffic during the mesh discovery
+	 * in the first attempt.
+	 *
+	 * 1) Attempt #1 - for each channel of [1, 6, 11]:
+	 *    a) Switch to channel
+	 *    b) Does the mesh forwarding table change?
+	 *        - Yes: go to (1c)
+	 *        - No:  another channel to try?
+	 *            - Yes: next channel, go to (1a)
+	 *            - No:  go to (2)
+	 *    c) Get an auto-ip address
+	 *    d) Does an MPP exist (determined via MPP discovery)?
+	 *        - Yes: Done
+	 *        - No:  another channel to try?
+	 *            - Yes: next channel, go to (1a)
+	 *            - No:  go to (2)
+	 * 2) Attempt #2 - for each channel of [1, 6, 11]:
+	 *    a) Switch to channel
+	 *    b) Get an auto-ip address
+	 *    c) Does an MPP exist (determined via MPP discovery)?
+	 *        - Yes: Done
+	 *        - No:  another channel to try?
+	 *            - Yes: next channel, go to (1a)
+	 *            - No:  fail activation
+	 */
 	guint32		channel;
+	guint32		num_channels_tried;
+	guint32		attempt;
 
 	struct iw_range	range;
 };
@@ -128,7 +171,8 @@ real_init (NMDevice *dev)
 	self->priv->is_initialized = TRUE;
 	self->priv->capabilities = 0;
 	self->priv->channel = get_random_channel ();
-	
+	self->priv->num_channels_tried = 0;
+	self->priv->attempt = 1;
 
 	sk = nm_dev_sock_open (NM_DEVICE (dev), DEV_WIRELESS, __func__, NULL);
 	if (sk) {
@@ -381,9 +425,11 @@ real_notify_device_added (NMDevice *dev,
 	 * is called with the device list lock held.
 	 */
 	source = g_idle_source_new ();
-	g_source_set_callback (source, link_active_cb, self, NULL);
-	g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
-	g_source_unref (source);
+	if (source) {
+		g_source_set_callback (source, link_active_cb, self, NULL);
+		g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
+		g_source_unref (source);
+	}
 }
 
 static gboolean
@@ -416,9 +462,11 @@ real_notify_device_removed (NMDevice *dev,
 	 * is called with the device list lock held.
 	 */
 	source = g_idle_source_new ();
-	g_source_set_callback (source, link_inactive_cb, self, NULL);
-	g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
-	g_source_unref (source);
+	if (source) {
+		g_source_set_callback (source, link_inactive_cb, self, NULL);
+		g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
+		g_source_unref (source);
+	}
 }
 
 static void
@@ -428,6 +476,7 @@ real_deactivate_quickly (NMDevice *dev)
 
 	mpp_discovery_cleanup (self);
 	aipd_cleanup (self);
+	mesh_search_cleanup (self);
 }
 
 
@@ -743,13 +792,12 @@ aipd_cleanup (NMDevice80211MeshOLPC *self)
 {
 	g_return_if_fail (self != NULL);
 
-	if (self->priv->aipd.pid > 0)
-	{
+	if (self->priv->aipd.pid > 0) {
 		kill (self->priv->aipd.pid, SIGKILL);
 		self->priv->aipd.pid = -1;
 	}
-	if (self->priv->aipd.watch)
-	{
+
+	if (self->priv->aipd.watch) {
 		g_source_destroy (self->priv->aipd.watch);
 		self->priv->aipd.watch = NULL;
 	}
@@ -829,9 +877,14 @@ aipd_exec (NMDevice80211MeshOLPC *self)
 
 	/* Monitor the child process so we know when it stops */
 	self->priv->aipd.pid = pid;
-	if (self->priv->aipd.watch)
+	if (self->priv->aipd.watch) {
 		g_source_destroy (self->priv->aipd.watch);
+		g_source_unref (self->priv->aipd.watch);
+	}
+
 	self->priv->aipd.watch = g_child_watch_source_new (pid);
+	if (!self->priv->aipd.watch)
+		return FALSE;
 	g_source_set_callback (self->priv->aipd.watch,
 						   (GSourceFunc) aipd_watch_cb,
 						   self,
@@ -846,8 +899,12 @@ static gboolean
 aipd_timeout_cb (gpointer user_data)
 {
 	NMDevice * dev = NM_DEVICE (user_data);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
-	g_assert (dev);
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	if (!self->priv->aipd.timeout)
+		return FALSE;
 
 	nm_info ("%s: avahi-autoipd timed out.", nm_device_get_iface (dev));
 	nm_policy_schedule_activation_failed (nm_device_get_act_request (dev));
@@ -874,6 +931,9 @@ aipd_monitor_start (NMDevice80211MeshOLPC *self)
 
 	/* Set up a timeout to kill it after 10 seconds */
 	self->priv->aipd.timeout = g_timeout_source_new (10000);
+	if (!self->priv->aipd.timeout)
+		goto out;
+
 	context = nm_device_get_main_context (NM_DEVICE (self));
 	g_source_set_callback (self->priv->aipd.timeout,
 						   aipd_timeout_cb,
@@ -889,6 +949,254 @@ out:
 }
 
 /*************************************************************/
+/* Mesh Search stuff                                         */
+/*************************************************************/
+
+static void
+mesh_search_cleanup (NMDevice80211MeshOLPC * self)
+{
+	if (self->priv->msearch.check) {
+		g_source_destroy (self->priv->msearch.check);
+		g_source_unref (self->priv->msearch.check);
+		self->priv->msearch.check = NULL;
+	}
+
+	self->priv->msearch.check_tries = 0;
+
+	if (self->priv->msearch.fwt) {
+		g_hash_table_unref (self->priv->msearch.fwt);
+		self->priv->msearch.fwt = NULL;
+	}
+}
+
+#define WLANIOCTL                       SIOCIWFIRSTPRIV
+#define WLAN_SET128CHAR_GET128CHAR      (WLANIOCTL + 25)
+#define WLAN_SUBCMD_FWT_LIST                    25
+
+static gboolean
+mesh_search_get_fwt (NMDevice80211MeshOLPC * self, GSList ** list)
+{
+	NMDevice * dev = NM_DEVICE (self);
+	NMSock * sk;
+	int num = 0;
+	const char * iface;
+	gboolean success = TRUE;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+	g_return_val_if_fail (list != NULL, FALSE);
+
+	iface = nm_device_get_iface (dev);
+
+	sk = nm_dev_sock_open (dev, DEV_WIRELESS, __func__, NULL);
+	if (!sk)
+		return FALSE;
+
+	while (num < 500) {
+		char buf[200];
+		struct iwreq wrq;
+		int err, len, i = 0, nonzero = 0;
+		char * item;
+
+		memset (buf, 0, sizeof (buf));
+		memset (&wrq, 0, sizeof (wrq));
+		strncpy (wrq.ifr_name, iface, IFNAMSIZ);
+		wrq.u.data.pointer = (caddr_t) &buf[0];
+		wrq.u.data.length = sizeof (buf) - 1;
+		wrq.u.data.flags = WLAN_SUBCMD_FWT_LIST;
+		err = ioctl (nm_dev_sock_get_fd (sk), WLAN_SET128CHAR_GET128CHAR, &wrq);
+		if (err < 0) {
+			nm_warning ("%s: couldn't get FWT list.  error %d", iface, err);
+			if (i == 0)
+				success = FALSE;
+			break;
+		}
+		len = wrq.u.data.length;
+
+		/* Check if we're done */
+		if ((len == 0) || !strcmp (buf, " (null)") || !strlen (buf))
+			break;
+		while ((i < len) && ((buf[i] == ' ') || (buf[i] == ':') || (buf[i] == '0')))
+ 			i++;
+		if (i >= len)
+			break; /* All zeros, we're done too */
+
+		if (len < 35) {
+			nm_warning ("%s: FWT entry too short.", iface);
+			continue;
+		}
+
+		buf[sizeof (buf) - 1] = '\0';
+		item = g_strdup (buf);
+		if (!item) {
+			nm_warning ("%s: not enough memory for FWT entry.", iface);
+			continue;
+		}
+		num++;
+		*list = g_slist_append (*list, item);
+	}
+
+out:
+	nm_dev_sock_close (sk);
+	return success;
+}
+
+static gboolean
+mesh_search_check_cb (gpointer user_data)
+{
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+	NMDevice * dev = NM_DEVICE (user_data);
+	GSList * list = NULL;
+	GSList * elt;
+	gboolean again = TRUE;
+	NMActRequest * req;
+
+	req = nm_device_get_act_request (dev);
+	if (    !req
+	    || (nm_act_request_get_stage (req) != NM_ACT_STAGE_DEVICE_CONFIG)
+		|| nm_device_activation_should_cancel (dev)) {
+		/* Must have been cancelled */
+		return FALSE;
+	}
+
+	self->priv->msearch.check_tries++;
+	if (self->priv->msearch.check_tries > 5) {
+		nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) no mesh "
+		         "found on channel %d.",
+		         nm_device_get_iface (dev),
+		         self->priv->channel);
+		mesh_search_cleanup (self);
+		nm_policy_schedule_activation_failed (req);
+		return FALSE;
+	}
+
+	if (!mesh_search_get_fwt (self, &list)) {
+		nm_warning ("%s: could not get FWT list.", nm_device_get_iface (dev));
+		goto out;
+	}
+
+	/* If there's even one entry in the table, we have a mesh */
+	if (list && list->data && strlen (list->data)) {
+		again = FALSE;
+		mesh_search_cleanup (self);
+		nm_device_activate_schedule_stage3_ip_config_start (req);
+	}
+
+#if 0
+	/* Match all returned FWT entries with ones in the saved table.  If there
+	 * are any entries _not_ in the saved table, there's a mesh on this channel.
+	 */
+	for (elt = list; elt; elt = g_slist_next (elt)) {
+		if (!g_hash_table_lookup (self->priv->msearch.fwt, elt->data)) {
+			again = FALSE;
+			mesh_search_cleanup (self);
+			nm_device_activate_schedule_stage3_ip_config_start (req);
+			break;
+		}
+	}
+#endif
+
+	g_slist_foreach (list, (GFunc) g_free, NULL);
+	g_slist_free (list);
+
+out:
+	return again;
+}
+
+#define WLAN_SETNONE_GETNONE	        (WLANIOCTL + 8)
+#define WLAN_SUBCMD_FWT_RESET			14
+
+static gboolean
+mesh_search_fwt_reset (NMDevice80211MeshOLPC * self)
+{
+	NMDevice * dev = NM_DEVICE (self);
+	NMSock * sk;
+	struct iwreq wrq;
+	int err;
+	const char * iface;
+	gboolean success = TRUE;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	iface = nm_device_get_iface (NM_DEVICE (self));
+
+	sk = nm_dev_sock_open (NM_DEVICE (self), DEV_WIRELESS, __func__, NULL);
+	if (!sk)
+		return FALSE;
+
+	memset (&wrq, 0, sizeof (wrq));
+	strncpy (wrq.ifr_name, iface, IFNAMSIZ);
+	wrq.u.data.flags = WLAN_SUBCMD_FWT_RESET;
+	err = ioctl (nm_dev_sock_get_fd (sk), WLAN_SETNONE_GETNONE, &wrq);
+	if (err < 0) {
+		nm_warning ("%s: couldn't reset FWT.  error %d", iface, err);
+		goto out;
+	}
+	success = TRUE;
+
+out:
+	nm_dev_sock_close (sk);
+	return success;
+}
+
+static gboolean
+mesh_search_begin (NMDevice80211MeshOLPC * self)
+{
+	GSList * list = NULL;
+	GSList * elt;
+	gboolean success = FALSE;
+	GMainContext * context;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	mesh_search_cleanup (self);
+
+	if (!mesh_search_fwt_reset (self)) {
+		nm_warning ("%s: couldn't clear mesh FWT.",
+		            nm_device_get_iface (NM_DEVICE (self)));
+		goto out;
+	}
+
+#if 0
+	if (!mesh_search_get_fwt (self, &list))
+		return FALSE;
+
+	self->priv->msearch.fwt = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	if (!self->priv->msearch.fwt) {
+		nm_warning ("%s: not enough memory for mesh search table.",
+		            nm_device_get_iface (NM_DEVICE (self)));
+		g_slist_foreach (list, (GFunc) g_free, NULL);
+		goto out;
+	}
+
+	/* Walk the list and add items to the hash table */
+	for (elt = list; elt; elt = g_slist_next (elt)) {
+		g_hash_table_insert (self->priv->msearch.fwt,
+		                     (gpointer) elt->data,
+		                     GINT_TO_POINTER (1));
+	}
+#endif
+
+	self->priv->msearch.check = g_timeout_source_new (750);
+	if (!self->priv->msearch.check)
+		goto out;
+	context = nm_device_get_main_context (NM_DEVICE (self));
+	g_source_set_callback (self->priv->msearch.check,
+						   mesh_search_check_cb,
+						   self,
+						   NULL);
+	g_source_attach (self->priv->msearch.check, context);
+	success = TRUE;
+
+out:
+#if 0
+	g_slist_free (list);
+#endif
+	return success;
+}
+
+
+/*************************************************************/
+
 
 static NMActStageReturn
 real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
@@ -909,11 +1217,6 @@ real_act_stage2_config (NMDevice *dev,
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
 
-	nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) using "
-	         "channel %d.",
-	         nm_device_get_iface (NM_DEVICE (self)),
-	         self->priv->channel);
-
 	if (!clear_80211_keys (self))
 		goto out;
 
@@ -928,7 +1231,19 @@ real_act_stage2_config (NMDevice *dev,
 	if (!set_80211_ssid (self, MESH_SSID, strlen (MESH_SSID)))
 		goto out;
 
-	ret = NM_ACT_STAGE_RETURN_SUCCESS;
+	nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) looking for "
+	         "a mesh on channel %d.",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         self->priv->channel);
+
+	/* Start looking for a mesh */
+	if (self->priv->attempt == 1) {
+		if (!mesh_search_begin (self))
+			goto out;
+		ret = NM_ACT_STAGE_RETURN_POSTPONE;
+	} else {
+		ret = NM_ACT_STAGE_RETURN_SUCCESS;
+	}
 
 out:
 	return ret;
@@ -1162,13 +1477,21 @@ mpp_discovery_receive_done (gpointer user_data)
 static gboolean
 mpp_discovery_rreq_timeout_cb (gpointer user_data)
 {
-	NMDevice80211MeshOLPC *self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+	NMActRequest * req;
 
 	self->priv->mpp.tries++;
 
+	req = nm_device_get_act_request (NM_DEVICE (self));
+	if (!req || (nm_act_request_get_stage (req) != NM_ACT_STAGE_POST_IP_START)) {
+		/* Must have been cancelled */
+		return FALSE;
+	}
+
 	if (self->priv->mpp.tries < 5) {
 		mpp_discovery_cleanup_timeout_source (self);
-		mpp_discovery_send_rreq (self);
+		if (!mpp_discovery_send_rreq (self))
+			nm_policy_schedule_activation_failed (req);
 	} else {
 		NMActRequest * req = nm_device_get_act_request (NM_DEVICE (self));
 		mpp_discovery_cleanup (self);
@@ -1188,6 +1511,7 @@ mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
 	const char * iface;
 	struct sockaddr_in sin;
 	int ret;
+	gboolean success = FALSE;
 
 	g_return_val_if_fail (self != NULL, FALSE);
 	g_return_val_if_fail (self->priv->mpp.sk >= 0, FALSE);
@@ -1217,15 +1541,18 @@ mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
 
 	mpp_discovery_cleanup_timeout_source (self);
 	self->priv->mpp.timeout_src = g_timeout_source_new (2000);
+	if (!self->priv->mpp.timeout_src)
+		goto done;
 	g_source_set_callback (self->priv->mpp.timeout_src,
 	                       mpp_discovery_rreq_timeout_cb,
 	                       self,
 	                       NULL);
 	g_source_attach (self->priv->mpp.timeout_src,
 	                 nm_device_get_main_context (NM_DEVICE (self)));
+	success = TRUE;
 
 done:
-	return TRUE;
+	return success;
 }
 
 static gboolean
@@ -1292,6 +1619,8 @@ mpp_discovery_start (NMDevice80211MeshOLPC *self)
 	self->priv->mpp.chan = g_io_channel_unix_new (self->priv->mpp.sk);
 	g_io_channel_set_flags (self->priv->mpp.chan, G_IO_FLAG_NONBLOCK, NULL);
 	self->priv->mpp.chan_src = g_io_create_watch (self->priv->mpp.chan, G_IO_IN | G_IO_ERR);
+	if (!self->priv->mpp.chan_src)
+		goto error;
 	g_source_set_callback (self->priv->mpp.chan_src,
 						   (GSourceFunc) mpp_discovery_receive_cb,
 						   self,
@@ -1351,6 +1680,20 @@ real_activation_failure_handler (NMDevice *dev,
 	self->priv->channel += 5;
 	if (self->priv->channel > 11)
 		self->priv->channel = 1;
+
+	self->priv->num_channels_tried++;
+	if (self->priv->num_channels_tried > 3) {
+		self->priv->num_channels_tried = 0;
+		self->priv->attempt++;
+	}
+
+	if (self->priv->attempt > 2) {
+		/* Total failure to get a mesh after 2 passes */
+		self->priv->num_channels_tried = 0;
+		self->priv->attempt = 0;
+		self->priv->channel = get_random_channel ();
+		nm_device_set_active_link (dev, FALSE);
+	}
 }
 
 static void
