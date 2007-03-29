@@ -65,6 +65,7 @@
  * Globals
  */
 static NMData		*nm_data = NULL;
+static gboolean		hostname_set = FALSE;
 
 static gboolean sigterm_pipe_handler (GIOChannel *src, GIOCondition condition, gpointer data);
 static void nm_data_free (NMData *data);
@@ -96,6 +97,29 @@ static char *nm_get_device_interface_from_hal (LibHalContext *ctx, const char *u
 	return (iface);
 }
 
+
+void fixup_hostname(NMDevice * dev)
+{
+	char hw[ETH_ALEN];
+	char zero[ETH_ALEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	char * hostname;
+
+	if (hostname_set)
+		return;
+
+	memset (hw, 0, ETH_ALEN);
+	nm_device_get_hw_address (dev, (struct ether_addr *) &hw);
+	if (!memcmp (hw, zero, ETH_ALEN))
+		return;
+
+	hostname = g_strdup_printf ("xo-%02hhX-%02hhX-%02hhX.localdomain", hw[3], hw[4], hw[5]);
+	if (hostname) {
+		nm_info ("Setting hostname: '%s'", hostname);
+		sethostname (hostname, strlen (hostname));
+		hostname_set = TRUE;
+		g_free (hostname);
+	}
+}
 
 /*
  * nm_create_device_and_add_to_list
@@ -162,6 +186,8 @@ NMDevice * nm_create_device_and_add_to_list (NMData *data, const char *udi, cons
 			}
 
 			nm_unlock_mutex (data->dev_list_mutex, __FUNCTION__);
+
+fixup_hostname (dev);
 
 			nm_policy_schedule_device_change_check (data);
 			nm_dbus_schedule_device_status_change_signal (data, dev, NULL, DEVICE_ADDED);
