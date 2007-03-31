@@ -1,6 +1,12 @@
 2007-03-30  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
+		- Cleanup some timeouts and make sure GSourceFuncs return the right
+			values
+
+2007-03-30  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
 		- (real_act_stage6_post_ip_start): add static arp mapping for MPP anycast
 			IP address to the anycast MAC address
 

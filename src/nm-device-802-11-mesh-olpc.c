@@ -394,6 +394,7 @@ static gboolean
 link_active_cb (gpointer user_data)
 {
 	nm_device_set_active_link (NM_DEVICE (user_data), TRUE);
+	return FALSE;
 }
 
 static void
@@ -436,6 +437,7 @@ static gboolean
 link_inactive_cb (gpointer user_data)
 {
 	nm_device_set_active_link (NM_DEVICE (user_data), FALSE);
+	return FALSE;
 }
 
 static void
@@ -807,15 +809,7 @@ aipd_cleanup (NMDevice80211MeshOLPC *self)
 	self->priv->aipd.ip4_addr = 0;
 }
 
-static void
-aipd_watch_done (gpointer user_data)
-{
-	NMDevice80211MeshOLPC *device = NM_DEVICE_802_11_MESH_OLPC (user_data);
-
-	device->priv->aipd.watch = NULL;
-}
-
-static void
+static gboolean
 aipd_watch_cb (GPid pid,
                gint status,
                gpointer user_data)
@@ -837,6 +831,8 @@ aipd_watch_cb (GPid pid,
 	aipd_cleanup (self);
 
 /*	nm_device_set_active_link (dev, FALSE); */
+
+	return FALSE;
 }
 
 static void
@@ -888,7 +884,7 @@ aipd_exec (NMDevice80211MeshOLPC *self)
 	g_source_set_callback (self->priv->aipd.watch,
 						   (GSourceFunc) aipd_watch_cb,
 						   self,
-						   aipd_watch_done);
+						   NULL);
 	g_source_attach (self->priv->aipd.watch, nm_device_get_main_context (NM_DEVICE (self)));
 	g_source_unref (self->priv->aipd.watch);
 
@@ -1485,6 +1481,7 @@ mpp_discovery_rreq_timeout_cb (gpointer user_data)
 	req = nm_device_get_act_request (NM_DEVICE (self));
 	if (!req || (nm_act_request_get_stage (req) != NM_ACT_STAGE_POST_IP_START)) {
 		/* Must have been cancelled */
+		mpp_discovery_cleanup (self);
 		return FALSE;
 	}
 
