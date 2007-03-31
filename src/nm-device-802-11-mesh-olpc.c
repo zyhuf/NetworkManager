@@ -1501,12 +1501,14 @@ mpp_discovery_rreq_timeout_cb (gpointer user_data)
 	return TRUE;
 }
 
-static gboolean
-mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
-{
 #define MPPREQ_MSG	"MPPREQ"
 #define MPPREQ_PORT	953
 #define MPPREQ_IP4	"192.168.2.99"
+#define MPPREQ_MAC	"c027c027c027"
+
+static gboolean
+mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
+{
 	const char * msg = MPPREQ_MSG;
 	const char * iface;
 	struct sockaddr_in sin;
@@ -1642,6 +1644,13 @@ real_act_stage6_post_ip_start (NMDevice *dev,
 
 	nm_system_device_add_route_via_device_with_iface (nm_device_get_iface (dev),
 			"192.168.0.0/16");
+
+	if (nm_spawn_process ("/sbin/arp -s " MPPREQ_IP4 " " MPPREQ_MAC)) {
+		nm_warning ("Activation (%s/mesh): couldn't create anycast ARP"
+		            " mapping for MPP discovery.",
+		            nm_device_get_iface (dev));
+		return NM_ACT_STAGE_RETURN_FAILURE;
+	}
 
 	if (!mpp_discovery_start (self))
 		return NM_ACT_STAGE_RETURN_FAILURE;
