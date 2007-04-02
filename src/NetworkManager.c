@@ -102,7 +102,17 @@ void fixup_hostname(NMDevice * dev)
 {
 	char hw[ETH_ALEN];
 	char zero[ETH_ALEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	char * hostname;
+	char * hostname = NULL;
+	char * hostdomain = NULL;
+	char * line = NULL;
+	GError * err = NULL;
+	char * contents = NULL;
+	char ** lines = NULL;
+	gsize length = 0;
+	int fd, i, len, written;
+	gboolean found = FALSE;
+	GError * error = NULL;
+	gboolean success = FALSE;
 
 	if (hostname_set)
 		return;
@@ -112,13 +122,98 @@ void fixup_hostname(NMDevice * dev)
 	if (!memcmp (hw, zero, ETH_ALEN))
 		return;
 
-	hostname = g_strdup_printf ("xo-%02hhX-%02hhX-%02hhX.localdomain", hw[3], hw[4], hw[5]);
-	if (hostname) {
-		nm_info ("Setting hostname: '%s'", hostname);
-		sethostname (hostname, strlen (hostname));
-		hostname_set = TRUE;
-		g_free (hostname);
+	hostname = g_strdup_printf ("xo-%02hhX-%02hhX-%02hhX", hw[3], hw[4], hw[5]);
+	if (!hostname) {
+		nm_warning ("Not enough memory to create hostname.");
+		goto out;
 	}
+
+	hostdomain = g_strdup_printf ("%s.localdomain", hostname);
+	if (!hostdomain) {
+		nm_warning ("Not enough memory to create host domain.");
+		goto out;
+	}
+
+	nm_info ("Setting hostname: '%s'", hostdomain);
+	sethostname (hostdomain, strlen (hostdomain));
+	hostname_set = TRUE;
+
+	if (!g_file_get_contents ("/etc/hosts", &contents, &length, &error)) {
+		if (error) {
+			nm_warning ("Error adding static host mapping for local host: %d - %s",
+			            error->code, error->message);
+			g_error_free (error);
+		} else {
+			nm_warning ("Error adding static host mapping for local host.");
+		}
+		goto out;
+	}
+
+	if (!length || !contents || !strlen (contents)) {
+		nm_warning ("/etc/hosts file was empty!");
+		goto out;
+	}
+
+	/* Find the entry if it already exists */
+	lines = g_strsplit (contents, "\n", 0);
+	if (!lines) {
+		nm_warning ("Out of memory or other error parsing /etc/hosts.");
+		goto out;
+	}
+
+#define LH_IP4 "127.0.0.1"
+	len = g_strv_length (lines);
+	for (i = 0; i < len; i++) {
+		char *p;
+		if (strncmp (lines[i], LH_IP4, strlen (LH_IP4)) != 0)
+			continue;
+
+		p = lines[i] + strlen (LH_IP4);
+		while (isspace (*p)) p++;
+		if (strncmp (p, hostdomain, strlen (hostdomain)) == 0) {
+			found = TRUE;
+			break;
+		}
+	}
+	g_strfreev (lines);
+
+	if (found)
+		goto out;
+
+	line = g_strdup_printf ("\n127.0.0.1\t%s\t%s\tlocalhost\n", hostdomain, hostname);
+	if (!line) {
+		nm_warning ("Out of memory adding static mapping for local host.");
+		goto out;
+	}
+
+	/* Add the new entry to the bottom */
+	fd = open ("/etc/hosts", O_RDWR | O_APPEND);
+	if (fd < 0) {
+		nm_warning ("Couldn't open /etc/hosts: %s", strerror (errno));
+		goto out;
+	}
+
+	written = write (fd, line, strlen (line));
+	if (written < 0) {
+		nm_warning ("Error writing static mapping for local host: %s", strerror (errno));
+	} else if (written != strlen (line)) {
+		nm_warning ("Error writing static mapping for local host.");
+	}
+	close (fd);
+	success = TRUE;
+
+out:
+	if (!success) {
+		/* If there was an error updating /etc/hosts, reset
+		 * hostname to 'localhost.localdomain'
+		 */
+		const char * def_hostname = "localhost.localdomain";
+		sethostname (def_hostname, strlen (def_hostname));
+	}
+
+	g_free (line);
+	g_free (hostdomain);
+	g_free (hostname);
 }
 
 /*
@@ -187,7 +282,8 @@ NMDevice * nm_create_device_and_add_to_list (NMData *data, const char *udi, cons
 
 			nm_unlock_mutex (data->dev_list_mutex, __FUNCTION__);
 
-fixup_hostname (dev);
+			/* Uniqify this machine's hostname */
+			fixup_hostname (dev);
 
 			nm_policy_schedule_device_change_check (data);
 			nm_dbus_schedule_device_status_change_signal (data, dev, NULL, DEVICE_ADDED);

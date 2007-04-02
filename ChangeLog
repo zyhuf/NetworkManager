@@ -1,3 +1,8 @@
+2007-04-01  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManager.c
+		- (fixup_hostname): add entry for local hostname to /etc/hosts too
+
 2007-03-30  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
