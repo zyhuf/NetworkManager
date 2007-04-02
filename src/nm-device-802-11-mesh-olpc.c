@@ -925,8 +925,8 @@ aipd_monitor_start (NMDevice80211MeshOLPC *self)
 
 	g_return_val_if_fail (self != NULL, FALSE);
 
-	/* Set up a timeout to kill it after 10 seconds */
-	self->priv->aipd.timeout = g_timeout_source_new (10000);
+	/* Set up a timeout to kill it after 20 seconds */
+	self->priv->aipd.timeout = g_timeout_source_new (20000);
 	if (!self->priv->aipd.timeout)
 		goto out;
 
