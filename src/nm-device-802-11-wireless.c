@@ -2862,7 +2862,7 @@ static gboolean
 supplicant_exec (NMDevice80211Wireless *self)
 {
 	gboolean	success = FALSE;
-	char *	argv[4];
+	char *	argv[5];
 	GError *	error = NULL;
 	GPid		pid = -1;
 	int		sup_stdout;
@@ -2870,11 +2870,11 @@ supplicant_exec (NMDevice80211Wireless *self)
 	argv[0] = WPA_SUPPLICANT_BIN;
 	argv[1] = "-g";
 	argv[2] = WPA_SUPPLICANT_GLOBAL_SOCKET;
-	argv[3] = NULL;
+	argv[3] = "-ddd";
+	argv[4] = NULL;
 
-	success = g_spawn_async_with_pipes ("/", argv, NULL, 0,
-	                    &supplicant_child_setup, NULL, &pid, NULL, &sup_stdout,
-	                    NULL, &error);
+	success = g_spawn_async ("/", argv, NULL, 0, &supplicant_child_setup, NULL,
+	                         &pid, &error);
 	if (!success)
 	{
 		if (error)
@@ -2888,6 +2888,7 @@ supplicant_exec (NMDevice80211Wireless *self)
 	}
 	else
 	{
+#if 0
 		GIOChannel *	channel;
 		const char *	charset = NULL;
 
@@ -2905,6 +2906,7 @@ supplicant_exec (NMDevice80211Wireless *self)
 							   supplicant_log_stdout_done);
 		g_source_attach (self->priv->supplicant.stdout, nm_device_get_main_context (NM_DEVICE (self)));
 		g_source_unref (self->priv->supplicant.stdout);
+#endif
 
 		/* Monitor the child process so we know when it stops */
 		self->priv->supplicant.pid = pid;
@@ -3161,16 +3163,16 @@ real_act_stage2_config (NMDevice *dev,
 			iface);
 		goto out;
 	}
-	if (!supplicant_send_network_config (self, req))
-	{
-		nm_warning ("Activation (%s/wireless): couldn't send wireless configuration"
-			" to the supplicant.", iface);
-		goto out;
-	}
 	if (!supplicant_monitor_start (self))
 	{
 		nm_warning ("Activation (%s/wireless): couldn't monitor the supplicant.",
 			iface);
+		goto out;
+	}
+	if (!supplicant_send_network_config (self, req))
+	{
+		nm_warning ("Activation (%s/wireless): couldn't send wireless configuration"
+			" to the supplicant.", iface);
 		goto out;
 	}
 

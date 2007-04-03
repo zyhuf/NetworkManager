@@ -1,5 +1,14 @@
 2007-04-03  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-wireless.c
+		- (supplicant_exec): don't capture and redirect supplicant output,
+			may be causing problems with wpa_supplicant.  Instead, assume
+			that wpa_supplicant is putting its debug output somewhere accessible
+		- (real_act_stage2_config): start monitoring supplicant state earlier
+			to catch fast associations
+
+2007-04-03  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-device-802-11-mesh-olpc.
 		- (real_act_stage6_post_ip_start): only add a route to the anycast IP
 			address, not to its whole subnet
