@@ -1640,7 +1640,7 @@ real_act_stage6_post_ip_start (NMDevice *dev,
 	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
 	nm_system_device_add_route_via_device_with_iface (nm_device_get_iface (dev),
-			"192.168.0.0/16");
+			MPPREQ_IP4);
 
 	if (nm_spawn_process ("/sbin/arp -s " MPPREQ_IP4 " " MPPREQ_MAC)) {
 		nm_warning ("Activation (%s/mesh): couldn't create anycast ARP"
