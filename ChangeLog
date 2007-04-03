@@ -1,5 +1,12 @@
 2007-04-03  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-wireless.c
+		- (supplicant_exec): don't capture and redirect supplicant output;
+			tell wpa_supplicant to use syslog instead
+		- (supplicant_log_stdout, supplicant_log_stdout_done): removed
+
+2007-04-03  Dan Williams  <dcbw@redhat.com>
+
 	* src/NetworkManager.c
 		- (fixup_hostname): restart avahi after hostname changes so it notices
 			them.  Grr.
