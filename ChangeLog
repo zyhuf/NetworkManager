@@ -1,5 +1,11 @@
 2007-04-03  Dan Williams  <dcbw@redhat.com>
 
+	* src/NetworkManager.c
+		- (fixup_hostname): restart avahi after hostname changes so it notices
+			them.  Grr.
+
+2007-04-03  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-device-802-11-wireless.c
 		- (supplicant_exec): don't capture and redirect supplicant output,
 			may be causing problems with wpa_supplicant.  Instead, assume

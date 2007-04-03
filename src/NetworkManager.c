@@ -211,6 +211,9 @@ out:
 		sethostname (def_hostname, strlen (def_hostname));
 	}
 
+	/* Restart avahi to deal with hostname changes */
+	nm_spawn_process ("/sbin/service avahi-daemon restart");
+
 	g_free (line);
 	g_free (hostdomain);
 	g_free (hostname);
