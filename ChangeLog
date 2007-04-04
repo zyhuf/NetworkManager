@@ -1,3 +1,9 @@
+2007-04-04  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-dbus-nmi.c
+		- (nm_dbus_get_user_key_for_network_cb): accept security objects
+			wrapped in structs, which later versions of python bindings pass back
+
 2007-04-03  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.c

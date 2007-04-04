@@ -29,6 +29,28 @@
 #include "nm-utils.h"
 
 
+static void
+handle_security (DBusMessageIter *iter,
+                 NMActRequest * req,
+                 NMAccessPoint * ap)
+{
+	NMAPSecurity * security;
+
+	g_return_if_fail (iter != NULL);
+	g_return_if_fail (req != NULL);
+	g_return_if_fail (ap != NULL);
+
+	security = nm_ap_security_new_deserialize (iter);
+	if (!security) {
+		nm_info ("Invalid AP security information returned for get_user_key.");
+		return;
+	}
+
+	nm_ap_set_security (ap, security);
+	g_object_unref (G_OBJECT (security));	/* set_security copies the object */
+	nm_device_activate_schedule_stage1_device_prepare (req);
+}
+
 /*
  * nm_dbus_get_user_key_for_network_cb
  *
@@ -96,11 +118,14 @@ static void nm_dbus_get_user_key_for_network_cb (DBusPendingCall *pcall, NMActRe
 	nm_info ("Activation (%s) New wireless user key for network '%s' received.", nm_device_get_iface (dev), nm_ap_get_essid (ap));
 
 	dbus_message_iter_init (reply, &iter);
-	if ((security = nm_ap_security_new_deserialize (&iter)))
-	{
-		nm_ap_set_security (ap, security);
-		g_object_unref (G_OBJECT (security));	/* set_security copies the object */
-		nm_device_activate_schedule_stage1_device_prepare (req);
+
+	/* Work around python bindings that struct-ize everything */
+	if (dbus_message_iter_get_arg_type (&iter) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter subiter;
+		dbus_message_iter_recurse (&iter, &subiter);
+		handle_security (&subiter, req, ap);
+	} else {
+		handle_security (&iter, req, ap);
 	}
 	nm_act_request_set_user_key_pending_call (req, NULL);
 
