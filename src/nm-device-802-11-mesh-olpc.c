@@ -1439,9 +1439,13 @@ mpp_discovery_receive_cb (GIOChannel *source,
 	nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
 
 	if (lines[3]) {
-		if (!interpret_address (dev, lines[3], &addr, "invalid MPPREQ nameserver #2"))
-			goto out;
-		nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
+		/* Ignore whitespace */
+		g_strstrip (lines[3]);
+		if (strlen (lines[3])) {
+			if (!interpret_address (dev, lines[3], &addr, "invalid MPPREQ nameserver #2"))
+				goto out;
+			nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
+		}
 	}
 
 	/* Only cancel timeout now, so that errors above trigger retries */
