@@ -1,6 +1,12 @@
 2007-04-04  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
+		- (mpp_discovery_receive_cb): clean up right after a successful response
+			so only one MPP response is ever processed
+
+2007-04-04  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
 		- (mpp_discovery_receive_cb): accept only one nameserver in MPP response
 
 2007-04-04  Dan Williams  <dcbw@redhat.com>

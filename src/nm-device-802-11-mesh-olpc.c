@@ -1389,7 +1389,6 @@ mpp_discovery_receive_cb (GIOChannel *source,
 	const char *		iface = nm_device_get_iface (dev);
 	struct in_addr		addr;
 	NMIP4Config *		ip4_config;
-	gboolean			retry = TRUE;
 	NMData *			app_data;
 
 	/* Do nothing if we're supposed to be canceling activation.
@@ -1399,6 +1398,8 @@ mpp_discovery_receive_cb (GIOChannel *source,
 		return TRUE;
 
 	req = nm_device_get_act_request (NM_DEVICE (self));
+	if (nm_act_request_get_stage (req) != NM_ACT_STAGE_POST_IP_START)
+		return TRUE;
 
 	memset (message, 0, sizeof (message));
 	status = g_io_channel_read_chars (self->priv->mpp.chan,
@@ -1459,6 +1460,8 @@ mpp_discovery_receive_cb (GIOChannel *source,
 		goto out;
 	}
 
+	/* Clean up to ensure we never process more than one MPP response */
+	mpp_discovery_cleanup (self);
 	nm_policy_schedule_activation_finish (req);
 
 out:
