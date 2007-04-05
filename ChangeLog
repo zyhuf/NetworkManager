@@ -1,6 +1,12 @@
 2007-04-05  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
+		- Change MPPREQ protocol port # to 16
+		- Change MPPREQ anycast IP to 172.31.255.254
+
+2007-04-05  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
 		- (real_activation_failure_handler): switch adapter back to infrastructure
 			mode when not activating a mesh
 

@@ -1570,8 +1570,8 @@ mpp_discovery_rreq_timeout_cb (gpointer user_data)
 }
 
 #define MPPREQ_MSG	"MPPREQ"
-#define MPPREQ_PORT	953
-#define MPPREQ_IP4	"192.168.2.99"
+#define MPPREQ_PORT	16
+#define MPPREQ_IP4	"172.31.255.254"
 #define MPPREQ_MAC	"c027c027c027"
 
 static gboolean
