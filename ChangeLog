@@ -1,6 +1,11 @@
 2007-04-04  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
+		- convert nm_debug logging to nm_info so it shows up in /var/log/messages
+
+2007-04-04  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
 		- (mpp_discovery_receive_cb): clean up right after a successful response
 			so only one MPP response is ever processed
 

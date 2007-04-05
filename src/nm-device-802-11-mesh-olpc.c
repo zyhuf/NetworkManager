@@ -1352,19 +1352,19 @@ interpret_address (NMDevice * dev,
 	iface = nm_device_get_iface (dev);
 
 	if (!line) {
-		nm_debug ("Activation (%s/mesh): %s.  Empty reply message line.",
-		          iface, errmsg);
+		nm_info ("Activation (%s/mesh): %s.  Empty reply message line.",
+		         iface, errmsg);
 		return FALSE;
 	}
 
 	if (strlen (line) > 15) {
-		nm_debug ("Activation (%s/mesh): %s.  Invalid address; too long.",
+		nm_info ("Activation (%s/mesh): %s.  Invalid address; too long.",
 		          iface, errmsg);
 		return FALSE;
 	}
 
 	if (inet_aton (line, addr) == 0) {
-		nm_debug ("Activation (%s/mesh): %s.  Invalid address.", iface, errmsg);
+		nm_info ("Activation (%s/mesh): %s.  Invalid address.", iface, errmsg);
 		return FALSE;
 	}
 
@@ -1408,24 +1408,24 @@ mpp_discovery_receive_cb (GIOChannel *source,
 	                                  &bytes_read,
 	                                  &error);
 	if (status != G_IO_STATUS_NORMAL) {
-		nm_debug ("Activation (%s/mesh): error reading from MPP discovery "
-		          "socket. status: %d, error: %d '%s'",
-		          iface, status,
-		          error ? error->code : -1, error ? error->message : "<none>");
+		nm_info ("Activation (%s/mesh): error reading from MPP discovery "
+		         "socket. status: %d, error: %d '%s'",
+		         iface, status,
+		         error ? error->code : -1, error ? error->message : "<none>");
 		g_error_free (error);
 		goto out;
 	}
 
-	nm_debug ("Activation (%s/mesh): MPP discovery returned '%s'", iface, message);
+	nm_info ("Activation (%s/mesh): MPP discovery returned '%s'", iface, message);
 
 	lines = g_strsplit (message, "\n", 5);
 	if (lines == NULL) {
-		nm_debug ("Activation (%s/mesh): empty MPPREQ reply.", iface);
+		nm_info ("Activation (%s/mesh): empty MPPREQ reply.", iface);
 		goto out;
 	}
 
 	if (!lines[0] || strcmp (lines[0], "IPv4-0")) {
-		nm_debug ("Activation (%s/mesh): invalid MPPREQ header.", iface);
+		nm_info ("Activation (%s/mesh): invalid MPPREQ header.", iface);
 		goto out;
 	}
 
@@ -1455,7 +1455,7 @@ mpp_discovery_receive_cb (GIOChannel *source,
 	app_data = nm_device_get_app_data (dev);
 	nm_named_manager_remove_ip4_config (app_data->named_manager, ip4_config);
 	if (!nm_system_device_set_from_ip4_config (dev)) {
-		nm_debug ("Activation (%s/mesh): failed to set IP4 config.", iface);
+		nm_info ("Activation (%s/mesh): failed to set IP4 config.", iface);
 		nm_policy_schedule_activation_failed (req);
 		goto out;
 	}
@@ -1526,24 +1526,28 @@ mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self)
 
 	memset (&sin, 0, sizeof (sin));
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl (0xc0a80263L); /* MPPREQ_IP4 (192.168.2.99) */
 	sin.sin_port = htons (MPPREQ_PORT);
-	ret = sendto (self->priv->mpp.sk, msg, strlen (msg), 0,
-	              (struct sockaddr *) &sin, sizeof (sin));
-	if (ret < 0) {
-		nm_debug ("Activation (%s/mesh): could not send route request. errno: %d.",
-		          iface, errno);
-		goto done;
-	} else if (ret < strlen (msg)) {
-		nm_debug ("Activation (%s/mesh): couldn't send entire route request "
-		          "message.  Sent %d bytes.",
-		          iface, ret);
+	if (!inet_aton (MPPREQ_IP4, &sin.sin_addr)) {
+		nm_info ("Error converting " MPPREQ_IP4 " to numeric address.");
 		goto done;
 	}
 
-	nm_debug ("Activation (%s/mesh): sent route request %d.",
-	          iface,
-	          self->priv->mpp.tries + 1);
+	ret = sendto (self->priv->mpp.sk, msg, strlen (msg), 0,
+	              (struct sockaddr *) &sin, sizeof (sin));
+	if (ret < 0) {
+		nm_info ("Activation (%s/mesh): could not send route request. errno: %d.",
+		         iface, errno);
+		goto done;
+	} else if (ret < strlen (msg)) {
+		nm_info ("Activation (%s/mesh): couldn't send entire route request "
+		         "message.  Sent %d bytes.",
+		         iface, ret);
+		goto done;
+	}
+
+	nm_info ("Activation (%s/mesh): sent route request #%d.",
+	         iface,
+	         self->priv->mpp.tries + 1);
 
 	mpp_discovery_cleanup_timeout_source (self);
 	self->priv->mpp.timeout_src = g_timeout_source_new (2000);
@@ -1568,6 +1572,7 @@ mpp_discovery_start (NMDevice80211MeshOLPC *self)
 	struct sockaddr_in sin;
 	int err, opt = 1;
 	NMIP4Config * ip4_config;
+	const char * iface;
 
 	g_return_val_if_fail (self != NULL, FALSE);
 
@@ -1576,37 +1581,40 @@ mpp_discovery_start (NMDevice80211MeshOLPC *self)
 	ip4_config = nm_device_get_ip4_config (NM_DEVICE (self));
 	g_return_val_if_fail (ip4_config != NULL, FALSE);
 
+	iface = nm_device_get_iface (NM_DEVICE (self));
+	nm_info ("Activation (%s/mesh): starting MPP discovery...", iface);
+
 	/* Open the MPP discovery socket */
 	self->priv->mpp.sk = socket (AF_INET, SOCK_DGRAM, 0);
 	if (self->priv->mpp.sk < 0) {
-		nm_debug ("Activation (%s/mesh): could not open socket for MPP "
-		          "discovery. errno: %d.",
-		          nm_device_get_iface (NM_DEVICE (self)),
-		          errno);
+		nm_info ("Activation (%s/mesh): could not open socket for MPP "
+		         "discovery. errno: %d.",
+		         iface,
+		         errno);
 		goto error;
 	}
 
 	if (setsockopt (self->priv->mpp.sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt)) < 0) {
-		nm_debug ("Activation (%s/mesh): error setting socket options for MPP "
-		          "discovery. errno: %d.",
-		          nm_device_get_iface (NM_DEVICE (self)),
-		          errno);
+		nm_info ("Activation (%s/mesh): error setting socket options for MPP "
+		         "discovery. errno: %d.",
+		         iface,
+		         errno);
 		goto error;
 	}
 
 	/* Set send & receive timeouts */
 	if (setsockopt(self->priv->mpp.sk, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
-		nm_debug ("Activation (%s/mesh): error setting socket send timeout for MPP "
-		          "discovery. errno: %d.",
-		          nm_device_get_iface (NM_DEVICE (self)),
-		          errno);
+		nm_info ("Activation (%s/mesh): error setting socket send timeout for MPP "
+		         "discovery. errno: %d.",
+		         iface,
+		         errno);
 		goto error;
 	}
 	if (setsockopt(self->priv->mpp.sk, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-		nm_debug ("Activation (%s/mesh): error setting socket receive for MPP "
-		          "discovery. errno: %d.",
-		          nm_device_get_iface (NM_DEVICE (self)),
-		          errno);
+		nm_info ("Activation (%s/mesh): error setting socket receive for MPP "
+		         "discovery. errno: %d.",
+		         iface,
+		         errno);
 		goto error;
 	}
 
@@ -1614,10 +1622,10 @@ mpp_discovery_start (NMDevice80211MeshOLPC *self)
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = INADDR_ANY;
 	if (bind(self->priv->mpp.sk, (struct sockaddr*)&sin, sizeof (sin)) < 0) {
-		nm_debug ("Activation (%s/mesh): error binding socket for MPP "
-		          "discovery. errno: %d.",
-		          nm_device_get_iface (NM_DEVICE (self)),
-		          errno);
+		nm_info ("Activation (%s/mesh): error binding socket for MPP "
+		         "discovery. errno: %d.",
+		         iface,
+		         errno);
 		goto error;
 	}
 
