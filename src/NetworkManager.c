@@ -110,7 +110,7 @@ void fixup_hostname(NMDevice * dev)
 	char * contents = NULL;
 	char ** lines = NULL;
 	gsize length = 0;
-	int fd, i = 0, written;
+	int fd, i = 0, written, err;
 	gboolean success = FALSE;
 
 	if (hostname_set)
@@ -140,7 +140,14 @@ void fixup_hostname(NMDevice * dev)
 	}
 
 	nm_info ("Setting hostname: '%s'", hostdomain);
-	sethostname (hostdomain, strlen (hostdomain));
+	err = sethostname (hostdomain, strlen (hostdomain));
+	if (err != 0) {
+		nm_warning ("Could not set hostname to '%s': (%d) %s",
+		            hostdomain,
+		            errno,
+		            strerror (errno));
+		goto out;
+	}
 	hostname_set = TRUE;
 
 	if (!g_file_get_contents (ETC_HOSTS_PATH, &contents, &length, NULL))
@@ -229,7 +236,7 @@ out:
 		   	nm_spawn_process ("/sbin/restorecon " ETC_HOSTS_PATH);
 		} else {
 			nm_warning ("Error updating " ETC_HOSTS_PATH ": (%d) %s",
-			            strerror (errno));
+			            errno, strerror (errno));
 			success = FALSE;
 		}
 		unlink (ETC_HOSTS_PATH_TMP);
@@ -240,7 +247,7 @@ out:
 		 * hostname to 'localhost.localdomain'
 		 */
 		const char * def_hostname = "localhost.localdomain";
-		sethostname (def_hostname, strlen (def_hostname));
+		err = sethostname (def_hostname, strlen (def_hostname));
 	}
 
 	/* Restart avahi to deal with hostname changes */
