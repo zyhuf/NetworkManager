@@ -35,6 +35,8 @@
 #include "nm-device-802-11-wireless.h"
 #include "nm-utils.h"
 #include "nm-activation-request.h"
+#include "NetworkManagerSystem.h"
+#include "NetworkManagerPolicy.h"
 
 
 #if USE_AUTOIP
@@ -413,7 +415,6 @@ real_notify_device_added (NMDevice *dev,
                           NMDevice *added_dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
-	NMData * data = nm_device_get_app_data (dev);
 	const char * mesh_physdev = nm_device_get_physical_device_udi (dev);
 	const char * eth_physdev = NULL;
 	GSource * source;
@@ -456,7 +457,6 @@ real_notify_device_removed (NMDevice *dev,
                             NMDevice *removed_dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
-	NMData * data = nm_device_get_app_data (dev);
 	GSource * source;
 
 	if (dev == removed_dev)
@@ -498,7 +498,6 @@ real_deactivate_quickly (NMDevice *dev)
 static void
 real_deactivate (NMDevice *dev)
 {
-	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 }
 
 static guint32
@@ -1121,7 +1120,6 @@ out:
 static gboolean
 mesh_search_fwt_reset (NMDevice80211MeshOLPC * self)
 {
-	NMDevice * dev = NM_DEVICE (self);
 	NMSock * sk;
 	struct iwreq wrq;
 	int err;
@@ -1634,7 +1632,7 @@ mpp_discovery_start (NMDevice80211MeshOLPC *self)
 {
 	struct timeval tv = { 2, 0 };
 	struct sockaddr_in sin;
-	int err, opt = 1;
+	int opt = 1;
 	NMIP4Config * ip4_config;
 	const char * iface;
 
@@ -1742,7 +1740,6 @@ static void
 real_activation_success_handler (NMDevice *dev,
                                  NMActRequest *req)
 {
-	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMData * app_data;
 
 	app_data = nm_act_request_get_data (req);
