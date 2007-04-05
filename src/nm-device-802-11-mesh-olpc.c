@@ -37,19 +37,27 @@
 #include "nm-activation-request.h"
 
 
+#if USE_AUTOIP
 #define IPV4LL_NETWORK 0xA9FE0000L
 #define IPV4LL_NETMASK 0xFFFF0000L
 #define IPV4LL_HOSTMASK 0x0000FFFFL
 #define IPV4LL_BROADCAST 0xA9FEFFFFL
+#else
+#define MESH_DHCP_TIMEOUT	20	/* in seconds */
+#endif
+
 
 static void mesh_search_cleanup (NMDevice80211MeshOLPC *self);
+#if USE_AUTOIP
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
+#endif
 static void mpp_discovery_cleanup (NMDevice80211MeshOLPC *self);
 static gboolean mpp_discovery_send_rreq (NMDevice80211MeshOLPC *self);
 
 
 #define NM_DEVICE_802_11_MESH_OLPC_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_802_11_MESH_OLPC, NMDevice80211MeshOLPCPrivate))
 
+#if USE_AUTOIP
 struct _autoipd
 {
 	GPid		pid;
@@ -58,6 +66,7 @@ struct _autoipd
 
 	guint32		ip4_addr;
 };
+#endif
 
 struct _ethdev {
 	NMDevice80211Wireless * dev;
@@ -91,7 +100,9 @@ struct _NMDevice80211MeshOLPCPrivate
 	guint32		capabilities;
 
 	struct _ethdev	ethdev;
+#if USE_AUTOIP
 	struct _autoipd	aipd;
+#endif
 	struct _mpp		mpp;
 	struct _msearch	msearch;
 
@@ -477,7 +488,9 @@ real_deactivate_quickly (NMDevice *dev)
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
 	mpp_discovery_cleanup (self);
+#if USE_AUTOIP
 	aipd_cleanup (self);
+#endif
 	mesh_search_cleanup (self);
 }
 
@@ -776,6 +789,8 @@ out:
 /* avahi-autoipd babysitting junk because it doesn't do DBus */
 /*************************************************************/
 
+#if USE_AUTOIP
+
 static void
 aipd_remove_timeout (NMDevice80211MeshOLPC *self)
 {
@@ -943,6 +958,8 @@ aipd_monitor_start (NMDevice80211MeshOLPC *self)
 out:
 	return success;
 }
+
+#endif /* USE_AUTOIP */
 
 /*************************************************************/
 /* Mesh Search stuff                                         */
@@ -1199,6 +1216,8 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
+	nm_device_set_active_link (dev, TRUE);
+
 	/* Have to wait until ethdev is done scanning before continuing */
 	if (self->priv->ethdev.scanning)
 		return NM_ACT_STAGE_RETURN_POSTPONE;
@@ -1251,8 +1270,13 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
+	NMData *			data = NULL;
 	const char * iface = nm_device_get_iface (dev);
 
+	data = nm_act_request_get_data (req);
+	g_assert (data);
+
+#if USE_AUTOIP
 	if (!aipd_exec (self)) {
 		nm_warning ("Activation (%s/mesh): couldn't start avahi-autoipd.",
 			iface);
@@ -1266,9 +1290,36 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 	}
 
 	ret = NM_ACT_STAGE_RETURN_POSTPONE;
+#else
+	{
+		NMDevice80211MeshOLPCClass *	klass;
+		NMDeviceClass * parent_class;
+
+		/* Chain up to parent */
+		nm_act_request_set_dhcp_timeout_wait (req, MESH_DHCP_TIMEOUT);
+		klass = NM_DEVICE_802_11_MESH_OLPC_GET_CLASS (self);
+		parent_class = NM_DEVICE_CLASS (g_type_class_peek_parent (klass));
+		ret = parent_class->act_stage3_ip_config_start (dev, req);
+	}
+#endif
 
 out:
 	return ret;
+}
+
+static NMActStageReturn
+real_act_stage4_ip_config_timeout (NMDevice *self,
+                                   NMActRequest *req,
+                                   NMIP4Config **config)
+{
+	g_return_val_if_fail (config != NULL, NM_ACT_STAGE_RETURN_FAILURE);
+	g_return_val_if_fail (*config == NULL, NM_ACT_STAGE_RETURN_FAILURE);
+
+	g_assert (req);
+
+	/* No DHCP reply; fail association */
+	nm_info ("No DHCP reply received.");
+	return NM_ACT_STAGE_RETURN_FAILURE;
 }
 
 static NMActStageReturn
@@ -1280,6 +1331,7 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
 	NMIP4Config *			real_config = NULL;
 
+#if USE_AUTOIP
 	g_return_val_if_fail (config != NULL, NM_ACT_STAGE_RETURN_FAILURE);
 	g_return_val_if_fail (*config == NULL, NM_ACT_STAGE_RETURN_FAILURE);
 
@@ -1289,9 +1341,21 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 	nm_ip4_config_set_broadcast (real_config, (guint32)(ntohl (IPV4LL_BROADCAST)));
 	nm_ip4_config_set_gateway (real_config, 0);
 
+	ret = NM_ACT_STAGE_RETURN_SUCCESS;
+#else
+	{
+		NMDevice80211MeshOLPCClass *	klass;
+		NMDeviceClass * parent_class;
+
+		/* Chain up to parent */
+		klass = NM_DEVICE_802_11_MESH_OLPC_GET_CLASS (self);
+		parent_class = NM_DEVICE_CLASS (g_type_class_peek_parent (klass));
+		ret = parent_class->act_stage4_get_ip4_config (dev, req, &real_config);
+	}
+#endif
 	*config = real_config;
 
-	return NM_ACT_STAGE_RETURN_SUCCESS;
+	return ret;
 }
 
 
@@ -1703,7 +1767,8 @@ real_activation_failure_handler (NMDevice *dev,
 		self->priv->channel = 1;
 
 	self->priv->num_channels_tried++;
-	if (self->priv->num_channels_tried > 3) {
+	if (self->priv->num_channels_tried > 2) {
+		/* After the third channel fails, jump to the next attempt */
 		self->priv->num_channels_tried = 0;
 		self->priv->attempt++;
 	}
@@ -1711,12 +1776,13 @@ real_activation_failure_handler (NMDevice *dev,
 	if (self->priv->attempt > 2) {
 		/* Total failure to get a mesh after 2 passes */
 		self->priv->num_channels_tried = 0;
-		self->priv->attempt = 0;
+		self->priv->attempt = 1;
 		self->priv->channel = get_random_channel ();
 		nm_device_set_active_link (dev, FALSE);
 	}
 }
 
+#if USE_AUTOIP
 static void
 real_handle_autoip_event (NMDevice *dev,
                           const char *event,
@@ -1779,6 +1845,7 @@ real_handle_autoip_event (NMDevice *dev,
 		}
 	}
 }
+#endif
 
 static void
 nm_device_802_11_mesh_olpc_dispose (GObject *object)
@@ -1836,11 +1903,14 @@ nm_device_802_11_mesh_olpc_class_init (NMDevice80211MeshOLPCClass *klass)
 	parent_class->act_stage2_config = real_act_stage2_config;
 	parent_class->act_stage3_ip_config_start = real_act_stage3_ip_config_start;
 	parent_class->act_stage4_get_ip4_config = real_act_stage4_get_ip4_config;
+	parent_class->act_stage4_ip_config_timeout = real_act_stage4_ip_config_timeout;
 	parent_class->act_stage6_post_ip_start = real_act_stage6_post_ip_start;
 	parent_class->activation_failure_handler = real_activation_failure_handler;
 	parent_class->activation_success_handler = real_activation_success_handler;
 
+#if USE_AUTOIP
 	parent_class->handle_autoip_event = real_handle_autoip_event;
+#endif
 
 	g_type_class_add_private (object_class, sizeof (NMDevice80211MeshOLPCPrivate));
 }

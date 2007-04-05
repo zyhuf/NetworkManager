@@ -1,5 +1,12 @@
 2007-04-05  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-mesh-olpc.c
+		- Disable auto-ip and use DHCP for mesh interface configuration
+		- Fix mesh activation scheme to work as described (was doing too many
+			passes and channels)
+
+2007-04-05  Dan Williams  <dcbw@redhat.com>
+
 	* src/dhcp-manager/nm-dhcp-manager.c
 		- (nm_dhcp_manager_begin_transaction): use timeout from activation
 			request, if any, fall back to default timeout
