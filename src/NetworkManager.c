@@ -98,20 +98,19 @@ static char *nm_get_device_interface_from_hal (LibHalContext *ctx, const char *u
 }
 
 
+#define ETC_HOSTS_PATH "/etc/hosts"
+#define ETC_HOSTS_PATH_TMP "/etc/hosts.tmp"
 void fixup_hostname(NMDevice * dev)
 {
 	char hw[ETH_ALEN];
 	char zero[ETH_ALEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	char * hostname = NULL;
 	char * hostdomain = NULL;
-	char * line = NULL;
-	GError * err = NULL;
+	char * entry = NULL;
 	char * contents = NULL;
 	char ** lines = NULL;
 	gsize length = 0;
-	int fd, i, len, written;
-	gboolean found = FALSE;
-	GError * error = NULL;
+	int fd, i = 0, written;
 	gboolean success = FALSE;
 
 	if (hostname_set)
@@ -134,75 +133,108 @@ void fixup_hostname(NMDevice * dev)
 		goto out;
 	}
 
-	nm_info ("Setting hostname: '%s'", hostdomain);
-	sethostname (hostdomain, strlen (hostdomain));
-	hostname_set = TRUE;
-
-	if (!g_file_get_contents ("/etc/hosts", &contents, &length, &error)) {
-		if (error) {
-			nm_warning ("Error adding static host mapping for local host: %d - %s",
-			            error->code, error->message);
-			g_error_free (error);
-		} else {
-			nm_warning ("Error adding static host mapping for local host.");
-		}
-		goto out;
-	}
-
-	if (!length || !contents || !strlen (contents)) {
-		nm_warning ("/etc/hosts file was empty!");
-		goto out;
-	}
-
-	/* Find the entry if it already exists */
-	lines = g_strsplit (contents, "\n", 0);
-	if (!lines) {
-		nm_warning ("Out of memory or other error parsing /etc/hosts.");
-		goto out;
-	}
-
-#define LH_IP4 "127.0.0.1"
-	len = g_strv_length (lines);
-	for (i = 0; i < len; i++) {
-		char *p;
-		if (strncmp (lines[i], LH_IP4, strlen (LH_IP4)) != 0)
-			continue;
-
-		p = lines[i] + strlen (LH_IP4);
-		while (isspace (*p)) p++;
-		if (strncmp (p, hostdomain, strlen (hostdomain)) == 0) {
-			found = TRUE;
-			break;
-		}
-	}
-	g_strfreev (lines);
-
-	if (found)
-		goto out;
-
-	line = g_strdup_printf ("\n127.0.0.1\t%s\t%s\tlocalhost\n", hostdomain, hostname);
-	if (!line) {
+	entry = g_strdup_printf ("127.0.0.1\t%s\t%s\tlocalhost\n", hostdomain, hostname);
+	if (!entry) {
 		nm_warning ("Out of memory adding static mapping for local host.");
 		goto out;
 	}
 
+	nm_info ("Setting hostname: '%s'", hostdomain);
+	sethostname (hostdomain, strlen (hostdomain));
+	hostname_set = TRUE;
+
+	if (!g_file_get_contents (ETC_HOSTS_PATH, &contents, &length, NULL))
+		goto write_hosts;
+
+	if (!length || !contents || !strlen (contents))
+		goto write_hosts;
+
+	/* Find the entry if it already exists */
+	lines = g_strsplit (contents, "\n", 0);
+	if (!lines)
+		nm_warning ("Out of memory or other error parsing /etc/hosts.");
+
+write_hosts:
 	/* Add the new entry to the bottom */
-	fd = open ("/etc/hosts", O_RDWR | O_APPEND);
+	fd = open (ETC_HOSTS_PATH_TMP, O_RDWR | O_CREAT | O_TRUNC);
 	if (fd < 0) {
 		nm_warning ("Couldn't open /etc/hosts: %s", strerror (errno));
 		goto out;
 	}
 
-	written = write (fd, line, strlen (line));
-	if (written < 0) {
-		nm_warning ("Error writing static mapping for local host: %s", strerror (errno));
-	} else if (written != strlen (line)) {
-		nm_warning ("Error writing static mapping for local host.");
+	/* Add initial comments from existing file if any */
+	while (lines && lines[i] && (lines[i][0] == '#')) {
+		written = write (fd, lines[i], strlen (lines[i]));
+		if (written < 0) {
+			nm_warning ("Error writing static mapping for local host: %s",
+			            strerror (errno));
+			goto close_tmp;
+		} else if (written != strlen (lines[i])) {
+			nm_warning ("Error writing static mapping for local host.");
+			goto close_tmp;
+		}
+		written = write (fd, "\n", 1);
+		i++;
 	}
-	close (fd);
+
+	/* Write our own hosts entry */
+	written = write (fd, entry, strlen (entry));
+	if (written < 0) {
+		nm_warning ("Error writing own static mapping for local host: %s",
+		            strerror (errno));
+		goto close_tmp;
+	} else if (written != strlen (entry)) {
+		nm_warning ("Error writing own static mapping for local host.");
+		goto close_tmp;
+	}
+
+	/* Write the rest of the existing hosts file */
+#define LH_IP4 "127.0.0.1"
+	while (lines && lines[i]) {
+		/* Exclude any lines that contain our new hostname */
+		if (strstr (lines[i], hostname)) {
+			i++;
+			continue;
+		}
+
+		g_strstrip (lines[i]);
+		if (strlen (lines[i]) > 0) {
+			written = write (fd, lines[i], strlen (lines[i]));
+			if (written < 0) {
+				nm_warning ("Error writing static mapping for local host: %s",
+				            strerror (errno));
+				goto close_tmp;
+			} else if (written != strlen (lines[i])) {
+				nm_warning ("Error writing static mapping for local host.");
+				goto close_tmp;
+			}
+			written = write (fd, "\n", 1);
+		}
+		i++;
+	}
+
 	success = TRUE;
 
+close_tmp:
+	close (fd);
+
 out:
+	if (success) {
+		int err;
+
+		/* Rename temp hosts to /etc/hosts */
+		err = rename (ETC_HOSTS_PATH_TMP, ETC_HOSTS_PATH);
+		if (err == 0) {
+			/* Update SELinux security context */
+		   	nm_spawn_process ("/sbin/restorecon " ETC_HOSTS_PATH);
+		} else {
+			nm_warning ("Error updating " ETC_HOSTS_PATH ": (%d) %s",
+			            strerror (errno));
+			success = FALSE;
+		}
+		unlink (ETC_HOSTS_PATH_TMP);
+	}
+		
 	if (!success) {
 		/* If there was an error updating /etc/hosts, reset
 		 * hostname to 'localhost.localdomain'
@@ -214,7 +246,9 @@ out:
 	/* Restart avahi to deal with hostname changes */
 	nm_spawn_process ("/sbin/service avahi-daemon restart");
 
-	g_free (line);
+	g_strfreev (lines);
+	g_free (contents);
+	g_free (entry);
 	g_free (hostdomain);
 	g_free (hostname);
 }
