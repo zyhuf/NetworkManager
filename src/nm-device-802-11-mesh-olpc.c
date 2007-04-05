@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <arpa/inet.h>
 
 #include "nm-device.h"
 #include "nm-device-802-11-mesh-olpc.h"
@@ -1006,7 +1007,7 @@ mesh_search_get_fwt (NMDevice80211MeshOLPC * self, GSList ** list)
 	while (num < 500) {
 		char buf[200];
 		struct iwreq wrq;
-		int err, len, i = 0, nonzero = 0;
+		int err, len, i = 0;
 		char * item;
 
 		memset (buf, 0, sizeof (buf));
