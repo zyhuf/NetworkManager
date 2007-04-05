@@ -1,5 +1,12 @@
 2007-04-05  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-activation-request.c
+	  stc/nm-activation-request.h
+		- (nm_act_request_get_dhcp_timeout_wait, nm_act_request_set_dhcp_timeout_wait):
+			new functions; allow custom DHCP timeout
+
+2007-04-05  Dan Williams  <dcbw@redhat.com>
+
 	* src/NetworkManager.c
 		- (fixup_hostname): ensure local hostname is first; write to a temp file
 			then atomically rename to /etc/hosts

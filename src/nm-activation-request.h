@@ -56,4 +56,7 @@ void				nm_act_request_set_dhcp_state		(NMActRequest *req, guint8 dhcp_state);
 guint			nm_act_request_get_dhcp_timeout	(NMActRequest *req);
 void				nm_act_request_set_dhcp_timeout	(NMActRequest *req, guint dhcp_timeout);
 
+guint			nm_act_request_get_dhcp_timeout_wait	(NMActRequest *req);
+void				nm_act_request_set_dhcp_timeout_wait	(NMActRequest *req, guint dhcp_timeout);
+
 #endif

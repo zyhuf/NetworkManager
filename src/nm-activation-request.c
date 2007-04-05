@@ -44,7 +44,8 @@ struct NMActRequest
 	DBusPendingCall *	user_key_pcall;
 
 	guint32			dhcp_state;
-	guint			dhcp_timeout;
+	guint			dhcp_timeout; /* the timeout source itself */
+	guint			dhcp_timeout_wait; /* in seconds */
 };
 
 
@@ -241,5 +242,19 @@ void nm_act_request_set_dhcp_timeout (NMActRequest *req, guint dhcp_timeout)
 	g_return_if_fail (req != NULL);
 
 	req->dhcp_timeout = dhcp_timeout;
+}
+
+guint nm_act_request_get_dhcp_timeout_wait (NMActRequest *req)
+{
+	g_return_val_if_fail (req != NULL, 0);
+
+	return req->dhcp_timeout_wait;
+}
+
+void nm_act_request_set_dhcp_timeout_wait (NMActRequest *req, guint seconds)
+{
+	g_return_if_fail (req != NULL);
+
+	req->dhcp_timeout_wait = seconds;
 }
 
