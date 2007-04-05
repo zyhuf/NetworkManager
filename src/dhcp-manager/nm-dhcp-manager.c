@@ -156,6 +156,15 @@ guint32 nm_dhcp_manager_get_state_for_device (NMDHCPManager *manager, NMDevice *
 }
 
 
+static guint32
+get_timeout_secs (NMActRequest *req)
+{
+	guint req_secs = nm_act_request_get_dhcp_timeout_wait (req);
+	if (!req_secs)
+		return NM_DHCP_TIMEOUT;
+	return req_secs;
+}
+
 /*
  * nm_dhcp_manager_handle_timeout
  *
@@ -176,7 +185,7 @@ static gboolean nm_dhcp_manager_handle_timeout (NMActRequest *req)
 	g_assert (dev);
 
 	nm_info ("Device '%s' DHCP transaction took too long (>%ds), stopping it.",
-		    nm_device_get_iface (dev), NM_DHCP_TIMEOUT);
+		    nm_device_get_iface (dev), get_timeout_secs (req));
 
 	if (nm_act_request_get_stage (req) == NM_ACT_STAGE_IP_CONFIG_START)
 	{
@@ -243,7 +252,7 @@ gboolean nm_dhcp_manager_begin_transaction (NMDHCPManager *manager, NMActRequest
 	}
 
 	/* Set up a timeout on the transaction to kill it after NM_DHCP_TIMEOUT seconds */
-	source = g_timeout_source_new (NM_DHCP_TIMEOUT * 1000);
+	source = g_timeout_source_new (get_timeout_secs (req) * 1000);
 	g_source_set_callback (source, (GSourceFunc) nm_dhcp_manager_handle_timeout, req, NULL);
 	nm_act_request_set_dhcp_timeout (req, g_source_attach (source, manager->data->main_context));
 	g_source_unref (source);

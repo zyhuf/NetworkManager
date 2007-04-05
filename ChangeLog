@@ -1,5 +1,11 @@
 2007-04-05  Dan Williams  <dcbw@redhat.com>
 
+	* src/dhcp-manager/nm-dhcp-manager.c
+		- (nm_dhcp_manager_begin_transaction): use timeout from activation
+			request, if any, fall back to default timeout
+
+2007-04-05  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-activation-request.c
 	  stc/nm-activation-request.h
 		- (nm_act_request_get_dhcp_timeout_wait, nm_act_request_set_dhcp_timeout_wait):
