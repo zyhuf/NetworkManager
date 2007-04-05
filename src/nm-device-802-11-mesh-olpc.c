@@ -1779,6 +1779,9 @@ real_activation_failure_handler (NMDevice *dev,
 		self->priv->attempt = 1;
 		self->priv->channel = get_random_channel ();
 		nm_device_set_active_link (dev, FALSE);
+
+		/* Reset to managed mode to make scanning happy */
+		set_80211_mode (self, IW_MODE_INFRA);
 	}
 }
 
