@@ -46,7 +46,7 @@
 #define IPV4LL_HOSTMASK 0x0000FFFFL
 #define IPV4LL_BROADCAST 0xA9FEFFFFL
 #else
-#define MESH_DHCP_TIMEOUT	20	/* in seconds */
+#define MESH_DHCP_TIMEOUT	30	/* in seconds */
 #endif
 
 
