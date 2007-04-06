@@ -234,6 +234,14 @@ out:
 		if (err == 0) {
 			/* Update SELinux security context */
 		   	nm_spawn_process ("/sbin/restorecon " ETC_HOSTS_PATH);
+
+			/* chmod to 0644 */
+			err = chmod (ETC_HOSTS_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			if (err != 0) {
+				nm_warning ("Error updating permissions for "
+				        ETC_HOSTS_PATH ": (%d) %s",
+			            errno, strerror (errno));
+			}
 		} else {
 			nm_warning ("Error updating " ETC_HOSTS_PATH ": (%d) %s",
 			            errno, strerror (errno));

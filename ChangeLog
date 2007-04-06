@@ -1,3 +1,9 @@
+2007-04-06  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManager.c
+		- (fixup_hostname):  oops, make sure /etc/hosts has correct
+			permissions
+
 2007-04-05  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
