@@ -552,7 +552,7 @@ wireless_event_helper (gpointer user_data)
 				 * in very quick succession.
 				 */
 				if (!self->priv->scan_timeout)
-					schedule_scan_results_timeout (self, 5);
+					schedule_scan_results_timeout (self, 1);
 				break;
 		}
 		pos += iwe->len;
