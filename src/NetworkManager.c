@@ -133,7 +133,7 @@ void fixup_hostname(NMDevice * dev)
 		goto out;
 	}
 
-	entry = g_strdup_printf ("127.0.0.1\t%s\t%s\tlocalhost\n", hostdomain, hostname);
+	entry = g_strdup_printf ("127.0.0.1 %s %s localhost\n", hostdomain, hostname);
 	if (!entry) {
 		nm_warning ("Out of memory adding static mapping for local host.");
 		goto out;
