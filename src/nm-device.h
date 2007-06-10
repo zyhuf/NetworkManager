@@ -101,8 +101,7 @@ struct _NMDeviceClass
 	NMActStageReturn	(* act_stage4_ip_config_timeout)	(NMDevice *self,
 												 struct NMActRequest *req,
 												 NMIP4Config **config);
-	NMActStageReturn	(* act_stage6_post_ip_start)(NMDevice *self,
-											 struct NMActRequest *req);
+
 	void			(* deactivate)			(NMDevice *self);
 	void			(* deactivate_quickly)	(NMDevice *self);
 
@@ -120,9 +119,13 @@ struct _NMDeviceClass
 
 	void			(* handle_autoip_event)		(NMDevice * self, const char * event, const char * addr);
 
+	void			(* notify_no_best_device)	(NMDevice * self);
+
 	/* Signals */
 	void (* activation_started) (NMDevice * dev);
-	void (* activation_done)    (NMDevice * dev);
+	void (* activation_success) (NMDevice * dev);
+	void (* activation_failure) (NMDevice * dev);
+	void (* sig_deactivated) (NMDevice * dev);
 };
 
 
@@ -200,6 +203,7 @@ void			nm_device_activate_schedule_stage1_device_prepare		(struct NMActRequest *
 void			nm_device_activate_schedule_stage2_device_config		(struct NMActRequest *req);
 void			nm_device_activate_schedule_stage4_ip_config_get		(struct NMActRequest *req);
 void			nm_device_activate_schedule_stage4_ip_config_timeout	(struct NMActRequest *req);
+void			nm_device_activate_schedule_stage5_ip_config_commit		(struct NMActRequest *req);
 void			nm_device_deactivate		(NMDevice *dev);
 gboolean		nm_device_deactivate_quickly	(NMDevice *dev);
 gboolean		nm_device_is_activating		(NMDevice *dev);
@@ -217,6 +221,8 @@ const char *	nm_device_get_physical_device_udi		(NMDevice *dev);
 
 void			nm_device_notify_device_added (NMDevice *self, NMDevice *added_dev);
 void			nm_device_notify_device_removed (NMDevice *self, NMDevice *removed_dev);
+
+void			nm_device_notify_no_best_device (NMDevice * self);
 
 G_END_DECLS
 

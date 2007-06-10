@@ -292,7 +292,7 @@ nm_system_get_iface_from_rtnl_index (int rtnl_index)
  * Set IPv4 configuration of the device from an NMIP4Config object.
  *
  */
-gboolean nm_system_device_set_from_ip4_config (NMDevice *dev)
+gboolean nm_system_device_set_from_ip4_config (NMDevice *dev, gboolean secondary)
 {
 	NMData *			app_data;
 	NMIP4Config *		config;
@@ -312,28 +312,41 @@ gboolean nm_system_device_set_from_ip4_config (NMDevice *dev)
 	if (!nlh)
 		return FALSE;
 
-	nm_system_delete_default_route ();
+	if (!secondary)
+		nm_system_delete_default_route ();
 	nm_system_device_flush_addresses (dev);
 	nm_system_device_flush_routes (dev);
-	nm_system_flush_arp_cache ();
+	if (!secondary)
+		nm_system_flush_arp_cache ();
 
-	if ((addr = nm_ip4_config_to_rtnl_addr (config, NM_RTNL_ADDR_DEFAULT)))
-	{
+	if ((addr = nm_ip4_config_to_rtnl_addr (config, NM_RTNL_ADDR_DEFAULT))) {
 		iface_to_rtnl_index (nm_device_get_iface (dev), nlh, addr);
 		if ((err = rtnl_addr_add (nlh, addr, 0)) < 0)
-			nm_warning ("nm_system_device_set_from_ip4_config(%s): error %d returned from rtnl_addr_add():\n%s", nm_device_get_iface (dev), err, nl_geterror());
+			nm_warning ("%s(%s): error %d returned from rtnl_addr_add():\n%s",
+			            __func__,
+			            nm_device_get_iface (dev),
+			            err,
+			            nl_geterror());
 		rtnl_addr_put (addr);
+	} else {
+		nm_warning ("%s(%s): couldn't create rtnl address!\n",
+		            __func__,
+		            nm_device_get_iface (dev));
 	}
-	else
-		nm_warning ("nm_system_device_set_from_ip4_config(): couldn't create rtnl address!\n");
 
 	nl_close (nlh);
 	nl_handle_destroy (nlh);
 
-	sleep (1);
-	nm_system_device_set_ip4_route (dev, nm_ip4_config_get_gateway (config), 0, 0, nm_ip4_config_get_mss (config));
+	if (!secondary) {
+		sleep (1);
+		nm_system_device_set_ip4_route (dev,
+		                                nm_ip4_config_get_gateway (config),
+		                                0,
+		                                0,
+		                                nm_ip4_config_get_mss (config));
 
-	nm_named_manager_add_ip4_config (app_data->named_manager, config);
+		nm_named_manager_add_ip4_config (app_data->named_manager, config);
+	}
 
 	return TRUE;
 }

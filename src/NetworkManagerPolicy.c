@@ -41,6 +41,20 @@
 #include "nm-device-802-3-ethernet.h"
 
 
+/* List of devices interested in knowing when there is
+ * no best device to be activated.
+ */
+static GSList * nbd_notifiers = NULL;
+
+
+void nm_policy_add_nbd_notifier (NMDevice *dev)
+{
+	g_return_if_fail (dev != NULL);
+
+	nbd_notifiers = g_slist_append (nbd_notifiers, dev);
+}
+
+
 /*
  * nm_policy_activation_finish
  *
@@ -269,10 +283,10 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 		}
 	}
 
-	if (best_mesh_dev)
-		highest_priority_dev = NM_DEVICE (best_mesh_dev);
-	else if (best_wired_dev)
+	if (best_wired_dev)
 		highest_priority_dev = NM_DEVICE (best_wired_dev);
+	else if (best_mesh_dev)
+		highest_priority_dev = NM_DEVICE (best_mesh_dev);
 	else if (best_wireless_dev)
 	{
 		*ap = nm_device_802_11_wireless_get_best_ap (best_wireless_dev);
@@ -283,9 +297,24 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 			highest_priority_dev = NM_DEVICE (best_wireless_dev);
 	}
 
+	if (!highest_priority_dev) {
+		GSList * elt;
+
+		/* Alert interested listeners that there is no best device
+		 * to activate.
+		 */
+		for (elt = nbd_notifiers; elt; elt = g_slist_next (elt)) {
+			NMDevice * notify_dev = NM_DEVICE (elt->data);
+			nm_device_notify_no_best_device (notify_dev);
+		}
+	}
+
 #if 0
-	nm_info ("AUTO: Best wired device = %s, best wireless device = %s (%s)", best_wired_dev ? nm_device_get_iface (best_wired_dev) : "(null)",
-			best_wireless_dev ? nm_device_get_iface (best_wireless_dev) : "(null)", (best_wireless_dev && *ap) ? nm_ap_get_essid (*ap) : "null" );
+	nm_info ("AUTO: Best wired = %s, best wireless = %s (%s), best mesh = %s",
+	         best_wired_dev ? nm_device_get_iface (best_wired_dev) : "(null)",
+	         best_wireless_dev ? nm_device_get_iface (best_wireless_dev) : "(null)",
+	         (best_wireless_dev && *ap) ? nm_ap_get_essid (*ap) : "null",
+	         best_mesh_dev ? nm_device_get_iface (best_mesh_dev) : "(null)");
 #endif
 
 	return highest_priority_dev;

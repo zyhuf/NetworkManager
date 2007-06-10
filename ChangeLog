@@ -1,3 +1,19 @@
+2007-06-09  Dan Williams  <dcbw@redhat.com>
+
+	* Rework to enable auto-MPP functionality.  Whenever a non-mesh device is
+	activated, the mesh device will acquire an IPv4 autoip address so that
+	an external program can begin MPP functionality on the mesh interface.
+
+	* DHCP is now being used instead of the MPP server hack, and there
+	is no "mesh search" step any more.
+
+	* Driver changes also require that most
+	wireless operations (channel changes, keys, ssids, etc) be done on the
+	eth device, not the mesh device.
+
+	* Remove the "post-ip" stage #6; since MPP functionality is now provided
+	by DHCP, it's useless
+
 2007-04-06  Dan Williams  <dcbw@redhat.com>
 
 	* src/NetworkManager.c

@@ -37,4 +37,6 @@ void			nm_policy_schedule_device_ap_lists_update_from_allowed	(NMData *app_data)
 void			nm_policy_schedule_activation_finish	(NMActRequest *req);
 void			nm_policy_schedule_activation_failed	(NMActRequest *req);
 
+void nm_policy_add_nbd_notifier (NMDevice *dev);
+
 #endif

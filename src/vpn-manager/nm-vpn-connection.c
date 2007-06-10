@@ -161,7 +161,7 @@ void nm_vpn_connection_deactivate (NMVPNConnection *connection)
 				connection->vpn_iface, connection->ip4_config);
 
 		/* Reset routes, nameservers, and domains of the currently active device */
-		nm_system_device_set_from_ip4_config (connection->parent_dev);
+		nm_system_device_set_from_ip4_config (connection->parent_dev, FALSE);
 	}
 
 	nm_vpn_connection_set_ip4_config (connection, NULL);

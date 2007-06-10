@@ -2779,10 +2779,7 @@ supplicant_exec (NMDevice80211Wireless *self)
 	argv[0] = WPA_SUPPLICANT_BIN;
 	argv[1] = "-g";
 	argv[2] = WPA_SUPPLICANT_GLOBAL_SOCKET;
-	argv[3] = "-ddd";
-	argv[4] = "-o";
-	argv[5] = "local0";
-	argv[6] = NULL;
+	argv[3] = NULL;
 
 	success = g_spawn_async ("/", argv, NULL, 0, &supplicant_child_setup, NULL,
 	                         &pid, &error);
