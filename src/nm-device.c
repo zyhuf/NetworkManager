@@ -907,6 +907,9 @@ real_act_stage3_ip_config_start (NMDevice *self,
 	data = nm_act_request_get_data (req);
 	g_assert (data);
 
+	if (!nm_device_is_up (self))
+		nm_device_bring_up (self);
+
 	/* DHCP devices try DHCP, non-DHCP default to SUCCESS */
 	if (nm_device_get_use_dhcp (self))
 	{
