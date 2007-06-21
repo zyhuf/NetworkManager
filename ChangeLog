@@ -1,5 +1,18 @@
 2007-06-21  Dan Williams  <dcbw@redhat.com>
 
+	* configure.in
+	  callouts/Makefile.am
+		- Add avahi-autoipd callouts
+
+	* callouts/nm-avahi-autoipd.action
+		- Action script to be executed by avahi-autoipd to forward discovered
+			IP information back to NetworkManager
+
+	* callouts/nm-avahi-autoipd.conf
+		- D-Bus service config file for nm-avahi-autoipd.action
+
+2007-06-21  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-device.c
 		- (real_act_stage3_ip_config_start): sometimes the device gets downed
 			during the wpa_supplicant association.  Ensure the device is up

@@ -321,6 +321,7 @@ gnome/Makefile
 gnome/libnm_glib/libnm_glib.pc
 gnome/libnm_glib/Makefile
 gnome/vpn-properties/Makefile
+callouts/Makefile
 test/Makefile
 test/test-common/Makefile
 test/libnm-util/Makefile

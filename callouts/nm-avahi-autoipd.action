@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -e
+
+# Command line arguments:
+#   $1 event that happened:
+#          BIND:     Successfully claimed address
+#          CONFLICT: An IP address conflict happened
+#          UNBIND:   The IP address is no longer needed
+#          STOP:     The daemon is terminating
+#   $2 interface name
+#   $3 IP adddress
+
+/bin/dbus-send \
+    --system \
+    --type=signal \
+    / \
+    org.freedesktop.NetworkManager.avahiautoipd.AutoIP4Event \
+    'string:'"$1" \
+    'string:'"$2" \
+    'string:'"$3";
+
+exit 0
