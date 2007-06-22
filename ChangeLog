@@ -1,5 +1,13 @@
 2007-06-21  Dan Williams  <dcbw@redhat.com>
 
+	* dispatcher-daemon/NetworkManagerDispatcher.c
+		- Add MESH_READY and MESH_DOWN events
+		- Keep a cache of interface <-> object path mappings, so that when NM
+			goes away the dispatcher can still figure out what the interface
+			is for the deactivated signal
+
+2007-06-21  Dan Williams  <dcbw@redhat.com>
+
 	* configure.in
 	  callouts/Makefile.am
 		- Add avahi-autoipd callouts

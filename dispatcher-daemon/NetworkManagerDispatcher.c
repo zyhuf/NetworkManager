@@ -44,6 +44,8 @@ enum NMDAction
 	NMD_DEVICE_DONT_KNOW,
 	NMD_DEVICE_NOW_INACTIVE,
 	NMD_DEVICE_NOW_ACTIVE,
+	NMD_MESH_READY,
+	NMD_MESH_DOWN
 };
 typedef enum NMDAction	NMDAction;
 
@@ -51,6 +53,8 @@ typedef enum NMDAction	NMDAction;
 #define NM_SCRIPT_DIR		SYSCONFDIR"/NetworkManager/dispatcher.d"
 
 #define NMD_DEFAULT_PID_FILE	LOCALSTATEDIR"/run/NetworkManagerDispatcher.pid"
+
+static GHashTable * ops_to_ifaces = NULL;
 
 static DBusConnection *nmd_dbus_init (void);
 
@@ -86,7 +90,7 @@ static inline gboolean nmd_permission_check (struct stat *s)
  * Call scripts in /etc/NetworkManager.d when devices go down or up
  *
  */
-static void nmd_execute_scripts (NMDAction action, char *iface_name)
+static void nmd_execute_scripts (NMDAction action, char *iface_name, char *iface2_name)
 {
 	GDir *		dir;
 	const char *	file_name;
@@ -96,6 +100,10 @@ static void nmd_execute_scripts (NMDAction action, char *iface_name)
 		char_act = "up";
 	else if (action == NMD_DEVICE_NOW_INACTIVE)
 		char_act = "down";
+	else if (action == NMD_MESH_READY)
+		char_act = "meshready";
+	else if (action == NMD_MESH_DOWN)
+		char_act = "meshdown";
 	else
 		return;
 
@@ -117,7 +125,10 @@ static void nmd_execute_scripts (NMDAction action, char *iface_name)
 				char *cmd;
 				int ret;
 
-				cmd = g_strdup_printf ("%s %s %s", file_path, iface_name, char_act);
+				if (!iface2_name)
+					cmd = g_strdup_printf ("%s %s %s", file_path, iface_name, char_act);
+				else
+					cmd = g_strdup_printf ("%s %s %s %s", file_path, iface_name, char_act, iface2_name);
 				ret = system (cmd);
 				if (ret == -1)
 					nm_warning ("nmd_execute_scripts(): system() failed with errno = %d", errno);
@@ -143,7 +154,11 @@ static char * nmd_get_device_name (DBusConnection *connection, char *path)
 	DBusMessage *	reply;
 	DBusError		error;
 	char *		dbus_dev_name = NULL;
-	char *		dev_name = NULL;
+	char *		iface = NULL;
+
+	iface = g_hash_table_lookup (ops_to_ifaces, path);
+	if (iface)
+		return iface;
 
 	if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE, path, NM_DBUS_INTERFACE, "getName")))
 	{
@@ -156,7 +171,7 @@ static char * nmd_get_device_name (DBusConnection *connection, char *path)
 	dbus_message_unref (message);
 	if (dbus_error_is_set (&error))
 	{
-		nm_warning ("%s raised: %s", error.name, error.message);
+		nm_warning ("%s raised: %s (for %s)", error.name, error.message, path);
 		dbus_error_free (&error);
 		return NULL;
 	}
@@ -165,14 +180,16 @@ static char * nmd_get_device_name (DBusConnection *connection, char *path)
 	if (!dbus_message_get_args (reply, NULL, DBUS_TYPE_STRING, &dbus_dev_name, DBUS_TYPE_INVALID))
 	{
 		nm_warning ("There was an error getting the device name from NetworkManager." );
-		dev_name = NULL;
+		iface = NULL;
 	}
-	else
-		dev_name = g_strdup (dbus_dev_name);
+	else {
+		iface = g_strdup (dbus_dev_name);
+		g_hash_table_insert (ops_to_ifaces, path, iface);
+	}
 	
 	dbus_message_unref (reply);
 
-	return dev_name;
+	return iface;
 }
 
 /*
@@ -192,6 +209,17 @@ static gboolean nmd_reinit_dbus (gpointer user_data)
 		return TRUE;
 }
 
+static char *get_nm_match_string (const char *owner)
+{
+	g_return_val_if_fail (owner != NULL, NULL);
+
+	return g_strdup_printf ("type='signal',"
+	                        "interface='" NM_DBUS_INTERFACE "',"
+	                        "sender='%s',"
+	                        "path='" NM_DBUS_PATH "'",
+	                        owner);
+}
+
 /*
  * nmd_dbus_filter
  *
@@ -201,7 +229,10 @@ static DBusHandlerResult nmd_dbus_filter (DBusConnection *connection, DBusMessag
 {
 	const char	*object_path;
 	DBusError		 error;
-	char			*dev_object_path = NULL;
+	char *		dev_object_path = NULL;
+	char *		dev_iface_name = NULL;
+	char *		dev2_object_path = NULL;
+	char *		dev2_iface_name = NULL;
 	gboolean		 handled = FALSE;
 	NMDAction		 action = NMD_DEVICE_DONT_KNOW;
 
@@ -212,40 +243,105 @@ static DBusHandlerResult nmd_dbus_filter (DBusConnection *connection, DBusMessag
 	{
 		dbus_connection_unref (connection);
 		connection = NULL;
+		g_hash_table_remove_all (ops_to_ifaces);
 		g_timeout_add (3000, nmd_reinit_dbus, NULL);
 		handled = TRUE;
+		goto out;
+	} else if (dbus_message_is_signal (message, DBUS_INTERFACE_LOCAL, "NameOwnerChanged")) {
+		char * service;
+		char * old_owner;
+		char * new_owner;
+
+		if (dbus_message_get_args (message, &error,
+		                           DBUS_TYPE_STRING, &service,
+		                           DBUS_TYPE_STRING, &old_owner,
+		                           DBUS_TYPE_STRING, &new_owner,
+		                           DBUS_TYPE_INVALID)) {
+			gboolean old_owner_good = (old_owner && (strlen (old_owner) > 0));
+			gboolean new_owner_good = (new_owner && (strlen (new_owner) > 0));
+
+			if (strcmp (service, NM_DBUS_SERVICE) == 0) {
+				if (!old_owner_good && new_owner_good) {
+					char *match = get_nm_match_string (new_owner);
+					/* NM appeared */
+					dbus_bus_add_match (connection, match, NULL);
+					g_free (match);
+					handled = TRUE;
+				} else if (old_owner_good && !new_owner_good) {
+					char *match = get_nm_match_string (old_owner);
+					/* NM disappeared */
+					dbus_bus_remove_match (connection, match, NULL);
+					g_free (match);
+					g_hash_table_remove_all (ops_to_ifaces);
+				}
+			}
+		}
 	}
 
 	if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "DeviceNoLongerActive"))
 		action = NMD_DEVICE_NOW_INACTIVE;
 	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "DeviceNowActive"))
 		action = NMD_DEVICE_NOW_ACTIVE;
+	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "MeshReady"))
+		action = NMD_MESH_READY;
+	else if (dbus_message_is_signal (message, NM_DBUS_INTERFACE, "MeshDown"))
+		action = NMD_MESH_DOWN;
+	else
+		goto out;
 
-	if (action != NMD_DEVICE_DONT_KNOW)
-	{
-		if (dbus_message_get_args (message, &error, DBUS_TYPE_OBJECT_PATH, &dev_object_path, DBUS_TYPE_INVALID))
-		{
-			char *	dev_iface_name = NULL;
-
+	switch (action) {
+		case NMD_DEVICE_NOW_INACTIVE:
+		case NMD_DEVICE_NOW_ACTIVE:
+			if (!dbus_message_get_args (message, &error, DBUS_TYPE_OBJECT_PATH, &dev_object_path, DBUS_TYPE_INVALID))
+				break;
 			dev_object_path = nm_dbus_unescape_object_path (dev_object_path);
 			if (dev_object_path)
 				dev_iface_name = nmd_get_device_name (connection, dev_object_path);
 
-			if (dev_object_path && dev_iface_name)
-			{
-				nm_info ("Device %s (%s) is now %s.", dev_object_path, dev_iface_name,
-						(action == NMD_DEVICE_NOW_INACTIVE ? "down" :
-						(action == NMD_DEVICE_NOW_ACTIVE ? "up" : "error")));
+			if (!dev_object_path || !dev_iface_name)
+				break;
 
-				nmd_execute_scripts (action, dev_iface_name);
-			}
+			nm_info ("Device %s (%s) is now %s.", dev_object_path, dev_iface_name,
+					(action == NMD_DEVICE_NOW_INACTIVE ? "down" : "up"));
 
-			g_free (dev_object_path);
-			g_free (dev_iface_name);
-
+			nmd_execute_scripts (action, dev_iface_name, NULL);
 			handled = TRUE;
-		}
+			break;
+
+		case NMD_MESH_DOWN:
+		case NMD_MESH_READY:
+			if (!dbus_message_get_args (message, &error,
+			                            DBUS_TYPE_OBJECT_PATH, &dev_object_path,
+			                            DBUS_TYPE_OBJECT_PATH, &dev2_object_path,
+			                            DBUS_TYPE_INVALID))
+				break;
+			dev_object_path = nm_dbus_unescape_object_path (dev_object_path);
+			if (dev_object_path)
+				dev_iface_name = nmd_get_device_name (connection, dev_object_path);
+			dev2_object_path = nm_dbus_unescape_object_path (dev2_object_path);
+			if (dev2_object_path)
+				dev2_iface_name = nmd_get_device_name (connection, dev2_object_path);
+
+			if (!dev_object_path || !dev_iface_name || !dev2_object_path || !dev2_iface_name)
+				break;
+
+			nm_info ("Mesh Device %s (%s) is now %s (primary dev %s).",
+			         dev_object_path,
+			         dev_iface_name,
+			         (action == NMD_MESH_READY ? "ready" : "down"),
+			         dev2_iface_name);
+
+			nmd_execute_scripts (action, dev_iface_name, dev2_iface_name);
+			handled = TRUE;
+			break;
+
+		default:
+			break;
 	}
+
+out:
+	g_free (dev_object_path);
+	g_free (dev2_object_path);
 
 	return (handled ? DBUS_HANDLER_RESULT_HANDLED : DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
 }
@@ -403,12 +499,27 @@ int main (int argc, char *argv[])
 		g_thread_init (NULL);
 
 	/* Connect to the NetworkManager dbus service and run the main loop */
-	if ((connection = nmd_dbus_init ()))
-	{
-		loop = g_main_loop_new (NULL, FALSE);
-		g_main_loop_run (loop);
+	if (!(connection = nmd_dbus_init ()))
+		goto done;
+
+	loop = g_main_loop_new (NULL, FALSE);
+	if (!loop) {
+		nm_warning ("Couldn't allocate mainloop!");
+		goto done;
 	}
 
+	ops_to_ifaces = g_hash_table_new_full (g_str_hash,
+	                                      g_str_equal,
+	                                      g_free,
+	                                      g_free);
+	if (!ops_to_ifaces) {
+		nm_warning ("Couldn't allocate object path to interface hash table!");
+		goto done;
+	}
+
+	g_main_loop_run (loop);
+
+done:
 	/* Clean up pidfile */
 	if (pidfile)
 		unlink (pidfile);
