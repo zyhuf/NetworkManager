@@ -8,7 +8,8 @@ SUBDIRS = 				\
 	   test				\
 	   po				\
 	   man				\
-	   include
+	   include			\
+	   callouts
 
 EXTRA_DIST =				\
 	CONTRIBUTING			\
