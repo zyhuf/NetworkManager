@@ -541,7 +541,7 @@ out:
 	g_free (dev_path);
 }
 
-#define AUTOIPD_CALLOUT_INTERFACE "org.freedesktop.NetworkManager.avahiautoipd"
+#define AUTOIPD_CALLOUT_INTERFACE "org.freedesktop.nm_avahi_autoipd"
 
 static gboolean
 nm_dbus_autoip_process_signal (NMData * data, DBusMessage * message)

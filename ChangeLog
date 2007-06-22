@@ -1,3 +1,12 @@
+2007-06-22  Dan Williams  <dcbw@redhat.com>
+
+	* callouts/nm-avahi-autoipd.action
+	  callouts/nm-avahi-autoipd.conf
+	  src/NetworkManagerDbus.c
+		- org.freedesktop.NetworkManager.avahiautoipd -> org.freedesktop.nm_avahi_autoipd
+			Must have a different bus name than NetworkManager, otherwise the
+			security policies conflict.
+
 2007-06-21  Dan Williams  <dcbw@redhat.com>
 
 	Big mesh update

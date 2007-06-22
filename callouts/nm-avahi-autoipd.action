@@ -15,7 +15,7 @@ set -e
     --system \
     --type=signal \
     / \
-    org.freedesktop.NetworkManager.avahiautoipd.AutoIP4Event \
+    org.freedesktop.nm_avahi_autoipd.AutoIP4Event \
     'string:'"$1" \
     'string:'"$2" \
     'string:'"$3";
