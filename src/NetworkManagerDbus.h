@@ -46,6 +46,11 @@ typedef enum
 	DEVICE_CARRIER_OFF
 } DeviceStatus;
 
+typedef enum
+{
+	MESH_READY,
+	MESH_DOWN,
+} MeshDeviceStatus;
 
 static inline gboolean message_is_error (DBusMessage *msg)
 {
@@ -74,5 +79,7 @@ NMDevice *	nm_dbus_get_device_from_escaped_object_path	(NMData *data, const char
 NMState		nm_get_app_state_from_data			(NMData *data);
 
 DBusMessage *	nm_dbus_create_error_message			(DBusMessage *message, const char *exception_namespace, const char *exception, const char *format, ...);
+
+void			nm_dbus_schedule_mesh_device_change_signal (NMData *data, NMDevice *mesh_dev, NMDevice *primary_dev, MeshDeviceStatus status);
 
 #endif

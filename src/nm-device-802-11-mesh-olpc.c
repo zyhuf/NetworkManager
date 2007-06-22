@@ -39,6 +39,8 @@
 #include "NetworkManagerSystem.h"
 #include "NetworkManagerPolicy.h"
 
+#define MESH_SSID "olpc-mesh"
+#define MPP_DEFAULT_CHANNEL	1
 
 #define IPV4LL_NETWORK 0xA9FE0000L
 #define IPV4LL_NETMASK 0xFFFF0000L
@@ -47,10 +49,10 @@
 
 #define MESH_DHCP_TIMEOUT	15	/* in seconds */
 
-#define SCHOOL_ANYCAST_IP4	"172.31.255.254"
-#define SCHOOL_ANYCAST_MAC	"c0:27:c0:27:c0:00"
-#define XO_ANYCAST_IP4		"172.31.255.253"
-#define XO_ANYCAST_MAC		"c0:27:c0:27:c0:01"
+#define ETC_DHCLIENT_CONF_PATH "/etc/dhclient.conf"
+
+#define SCHOOL_ANYCAST_MAC	"c0:27:c0:27:c0:01"
+#define XO_ANYCAST_MAC		"c0:27:c0:27:c0:02"
 
 static void channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req);
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
@@ -62,6 +64,9 @@ static gboolean aipd_exec (NMDevice80211MeshOLPC *self);
 static gboolean aipd_monitor_start (NMDevice80211MeshOLPC *self);
 static void real_deactivate_quickly (NMDevice *dev);
 static void assoc_timeout_cleanup (NMDevice80211MeshOLPC * self);
+static gboolean is_mpp_active (NMDevice80211MeshOLPC *self);
+static gboolean mpp_autoip_start (NMDevice80211MeshOLPC *self);
+static gboolean assoc_timeout_start (NMDevice80211MeshOLPC *self);
 
 
 #define NM_DEVICE_802_11_MESH_OLPC_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_802_11_MESH_OLPC, NMDevice80211MeshOLPCPrivate))
@@ -85,6 +90,7 @@ struct _ethdev {
 struct _mpp {
 	/* Device with the primary connection */
 	NMDevice *		primary;
+	gboolean		associated;
 
 	/* Attach to device activated signals */
 	GHashTable *	activated_ids;
@@ -159,26 +165,38 @@ wireless_event_cb_data_free (WirelessEventCBData *data)
 	g_free (data);
 }
 
-static void
-handle_association_event (NMDevice80211MeshOLPC * self)
+static gboolean
+handle_association_event (gpointer user_data)
 {
-	NMActRequest * req;
-	NMActStage stage;
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
 
-	g_return_if_fail (self != NULL);
-
-	if (!nm_device_is_activating (NM_DEVICE (self)))
-		return;
-
-	req = nm_device_get_act_request (NM_DEVICE (self));
-	g_return_if_fail (req != NULL);
-
-	stage = nm_act_request_get_stage (req);
-	if (stage != NM_ACT_STAGE_DEVICE_CONFIG)
-		return;
+	g_return_val_if_fail (self != NULL, FALSE);
 
 	assoc_timeout_cleanup (self);
-	nm_device_activate_schedule_stage3_ip_config_start (req);
+
+	nm_info ("%s: got association event from driver.",
+	         nm_device_get_iface (NM_DEVICE (self)));
+
+	if (nm_device_is_activating (NM_DEVICE (self))) {
+		NMActRequest * req = nm_device_get_act_request (NM_DEVICE (self));
+		NMActStage stage;
+
+		if (!req)
+			goto out;
+
+		stage = nm_act_request_get_stage (req);
+		if (stage != NM_ACT_STAGE_DEVICE_CONFIG)
+			goto out;
+
+		nm_device_activate_schedule_stage3_ip_config_start (req);
+	} else if (is_mpp_active (self) && !self->priv->mpp.associated) {
+		self->priv->mpp.associated = TRUE;
+		mpp_autoip_start (self);
+	}
+
+out:
+	g_object_unref (self);
+	return FALSE;
 }
 
 static gboolean
@@ -221,7 +239,13 @@ wireless_event_helper (gpointer user_data)
 				/* disassociated */
 			} else {
 				/* associated */
-				handle_association_event (self);
+				GSource * source = g_idle_source_new ();
+				if (source) {
+					g_object_ref (self);
+					g_source_set_callback (source, handle_association_event, self, NULL);
+					g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
+					g_source_unref (source);
+				}
 			}
 		}
 		pos += iwe->len;
@@ -248,6 +272,10 @@ nm_device_802_11_mesh_olpc_wireless_event (NmNetlinkMonitor *monitor,
 		return;
 
 	cb_data = g_malloc0 (sizeof (WirelessEventCBData));
+	if (!cb_data) {
+		nm_info ("%s: couldn't allocate memory for callback data.", __func__);
+		goto out;
+	}
 	cb_data->self = NM_DEVICE_802_11_MESH_OLPC(g_object_ref (G_OBJECT (self)));
 	cb_data->ethdev = NM_DEVICE_802_11_WIRELESS (g_object_ref (obj));
 	cb_data->data = g_malloc (data_len);
@@ -255,10 +283,18 @@ nm_device_802_11_mesh_olpc_wireless_event (NmNetlinkMonitor *monitor,
 	cb_data->len = data_len;
 
 	source = g_idle_source_new ();
+	if (!source) {
+		nm_info ("%s: couldn't allocate memory for callback source.", __func__);
+		goto out;
+	}
+
 	g_source_set_callback (source, (GSourceFunc) wireless_event_helper,
 			cb_data, (GDestroyNotify) wireless_event_cb_data_free);
 	g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
 	g_source_unref (source);
+
+out:
+	return;
 }
 
 
@@ -302,7 +338,7 @@ real_init (NMDevice *dev)
 	self->priv->is_initialized = TRUE;
 	self->priv->capabilities = 0;
 
-	self->priv->step = MESH_S3_XO_MPP;
+	self->priv->step = MESH_S1_SCHOOL_MPP;
 	self->priv->channel = 1;
 	self->priv->assoc_timeout = NULL;
 	self->priv->wireless_event_id = 0;
@@ -644,6 +680,9 @@ real_deactivate_quickly (NMDevice *dev)
 	mpp_cleanup (self);
 	aipd_cleanup (self);
 	assoc_timeout_cleanup (self);
+
+    /* Remove any dhclient.conf file we may have created for mshX */
+    remove (ETC_DHCLIENT_CONF_PATH);
 }
 
 
@@ -802,6 +841,10 @@ set_80211_ssid (NMDevice80211Wireless *dev,
 		safe_len = 0;
 	} else {
 		safe_ssid = g_malloc0 (IW_ESSID_MAX_SIZE + 1);
+		if (!safe_ssid) {
+			nm_info ("%s: couldn't allocate memory for SSID.", __func__);
+			goto out;
+		}
 		memcpy (safe_ssid, ssid, safe_len);
 	}
 
@@ -809,7 +852,7 @@ set_80211_ssid (NMDevice80211Wireless *dev,
 	if (!sk) {
 		nm_warning ("%s: failed to open device socket.",
 		            nm_device_get_iface (NM_DEVICE (dev)));
-		return FALSE;
+		goto out;
 	}
 
 	wrqu.u.essid.pointer = (caddr_t) safe_ssid;
@@ -824,14 +867,16 @@ set_80211_ssid (NMDevice80211Wireless *dev,
 		nm_warning ("%s: failed to set SSID (errno: %d).",
 		            nm_device_get_iface (NM_DEVICE (dev)),
 		            errno);
-		goto out;
+		goto free_sock;
 	}
 
 	success = TRUE;
 
+free_sock:
+	nm_dev_sock_close (sk);
+
 out:
 	g_free (safe_ssid);
-	nm_dev_sock_close (sk);
 	return success;
 }
 
@@ -959,6 +1004,14 @@ mpp_cleanup (NMDevice80211MeshOLPC *self)
 	NMIP4Config * config;
 
 	if (self->priv->mpp.primary) {
+		NMData * data = nm_device_get_app_data (NM_DEVICE (self));
+		if (self->priv->mpp.associated) {
+			nm_dbus_schedule_mesh_device_change_signal (data,
+			                                            NM_DEVICE (self),
+			                                            NM_DEVICE (self->priv->mpp.primary),
+			                                            MESH_DOWN);
+		}
+
 		g_object_unref (self->priv->mpp.primary);
 		self->priv->mpp.primary = NULL;
 	}
@@ -970,6 +1023,8 @@ mpp_cleanup (NMDevice80211MeshOLPC *self)
 	nm_system_device_flush_routes (NM_DEVICE (self));
 	nm_system_device_flush_addresses (NM_DEVICE (self));
 	nm_device_update_ip4_address (NM_DEVICE (self));
+
+	self->priv->mpp.associated = FALSE;
 }
 
 static void
@@ -977,6 +1032,7 @@ mpp_aipd_timeout (NMDevice80211MeshOLPC *self)
 {
 	g_return_if_fail (self != NULL);
 
+	aipd_cleanup (self);
 	mpp_cleanup (self);	
 }
 
@@ -984,6 +1040,7 @@ static void
 mpp_autoip_success (NMDevice80211MeshOLPC *self)
 {
 	NMIP4Config * config;
+	NMData * data;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (self->priv->mpp.primary != NULL);
@@ -997,7 +1054,31 @@ mpp_autoip_success (NMDevice80211MeshOLPC *self)
 
 	nm_system_device_set_from_ip4_config (NM_DEVICE (self), TRUE);
 
-	
+	data = nm_device_get_app_data (NM_DEVICE (self));
+	nm_dbus_schedule_mesh_device_change_signal (data,
+	                                            NM_DEVICE (self),
+	                                            NM_DEVICE (self->priv->mpp.primary),
+	                                            MESH_READY);
+}
+
+static gboolean
+mpp_autoip_start (NMDevice80211MeshOLPC *self)
+{
+	const char * iface = nm_device_get_iface (NM_DEVICE (self));
+	gboolean success = FALSE;
+
+	/* Get an autoip address */
+	if (aipd_exec (self)) {
+		if (aipd_monitor_start (self)) {
+			success = TRUE;
+		} else {
+			aipd_cleanup (self);
+			nm_warning ("%s: MPP couldn't monitor avahi-autoipd.", iface);
+		}
+	} else {
+		nm_warning ("%s: MPP couldn't start avahi-autoipd.", iface);
+	}
+	return success;
 }
 
 static void
@@ -1018,19 +1099,37 @@ mpp_device_activated_cb (GObject * obj,
 	g_object_ref (self->priv->mpp.primary);
 
 	iface = nm_device_get_iface (NM_DEVICE (self));
-	nm_debug ("%s: will become MPP for %s",
-	          iface,
-	          nm_device_get_iface (self->priv->mpp.primary));
 
-	/* Get an autoip address */
-	if (aipd_exec (self)) {
-		if (!aipd_monitor_start (self)) {
-			aipd_cleanup (self);
-			nm_warning ("%s: MPP couldn't monitor avahi-autoipd.", iface);
-		}
+	/* If the primary device isn't the companion ethernet device of this
+	 * mesh device, then we need to set up other 802.11 things like
+	 * channel, ssid, and mode that the eth device normally sets up itself.
+	 */
+	if (primary_dev == NM_DEVICE (self->priv->ethdev.dev)) {
+		if (!mpp_autoip_start (self))
+			goto out;
 	} else {
-		nm_warning ("%s: MPP couldn't start avahi-autoipd.", iface);
+		if (!clear_80211_keys (self->priv->ethdev.dev))
+			goto out;
+
+		if (!set_80211_mode (self->priv->ethdev.dev, IW_MODE_ADHOC))
+			goto out;
+
+		self->priv->channel = MPP_DEFAULT_CHANNEL;
+		if (!set_80211_channel (self->priv->ethdev.dev,
+		                        self->priv->channel,
+		                        &self->priv->range))
+			goto out;
+
+		if (!set_80211_ssid (self->priv->ethdev.dev, MESH_SSID, strlen (MESH_SSID)))
+			goto out;
+
+		assoc_timeout_start (self);
 	}
+
+	nm_info ("%s: will become MPP for %s on channel %d",
+	         iface,
+	         nm_device_get_iface (self->priv->mpp.primary),
+	         self->priv->channel);
 
 out:
 	return;
@@ -1049,11 +1148,12 @@ mpp_device_deactivated_cb (GObject * obj,
 	if (primary_dev != self->priv->mpp.primary)
 		return;
 
-	nm_debug ("%s: will stop being an MPP for %s",
-	          nm_device_get_iface (NM_DEVICE (self)),
-	          nm_device_get_iface (self->priv->mpp.primary));
+	nm_info ("%s: will stop being an MPP for %s",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         nm_device_get_iface (self->priv->mpp.primary));
 
 	mpp_cleanup (self);
+	aipd_cleanup (self);
 }
 
 
@@ -1120,8 +1220,6 @@ aipd_watch_cb (GPid pid,
 
 	aipd_cleanup (self);
 
-/*	nm_device_set_active_link (dev, FALSE); */
-
 	return FALSE;
 }
 
@@ -1139,14 +1237,16 @@ aipd_child_setup (gpointer user_data G_GNUC_UNUSED)
 static gboolean
 aipd_exec (NMDevice80211MeshOLPC *self)
 {
-	char * argv[3];
+	char * argv[5];
 	GError * error = NULL;
 	GPid pid = -1;
 	gboolean success = FALSE;
 
 	argv[0] = "/usr/sbin/avahi-autoipd";
-	argv[1] = (char *) nm_device_get_iface (NM_DEVICE (self));
-	argv[2] = NULL;
+	argv[1] = "--script";
+	argv[2] = SYSCONFDIR "/NetworkManager/callouts/nm-avahi-autoipd.action";
+	argv[3] = (char *) nm_device_get_iface (NM_DEVICE (self));
+	argv[4] = NULL;
 
 	success = g_spawn_async ("/", argv, NULL, 0,
 	                         &aipd_child_setup, NULL, &pid, &error);
@@ -1270,9 +1370,10 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 			self->priv->channel++;
 			break;
 		default:
-			nm_info ("%s: %s/%d unhandled step %d\n",
+			nm_info ("%s: unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),
-			         __func__, __LINE__, self->priv->step);
+			         self->priv->step);
+			g_assert_not_reached ();
 			break;
 	}
 
@@ -1326,23 +1427,30 @@ assoc_timeout_cb (gpointer user_data)
 
 	g_return_val_if_fail (self != NULL, FALSE);
 
-	if (   !self->priv->assoc_timeout
-	    || !nm_device_is_activating (NM_DEVICE (self)))
+	if (!self->priv->assoc_timeout)
 		goto out;
 
-	req = nm_device_get_act_request (NM_DEVICE (self));
-	g_return_val_if_fail (req != NULL, FALSE);
+	if (nm_device_is_activating (NM_DEVICE (self))) {
+		req = nm_device_get_act_request (NM_DEVICE (self));
+		g_return_val_if_fail (req != NULL, FALSE);
 
-	stage = nm_act_request_get_stage (req);
-	if (stage != NM_ACT_STAGE_DEVICE_CONFIG)
-		goto out;
+		stage = nm_act_request_get_stage (req);
+		if (stage != NM_ACT_STAGE_DEVICE_CONFIG)
+			goto out;
 
-	nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) association "
-	         "timed out on channel %d.",
-	         nm_device_get_iface (NM_DEVICE (self)),
-	         self->priv->channel);
+		nm_info ("Activation (%s/mesh) Stage 2 of 6 (Device Configure) association "
+		         "timed out on channel %d.",
+		         nm_device_get_iface (NM_DEVICE (self)),
+		         self->priv->channel);
 
-	channel_failure_handler (self, req);
+		channel_failure_handler (self, req);
+	} else if (is_mpp_active (self)) {
+		nm_info ("%s: association timed out on channel %d during MPP setup.",
+		         nm_device_get_iface (NM_DEVICE (self)),
+		         self->priv->channel);
+		mpp_cleanup (self);
+		assoc_timeout_cleanup (self);
+	}
 
 out:
 	return FALSE;
@@ -1363,7 +1471,7 @@ assoc_timeout_start (NMDevice80211MeshOLPC *self)
 
 	g_return_val_if_fail (self != NULL, FALSE);
 
-	self->priv->assoc_timeout = g_timeout_source_new (3000);
+	self->priv->assoc_timeout = g_timeout_source_new (6000);
 	if (!self->priv->assoc_timeout)
 		goto out;
 
@@ -1386,7 +1494,6 @@ real_act_stage2_config (NMDevice *dev,
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
-	GSource * source;
 
 	if (!clear_80211_keys (self->priv->ethdev.dev))
 		goto out;
@@ -1401,7 +1508,6 @@ real_act_stage2_config (NMDevice *dev,
 		goto out;
 	}
 
-#define MESH_SSID "olpc-mesh"
 	if (!set_80211_ssid (self->priv->ethdev.dev, MESH_SSID, strlen (MESH_SSID)))
 		goto out;
 
@@ -1409,6 +1515,8 @@ real_act_stage2_config (NMDevice *dev,
 	         "a mesh on channel %d.",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         self->priv->channel);
+
+	assoc_timeout_start (self);
 
 	ret = NM_ACT_STAGE_RETURN_POSTPONE;
 
@@ -1418,12 +1526,10 @@ out:
 
 
 #define BUF_SIZE 100
-#define ETC_DHCLIENT_CONF_PATH "/etc/dhclient.conf"
 
 static NMActStageReturn
 setup_for_mpp (NMDevice80211MeshOLPC * self,
                NMActRequest * req,
-               const char * ip4,
                const char * mac)
 {
 	NMDevice80211MeshOLPCClass *	klass;
@@ -1433,22 +1539,10 @@ setup_for_mpp (NMDevice80211MeshOLPC * self,
 	char				buf[BUF_SIZE];
 	int					fd, written;
 
-#if 0
-	nm_system_device_add_route_via_device_with_iface (iface, ip4);
-
-	snprintf (buf, BUF_SIZE, "/sbin/arp -s %s %s", ip4, mac);
-	if (nm_spawn_process (buf)) {
-		nm_warning ("Activation (%s/mesh): couldn't create anycast ARP"
-		            " mapping for MPP discovery.",
-		            iface);
-		goto out;
-	}
-#endif
-
 	snprintf (buf, BUF_SIZE,
 	          "interface \"%s\" {\n"
 	          "  initial-interval 1;\n"
-	          "  anycast-mac ethernet %s\n"
+	          "  anycast-mac ethernet %s;\n"
 	          "}\n",
 	          iface, mac);
 
@@ -1490,10 +1584,10 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
-			ret = setup_for_mpp (self, req, SCHOOL_ANYCAST_IP4, SCHOOL_ANYCAST_MAC);
+			ret = setup_for_mpp (self, req, SCHOOL_ANYCAST_MAC);
 			break;
 		case MESH_S3_XO_MPP:
-			ret = setup_for_mpp (self, req, XO_ANYCAST_IP4, XO_ANYCAST_MAC);
+			ret = setup_for_mpp (self, req, XO_ANYCAST_MAC);
 			break;
 		case MESH_S4_P2P_MESH:
 			if (!aipd_exec (self)) {
@@ -1509,9 +1603,10 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 			ret = NM_ACT_STAGE_RETURN_POSTPONE;
 			break;
 		default:
-			nm_info ("%s: %s/%d unhandled step %d\n",
-			         nm_device_get_iface (dev),
-			         __func__, __LINE__, self->priv->step);
+			nm_info ("%s: unhandled step %d",
+			         nm_device_get_iface (NM_DEVICE (self)),
+			         self->priv->step);
+			g_assert_not_reached ();
 			break;
 	}
 
@@ -1545,17 +1640,30 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 	NMDevice80211MeshOLPCClass *	klass;
 	NMDeviceClass *			parent_class;
 	const char *			iface = nm_device_get_iface (dev);
+	NMData *			data = nm_device_get_app_data (dev);
 
 	g_return_val_if_fail (config != NULL, NM_ACT_STAGE_RETURN_FAILURE);
 	g_return_val_if_fail (*config == NULL, NM_ACT_STAGE_RETURN_FAILURE);
 
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
+			/* Chain up to parent */
+			klass = NM_DEVICE_802_11_MESH_OLPC_GET_CLASS (self);
+			parent_class = NM_DEVICE_CLASS (g_type_class_peek_parent (klass));
+			ret = parent_class->act_stage4_get_ip4_config (dev, req, &real_config);
+			if (ret != NM_ACT_STAGE_RETURN_SUCCESS)
+				goto out;
+			break;
 		case MESH_S3_XO_MPP:
 			/* Chain up to parent */
 			klass = NM_DEVICE_802_11_MESH_OLPC_GET_CLASS (self);
 			parent_class = NM_DEVICE_CLASS (g_type_class_peek_parent (klass));
 			ret = parent_class->act_stage4_get_ip4_config (dev, req, &real_config);
+			/* Kill dhclient; we don't need it anymore after MPP discovery here
+			 * because we're ignoring the returned lease.
+			 */
+			nm_dhcp_manager_cancel_transaction (data->dhcp_manager, req);
+			sleep (1);
 			if (ret != NM_ACT_STAGE_RETURN_SUCCESS)
 				goto out;
 			break;
@@ -1567,9 +1675,10 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 			nm_ip4_config_set_gateway (real_config, 0);
 			break;
 		default:
-			nm_info ("%s: %s/%d unhandled step %d\n",
+			nm_info ("%s: unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),
-			         __func__, __LINE__, self->priv->step);
+			         self->priv->step);
+			g_assert_not_reached ();
 			break;
 	}
 
@@ -1639,7 +1748,6 @@ apply_autoip_address (NMDevice80211MeshOLPC *self, guint32 addr)
 	nm_ip4_config_set_address (ip4_config, addr);
 	nm_ip4_config_set_netmask (ip4_config, (guint32)(ntohl (IPV4LL_NETMASK)));
 	nm_ip4_config_set_broadcast (ip4_config, (guint32)(ntohl (IPV4LL_BROADCAST)));
-	nm_ip4_config_set_gateway (ip4_config, 0);
 
 	return TRUE;
 }
@@ -1687,13 +1795,15 @@ handle_activation_autoip_event (NMDevice80211MeshOLPC *self,
 							channel_failure_handler (self, req);
 						else
 							nm_device_activate_schedule_stage5_ip_config_commit (req);
+						break;
 					case MESH_S4_P2P_MESH:
 						nm_device_activate_schedule_stage4_ip_config_get (req);
 						break;
 					default:
-						nm_info ("%s: %s/%d unhandled step %d\n",
+						nm_info ("%s: unhandled step %d",
 						         nm_device_get_iface (NM_DEVICE (self)),
-						         __func__, __LINE__, self->priv->step);
+						         self->priv->step);
+						g_assert_not_reached ();
 						break;
 				}
 			}
@@ -1795,9 +1905,11 @@ real_notify_no_best_device (NMDevice *dev)
 	g_return_if_fail (self != NULL);
 
 	source = g_idle_source_new ();
-	g_source_set_callback (source, handle_no_best_device, dev, NULL);
-	g_source_attach (source, nm_device_get_main_context (dev));
-	g_source_unref (source);
+	if (source) {
+		g_source_set_callback (source, handle_no_best_device, dev, NULL);
+		g_source_attach (source, nm_device_get_main_context (dev));
+		g_source_unref (source);
+	}
 }
 
 
@@ -1809,6 +1921,7 @@ real_handle_autoip_event (NMDevice *dev,
 	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActRequest * req = nm_device_get_act_request (dev);
 
+	nm_info ("%s: got autoip event '%s' for '%s'\n", nm_device_get_iface (NM_DEVICE (self)), event, addr);
 	if (nm_device_is_activating (NM_DEVICE (self))) {
 		if (req) {
 			handle_activation_autoip_event (self, req, event, addr);

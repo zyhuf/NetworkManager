@@ -663,58 +663,6 @@ static DBusMessage *nm_dbus_nm_get_state (DBusConnection *connection, DBusMessag
 }
 
 
-static DBusMessage *
-nm_dbus_nm_autoip_event (DBusConnection *connection,
-                         DBusMessage *message,
-                         NMDbusCBData *data)
-{
-	DBusError error;
-	NMDevice * dev;
-	char * event = NULL;
-	char * iface = NULL;
-	char * ip4_addr = NULL;
-
-	g_return_val_if_fail (data != NULL, NULL);
-	g_return_val_if_fail (data->data != NULL, NULL);
-	g_return_val_if_fail (connection != NULL, NULL);
-	g_return_val_if_fail (message != NULL, NULL);
-
-	dbus_error_init (&error);
-	if (!dbus_message_get_args (message,
-	                            &error,
-	                            DBUS_TYPE_STRING, &event,
-	                            DBUS_TYPE_STRING, &iface,
-	                            DBUS_TYPE_STRING, &ip4_addr,
-	                            DBUS_TYPE_INVALID)) {
-		nm_warning ("Invalid mesage arguments from avahi-autoipd: (%s) %s",
-		            error.name,
-		            error.message);
-		goto out;
-	}
-
-	if (   (strcmp (event, "BIND") != 0)
-	    && (strcmp (event, "CONFLICT") != 0)
-	    && (strcmp (event, "UNBIND") != 0)
-	    && (strcmp (event, "STOP") != 0)) {
-		nm_warning ("Invalid mesage event from avahi-autoipd: %s", event);
-		goto out;
-	}
-
-	dev = nm_get_device_by_iface (data->data, iface);
-	if (!dev) {
-		nm_warning ("Invalid autoip bind for device %s: device unknown.",
-		            iface);
-		goto out;
-	}
-
-	nm_device_handle_autoip_event (dev, event, ip4_addr);
-
-out:
-	dbus_error_free (&error);
-	return NULL;
-}
-
-
 /*
  * nm_dbus_nm_methods_setup
  *
@@ -738,7 +686,6 @@ NMDbusMethodList *nm_dbus_nm_methods_setup (void)
 	nm_dbus_method_list_add_method (list, "state",				nm_dbus_nm_get_state);
 	nm_dbus_method_list_add_method (list, "createTestDevice",		nm_dbus_nm_create_test_device);
 	nm_dbus_method_list_add_method (list, "removeTestDevice",		nm_dbus_nm_remove_test_device);
-	nm_dbus_method_list_add_method (list, "autoipEvent",			nm_dbus_nm_autoip_event);
 
 	return (list);
 }

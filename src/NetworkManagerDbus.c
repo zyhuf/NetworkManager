@@ -279,10 +279,118 @@ void nm_dbus_schedule_device_status_change_signal (NMData *data, NMDevice *dev, 
 	cb_data->status = status;
 
 	source = g_idle_source_new ();
-	g_source_set_priority (source, G_PRIORITY_HIGH_IDLE);
-	g_source_set_callback (source, nm_dbus_signal_device_status_change, cb_data, NULL);
-	g_source_attach (source, data->main_context);
-	g_source_unref (source);
+	if (source) {
+		g_source_set_priority (source, G_PRIORITY_HIGH_IDLE);
+		g_source_set_callback (source, nm_dbus_signal_device_status_change, cb_data, NULL);
+		g_source_attach (source, data->main_context);
+		g_source_unref (source);
+	}
+}
+
+
+typedef struct NMMeshChangeData
+{
+	NMData *			data;
+	NMDevice *		mesh_dev;
+	NMDevice * 		primary_dev;
+	MeshDeviceStatus	status;
+} NMMeshChangeData;
+
+
+/*
+ * nm_dbus_signal_mesh_device_change
+ *
+ * Notifies the bus that a particular mesh device has had a status change
+ *
+ */
+static gboolean
+nm_dbus_signal_mesh_device_change (gpointer user_data)
+{
+	NMMeshChangeData *	cb_data = (NMMeshChangeData *)user_data;
+	DBusMessage *		message = NULL;
+	char *			mesh_dev_path = NULL;
+	char *			primary_dev_path = NULL;
+	const char *		sig;
+	int				i = 0;
+
+	g_return_val_if_fail (cb_data->data, FALSE);
+	g_return_val_if_fail (cb_data->data->dbus_connection, FALSE);
+	g_return_val_if_fail (cb_data->mesh_dev, FALSE);
+	g_return_val_if_fail (cb_data->primary_dev, FALSE);
+
+	switch (cb_data->status) {
+		case MESH_READY:
+			sig = "MeshReady";
+			break;
+		case MESH_DOWN:
+			sig = "MeshDown";
+			break;
+		default:
+			nm_info ("%s: invalid mesh status %d", __func__, cb_data->status);
+			goto out;
+			break;
+	}
+
+	if (!(mesh_dev_path = nm_dbus_get_object_path_for_device (cb_data->mesh_dev)))
+		goto out;
+
+	if (!(primary_dev_path = nm_dbus_get_object_path_for_device (cb_data->primary_dev)))
+		goto out;
+
+	message = dbus_message_new_signal (NM_DBUS_PATH, NM_DBUS_INTERFACE, sig);
+	if (!message) {
+		nm_warning ("%s(): Not enough memory for new dbus message!", __func__);
+		goto out;
+	}
+
+	dbus_message_append_args (message,
+	                          DBUS_TYPE_OBJECT_PATH, &mesh_dev_path,
+	                          DBUS_TYPE_OBJECT_PATH, &primary_dev_path,
+	                          DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send (cb_data->data->dbus_connection, message, NULL))
+		nm_warning ("%s(): Could not raise the signal!", __func__);
+
+ out:
+	if (message)
+		dbus_message_unref (message);
+
+	g_free (mesh_dev_path);
+	g_free (primary_dev_path);
+	g_object_unref (G_OBJECT (cb_data->mesh_dev));
+	g_object_unref (G_OBJECT (cb_data->primary_dev));
+	g_free (cb_data);
+
+	return FALSE;
+}
+
+
+void
+nm_dbus_schedule_mesh_device_change_signal (NMData *data,
+                                            NMDevice *mesh_dev,
+                                            NMDevice *primary_dev,
+                                            MeshDeviceStatus status)
+{
+	NMMeshChangeData *	cb_data = NULL;
+	GSource *			source;
+
+	g_return_if_fail (data != NULL);
+	g_return_if_fail (mesh_dev != NULL);
+	g_return_if_fail (primary_dev != NULL);
+
+	cb_data = g_malloc0 (sizeof (NMMeshChangeData));
+	cb_data->data = data;
+	cb_data->mesh_dev = g_object_ref (G_OBJECT (mesh_dev));
+	cb_data->primary_dev = g_object_ref (G_OBJECT (primary_dev));
+	cb_data->status = status;
+
+	source = g_idle_source_new ();
+	if (source) {
+		g_source_set_priority (source, G_PRIORITY_HIGH_IDLE);
+		g_source_set_callback (source, nm_dbus_signal_mesh_device_change, cb_data, NULL);
+		g_source_attach (source, data->main_context);
+		g_source_unref (source);
+	}
 }
 
 
@@ -433,6 +541,65 @@ out:
 	g_free (dev_path);
 }
 
+#define AUTOIPD_CALLOUT_INTERFACE "org.freedesktop.NetworkManager.avahiautoipd"
+
+static gboolean
+nm_dbus_autoip_process_signal (NMData * data, DBusMessage * message)
+{
+	const char * object_path;
+	gboolean	handled = FALSE;
+	DBusError error;
+	NMDevice * dev;
+	char * event = NULL;
+	char * iface = NULL;
+	char * ip4_addr = NULL;
+
+	dbus_error_init (&error);
+
+	g_return_val_if_fail (data != NULL, FALSE);
+	g_return_val_if_fail (message != NULL, FALSE);
+
+	object_path = dbus_message_get_path (message);
+	if (!object_path || strcmp (object_path, "/")) {
+		nm_warning ("Invalid object path from avahi-autoipd event: %s",
+		            object_path ? object_path : "(null)");
+		goto out;
+	}
+
+	if (!dbus_message_get_args (message,
+	                            &error,
+	                            DBUS_TYPE_STRING, &event,
+	                            DBUS_TYPE_STRING, &iface,
+	                            DBUS_TYPE_STRING, &ip4_addr,
+	                            DBUS_TYPE_INVALID)) {
+		nm_warning ("Invalid mesage arguments from avahi-autoipd: (%s) %s",
+		            error.name,
+		            error.message);
+		goto out;
+	}
+
+	if (   (strcmp (event, "BIND") != 0)
+	    && (strcmp (event, "CONFLICT") != 0)
+	    && (strcmp (event, "UNBIND") != 0)
+	    && (strcmp (event, "STOP") != 0)) {
+		nm_warning ("Invalid mesage event from avahi-autoipd: %s", event);
+		goto out;
+	}
+
+	dev = nm_get_device_by_iface (data, iface);
+	if (!dev) {
+		nm_warning ("Invalid autoip bind for device %s: device unknown.",
+		            iface);
+		goto out;
+	}
+
+	nm_device_handle_autoip_event (dev, event, ip4_addr);
+
+out:
+	dbus_error_free (&error);
+	return handled;
+}
+
 
 /*
  * nm_dbus_signal_filter
@@ -443,6 +610,7 @@ out:
 static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBusMessage *message, void *user_data)
 {
 	NMData *		data = (NMData *)user_data;
+	const char *	interface;
 	const char *	object_path;
 	const char *	method;
 	gboolean		handled = FALSE;
@@ -453,13 +621,19 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 	g_return_val_if_fail (message != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
 
 	method = dbus_message_get_member (message);
+	interface = dbus_message_get_interface (message);
 	if (!(object_path = dbus_message_get_path (message)))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (dbus_message_get_type (message) != DBUS_MESSAGE_TYPE_SIGNAL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	/* nm_debug ("nm_dbus_nmi_filter() got method %s for path %s", method, object_path); */
+#if 0
+	nm_debug ("Got interface='%s', method='%s', path='%s'",
+	          interface ? interface : "(null)",
+	          method ? method : "(null)",
+	          object_path ? object_path : "(null)");
+#endif
 
 	dbus_error_init (&error);
 
@@ -554,10 +728,13 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 				handled = TRUE;
 		}
 	}
-	else if (nm_dhcp_manager_process_signal (data->dhcp_manager, message) == TRUE)
+	else if (dbus_message_is_signal (message, AUTOIPD_CALLOUT_INTERFACE, "AutoIP4Event")) {
+		handled = nm_dbus_autoip_process_signal (data, message);
+	} else if (nm_dhcp_manager_process_signal (data->dhcp_manager, message) == TRUE) {
 		handled = TRUE;
-	else if (nm_vpn_manager_process_signal (data->vpn_manager, message) == TRUE)
+	} else if (nm_vpn_manager_process_signal (data->vpn_manager, message) == TRUE) {
 		handled = TRUE;
+	}
 
 	if (dbus_error_is_set (&error))
 		dbus_error_free (&error);
@@ -821,6 +998,11 @@ DBusConnection *nm_dbus_init (NMData *data)
 				"type='signal',"
 				"interface='" DBUS_INTERFACE_DBUS "',"
 				"sender='" DBUS_SERVICE_DBUS "'",
+				NULL);
+
+	dbus_bus_add_match (connection,
+				"type='signal',"
+				"interface='" AUTOIPD_CALLOUT_INTERFACE "'",
 				NULL);
 
 	if ((owner = get_name_owner (connection, NMI_DBUS_SERVICE)))

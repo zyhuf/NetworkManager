@@ -1,5 +1,17 @@
 2007-06-21  Dan Williams  <dcbw@redhat.com>
 
+	Big mesh update
+
+	- Send MeshReady and MeshDown events so that the dispatcher can start
+		mesh portal functionality correctly
+	- Rework the avahi-autoipd handling code to spawn avahi-autoipd with using
+		a custom action script, and to listen for avahi-autoipd event signals
+	- Make MPP functionality actually work
+	- Add the mpp.py script that the dispatcher uses
+	- Handle memory allocation failures more gracefully
+
+2007-06-21  Dan Williams  <dcbw@redhat.com>
+
 	* dispatcher-daemon/NetworkManagerDispatcher.c
 		- Add MESH_READY and MESH_DOWN events
 		- Keep a cache of interface <-> object path mappings, so that when NM
