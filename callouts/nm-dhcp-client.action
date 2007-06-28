@@ -1,0 +1,12 @@
+#!/bin/bash
+# nm-dhcp-client.action
+# sends a dbus message to the dhcp-client in nm with environmental variables
+# from the dhcp server response
+
+#Network Manager's way of doing this
+/bin/dbus-send \
+    --system \
+    --type=signal \
+    / \
+    org.freedesktop.nm_dhcp_client.Event \
+    'string:[dhclient]'"`echo && env | /bin/egrep -v '^(PATH|SHLVL|_|PWD|dhc_dbus)\='`";

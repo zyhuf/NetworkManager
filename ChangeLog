@@ -1,3 +1,9 @@
+2007-06-28  Dan Williams  <dcbw@redhat.com>
+
+	Get rid of dhcdbd, based on a patch from Robert Frank.  Drive dhclient
+	directly.  Big refactor to make the DHCP manager a GObject subclass with
+	signals on DHCP events.
+
 2007-06-22  Dan Williams  <dcbw@redhat.com>
 
 	* callouts/nm-avahi-autoipd.action

@@ -188,6 +188,44 @@ void nm_policy_schedule_activation_failed (NMActRequest *req)
 }
 
 
+static gboolean nm_policy_deactivate (gpointer user_data)
+{
+	NMDevice *	dev = NM_DEVICE (user_data);
+	NMData * data = NULL;
+
+	g_return_val_if_fail (dev != NULL, FALSE);
+
+	data = nm_device_get_app_data (dev);
+	g_assert (data);
+
+	nm_device_deactivate (dev);
+	g_object_unref (dev);
+
+	nm_schedule_state_change_signal_broadcast (data);
+	nm_policy_schedule_device_change_check (data);
+	return FALSE;
+}
+
+void nm_policy_schedule_deactivate (NMDevice * dev)
+{
+	GSource *		source;
+	NMData *		data;
+
+	g_return_if_fail (dev != NULL);
+
+	data = nm_device_get_app_data (dev);
+	g_assert (data);
+
+	source = g_idle_source_new ();
+	g_source_set_priority (source, G_PRIORITY_HIGH_IDLE);
+	g_object_ref (dev);
+	g_source_set_callback (source, (GSourceFunc) nm_policy_deactivate, dev, NULL);
+	g_source_attach (source, data->main_context);
+	g_source_unref (source);
+	nm_info ("Activation (%s) deactivation scheduled...", nm_device_get_iface (dev));
+}
+
+
 /*
  * nm_policy_auto_get_best_device
  *

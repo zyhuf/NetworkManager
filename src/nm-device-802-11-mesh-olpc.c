@@ -38,6 +38,7 @@
 #include "nm-activation-request.h"
 #include "NetworkManagerSystem.h"
 #include "NetworkManagerPolicy.h"
+#include "nm-dhcp-manager.h"
 
 #define MESH_SSID "olpc-mesh"
 #define MPP_DEFAULT_CHANNEL	1
@@ -349,7 +350,8 @@ real_init (NMDevice *dev)
 	                                                    g_direct_equal);
 	if (   !self->priv->mpp.activated_ids
 	    || !self->priv->mpp.deactivated_ids) {
-		nm_warning ("%s: couldn't allocate MPP tables.");
+		nm_warning ("%s: couldn't allocate MPP tables.",
+		            nm_device_get_iface (NM_DEVICE (self)));
 		mpp_clear_hash_tables (self);
 	}
 
@@ -504,7 +506,7 @@ cleanup_ethdev (NMDevice80211MeshOLPC *self)
 static void
 connect_to_device_signals (NMDevice80211MeshOLPC *self, NMDevice *dev)
 {
-	guint32 act_id, deact_id, act_fail_id;
+	guint32 act_id, deact_id;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (dev != NULL);
@@ -668,7 +670,7 @@ real_notify_device_removed (NMDevice *dev,
 	/* If we are an MPP and the removed device was the one providing
 	 * the primary connection, stop being an MPP.
 	 */
-	if (removed_dev = self->priv->mpp.primary)
+	if (removed_dev == self->priv->mpp.primary)
 		mpp_cleanup (self);
 }
 
@@ -1001,8 +1003,6 @@ is_mpp_active (NMDevice80211MeshOLPC *self)
 static void
 mpp_cleanup (NMDevice80211MeshOLPC *self)
 {
-	NMIP4Config * config;
-
 	if (self->priv->mpp.primary) {
 		NMData * data = nm_device_get_app_data (NM_DEVICE (self));
 		if (self->priv->mpp.associated) {
@@ -1205,7 +1205,6 @@ aipd_watch_cb (GPid pid,
                gpointer user_data)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (user_data);
-	NMDevice * dev = NM_DEVICE (user_data);
 
 	g_assert (self);
 
@@ -1319,7 +1318,6 @@ static gboolean
 aipd_monitor_start (NMDevice80211MeshOLPC *self)
 {
 	gboolean success = FALSE;
-	GIOChannel *	channel;
 	GMainContext *	context;
 
 	g_return_val_if_fail (self != NULL, FALSE);
@@ -1640,7 +1638,7 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 	NMDevice80211MeshOLPCClass *	klass;
 	NMDeviceClass *			parent_class;
 	const char *			iface = nm_device_get_iface (dev);
-	NMData *			data = nm_device_get_app_data (dev);
+	NMDHCPManager *		dhcp_manager = nm_dhcp_manager_get (NULL);
 
 	g_return_val_if_fail (config != NULL, NM_ACT_STAGE_RETURN_FAILURE);
 	g_return_val_if_fail (*config == NULL, NM_ACT_STAGE_RETURN_FAILURE);
@@ -1662,13 +1660,18 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 			/* Kill dhclient; we don't need it anymore after MPP discovery here
 			 * because we're ignoring the returned lease.
 			 */
-			nm_dhcp_manager_cancel_transaction (data->dhcp_manager, req);
-			sleep (1);
+			nm_dhcp_manager_request_cancel_transaction (dhcp_manager,
+			                                            nm_device_get_iface (NM_DEVICE (self)),
+			                                            TRUE);
 			if (ret != NM_ACT_STAGE_RETURN_SUCCESS)
 				goto out;
 			break;
 		case MESH_S4_P2P_MESH:
 			real_config = nm_ip4_config_new ();
+			if (!real_config) {
+				nm_warning ("Not enough memory to create ip4 config.");
+				goto out;
+			}
 			nm_ip4_config_set_address (real_config, self->priv->aipd.ip4_addr);
 			nm_ip4_config_set_netmask (real_config, (guint32)(ntohl (IPV4LL_NETMASK)));
 			nm_ip4_config_set_broadcast (real_config, (guint32)(ntohl (IPV4LL_BROADCAST)));

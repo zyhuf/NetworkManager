@@ -734,7 +734,6 @@ static void nm_data_free (NMData *data)
 	nm_ap_list_unref (data->invalid_ap_list);
 
 	nm_vpn_manager_dispose (data->vpn_manager);
-	nm_dhcp_manager_dispose (data->dhcp_manager);
 	g_object_unref (data->named_manager);
 
 	g_main_loop_unref (data->main_loop);
@@ -891,6 +890,7 @@ int main( int argc, char *argv[] )
 	char *		owner;
 	char *		pidfile = NULL;
 	char *		user_pidfile = NULL;
+	NMDHCPManager * dhcp_mgr;
 	
 	if (getuid () != 0)
 	{
@@ -981,8 +981,8 @@ int main( int argc, char *argv[] )
 
 	/* Need to happen after DBUS is initialized */
 	nm_data->vpn_manager = nm_vpn_manager_new (nm_data);
-	nm_data->dhcp_manager = nm_dhcp_manager_new (nm_data);
 	nm_data->named_manager = nm_named_manager_new (nm_data->dbus_connection);
+	dhcp_mgr = nm_dhcp_manager_get (nm_data);
 
 	/* If NMI is running, grab allowed wireless network lists from it ASAP */
 	if (nm_dbus_is_info_daemon_running (nm_data->dbus_connection))

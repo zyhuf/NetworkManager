@@ -43,8 +43,6 @@ struct NMActRequest
 	NMActStage		stage;
 	DBusPendingCall *	user_key_pcall;
 
-	guint32			dhcp_state;
-	guint			dhcp_timeout; /* the timeout source itself */
 	guint			dhcp_timeout_wait; /* in seconds */
 };
 
@@ -71,7 +69,6 @@ NMActRequest * nm_act_request_new (NMData *data, NMDevice *dev, NMAccessPoint *a
 	req->ap = ap;
 
 	req->user_requested = user_requested;
-	req->dhcp_state = nm_dhcp_manager_get_state_for_device (data->dhcp_manager, dev);
 
 	return req;
 }
@@ -97,12 +94,6 @@ void nm_act_request_unref (NMActRequest *req)
 
 		if (req->ip4_config)
 			nm_ip4_config_unref (req->ip4_config);
-
-		if (req->dhcp_timeout > 0)
-		{
-			GSource *	source = g_main_context_find_source_by_id (req->data->main_context, req->dhcp_timeout);
-			g_source_destroy (source);
-		}
 
 		memset (req, 0, sizeof (NMActRequest));
 		g_free (req);
@@ -214,34 +205,6 @@ void nm_act_request_set_user_key_pending_call (NMActRequest *req, DBusPendingCal
 	g_return_if_fail (req != NULL);
 
 	req->user_key_pcall = pcall;
-}
-
-guint8 nm_act_request_get_dhcp_state (NMActRequest *req)
-{
-	g_return_val_if_fail (req != NULL, 0);
-
-	return req->dhcp_state;
-}
-
-void nm_act_request_set_dhcp_state (NMActRequest *req, guint8 dhcp_state)
-{
-	g_return_if_fail (req != NULL);
-
-	req->dhcp_state = dhcp_state;
-}
-
-guint nm_act_request_get_dhcp_timeout (NMActRequest *req)
-{
-	g_return_val_if_fail (req != NULL, 0);
-
-	return req->dhcp_timeout;
-}
-
-void nm_act_request_set_dhcp_timeout (NMActRequest *req, guint dhcp_timeout)
-{
-	g_return_if_fail (req != NULL);
-
-	req->dhcp_timeout = dhcp_timeout;
 }
 
 guint nm_act_request_get_dhcp_timeout_wait (NMActRequest *req)

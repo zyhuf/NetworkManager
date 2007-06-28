@@ -311,7 +311,6 @@ nm_dbus_signal_mesh_device_change (gpointer user_data)
 	char *			mesh_dev_path = NULL;
 	char *			primary_dev_path = NULL;
 	const char *		sig;
-	int				i = 0;
 
 	g_return_val_if_fail (cb_data->data, FALSE);
 	g_return_val_if_fail (cb_data->data->dbus_connection, FALSE);
@@ -615,6 +614,7 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 	const char *	method;
 	gboolean		handled = FALSE;
 	DBusError		error;
+	NMDHCPManager * dhcp_manager = nm_dhcp_manager_get (NULL);
 
 	g_return_val_if_fail (data != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
 	g_return_val_if_fail (connection != NULL, DBUS_HANDLER_RESULT_NOT_YET_HANDLED);
@@ -673,7 +673,6 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 		nm_hal_deinit (data);
 		dbus_connection_unref (data->dbus_connection);
 		data->dbus_connection = NULL;
-		nm_dhcp_manager_dispose (data->dhcp_manager);
 		g_thread_create ((GThreadFunc) nm_dbus_reinit, (gpointer) data, FALSE, NULL);
 		handled = TRUE;
 	}
@@ -720,18 +719,15 @@ static DBusHandlerResult nm_dbus_signal_filter (DBusConnection *connection, DBus
 					handled = TRUE;
 				}
 			}
-			else if (nm_dhcp_manager_process_name_owner_changed (data->dhcp_manager, service, old_owner, new_owner) == TRUE)
-				handled = TRUE;
 			else if (nm_vpn_manager_process_name_owner_changed (data->vpn_manager, service, old_owner, new_owner) == TRUE)
 				handled = TRUE;
 			else if (nm_named_manager_process_name_owner_changed (data->named_manager, service, old_owner, new_owner) == TRUE)
 				handled = TRUE;
 		}
-	}
-	else if (dbus_message_is_signal (message, AUTOIPD_CALLOUT_INTERFACE, "AutoIP4Event")) {
+	} else if (dbus_message_is_signal (message, AUTOIPD_CALLOUT_INTERFACE, "AutoIP4Event")) {
 		handled = nm_dbus_autoip_process_signal (data, message);
-	} else if (nm_dhcp_manager_process_signal (data->dhcp_manager, message) == TRUE) {
-		handled = TRUE;
+	} else if (dbus_message_is_signal (message, DHCP_CALLOUT_INTERFACE, "Event")) {
+		handled = nm_dhcp_manager_process_signal (dhcp_manager, message);
 	} else if (nm_vpn_manager_process_signal (data->vpn_manager, message) == TRUE) {
 		handled = TRUE;
 	}
@@ -935,8 +931,6 @@ static gpointer nm_dbus_reinit (gpointer user_data)
 	if ((owner = get_name_owner (data->dbus_connection, "org.freedesktop.Hal")))
 		nm_hal_init (data);
 
-	data->dhcp_manager = nm_dhcp_manager_new (data);
-
 	nm_info ("Successfully reconnected to the system bus.");
 	
 	return NULL;
@@ -1003,6 +997,11 @@ DBusConnection *nm_dbus_init (NMData *data)
 	dbus_bus_add_match (connection,
 				"type='signal',"
 				"interface='" AUTOIPD_CALLOUT_INTERFACE "'",
+				NULL);
+
+	dbus_bus_add_match (connection,
+				"type='signal',"
+				"interface='" DHCP_CALLOUT_INTERFACE "'",
 				NULL);
 
 	if ((owner = get_name_owner (connection, NMI_DBUS_SERVICE)))

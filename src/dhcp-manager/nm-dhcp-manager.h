@@ -21,47 +21,72 @@
 #ifndef NM_DHCP_MANAGER_H
 #define NM_DHCP_MANAGER_H
 
-#include "NetworkManagerMain.h"
-#include "nm-device.h"
+#include <glib/gtypes.h>
+#include <glib-object.h>
+#include "nm-ip4-config.h"
 
-/*
- * FIXME: These should go in a header shared by NetworkManager and dhcdbd,
- * but right now NetworkManager and dhcdbd do not share any header.  The
- * following is copied (and cleaned up) from dhcdbd.h.
- */
-enum dhcdbd_state
-{
-	DHCDBD_NBI=0,		/* no broadcast interfaces found */
-	DHCDBD_PREINIT,	/* configuration started */
-	DHCDBD_BOUND,		/* lease obtained */
-	DHCDBD_RENEW,		/* lease renewed */
-	DHCDBD_REBOOT,		/* have valid lease, but now obtained a different one */
-	DHCDBD_REBIND,		/* new, different lease */
-	DHCDBD_STOP,		/* remove old lease */
-	DHCDBD_MEDIUM,		/* media selection begun */
-	DHCDBD_TIMEOUT,	/* timed out contacting DHCP server */
-	DHCDBD_FAIL,		/* all attempts to contact server timed out, sleeping */
-	DHCDBD_EXPIRE,		/* lease has expired, renewing */
-	DHCDBD_RELEASE,	/* releasing lease */
-	DHCDBD_START,		/* sent when dhclient started OK */
-	DHCDBD_ABEND,		/* dhclient exited abnormally */
-	DHCDBD_END,		/* dhclient exited normally */
-	DHCDBD_END_OPTIONS,	/* last option in subscription sent */
-};
+#define NM_TYPE_DHCP_MANAGER            (nm_dhcp_manager_get_type ())
+#define NM_DHCP_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_DHCP_MANAGER, NMDHCPManager))
+#define NM_DHCP_MANAGER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), NM_TYPE_DHCP_MANAGER, NMDHCPManagerClass))
+#define NM_IS_DHCP_MANAGER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NM_TYPE_DHCP_MANAGER))
+#define NM_IS_DHCP_MANAGER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((obj), NM_TYPE_DHCP_MANAGER))
+#define NM_DHCP_MANAGER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_DHCP_MANAGER, NMDHCPManagerClass))
 
-char *			get_dhcp_match_string					(const char *owner);
+#define NM_DHCP_MANAGER_PID_DIR		"/var/run"
+#define NM_DHCP_MANAGER_PID_FILENAME	"dhclient"
+#define NM_DHCP_MANAGER_PID_FILE_EXT	"pid"
 
-NMDHCPManager *	nm_dhcp_manager_new						(NMData *data);
-void				nm_dhcp_manager_dispose					(NMDHCPManager *manager);
+#define	DHCP_CALLOUT_INTERFACE	"org.freedesktop.nm_dhcp_client"
 
-gboolean			nm_dhcp_manager_begin_transaction			(NMDHCPManager *manager, NMActRequest *req);
-void				nm_dhcp_manager_cancel_transaction			(NMDHCPManager *manager, NMActRequest *req);
+typedef enum {
+	DHC_NBI=0,		/* no broadcast interfaces found */
+	DHC_PREINIT,		/* configuration started */
+	DHC_BOUND,		/* lease obtained */
+	DHC_RENEW,		/* lease renewed */
+	DHC_REBOOT,		/* have valid lease, but now obtained a different one */
+	DHC_REBIND,		/* new, different lease */
+	DHC_STOP,		/* remove old lease */
+	DHC_MEDIUM,		/* media selection begun */
+	DHC_TIMEOUT,		/* timed out contacting DHCP server */
+	DHC_FAIL,		/* all attempts to contact server timed out, sleeping */
+	DHC_EXPIRE,		/* lease has expired, renewing */
+	DHC_RELEASE,		/* releasing lease */
+	DHC_START,		/* sent when dhclient started OK */
+	DHC_ABEND,		/* dhclient exited abnormally */
+	DHC_END,		/* dhclient exited normally */
+	DHC_END_OPTIONS,	/* last option in subscription sent */
+} NMDHCPState;
 
-NMIP4Config *		nm_dhcp_manager_get_ip4_config			(NMDHCPManager *manager, NMActRequest *req);
+typedef struct {
+	GObject parent;
+} NMDHCPManager;
 
-gboolean			nm_dhcp_manager_process_signal			(NMDHCPManager *manager, DBusMessage *message);
-gboolean			nm_dhcp_manager_process_name_owner_changed	(NMDHCPManager *manager, const char *changed_service_name, const char *old_owner, const char *new_owner);
+typedef struct {
+	GObjectClass parent;
 
-guint32			nm_dhcp_manager_get_state_for_device		(NMDHCPManager *manager, NMDevice *dev);
+	/* Signals */
+	void (*state_changed) (NMDHCPManager *manager, char *iface, NMDHCPState state);
+	void (*timeout)       (NMDHCPManager *manager, char *iface);
+} NMDHCPManagerClass;
 
-#endif
+struct NMData;
+
+GType nm_dhcp_manager_get_type (void);
+
+NMDHCPManager *nm_dhcp_manager_get                  (struct NMData * data);
+gboolean       nm_dhcp_manager_begin_transaction    (NMDHCPManager *manager,
+                                                     const char *iface,
+                                                     guint32 timeout);
+void           nm_dhcp_manager_cancel_transaction   (NMDHCPManager *manager,
+													 const char *iface,
+													 gboolean blocking);
+NMIP4Config *  nm_dhcp_manager_get_ip4_config       (NMDHCPManager *manager, const char *iface);
+NMDHCPState    nm_dhcp_manager_get_state_for_device (NMDHCPManager *manager, const char *iface);
+
+gboolean       nm_dhcp_manager_process_signal       (NMDHCPManager *manager, DBusMessage *message);
+
+void           nm_dhcp_manager_request_cancel_transaction (NMDHCPManager *manager,
+                                                           const char *iface,
+                                                           gboolean blocking);
+
+#endif /* NM_DHCP_MANAGER_H */

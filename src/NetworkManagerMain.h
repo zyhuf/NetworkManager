@@ -49,7 +49,6 @@ typedef struct NMDbusMethodList NMDbusMethodList;
 typedef struct NMActRequest NMActRequest;
 typedef struct NMVPNActRequest NMVPNActRequest;
 typedef struct NMVPNManager NMVPNManager;
-typedef struct NMDHCPManager NMDHCPManager;
 
 #define DHCP_SERVICE_NAME	"com.redhat.dhcp"
 #define DHCP_OBJECT_PATH		"/com/redhat/dhcp"
@@ -65,7 +64,6 @@ typedef struct NMData
 
 	NMNamedManager *		named_manager;
 	NMVPNManager *			vpn_manager;
-	NMDHCPManager *		dhcp_manager;
 
 	DBusConnection *		dbus_connection;
 	NMDbusMethodList *		nm_methods;
