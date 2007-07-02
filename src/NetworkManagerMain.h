@@ -90,6 +90,8 @@ typedef struct NMData
 
 	struct NMAccessPointList	*allowed_ap_list;
 	struct NMAccessPointList	*invalid_ap_list;
+
+	gboolean				suppress_wireless_activation;
 } NMData;
 
 

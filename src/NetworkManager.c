@@ -678,6 +678,8 @@ static NMData *nm_data_new (gboolean enable_test_devices)
 
 	data->enable_test_devices = enable_test_devices;
 	data->wireless_enabled = TRUE;
+
+	data->suppress_wireless_activation = TRUE;
 	return data;
 }
 
@@ -750,6 +752,24 @@ static void nm_data_free (NMData *data)
 
 	memset (data, 0, sizeof (NMData));
 }
+
+
+static gboolean
+initial_suppress_wireless_timeout (gpointer user_data)
+{
+	NMData * data = (NMData *) user_data;
+
+	g_return_val_if_fail (data != NULL, FALSE);
+
+nm_info ("initial wireless suppression timeout up");
+	if (data->suppress_wireless_activation != FALSE) {
+		data->suppress_wireless_activation = FALSE;
+		nm_policy_schedule_device_change_check (data);
+	}
+
+	return FALSE;
+}
+
 
 int nm_get_sigterm_pipe (void)
 {
@@ -891,6 +911,7 @@ int main( int argc, char *argv[] )
 	char *		pidfile = NULL;
 	char *		user_pidfile = NULL;
 	NMDHCPManager * dhcp_mgr;
+	GSource *	source;
 	
 	if (getuid () != 0)
 	{
@@ -1013,9 +1034,19 @@ int main( int argc, char *argv[] )
 	/* Get modems, ISDN, and so on's configuration from the system */
 	nm_data->dialup_list = nm_system_get_dialup_config ();
 
-	/* Run the main loop */
+	/* Schedule a device change check and wireless unsuppression for
+	 * 5 seconds in the future to let wired devices determine their link
+	 * status.
+	 */
+	source = g_timeout_source_new (5000);
+	g_source_set_callback (source, initial_suppress_wireless_timeout, nm_data, NULL);
+	g_source_attach (source, nm_data->main_context);
+	g_source_unref (source);
+
 	nm_policy_schedule_device_change_check (nm_data);
 	nm_schedule_state_change_signal_broadcast (nm_data);
+
+	/* Run the main loop */
 	g_main_loop_run (nm_data->main_loop);
 
 	nm_print_open_socks ();

@@ -284,7 +284,7 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 				best_wired_prio = prio;
 			}
 		}
-		else if (nm_device_is_802_11_wireless (dev) && data->wireless_enabled)
+		else if (nm_device_is_802_11_wireless (dev) && data->wireless_enabled && !data->suppress_wireless_activation)
 		{
 			/* Don't automatically choose a device that doesn't support wireless scanning */
 			if (!(caps & NM_DEVICE_CAP_WIRELESS_SCAN))
@@ -305,7 +305,7 @@ static NMDevice * nm_policy_auto_get_best_device (NMData *data, NMAccessPoint **
 				best_wireless_prio = prio;
 			}
 		}
-		else if (nm_device_is_802_11_mesh_olpc (dev) && data->wireless_enabled)
+		else if (nm_device_is_802_11_mesh_olpc (dev) && data->wireless_enabled && !data->suppress_wireless_activation)
 		{
 			if (link_active)
 				prio += 1;

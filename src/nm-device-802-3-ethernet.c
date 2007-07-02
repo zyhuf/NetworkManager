@@ -92,6 +92,7 @@ real_init (NMDevice *dev)
 		self->priv->link_connected_id = 0;
 		self->priv->link_disconnected_id = 0;
 		self->priv->carrier_file_path = NULL;
+		app_data->suppress_wireless_activation = FALSE;
 		nm_device_set_active_link (NM_DEVICE (dev), TRUE);
 	}
 }
@@ -99,6 +100,10 @@ real_init (NMDevice *dev)
 static gboolean
 link_activated_helper (NMDevice8023Ethernet *self)
 {
+	NMData * app_data = nm_device_get_app_data (NM_DEVICE (self));
+
+nm_info ("%s got link, wireless suppression off", nm_device_get_iface (NM_DEVICE (self)));
+	app_data->suppress_wireless_activation = FALSE;
 	nm_device_set_active_link (NM_DEVICE (self), TRUE);
 	return FALSE;
 }
