@@ -1367,6 +1367,9 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 			}
 			self->priv->channel++;
 			break;
+		case MESH_S4_P2P_MESH:
+			fail = TRUE;
+			break;
 		default:
 			nm_info ("%s: %s():%d unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),

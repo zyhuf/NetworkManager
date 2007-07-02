@@ -1,6 +1,11 @@
 2007-07-02  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c
+		- (channel_failure_handler): handle failure of p2p mesh case too
+
+2007-07-02  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
 		- Clean up output of unhandled mesh stage error messages
 
 2007-06-28  Dan Williams  <dcbw@redhat.com>
