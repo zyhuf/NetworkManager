@@ -1368,8 +1368,10 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 			self->priv->channel++;
 			break;
 		default:
-			nm_info ("%s: unhandled step %d",
+			nm_info ("%s: %s():%d unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),
+			         __func__,
+			         __LINE__,
 			         self->priv->step);
 			g_assert_not_reached ();
 			break;
@@ -1492,6 +1494,29 @@ real_act_stage2_config (NMDevice *dev,
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
+	char * label = NULL;
+
+	switch (self->priv->step) {
+		case MESH_S1_SCHOOL_MPP:
+			label = "1: School Mesh Portal";
+			break;
+		case MESH_S2_AP:
+			label = "2: Infrastructure AP";
+			break;
+		case MESH_S3_XO_MPP:
+			label = "3: XO Mesh Portal";
+			break;
+		case MESH_S4_P2P_MESH:
+			label = "4: Peer-to-Peer Mesh";
+			break;
+		default:
+			g_assert_not_reached ();
+			break;
+	}
+
+	nm_info ("Activation (%s/mesh) level %s.",
+	         nm_device_get_iface (NM_DEVICE (self)),
+	         label ? label : "(invalid)");
 
 	if (!clear_80211_keys (self->priv->ethdev.dev))
 		goto out;
@@ -1601,8 +1626,10 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 			ret = NM_ACT_STAGE_RETURN_POSTPONE;
 			break;
 		default:
-			nm_info ("%s: unhandled step %d",
+			nm_info ("%s: %s():%d unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),
+			         __func__,
+			         __LINE__,
 			         self->priv->step);
 			g_assert_not_reached ();
 			break;
@@ -1678,8 +1705,10 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 			nm_ip4_config_set_gateway (real_config, 0);
 			break;
 		default:
-			nm_info ("%s: unhandled step %d",
+			nm_info ("%s: %s():%d unhandled step %d",
 			         nm_device_get_iface (NM_DEVICE (self)),
+			         __func__,
+			         __LINE__,
 			         self->priv->step);
 			g_assert_not_reached ();
 			break;
@@ -1803,8 +1832,10 @@ handle_activation_autoip_event (NMDevice80211MeshOLPC *self,
 						nm_device_activate_schedule_stage4_ip_config_get (req);
 						break;
 					default:
-						nm_info ("%s: unhandled step %d",
+						nm_info ("%s: %s():%d unhandled step %d",
 						         nm_device_get_iface (NM_DEVICE (self)),
+						         __func__,
+						         __LINE__,
 						         self->priv->step);
 						g_assert_not_reached ();
 						break;
