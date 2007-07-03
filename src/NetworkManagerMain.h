@@ -26,11 +26,20 @@
 #include <glib/gthread.h>
 #include <dbus/dbus.h>
 #include <libhal.h>
+#include <net/ethernet.h>
 #include "NetworkManager.h"
 #include "NetworkManagerAP.h"
 #include "nm-netlink-monitor.h"
 #include "nm-named-manager.h"
 #include "nm-device.h"
+
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ARG(x) ((unsigned char *)(x))[0], \
+                   ((unsigned char *)(x))[1], \
+                   ((unsigned char *)(x))[2], \
+                   ((unsigned char *)(x))[3], \
+                   ((unsigned char *)(x))[4], \
+                   ((unsigned char *)(x))[5]
 
 
 typedef enum NMIntState
@@ -92,6 +101,9 @@ typedef struct NMData
 	struct NMAccessPointList	*invalid_ap_list;
 
 	gboolean				suppress_wireless_activation;
+
+	char					school_mpp_anycast[ETH_ALEN];
+	char					xo_mpp_anycast[ETH_ALEN];
 } NMData;
 
 

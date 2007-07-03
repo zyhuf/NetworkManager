@@ -50,10 +50,7 @@
 
 #define MESH_DHCP_TIMEOUT	15	/* in seconds */
 
-#define ETC_DHCLIENT_CONF_PATH "/etc/dhclient.conf"
-
-#define SCHOOL_ANYCAST_MAC	"c0:27:c0:27:c0:01"
-#define XO_ANYCAST_MAC		"c0:27:c0:27:c0:02"
+#define ETC_DHCLIENT_CONF_PATH SYSCONFDIR"/dhclient.conf"
 
 static void channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req);
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
@@ -69,6 +66,55 @@ static gboolean is_mpp_active (NMDevice80211MeshOLPC *self);
 static gboolean mpp_autoip_start (NMDevice80211MeshOLPC *self);
 static gboolean assoc_timeout_start (NMDevice80211MeshOLPC *self);
 
+
+void
+nm_get_anycast_addrs (NMData *data)
+{
+	char * buf = NULL;
+	int fd, len;
+	char def_ssaddr[ETH_ALEN] = { 0xC0, 0x27, 0xC0, 0x27, 0xC0, 0x00 };
+	char def_xoaddr[ETH_ALEN] = { 0xC0, 0x27, 0xC0, 0x27, 0xC0, 0x01 };
+	char ssaddr[ETH_ALEN];
+	char xoaddr[ETH_ALEN];
+
+	g_return_if_fail (data != NULL);
+
+	/* Defaults */
+	memcpy (data->school_mpp_anycast, def_ssaddr, ETH_ALEN);
+	memcpy (data->xo_mpp_anycast, def_xoaddr, ETH_ALEN);
+
+	fd = open (SYSCONFDIR "/NetworkManager/anycast.conf", O_RDONLY);
+	if (fd < 0)
+		goto out;
+
+#define BUFLEN 40
+	buf = calloc (BUFLEN, sizeof (char));
+	len = read (fd, buf, BUFLEN - 1);
+	if (len < 35) {
+		nm_info ("Error: invalid anycast.conf (too short), ignoring.");
+		goto out;
+	}
+
+#define SSCANF_MAC_FMT "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx"
+	len = sscanf (buf, SSCANF_MAC_FMT " " SSCANF_MAC_FMT,
+	              &ssaddr[0], &ssaddr[1], &ssaddr[2], &ssaddr[3], &ssaddr[4], &ssaddr[5],
+	              &xoaddr[0], &xoaddr[1], &xoaddr[2], &xoaddr[3], &xoaddr[4], &xoaddr[5]);
+	if (len != 12) {
+		nm_info ("Error: invalid anycast.conf, ignoring.");
+		goto out;
+	}
+
+	memcpy (data->school_mpp_anycast, ssaddr, ETH_ALEN);
+	memcpy (data->xo_mpp_anycast, xoaddr, ETH_ALEN);
+
+out:
+	nm_info ("Anycast addresses: server (" MAC_FMT ")  xo (" MAC_FMT ")",
+	         MAC_ARG (data->school_mpp_anycast),
+	         MAC_ARG (data->xo_mpp_anycast));
+	if (fd >= 0)
+		close (fd);
+	free (buf);
+}
 
 #define NM_DEVICE_802_11_MESH_OLPC_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_802_11_MESH_OLPC, NMDevice80211MeshOLPCPrivate))
 
@@ -242,7 +288,9 @@ wireless_event_helper (gpointer user_data)
 				/* associated */
 				GSource * source = g_idle_source_new ();
 				if (source) {
+nm_info ("%s: Got association; scheduling association handler", nm_device_get_iface (NM_DEVICE (self)));
 					g_object_ref (self);
+					g_source_set_priority (source, G_PRIORITY_HIGH_IDLE);
 					g_source_set_callback (source, handle_association_event, self, NULL);
 					g_source_attach (source, nm_device_get_main_context (NM_DEVICE (self)));
 					g_source_unref (source);
@@ -274,7 +322,7 @@ nm_device_802_11_mesh_olpc_wireless_event (NmNetlinkMonitor *monitor,
 
 	cb_data = g_malloc0 (sizeof (WirelessEventCBData));
 	if (!cb_data) {
-		nm_info ("%s: couldn't allocate memory for callback data.", __func__);
+		nm_info ("%s(): couldn't allocate memory for callback data.", __func__);
 		goto out;
 	}
 	cb_data->self = NM_DEVICE_802_11_MESH_OLPC(g_object_ref (G_OBJECT (self)));
@@ -285,7 +333,7 @@ nm_device_802_11_mesh_olpc_wireless_event (NmNetlinkMonitor *monitor,
 
 	source = g_idle_source_new ();
 	if (!source) {
-		nm_info ("%s: couldn't allocate memory for callback source.", __func__);
+		nm_info ("%s(): couldn't allocate memory for callback source.", __func__);
 		goto out;
 	}
 
@@ -521,17 +569,17 @@ connect_to_device_signals (NMDevice80211MeshOLPC *self, NMDevice *dev)
 	 * device known about so far.
 	 */
 	act_id = g_signal_connect (G_OBJECT (dev),
-                               "activation-success",
-                               G_CALLBACK (mpp_device_activated_cb),
-                               self);
+	                           "activation-success",
+	                           G_CALLBACK (mpp_device_activated_cb),
+	                           self);
 	g_hash_table_insert (self->priv->mpp.activated_ids,
 	                     dev,
 	                     GUINT_TO_POINTER (act_id));
 
 	deact_id = g_signal_connect (G_OBJECT (dev),
-                                 "deactivated",
-                                 G_CALLBACK (mpp_device_deactivated_cb),
-                                 self);		
+	                             "deactivated",
+	                             G_CALLBACK (mpp_device_deactivated_cb),
+	                             self);		
 	g_hash_table_insert (self->priv->mpp.activated_ids,
 	                     dev,
 	                     GUINT_TO_POINTER (deact_id));		
@@ -678,13 +726,21 @@ static void
 real_deactivate_quickly (NMDevice *dev)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
+	NMDHCPManager * dhcp_mgr = nm_dhcp_manager_get (NULL);
 
 	mpp_cleanup (self);
 	aipd_cleanup (self);
 	assoc_timeout_cleanup (self);
 
-    /* Remove any dhclient.conf file we may have created for mshX */
-    remove (ETC_DHCLIENT_CONF_PATH);
+	if (nm_device_get_use_dhcp (dev)) {
+		nm_info ("%s: will stop DHCP", nm_device_get_iface (dev));
+		nm_dhcp_manager_request_cancel_transaction (dhcp_mgr,
+		                                            nm_device_get_iface (dev),
+		                                            FALSE);
+	}
+
+	/* Remove any dhclient.conf file we may have created for mshX */
+	remove (ETC_DHCLIENT_CONF_PATH);
 }
 
 
@@ -844,7 +900,7 @@ set_80211_ssid (NMDevice80211Wireless *dev,
 	} else {
 		safe_ssid = g_malloc0 (IW_ESSID_MAX_SIZE + 1);
 		if (!safe_ssid) {
-			nm_info ("%s: couldn't allocate memory for SSID.", __func__);
+			nm_info ("%s(): couldn't allocate memory for SSID.", __func__);
 			goto out;
 		}
 		memcpy (safe_ssid, ssid, safe_len);
@@ -1025,6 +1081,9 @@ mpp_cleanup (NMDevice80211MeshOLPC *self)
 	nm_device_update_ip4_address (NM_DEVICE (self));
 
 	self->priv->mpp.associated = FALSE;
+
+	/* Remove any dhclient.conf file we may have created for mshX */
+	remove (ETC_DHCLIENT_CONF_PATH);
 }
 
 static void
@@ -1179,10 +1238,10 @@ aipd_cleanup (NMDevice80211MeshOLPC *self)
 {
 	g_return_if_fail (self != NULL);
 
-	nm_info ("%s: called", __func__);
+	nm_info ("%s(): called", __func__);
 
 	if (self->priv->aipd.pid > 0) {
-		nm_info ("%s: Will kill avahi-autoipd pid %d",
+		nm_info ("%s(): Will kill avahi-autoipd pid %d",
 		         __func__,
 		         self->priv->aipd.pid);
 		kill (self->priv->aipd.pid, SIGKILL);
@@ -1269,7 +1328,7 @@ aipd_exec (NMDevice80211MeshOLPC *self)
 
 	self->priv->aipd.watch = g_child_watch_source_new (pid);
 	if (!self->priv->aipd.watch) {
-		nm_info ("%s: returning failure pid %d",
+		nm_info ("%s(): returning failure pid %d",
 		         __func__,
 		         self->priv->aipd.pid);
 		return FALSE;
@@ -1281,7 +1340,7 @@ aipd_exec (NMDevice80211MeshOLPC *self)
 	g_source_attach (self->priv->aipd.watch, nm_device_get_main_context (NM_DEVICE (self)));
 	g_source_unref (self->priv->aipd.watch);
 
-	nm_info ("%s: returning success pid %d", __func__, self->priv->aipd.pid);
+	nm_info ("%s(): returning success pid %d", __func__, self->priv->aipd.pid);
 	return TRUE;
 }
 
@@ -1348,9 +1407,13 @@ static void
 channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 {
 	gboolean fail = FALSE;
+	gboolean reinit_state = FALSE;
+	int oldchan;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (req != NULL);
+
+	oldchan = self->priv->channel;
 
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
@@ -1369,6 +1432,7 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 			break;
 		case MESH_S4_P2P_MESH:
 			fail = TRUE;
+			reinit_state = TRUE;
 			break;
 		default:
 			nm_info ("%s: %s():%d unhandled step %d",
@@ -1382,10 +1446,18 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 
 	if (fail) {
 		nm_policy_schedule_activation_failed (req);
+		/* It's now up to the user to pick their connectivity; set device
+		 * link state down so it's not chosen automatically.
+		 */
+		nm_device_set_active_link (NM_DEVICE (self), FALSE);
+		if (reinit_state) {
+			self->priv->step = MESH_S1_SCHOOL_MPP;
+			self->priv->channel = 1;
+		}
 	} else {
 		nm_info ("Activation (%s/mesh) failed to find a mesh on channel %d.",
 		         nm_device_get_iface (NM_DEVICE (self)),
-		         self->priv->channel);
+		         oldchan);
 		real_deactivate_quickly (NM_DEVICE (self));
 		nm_device_activate_schedule_stage2_device_config (req);
 	}
@@ -1433,6 +1505,8 @@ assoc_timeout_cb (gpointer user_data)
 	if (!self->priv->assoc_timeout)
 		goto out;
 
+	assoc_timeout_cleanup (self);
+
 	if (nm_device_is_activating (NM_DEVICE (self))) {
 		req = nm_device_get_act_request (NM_DEVICE (self));
 		g_return_val_if_fail (req != NULL, FALSE);
@@ -1452,7 +1526,6 @@ assoc_timeout_cb (gpointer user_data)
 		         nm_device_get_iface (NM_DEVICE (self)),
 		         self->priv->channel);
 		mpp_cleanup (self);
-		assoc_timeout_cleanup (self);
 	}
 
 out:
@@ -1556,7 +1629,7 @@ out:
 static NMActStageReturn
 setup_for_mpp (NMDevice80211MeshOLPC * self,
                NMActRequest * req,
-               const char * mac)
+               unsigned char mac[])
 {
 	NMDevice80211MeshOLPCClass *	klass;
 	NMDeviceClass *		parent_class;
@@ -1568,9 +1641,10 @@ setup_for_mpp (NMDevice80211MeshOLPC * self,
 	snprintf (buf, BUF_SIZE,
 	          "interface \"%s\" {\n"
 	          "  initial-interval 1;\n"
-	          "  anycast-mac ethernet %s;\n"
+	          "  anycast-mac ethernet " MAC_FMT ";\n"
 	          "}\n",
-	          iface, mac);
+	          iface,
+	          MAC_ARG (mac));
 
 	fd = open (ETC_DHCLIENT_CONF_PATH, O_RDWR | O_CREAT | O_TRUNC);
 	if (fd < 0) {
@@ -1607,13 +1681,14 @@ real_act_stage3_ip_config_start (NMDevice *dev,
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMActStageReturn		ret = NM_ACT_STAGE_RETURN_FAILURE;
 	const char *			iface = nm_device_get_iface (dev);
+	NMData *				data = nm_device_get_app_data (dev);
 
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
-			ret = setup_for_mpp (self, req, SCHOOL_ANYCAST_MAC);
+			ret = setup_for_mpp (self, req, data->school_mpp_anycast);
 			break;
 		case MESH_S3_XO_MPP:
-			ret = setup_for_mpp (self, req, XO_ANYCAST_MAC);
+			ret = setup_for_mpp (self, req, data->xo_mpp_anycast);
 			break;
 		case MESH_S4_P2P_MESH:
 			if (!aipd_exec (self)) {

@@ -181,7 +181,7 @@ nm_dhcp_device_cancel_cleanup (NMDHCPDevice * device)
 {
 	if (!device->cancel_source)
 		return;
-fprintf (stderr, "%s: cleaning up cancel source %p\n", __func__, device->cancel_source);
+nm_info ("%s(): cleaning up cancel source %p\n", __func__, device->cancel_source);
 	g_source_destroy (device->cancel_source);
 	g_source_unref (device->cancel_source);
 	device->cancel_source = NULL;
@@ -201,7 +201,7 @@ static void
 nm_dhcp_device_destroy (NMDHCPDevice *device)
 {
 	nm_dhcp_device_timeout_cleanup (device);
-fprintf (stderr, "%s: calling cancel_cleanup\n", __func__);
+nm_info ("%s(): calling cancel_cleanup\n", __func__);
 	nm_dhcp_device_cancel_cleanup (device);
 	nm_dhcp_device_watch_cleanup (device);
 	g_hash_table_remove_all (device->options);
@@ -679,6 +679,9 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 		            device->iface, device->dhclient_pid);
 		kill (device->dhclient_pid, SIGKILL);
 	}
+	nm_info ("%s: canceled DHCP transaction, dhclient pid %d",
+	         device->iface,
+	         device->dhclient_pid);
 
 	/* Clean up the pidfile if it got left around */
 	pidfile = get_pidfile_for_iface (device->iface);
@@ -691,7 +694,7 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 
 	nm_dhcp_device_watch_cleanup (device);
 	nm_dhcp_device_timeout_cleanup (device);
-	g_hash_table_remove_all (device->options);	
+	g_hash_table_remove_all (device->options);
 }
 
 
@@ -728,11 +731,11 @@ handle_request_cancel (gpointer user_data)
 {
 	NMDHCPDevice *device = (NMDHCPDevice *) user_data;
 
-fprintf (stderr, "request_handle_cancel started...\n");
+nm_info ("%s: %s() started with cancel source %p...\n", device->iface, __func__, device->cancel_source);
 	nm_dhcp_manager_cancel_transaction_real (device, TRUE);
-fprintf (stderr, "request_handle_cancel done.\n");
-fprintf (stderr, "%s: calling cancel_cleanup\n", __func__);
+nm_info ("%s: %s() calling cancel_cleanup for cancel source %p\n", device->iface, __func__, device->cancel_source);
 	nm_dhcp_device_cancel_cleanup (device);
+nm_info ("%s: %s() done with cancel source %p.\n", device->iface, __func__, device->cancel_source);
 	return FALSE;
 }
 
@@ -763,7 +766,7 @@ nm_dhcp_manager_request_cancel_transaction (NMDHCPManager *manager,
 
 	if (!device->cancel_source) {
 		device->cancel_source = g_idle_source_new ();
-fprintf (stderr, "%s: created cancel source %p\n", __func__, device->cancel_source);
+nm_info ("%s(): created cancel source %p\n", __func__, device->cancel_source);
 		g_source_set_priority (device->cancel_source, G_PRIORITY_HIGH_IDLE);
 		g_source_set_callback (device->cancel_source,
 		                       handle_request_cancel,

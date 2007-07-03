@@ -1,3 +1,14 @@
+2007-07-03  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- (channel_failure_handler): if everything fails, turn off mesh device
+			link and reset state to MESH_S1_SCHOOL_MPP
+		- (mpp_cleanup): remove dhclient.conf when deactivating mpp
+		- (nm_get_anycast_addrs): pull anycast addresses from a file
+		- (setup_for_mpp, real_act_stage3_ip_config_start): use configurable
+			anycast addresses
+		- (real_deactivate_quickly): kill dhclient when switching channels too
+
 2007-07-02  Dan Williams  <dcbw@redhat.com>
 
 	Suppress activation of wireless devices until 5 seconds after NM starts,

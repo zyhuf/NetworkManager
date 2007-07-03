@@ -1512,11 +1512,10 @@ nm_device_deactivate_quickly (NMDevice *self)
 		nm_device_activation_cancel (self);
 
 	if (nm_device_get_use_dhcp (self)) {
-		fprintf (stderr, "will cancel DHCP\n");
+		nm_info ("%s: will stop DHCP", nm_device_get_iface (self));
 		nm_dhcp_manager_request_cancel_transaction (NM_DEVICE_GET_PRIVATE (self)->dhcp_manager,
 		                                            nm_device_get_iface (self),
 		                                            FALSE);
-		fprintf (stderr, "... done\n");
 	}
 
 	/* Tear down an existing activation request, which may not have happened

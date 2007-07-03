@@ -1034,6 +1034,9 @@ int main( int argc, char *argv[] )
 	/* Get modems, ISDN, and so on's configuration from the system */
 	nm_data->dialup_list = nm_system_get_dialup_config ();
 
+	/* Get configured anycast addresses. */
+	nm_get_anycast_addrs (nm_data);
+
 	/* Schedule a device change check and wireless unsuppression for
 	 * 5 seconds in the future to let wired devices determine their link
 	 * status.

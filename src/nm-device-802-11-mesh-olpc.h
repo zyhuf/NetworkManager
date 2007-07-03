@@ -69,5 +69,8 @@ static inline gboolean nm_device_is_802_11_mesh_olpc (NMDevice *dev)
 	return (G_OBJECT_TYPE (dev) == NM_TYPE_DEVICE_802_11_MESH_OLPC);
 }
 
+struct NMData;
+void nm_get_anycast_addrs (struct NMData *data);
+
 
 #endif	/* NM_DEVICE_802_11_MESH_OLPC_H */
