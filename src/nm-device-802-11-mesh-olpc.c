@@ -1470,6 +1470,14 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 
 	nm_device_set_active_link (dev, TRUE);
 
+	/* If the user requested reassociation on the mesh device,
+	 * go back to the the start of the association process.
+	 */
+	if (nm_act_request_get_user_requested (req)) {
+		self->priv->step = MESH_S1_SCHOOL_MPP;
+		self->priv->channel = 1;
+	}
+
 	/* Stop being an MPP if we currently are one */
 	if (self->priv->mpp.primary)
 		mpp_cleanup (self);
