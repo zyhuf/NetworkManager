@@ -158,8 +158,7 @@ static gboolean state_is_bound (guint8 state)
 	if ((state == DHC_BOUND)
 	    || (state == DHC_RENEW)
 	    || (state == DHC_REBOOT)
-	    || (state == DHC_REBIND)
-		|| (state == DHC_START))
+	    || (state == DHC_REBIND))
 		return TRUE;
 
 	return FALSE;
@@ -173,6 +172,7 @@ nm_dhcp_device_timeout_cleanup (NMDHCPDevice * device)
 		return;
 	g_source_destroy (device->timeout_source);
 	g_source_unref (device->timeout_source);
+nm_info ("%s: %s():%d cleared timeout source %p", device->iface, __func__, __LINE__, device->timeout_source);
 	device->timeout_source = NULL;
 }
 
@@ -200,6 +200,7 @@ nm_dhcp_device_watch_cleanup (NMDHCPDevice * device)
 static void
 nm_dhcp_device_destroy (NMDHCPDevice *device)
 {
+nm_info ("%s(): calling timeout_cleanup\n", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 nm_info ("%s(): calling cancel_cleanup\n", __func__);
 	nm_dhcp_device_cancel_cleanup (device);
@@ -350,8 +351,6 @@ nm_dhcp_dbus_set_state (NMDHCPManager *manager,
 		goto out;
 	}
 
-	nm_dhcp_device_timeout_cleanup (device);
-
 	keys = g_key_file_get_keys (keyfile, "dhclient", &length, NULL);
 	if (!keys) {
 		nm_warning ("Not enough memory for parsing dhclient options.");
@@ -376,11 +375,20 @@ nm_dhcp_dbus_set_state (NMDHCPManager *manager,
 		g_hash_table_insert (device->options, key, value);
 		if (strcmp (keys[i], "reason") == 0) {
 			guint32 old_state = device->state;
-			device->state = string_to_state (value);
-			nm_info ("DHCP: device %s state changed %s -> %s\n",
-			         device->iface,
-			         state_to_string (old_state),
-			         state_to_string (device->state));
+			guint32 new_state = string_to_state (value);
+			if (old_state != new_state) {
+				if (state_is_bound (new_state)) {
+nm_info ("%s(): calling timeout_cleanup\n", __func__);
+					/* Cancel the timeout if the DHCP client is now bound */
+					nm_dhcp_device_timeout_cleanup (device);
+				}
+
+				device->state = new_state;
+				nm_info ("DHCP: device %s state changed %s -> %s\n",
+				         device->iface,
+				         state_to_string (old_state),
+				         state_to_string (device->state));
+			}
 		}
 	}
 
@@ -533,6 +541,7 @@ static void dhclient_watch_cb (GPid pid, gint status, gpointer user_data)
 	device->dhclient_pid = 0;
 
 	nm_dhcp_device_watch_cleanup (device);
+nm_info ("%s(): calling timeout_cleanup\n", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 
 	g_signal_emit (G_OBJECT (device->manager), signals[STATE_CHANGED], 0, device->iface, device->state);
@@ -631,7 +640,7 @@ nm_dhcp_manager_begin_transaction (NMDHCPManager *manager,
 	if (!device)
 		device = nm_dhcp_device_new (manager, iface);
 
-	if (state_is_bound (device->state)) {
+	if (state_is_bound (device->state) || (device->state == DHC_START)) {
 		/* Cancel any DHCP transaction already in progress */
 		nm_dhcp_manager_cancel_transaction_real (device, TRUE);
 	}
@@ -643,6 +652,7 @@ nm_dhcp_manager_begin_transaction (NMDHCPManager *manager,
 
 	/* Set up a timeout on the transaction to kill it after the timeout */
 	device->timeout_source = g_timeout_source_new (timeout * 1000);
+nm_info ("%s: %s():%d started timeout source %p", device->iface, __func__, __LINE__, device->timeout_source);
 	g_source_set_callback (device->timeout_source,
 	                       nm_dhcp_manager_handle_timeout,
 	                       device,
@@ -693,6 +703,7 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 	device->state = DHC_END;
 
 	nm_dhcp_device_watch_cleanup (device);
+nm_info ("%s(): calling timeout_cleanup\n", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 	g_hash_table_remove_all (device->options);
 }
@@ -818,12 +829,6 @@ nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager,
 
 	if (!state_is_bound (device->state)) {
 		nm_warning ("%s: dhclient didn't bind to a lease.", device->iface);
-		return NULL;
-	}
-
-	if (!state_is_bound (device->state)) {
-		nm_warning ("Tried to get IP4 Config for a device when DHCP "
-		            "wasn't in a BOUND state!");
 		return NULL;
 	}
 
