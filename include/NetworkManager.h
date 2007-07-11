@@ -110,6 +110,7 @@ typedef enum NMDeviceType
 #define NM_802_11_CAP_CIPHER_WEP104	0x00002000
 #define NM_802_11_CAP_CIPHER_TKIP		0x00004000
 #define NM_802_11_CAP_CIPHER_CCMP		0x00008000
+#define NM_802_11_CAP_MESH_OLPC		0x10000000
 
 /*
  * NM-supported Authentication Methods

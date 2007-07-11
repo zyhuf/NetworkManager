@@ -3513,6 +3513,8 @@ add_new_ap_to_device_list (NMDevice80211Wireless *dev,
 	nm_ap_list_merge_scanned_ap (dev, ap_list, ap);
 }
 
+#define OLPC_MESH_TAG "mesh-type: olpc"
+
 static gboolean
 process_scan_results (NMDevice80211Wireless *dev,
                       const guint8 *res_buf,
@@ -3701,6 +3703,12 @@ process_scan_results (NMDevice80211Wireless *dev,
 					else if (strncmp (custom, "rsn_ie=", 7) == 0)
 						nm_ap_add_capabilities_from_ie (ap, (const guint8 *)ie_buf, bytes);				
 					g_free (ie_buf);
+				} else if (strncmp (custom, OLPC_MESH_TAG, strlen (OLPC_MESH_TAG)) == 0) {
+					guint32 caps;
+					
+					caps = nm_ap_get_capabilities (ap);
+					caps |= NM_802_11_CAP_MESH_OLPC;
+					nm_ap_set_capabilities (ap, caps);
 				}
 				break;
 			default:
