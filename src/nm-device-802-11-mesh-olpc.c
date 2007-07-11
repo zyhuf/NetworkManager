@@ -1403,32 +1403,135 @@ out:
 
 /*************************************************************/
 
+#define CHAN_MAX 14
+
+static const long frequency_list[CHAN_MAX] = { 2412, 2417, 2422, 2427, 2432, 2437, 2442,
+			2447, 2452, 2457, 2462, 2467, 2472, 2484 };
+
+static double
+chan_to_freq (int chan)
+{
+	g_return_val_if_fail (chan > 0, -1.0);
+	g_return_val_if_fail (chan <= CHAN_MAX, -1.0);
+
+	return (double) frequency_list[chan - 1] / 1000.0;
+}
+
+static int
+get_next_channel (NMDevice80211MeshOLPC * self)
+{
+	NMAccessPointList * ap_list;
+	int inc = 0;
+	int ret_chan = -1;
+	int next = self->priv->channel;
+	gboolean fallback = FALSE;
+
+	switch (self->priv->step) {
+		case MESH_S1_SCHOOL_MPP:
+			inc = 5;
+			break;
+		case MESH_S3_XO_MPP:
+			inc = 1;
+			break;
+		default:
+			nm_info ("%s: %s():%d unhandled step %d",
+			         nm_device_get_iface (NM_DEVICE (self)),
+			         __func__,
+			         __LINE__,
+			         self->priv->step);
+			g_assert_not_reached ();
+			goto out;
+			break;
+	}
+
+	/* Unfortunately we can't do the mesh check reliably, because we don't
+	 * have good enough scan behavior in the libertas driver, so we're likely
+	 * to miss channels that have meshes on them.  We need null packet support
+	 * in the firmware so that scanning can use power-save mode tricks to do
+	 * full scans, which it currently doesn't do.
+	 */
+	fallback = TRUE;
+	goto out;
+
+#if 0
+	ap_list = nm_device_802_11_wireless_ap_list_get (self->priv->ethdev.dev);
+	if (!ap_list) {
+		nm_info ("%s: %s():%d no scan results, falling back to next channel",
+		         nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__);
+		fallback = TRUE;
+		goto out;
+	}
+
+	/* Find the next channel with a mesh on it */
+	while ((next < CHAN_MAX) && (ret_chan < 1)) {
+		NMAPListIter * iter;
+		NMAccessPoint * ap;
+
+		next += inc;
+
+		/* Look for a mesh on this channel */
+		if (!(iter = nm_ap_list_iter_new (ap_list))) {
+			nm_info ("%s: %s():%d couldn't lock scan list, falling back to next channel",
+			         nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__);
+			fallback = TRUE;
+			goto out;
+		}
+
+		while ((ap = nm_ap_list_iter_next (iter))) {
+			double freq = nm_ap_get_freq (ap);
+
+			/* If there's a BSS on this channel that's mesh capable, use it */
+			if (   (freq > 0)
+			    && (chan_to_freq (next) == freq)
+			    && (nm_ap_get_capabilities (ap) & NM_802_11_CAP_MESH_OLPC)) {
+				ret_chan = next;
+nm_info ("%s: %s():%d found mesh on channel %d",
+nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__, ret_chan);
+				break;
+			}
+		}
+
+if (ret_chan < 0) {
+nm_info ("%s: %s():%d no mesh on channel %d",
+nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__, next);
+		nm_ap_list_iter_free (iter);
+}
+	}
+#endif
+
+out:
+	/* If there was an error, just pick the next channel */
+	if (fallback)
+		ret_chan = self->priv->channel += inc;
+
+	if (ret_chan > CHAN_MAX)
+		ret_chan = -1;
+nm_info ("%s: returning channel %d\n", nm_device_get_iface (NM_DEVICE (self)), ret_chan);
+	return ret_chan;
+}
+
 static void
-channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
+channel_failure_handler (NMDevice80211MeshOLPC *self,
+                         NMActRequest *req)
 {
 	gboolean fail = FALSE;
 	gboolean reinit_state = FALSE;
-	int oldchan;
+	int next_chan = -1;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (req != NULL);
 
-	oldchan = self->priv->channel;
-
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
-			if (self->priv->channel == 11) {
+			/* If the last channel we tried was 11 for school server, we failed */
+			if (self->priv->channel >= 11) {
 				fail = TRUE;
 				break;
 			}
-			self->priv->channel += 5;
+			next_chan = get_next_channel (self);
 			break;
 		case MESH_S3_XO_MPP:
-			if (self->priv->channel == 3) {
-				fail = TRUE;
-				break;
-			}
-			self->priv->channel++;
+			next_chan = get_next_channel (self);
 			break;
 		case MESH_S4_P2P_MESH:
 			fail = TRUE;
@@ -1444,7 +1547,18 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 			break;
 	}
 
+	/* If the ethdev happened to go away or the new channel is invalid,
+	 * break the chain
+	 */
+nm_info ("%s: step %d, channel %d, next channel %d\n", __func__, self->priv->channel, next_chan);
+	if (!self->priv->ethdev.dev || (next_chan < 1))
+{
+nm_info ("   will fail");
+		fail = TRUE;
+}
+
 	if (fail) {
+nm_info ("%s: failing activation", __func__);
 		nm_policy_schedule_activation_failed (req);
 		/* It's now up to the user to pick their connectivity; set device
 		 * link state down so it's not chosen automatically.
@@ -1457,7 +1571,8 @@ channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req)
 	} else {
 		nm_info ("Activation (%s/mesh) failed to find a mesh on channel %d.",
 		         nm_device_get_iface (NM_DEVICE (self)),
-		         oldchan);
+		         self->priv->channel);
+		self->priv->channel = next_chan;
 		real_deactivate_quickly (NM_DEVICE (self));
 		nm_device_activate_schedule_stage2_device_config (req);
 	}

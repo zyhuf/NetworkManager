@@ -1,5 +1,13 @@
 2007-07-11  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-mesh-olpc.c
+		- (get_next_channel): new function; retrieve the next channel taking
+			the companion eth device's scan results into account, looking for
+			mesh beacons on each channel.  Too bad we can't use this yet though.
+		- (channel_failure_handler): use get_next_channel()
+
+2007-07-11  Dan Williams  <dcbw@redhat.com>
+
 	* include/NetworkManager.h
 		- Add MESH_OLPC capability for access points
 
