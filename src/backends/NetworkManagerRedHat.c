@@ -82,6 +82,10 @@ void nm_system_device_flush_routes_with_iface (const char *iface)
 
 	/* Remove routing table entries */
 	buf = g_strdup_printf (IP_BINARY_PATH " route flush dev %s", iface);
+	if (!buf) {
+		nm_info ("%s: Not enough memory to create command.", __func__);
+		return;
+	}
 	nm_spawn_process (buf);
 	g_free (buf);
 }
@@ -119,6 +123,10 @@ void nm_system_device_add_default_route_via_device_with_iface (const char *iface
 
 	/* Add default gateway */
 	buf = g_strdup_printf (IP_BINARY_PATH " route add default dev %s", iface);
+	if (!buf) {
+		nm_info ("%s: Not enough memory to create command.", __func__);
+		return;
+	}
 	nm_spawn_process (buf);
 	g_free (buf);
 }
@@ -138,6 +146,10 @@ void nm_system_device_add_route_via_device_with_iface (const char *iface, const 
 
 	/* Add default gateway */
 	buf = g_strdup_printf (IP_BINARY_PATH " route add %s dev %s", route, iface);
+	if (!buf) {
+		nm_info ("%s: Not enough memory to create command.", __func__);
+		return;
+	}
 	nm_spawn_process (buf);
 	g_free (buf);
 }
@@ -188,6 +200,10 @@ void nm_system_device_flush_addresses_with_iface (const char *iface)
 
 	/* Remove all IP addresses for a device */
 	buf = g_strdup_printf (IP_BINARY_PATH " addr flush dev %s", iface);
+	if (!buf) {
+		nm_info ("%s: Not enough memory to create command.", __func__);
+		return;
+	}
 	nm_spawn_process (buf);
 	g_free (buf);
 }
@@ -336,6 +352,10 @@ void nm_system_device_add_ip6_link_address (NMDevice *dev)
 	buf = g_strdup_printf (IP_BINARY_PATH " -6 addr add fe80::%x%02x:%x%02x:%x%02x:%x%02x/64 dev %s",
 						eui[0], eui[1], eui[2], eui[3], eui[4], eui[5],
 						eui[6], eui[7], nm_device_get_iface (dev));
+	if (!buf) {
+		nm_info ("%s: Not enough memory to create command.", __func__);
+		return;
+	}
 	nm_spawn_process (buf);
 	g_free (buf);
 }
@@ -693,6 +713,10 @@ void nm_system_deactivate_all_dialup (GSList *list)
 		char *cmd;
 		
 		cmd = g_strdup_printf ("/sbin/ifdown %s", (char *)config->data);
+		if (!cmd) {
+			nm_info ("%s: Not enough memory to create command.", __func__);
+			continue;
+		}
 		nm_spawn_process (cmd);
 		g_free(cmd);
 	}
@@ -714,6 +738,10 @@ gboolean nm_system_deactivate_dialup (GSList *list, const char *dialup)
 			
 			nm_info ("Dectivating dialup device %s (%s) ...", dialup, (char *) config->data);
 			cmd = g_strdup_printf ("/sbin/ifdown %s", (char *) config->data);
+			if (!cmd) {
+				nm_info ("%s: Not enough memory to create command.", __func__);
+				break;
+			}
 			status = nm_spawn_process (cmd);
 			g_free (cmd);
 			if (status == 0) {
@@ -746,6 +774,10 @@ gboolean nm_system_activate_dialup (GSList *list, const char *dialup)
 			nm_info ("Activating dialup device %s (%s) ...", dialup, (char *) config->data);
 			cmd = g_strdup_printf ("/sbin/ifup %s", (char *) config->data);
 			status = nm_spawn_process (cmd);
+			if (!cmd) {
+				nm_info ("%s: Not enough memory to create command.", __func__);
+				break;
+			}
 			g_free (cmd);
 			if (status == 0) {
 				ret = TRUE;

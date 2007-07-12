@@ -1,5 +1,10 @@
 2007-07-12  Dan Williams  <dcbw@redhat.com>
 
+	* src/backends/NetworkManagerRedHat.c
+		- Handle out-of-memory conditions better
+
+2007-07-12  Dan Williams  <dcbw@redhat.com>
+
 	* src/dhcp-manager/nm-dhcp-manager.c
 		- (dhclient_run): don't pass G_SPAWN_DO_NOT_REAP_CHILD, let reaping
 		    happen automatically
