@@ -1,5 +1,12 @@
 2007-07-12  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-mesh-olpc.c
+		- (real_activation_success_handler): set an explicit ipv4 multicast
+			route when in peer-to-peer mesh mode, otherwise multicast traffic
+			can't go anywhere
+
+2007-07-12  Dan Williams  <dcbw@redhat.com>
+
 	* src/backends/NetworkManagerRedHat.c
 		- Handle out-of-memory conditions better
 

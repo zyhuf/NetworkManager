@@ -1947,7 +1947,13 @@ static void
 real_activation_success_handler (NMDevice *dev,
                                  NMActRequest *req)
 {
+	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
+
 	nm_device_set_active_link (dev, TRUE);
+	if (self->priv->step == MESH_S4_P2P_MESH) {
+		nm_system_device_add_route_via_device_with_iface (nm_device_get_iface (dev),
+		                                                  "224.0.0.0/4");
+	}
 }
 
 
