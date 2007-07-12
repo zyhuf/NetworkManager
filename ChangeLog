@@ -1,3 +1,9 @@
+2007-07-12  Dan Williams  <dcbw@redhat.com>
+
+	* src/dhcp-manager/nm-dhcp-manager.c
+		- (dhclient_run): don't pass G_SPAWN_DO_NOT_REAP_CHILD, let reaping
+		    happen automatically
+
 2007-07-11  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c

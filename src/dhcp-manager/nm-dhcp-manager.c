@@ -597,8 +597,8 @@ dhclient_run (NMDHCPDevice *device, gchar *xtra_arg)
 	g_ptr_array_add (dhclient_argv, (gpointer) device->iface);
 	g_ptr_array_add (dhclient_argv, NULL);
 
-	if (!g_spawn_async (NULL, (char **) dhclient_argv->pdata, NULL,
-	                    G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &error)) {
+	if (!g_spawn_async (NULL, (char **) dhclient_argv->pdata, NULL, 0,
+	                    NULL, NULL, &pid, &error)) {
 		nm_warning ("dhclient failed to start.  error: '%s'", error->message);
 		g_error_free (error);
 		goto out;
