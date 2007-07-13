@@ -1,3 +1,10 @@
+2007-07-13  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- Make mesh start step easier to change for testing
+		- (real_init): disable mesh autostart; it's only needed for the
+			autonomous mesh dongles
+
 2007-07-12  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c

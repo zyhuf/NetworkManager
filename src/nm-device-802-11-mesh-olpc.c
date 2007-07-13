@@ -149,6 +149,8 @@ struct _mpp {
 #define MESH_S3_XO_MPP		3
 #define MESH_S4_P2P_MESH	4
 
+#define MESH_STEP_START MESH_S4_P2P_MESH
+
 struct _NMDevice80211MeshOLPCPrivate
 {
 	gboolean	dispose_has_run;
@@ -383,11 +385,12 @@ real_init (NMDevice *dev)
 	NMSock * sk;
 	NMData * app_data = nm_device_get_app_data (dev);
 	NmNetlinkMonitor * monitor;
+	char * automesh_path = NULL;
 
 	self->priv->is_initialized = TRUE;
 	self->priv->capabilities = 0;
 
-	self->priv->step = MESH_S1_SCHOOL_MPP;
+	self->priv->step = MESH_STEP_START;
 	self->priv->channel = 1;
 	self->priv->assoc_timeout = NULL;
 	self->priv->wireless_event_id = 0;
@@ -428,6 +431,32 @@ real_init (NMDevice *dev)
 	self->priv->wireless_event_id = 
 			g_signal_connect (G_OBJECT (monitor), "wireless-event",
 				G_CALLBACK (nm_device_802_11_mesh_olpc_wireless_event), self);
+
+	/* Disable automesh; it's only used for the standalone libertas adapters */
+	automesh_path = g_strdup_printf ("/sys/class/net/%s/autostart_enabled",
+	                                 nm_device_get_iface (dev));
+	if (automesh_path) {
+		int fd, ret;
+
+		fd = open (automesh_path, O_RDWR);
+		if (fd < 0) {
+			nm_info ("%s: couldn't turn off automesh at %s",
+			         nm_device_get_iface (dev),
+			         automesh_path);
+			goto out;
+		}
+		ret = write (fd, "0", 1);
+		if (ret < 1) {
+			nm_info ("%s: couldn't turn off automesh: ret %d, errno %d",
+			         nm_device_get_iface (dev),
+			         ret,
+			         errno);
+		}
+		close (fd);
+	}
+
+out:
+	g_free (automesh_path);
 }
 
 static gboolean
@@ -1550,7 +1579,7 @@ channel_failure_handler (NMDevice80211MeshOLPC *self,
 	/* If the ethdev happened to go away or the new channel is invalid,
 	 * break the chain
 	 */
-nm_info ("%s: step %d, channel %d, next channel %d\n", __func__, self->priv->channel, next_chan);
+nm_info ("%s: step %d, channel %d, next channel %d\n", __func__, self->priv->step, self->priv->channel, next_chan);
 	if (!self->priv->ethdev.dev || (next_chan < 1))
 {
 nm_info ("   will fail");
@@ -1565,7 +1594,7 @@ nm_info ("%s: failing activation", __func__);
 		 */
 		nm_device_set_active_link (NM_DEVICE (self), FALSE);
 		if (reinit_state) {
-			self->priv->step = MESH_S1_SCHOOL_MPP;
+			self->priv->step = MESH_STEP_START;
 			self->priv->channel = 1;
 		}
 	} else {
@@ -1589,7 +1618,7 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 	 * go back to the the start of the association process.
 	 */
 	if (nm_act_request_get_user_requested (req)) {
-		self->priv->step = MESH_S1_SCHOOL_MPP;
+		self->priv->step = MESH_STEP_START;
 		self->priv->channel = 1;
 	}
 
