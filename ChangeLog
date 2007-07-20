@@ -1,3 +1,10 @@
+2007-07-20  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-wireless.c
+		- (schedule_scan): change 'seconds' type to gint32 because -1 is
+			supposed to mean "default", but this wasn't working correctly
+			because 'seconds' was unsigned
+
 2007-07-13  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.c

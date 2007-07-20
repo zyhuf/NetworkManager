@@ -127,7 +127,7 @@ static void	request_and_convert_scan_results (NMDevice80211Wireless *self);
 static gboolean	process_scan_results (NMDevice80211Wireless *dev,
                                           const guint8 *res_buf,
                                           guint32 res_buf_len);
-static void	schedule_scan (NMDevice80211Wireless *self, guint32 seconds);
+static void	schedule_scan (NMDevice80211Wireless *self, gint32 seconds);
 
 static int	wireless_qual_to_percent (const struct iw_quality *qual,
                                          const struct iw_quality *max_qual,
@@ -2205,7 +2205,7 @@ nm_device_802_11_wireless_register_scan_approval_hook (NMDevice80211Wireless *se
  *
  */
 static void
-schedule_scan (NMDevice80211Wireless *self, guint32 seconds)
+schedule_scan (NMDevice80211Wireless *self, gint32 seconds)
 {
 	guint32 time;
 
