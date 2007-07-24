@@ -51,6 +51,8 @@
 #define MESH_DHCP_TIMEOUT	15	/* in seconds */
 
 #define ETC_DHCLIENT_CONF_PATH SYSCONFDIR"/dhclient.conf"
+#define MESH_STEP_FILE SYSCONFDIR"/NetworkManager/mesh-start"
+#define MESH_BEACON_FILE SYSCONFDIR"/NetworkManager/mesh-beacons"
 
 static void channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req);
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
@@ -149,8 +151,6 @@ struct _mpp {
 #define MESH_S3_XO_MPP		3
 #define MESH_S4_P2P_MESH	4
 
-#define MESH_STEP_START MESH_S4_P2P_MESH
-
 struct _NMDevice80211MeshOLPCPrivate
 {
 	gboolean	dispose_has_run;
@@ -188,7 +188,10 @@ struct _NMDevice80211MeshOLPCPrivate
 	 */
 
 	guint32 step;	/* 1, 2, 3, or 4 from behavior description above */
+	guint32 default_first_step;
+
 	guint32	channel;
+	gboolean use_mesh_beacons;
 
 	struct iw_range	range;
 };
@@ -386,11 +389,43 @@ real_init (NMDevice *dev)
 	NMData * app_data = nm_device_get_app_data (dev);
 	NmNetlinkMonitor * monitor;
 	char * automesh_path = NULL;
+	char * contents = NULL;
+	gboolean success = FALSE;
 
 	self->priv->is_initialized = TRUE;
 	self->priv->capabilities = 0;
 
-	self->priv->step = MESH_STEP_START;
+	self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
+	success = g_file_get_contents (MESH_STEP_FILE,
+	                               &contents,
+	                               NULL,
+	                               NULL);
+	if (success && contents) {
+		contents = g_strstrip (contents);
+		if (!strcmp (contents, "school-mpp")) {
+			nm_info ("%s: Mesh behavior override: School Server first", nm_device_get_iface (dev));
+			self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
+		} else if (!strcmp (contents, "infra")) {
+			nm_info ("%s: Mesh behavior override: Infrastructure AP first", nm_device_get_iface (dev));
+			self->priv->default_first_step = MESH_S2_AP;
+		} else if (!strcmp (contents, "xo-mpp")) {
+			nm_info ("%s: Mesh behavior override: XO Mesh Portal first", nm_device_get_iface (dev));
+			self->priv->default_first_step = MESH_S3_XO_MPP;
+		} else if (!strcmp (contents, "local")) {
+			nm_info ("%s: Mesh behavior override: link-local only.", nm_device_get_iface (dev));
+			self->priv->default_first_step = MESH_S4_P2P_MESH;
+		} else {
+			nm_info ("%s: Unknown Mesh behavior override '%s', defaulting to School Server.", nm_device_get_iface (dev));
+		}
+		g_free (contents);
+	}
+	self->priv->step = self->priv->default_first_step;
+
+	if (g_file_test (MESH_BEACON_FILE, G_FILE_TEST_EXISTS)) {
+		nm_info ("%s: Will take advantage of mesh beacons.", nm_device_get_iface (dev));
+		self->priv->use_mesh_beacons = TRUE;
+	}
+
 	self->priv->channel = 1;
 	self->priv->assoc_timeout = NULL;
 	self->priv->wireless_event_id = 0;
@@ -1479,10 +1514,11 @@ get_next_channel (NMDevice80211MeshOLPC * self)
 	 * in the firmware so that scanning can use power-save mode tricks to do
 	 * full scans, which it currently doesn't do.
 	 */
-	fallback = TRUE;
-	goto out;
+	if (!self->priv->use_mesh_beacons) {
+		fallback = TRUE;
+		goto out;
+	}
 
-#if 0
 	ap_list = nm_device_802_11_wireless_ap_list_get (self->priv->ethdev.dev);
 	if (!ap_list) {
 		nm_info ("%s: %s():%d no scan results, falling back to next channel",
@@ -1526,7 +1562,6 @@ nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__, next);
 		nm_ap_list_iter_free (iter);
 }
 	}
-#endif
 
 out:
 	/* If there was an error, just pick the next channel */
@@ -1594,7 +1629,7 @@ nm_info ("%s: failing activation", __func__);
 		 */
 		nm_device_set_active_link (NM_DEVICE (self), FALSE);
 		if (reinit_state) {
-			self->priv->step = MESH_STEP_START;
+			self->priv->step = self->priv->default_first_step;
 			self->priv->channel = 1;
 		}
 	} else {
@@ -1618,7 +1653,7 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 	 * go back to the the start of the association process.
 	 */
 	if (nm_act_request_get_user_requested (req)) {
-		self->priv->step = MESH_STEP_START;
+		self->priv->step = self->priv->default_first_step;
 		self->priv->channel = 1;
 	}
 

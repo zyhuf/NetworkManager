@@ -1,3 +1,12 @@
+2007-07-24  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- Add /etc/NetworkManager/mesh-start which should contain one of:
+			"school-mpp", "infra", "xo-mpp", or "local" as a debugging option
+			to control what step mesh devices start at
+		- Add /etc/NetworkManager/mesh-beacons as a debugging option to control
+			whether NM takes advantage of mesh beacons or not
+
 2007-07-20  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.c
