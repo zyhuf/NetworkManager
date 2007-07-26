@@ -1228,6 +1228,7 @@ mpp_device_activated_cb (GObject * obj,
 	 * channel, ssid, and mode that the eth device normally sets up itself.
 	 */
 	if (primary_dev == NM_DEVICE (self->priv->ethdev.dev)) {
+		self->priv->mpp.associated = TRUE;
 		if (!mpp_autoip_start (self))
 			goto out;
 	} else {
