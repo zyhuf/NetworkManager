@@ -45,6 +45,8 @@
 
 /* #define IW_QUAL_DEBUG */
 
+#define WPA_SUPPLICANT_LOG_FILE SYSCONFDIR"/NetworkManager/log-supplicant"
+
 #define NM_DEVICE_802_11_WIRELESS_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_802_11_WIRELESS, NMDevice80211WirelessPrivate))
 
 enum
@@ -2776,10 +2778,16 @@ supplicant_exec (NMDevice80211Wireless *self)
 	GError *	error = NULL;
 	GPid		pid = -1;
 
+	memset (argv, 0, sizeof (argv));
+
 	argv[0] = WPA_SUPPLICANT_BIN;
 	argv[1] = "-g";
 	argv[2] = WPA_SUPPLICANT_GLOBAL_SOCKET;
-	argv[3] = NULL;
+	argv[3] = "-ddd";
+	argv[4] = "-t";
+
+	if (g_file_test(WPA_SUPPLICANT_LOG_FILE, G_FILE_TEST_EXISTS))
+		argv[5] = "-f";
 
 	success = g_spawn_async ("/", argv, NULL, 0, &supplicant_child_setup, NULL,
 	                         &pid, &error);
