@@ -1469,14 +1469,13 @@ nm_device_802_11_wireless_set_essid (NMDevice80211Wireless *self,
 }
 
 
-#if 0
 /*
  * nm_device_get_frequency
  *
  * For wireless devices, get the frequency we broadcast/receive on.
  *
  */
-static double
+double
 nm_device_802_11_wireless_get_frequency (NMDevice80211Wireless *self)
 {
 	NMSock *		sk;
@@ -1509,6 +1508,7 @@ nm_device_802_11_wireless_get_frequency (NMDevice80211Wireless *self)
 	return freq;
 }
 
+#if 0
 /*
  * nm_device_set_frequency
  *

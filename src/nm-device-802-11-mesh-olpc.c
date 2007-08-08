@@ -48,7 +48,7 @@
 #define IPV4LL_HOSTMASK 0x0000FFFFL
 #define IPV4LL_BROADCAST 0xA9FEFFFFL
 
-#define MESH_DHCP_TIMEOUT	15	/* in seconds */
+#define MESH_DHCP_TIMEOUT	20	/* in seconds */
 
 #define ETC_DHCLIENT_CONF_PATH SYSCONFDIR"/dhclient.conf"
 #define MESH_STEP_FILE SYSCONFDIR"/NetworkManager/mesh-start"
@@ -176,7 +176,7 @@ struct _NMDevice80211MeshOLPCPrivate
 	 * 2. Try last successful AP connection
 	 *    a. if success then CONNECTED/DONE
 	 *
-	 * 3. For each channel in [1...14]
+	 * 3. For each channel in [1, 6, 11]
 	 *    a. try DHCP
 	 *    b. if DHCP times out, try next channel
 	 *    c. if DHCP response includes a link-local IP address,
@@ -798,9 +798,8 @@ real_deactivate_quickly (NMDevice *dev)
 
 	if (nm_device_get_use_dhcp (dev)) {
 		nm_info ("%s: will stop DHCP", nm_device_get_iface (dev));
-		nm_dhcp_manager_request_cancel_transaction (dhcp_mgr,
-		                                            nm_device_get_iface (dev),
-		                                            FALSE);
+		nm_dhcp_manager_cancel_transaction (dhcp_mgr,
+		                                    nm_device_get_iface (dev));
 	}
 
 	/* Remove any dhclient.conf file we may have created for mshX */
@@ -1211,12 +1210,22 @@ mpp_device_activated_cb (GObject * obj,
 	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
 	NMDevice * primary_dev = NM_DEVICE (obj);
 	const char * iface;
+	double freq;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (primary_dev != NULL);
 
 	if (self->priv->mpp.primary)
 		mpp_cleanup (self);
+
+    /* Only do MPP stuff on 1, 6, 11 */
+	if (nm_device_is_802_11_wireless (primary_dev)) {
+		freq = nm_device_802_11_wireless_get_frequency (NM_DEVICE_802_11_WIRELESS (primary_dev));
+		freq /= 1000000;
+		if ((freq != 2412) && (freq != 2437) && (freq != 2462))
+			goto out;
+		nm_info ("%s: primary dev freq = %f", nm_device_get_iface (primary_dev), freq);
+	}
 
 	self->priv->mpp.primary = primary_dev;
 	g_object_ref (self->priv->mpp.primary);
@@ -1496,7 +1505,7 @@ get_next_channel (NMDevice80211MeshOLPC * self)
 			inc = 5;
 			break;
 		case MESH_S3_XO_MPP:
-			inc = 1;
+			inc = 5;
 			break;
 		default:
 			nm_info ("%s: %s():%d unhandled step %d",
@@ -1953,9 +1962,8 @@ real_act_stage4_get_ip4_config (NMDevice *dev,
 			/* Kill dhclient; we don't need it anymore after MPP discovery here
 			 * because we're ignoring the returned lease.
 			 */
-			nm_dhcp_manager_request_cancel_transaction (dhcp_manager,
-			                                            nm_device_get_iface (NM_DEVICE (self)),
-			                                            TRUE);
+			nm_dhcp_manager_cancel_transaction (dhcp_manager,
+			                                    nm_device_get_iface (NM_DEVICE (self)));
 			if (ret != NM_ACT_STAGE_RETURN_SUCCESS)
 				goto out;
 			break;

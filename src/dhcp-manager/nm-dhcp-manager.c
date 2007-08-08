@@ -49,7 +49,6 @@ typedef struct {
         guchar 			state;
         GPid 			dhclient_pid;
         GSource *		timeout_source;
-        GSource *		cancel_source;
         GSource *		watch_source;
         NMDHCPManager *	manager;
         GHashTable *	options;
@@ -82,12 +81,22 @@ static char *
 get_pidfile_for_iface (const char * iface)
 {
 	return g_strdup_printf ("%s/%s-%s.%s",
-	                        NM_DHCP_MANAGER_PID_DIR,
+	                        NM_DHCP_MANAGER_RUN_DIR,
 	                        NM_DHCP_MANAGER_PID_FILENAME,
 	                        iface,
 	                        NM_DHCP_MANAGER_PID_FILE_EXT);
 }
 
+
+static char *
+get_leasefile_for_iface (const char * iface)
+{
+	return g_strdup_printf ("%s/%s-%s.%s",
+	                        NM_DHCP_MANAGER_RUN_DIR,
+	                        NM_DHCP_MANAGER_LEASE_FILENAME,
+	                        iface,
+	                        NM_DHCP_MANAGER_LEASE_FILE_EXT);
+}
 
 NMDHCPManager *
 nm_dhcp_manager_get (NMData * data)
@@ -177,17 +186,6 @@ nm_info ("%s: %s():%d cleared timeout source %p", device->iface, __func__, __LIN
 }
 
 static void
-nm_dhcp_device_cancel_cleanup (NMDHCPDevice * device)
-{
-	if (!device->cancel_source)
-		return;
-nm_info ("%s(): cleaning up cancel source %p\n", __func__, device->cancel_source);
-	g_source_destroy (device->cancel_source);
-	g_source_unref (device->cancel_source);
-	device->cancel_source = NULL;
-}
-
-static void
 nm_dhcp_device_watch_cleanup (NMDHCPDevice * device)
 {
 	if (!device->watch_source)
@@ -202,8 +200,6 @@ nm_dhcp_device_destroy (NMDHCPDevice *device)
 {
 nm_info ("%s(): calling timeout_cleanup\n", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
-nm_info ("%s(): calling cancel_cleanup\n", __func__);
-	nm_dhcp_device_cancel_cleanup (device);
 	nm_dhcp_device_watch_cleanup (device);
 	g_hash_table_remove_all (device->options);
 	g_free (device->iface);
@@ -457,9 +453,9 @@ nm_dhcp_manager_handle_timeout (gpointer user_data)
 	nm_info ("Device '%s' DHCP transaction took too long (>%ds), stopping it.",
 			 device->iface, NM_DHCP_TIMEOUT);
 
-	g_signal_emit (G_OBJECT (device->manager), signals[TIMEOUT], 0, device->iface);
+	nm_dhcp_manager_cancel_transaction (device->manager, device->iface);
 
-	nm_dhcp_manager_cancel_transaction (device->manager, device->iface, FALSE);
+	g_signal_emit (G_OBJECT (device->manager), signals[TIMEOUT], 0, device->iface);
 
 	return FALSE;
 }
@@ -555,6 +551,7 @@ dhclient_run (NMDHCPDevice *device, gchar *xtra_arg)
 	GPid			pid;
 	GError *		error = NULL;
 	char *			pidfile = NULL;
+	char *			leasefile = NULL;
 	gboolean		success = FALSE;
 	NMDHCPManagerPrivate *	priv;
 
@@ -577,6 +574,12 @@ dhclient_run (NMDHCPDevice *device, gchar *xtra_arg)
 		goto out;
 	}
 
+	leasefile = get_leasefile_for_iface (device->iface);
+	if (!leasefile) {
+		nm_warning ("%s: not enough memory for dhclient options.", device->iface);
+		goto out;
+	}
+
 	// FIXME: look for existing pidfile and kill dhclient
 
 	dhclient_argv = g_ptr_array_new ();
@@ -593,6 +596,9 @@ dhclient_run (NMDHCPDevice *device, gchar *xtra_arg)
 
 	g_ptr_array_add (dhclient_argv, (gpointer) "-pf");	/* Set pid file */
 	g_ptr_array_add (dhclient_argv, (gpointer) pidfile);
+
+	g_ptr_array_add (dhclient_argv, (gpointer) "-lf");	/* Set lease file */
+	g_ptr_array_add (dhclient_argv, (gpointer) leasefile);
 
 	g_ptr_array_add (dhclient_argv, (gpointer) device->iface);
 	g_ptr_array_add (dhclient_argv, NULL);
@@ -618,6 +624,7 @@ dhclient_run (NMDHCPDevice *device, gchar *xtra_arg)
 	success = TRUE;
 
 out:
+	g_free (leasefile);
 	g_free (pidfile);
 	g_ptr_array_free (dhclient_argv, TRUE);
 	return success;
@@ -670,20 +677,38 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 {
 	int i = 20; /* 4 seconds */
 	char * pidfile;
+	char * leasefile;
 
+nm_info ("%s(): enter, pid %d\n", __func__, device->dhclient_pid);
 	if (!device->dhclient_pid)
+{
+nm_info ("%s(): returning, zero pid %d\n", __func__, device->dhclient_pid);
 		return;
+}
 
+nm_info ("%s(): kill -TERM-ing pid %d\n", __func__, device->dhclient_pid);
 	kill (device->dhclient_pid, SIGTERM);
 
 	/* Yes, the state has to reach DHC_END. */
+nm_info ("%s(): waiting for %d to exit\n", __func__, device->dhclient_pid);
 	while (blocking && i-- > 0) {
 		gint child_status;
-		if (waitpid (device->dhclient_pid, &child_status, WNOHANG) > 0)
+		int ret;
+		ret = waitpid (device->dhclient_pid, &child_status, WNOHANG);
+		if (ret > 0) {
 			break;
+		} else if (ret == -1) {
+			/* Child already exited */
+			if (errno == ECHILD)
+				break;
+			/* Otherwise, force kill the process */
+			i = 0;
+			break;
+		}
 		g_usleep (G_USEC_PER_SEC / 5);
 	}
 
+nm_info ("%s(): i was %d after wait pid %d\n", __func__, i, device->dhclient_pid);
 	if (i <= 0) {
 		nm_warning ("%s: dhclient pid %d didn't exit, will kill it.",
 		            device->iface, device->dhclient_pid);
@@ -693,19 +718,29 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 	         device->iface,
 	         device->dhclient_pid);
 
+	device->dhclient_pid = 0;
+	device->state = DHC_END;
+
 	/* Clean up the pidfile if it got left around */
 	pidfile = get_pidfile_for_iface (device->iface);
 	if (pidfile) {
 		remove (pidfile);
 		g_free (pidfile);
 	}
-	device->dhclient_pid = 0;
-	device->state = DHC_END;
+
+	/* Clean up the leasefile if it got left around */
+	leasefile = get_leasefile_for_iface (device->iface);
+	if (leasefile) {
+		remove (leasefile);
+		g_free (leasefile);
+	}
 
 	nm_dhcp_device_watch_cleanup (device);
 nm_info ("%s(): calling timeout_cleanup\n", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 	g_hash_table_remove_all (device->options);
+
+nm_info ("%s(): exit\n", __func__);
 }
 
 
@@ -717,8 +752,7 @@ nm_info ("%s(): calling timeout_cleanup\n", __func__);
  */
 void
 nm_dhcp_manager_cancel_transaction (NMDHCPManager *manager,
-                                    const char *iface,
-									gboolean blocking)
+                                    const char *iface)
 {
 	NMDHCPDevice *device;
 	NMDHCPManagerPrivate *priv;
@@ -733,62 +767,7 @@ nm_dhcp_manager_cancel_transaction (NMDHCPManager *manager,
 	if (!device || !device->dhclient_pid)
 		return;
 
-	nm_dhcp_manager_cancel_transaction_real (device, blocking);
-}
-
-
-static gboolean
-handle_request_cancel (gpointer user_data)
-{
-	NMDHCPDevice *device = (NMDHCPDevice *) user_data;
-
-nm_info ("%s: %s() started with cancel source %p...\n", device->iface, __func__, device->cancel_source);
 	nm_dhcp_manager_cancel_transaction_real (device, TRUE);
-nm_info ("%s: %s() calling cancel_cleanup for cancel source %p\n", device->iface, __func__, device->cancel_source);
-	nm_dhcp_device_cancel_cleanup (device);
-nm_info ("%s: %s() done with cancel source %p.\n", device->iface, __func__, device->cancel_source);
-	return FALSE;
-}
-
-
-/*
- * nm_dhcp_manager_request_cancel_transaction
- *
- * Request that any in-progress transaction be canceled.
- *
- */
-void
-nm_dhcp_manager_request_cancel_transaction (NMDHCPManager *manager,
-                                            const char *iface,
-                                            gboolean blocking)
-{
-	NMDHCPDevice *device;
-	NMDHCPManagerPrivate *priv;
-
-	g_return_if_fail (NM_IS_DHCP_MANAGER (manager));
-	g_return_if_fail (iface != NULL);
-
-	priv = NM_DHCP_MANAGER_GET_PRIVATE (manager);
-
-	device = (NMDHCPDevice *) g_hash_table_lookup (priv->devices, iface);
-
-	if (!device || !device->dhclient_pid)
-		return;
-
-	if (!device->cancel_source) {
-		device->cancel_source = g_idle_source_new ();
-nm_info ("%s(): created cancel source %p\n", __func__, device->cancel_source);
-		g_source_set_priority (device->cancel_source, G_PRIORITY_HIGH_IDLE);
-		g_source_set_callback (device->cancel_source,
-		                       handle_request_cancel,
-		                       device,
-		                       NULL);
-		g_source_attach (device->cancel_source,
-		                 priv->data->main_context);
-	}
-
-	while (blocking && device->cancel_source)
-		g_usleep (G_USEC_PER_SEC / 10);
 }
 
 

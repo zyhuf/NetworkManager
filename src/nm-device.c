@@ -1513,9 +1513,8 @@ nm_device_deactivate_quickly (NMDevice *self)
 
 	if (nm_device_get_use_dhcp (self)) {
 		nm_info ("%s: will stop DHCP", nm_device_get_iface (self));
-		nm_dhcp_manager_request_cancel_transaction (NM_DEVICE_GET_PRIVATE (self)->dhcp_manager,
-		                                            nm_device_get_iface (self),
-		                                            FALSE);
+		nm_dhcp_manager_cancel_transaction (NM_DEVICE_GET_PRIVATE (self)->dhcp_manager,
+		                                    nm_device_get_iface (self));
 	}
 
 	/* Tear down an existing activation request, which may not have happened

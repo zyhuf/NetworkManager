@@ -32,9 +32,13 @@
 #define NM_IS_DHCP_MANAGER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((obj), NM_TYPE_DHCP_MANAGER))
 #define NM_DHCP_MANAGER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_DHCP_MANAGER, NMDHCPManagerClass))
 
-#define NM_DHCP_MANAGER_PID_DIR		"/var/run"
+#define NM_DHCP_MANAGER_RUN_DIR		"/var/run"
+
 #define NM_DHCP_MANAGER_PID_FILENAME	"dhclient"
 #define NM_DHCP_MANAGER_PID_FILE_EXT	"pid"
+
+#define NM_DHCP_MANAGER_LEASE_FILENAME	"dhclient"
+#define NM_DHCP_MANAGER_LEASE_FILE_EXT	"lease"
 
 #define	DHCP_CALLOUT_INTERFACE	"org.freedesktop.nm_dhcp_client"
 
@@ -78,15 +82,10 @@ gboolean       nm_dhcp_manager_begin_transaction    (NMDHCPManager *manager,
                                                      const char *iface,
                                                      guint32 timeout);
 void           nm_dhcp_manager_cancel_transaction   (NMDHCPManager *manager,
-													 const char *iface,
-													 gboolean blocking);
+                                                     const char *iface);
 NMIP4Config *  nm_dhcp_manager_get_ip4_config       (NMDHCPManager *manager, const char *iface);
 NMDHCPState    nm_dhcp_manager_get_state_for_device (NMDHCPManager *manager, const char *iface);
 
 gboolean       nm_dhcp_manager_process_signal       (NMDHCPManager *manager, DBusMessage *message);
-
-void           nm_dhcp_manager_request_cancel_transaction (NMDHCPManager *manager,
-                                                           const char *iface,
-                                                           gboolean blocking);
 
 #endif /* NM_DHCP_MANAGER_H */

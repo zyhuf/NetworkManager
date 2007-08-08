@@ -1,3 +1,25 @@
+2007-08-08  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-wireless.[ch]
+		- (nm_device_802_11_wireless_get_frequency): reenable
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- MPP functionality will only be activated on channels 1, 6, 11
+		- Increased DHCP timeout from 15 seconds to 20 seconds
+
+	* src/dhcp-manager/nm-dhcp-manager.c
+		- Spawn dhclient with a lease file, and remove that lease file
+		after dhclient exists.  Makes DHCP faster because it doesn't
+		have to do the initial REQUEST state, and we don't expect the
+		machines to be as stationary.
+		- Cancelling a DHCP transaction is now synchronous.  There isn't
+		any locking, and the cancel can happen from different threads
+		but that shouldn't happen.
+
+	* src/nm-device.c
+	  src/nm-device-802-11-mesh-olpc.c
+		- Updates for synchronous cancel
+
 2007-07-31  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.c

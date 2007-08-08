@@ -126,6 +126,8 @@ void	nm_device_802_11_wireless_register_scan_approval_hook (NMDevice80211Wireles
                                                                NMScanApprovalHook hook,
                                                                gpointer user_data);
 
+double nm_device_802_11_wireless_get_frequency (NMDevice80211Wireless *self);
+
 G_END_DECLS
 
 #endif	/* NM_DEVICE_802_11_WIRELESS_H */
