@@ -415,7 +415,7 @@ real_init (NMDevice *dev)
 			nm_info ("%s: Mesh behavior override: link-local only.", nm_device_get_iface (dev));
 			self->priv->default_first_step = MESH_S4_P2P_MESH;
 		} else {
-			nm_info ("%s: Unknown Mesh behavior override '%s', defaulting to School Server.", nm_device_get_iface (dev));
+			nm_info ("%s: Unknown Mesh behavior override '%s', defaulting to School Server.", nm_device_get_iface (dev), contents);
 		}
 		g_free (contents);
 	}
