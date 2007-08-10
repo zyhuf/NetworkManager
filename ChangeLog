@@ -1,3 +1,9 @@
+2007-08-10  Dan Williams  <dcbw@redhat.com>
+
+	* src/named-manager/nm-named-manager.c
+		- (rewrite_resolv_conf): clean up error handling to avoid double-free by
+		    not calling fclose() twice on some error conditions
+
 2007-08-08  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.[ch]
