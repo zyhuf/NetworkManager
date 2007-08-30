@@ -862,6 +862,14 @@ out:
 	return mode;
 }
 
+double
+nm_device_802_11_mesh_olpc_get_frequency (NMDevice80211MeshOLPC *self)
+{
+	g_return_val_if_fail (self != NULL, 0);
+
+	return nm_device_802_11_wireless_get_frequency (self->priv->ethdev.dev);
+}
+
 static gboolean
 set_80211_mode (NMDevice80211Wireless *dev,
                 int mode)

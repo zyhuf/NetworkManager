@@ -1,3 +1,12 @@
+2007-08-30  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.h
+	  src/nm-device-802-11-mesh-olpc.c
+		- (nm_device_802_11_mesh_olpc_get_frequency): new function
+
+	* src/nm-dbus-device.c
+		- (nm_dbus_device_get_frequency): new function
+
 2007-08-10  Dan Williams  <dcbw@redhat.com>
 
 	* src/named-manager/nm-named-manager.c

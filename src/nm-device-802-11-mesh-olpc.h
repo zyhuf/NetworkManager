@@ -72,5 +72,6 @@ static inline gboolean nm_device_is_802_11_mesh_olpc (NMDevice *dev)
 struct NMData;
 void nm_get_anycast_addrs (struct NMData *data);
 
+double nm_device_802_11_mesh_olpc_get_frequency (NMDevice80211MeshOLPC *self);
 
 #endif	/* NM_DEVICE_802_11_MESH_OLPC_H */
