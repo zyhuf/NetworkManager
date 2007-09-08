@@ -198,7 +198,7 @@ nm_dhcp_device_watch_cleanup (NMDHCPDevice * device)
 static void
 nm_dhcp_device_destroy (NMDHCPDevice *device)
 {
-nm_info ("%s(): calling timeout_cleanup\n", __func__);
+nm_info ("%s(): calling timeout_cleanup", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 	nm_dhcp_device_watch_cleanup (device);
 	g_hash_table_remove_all (device->options);
@@ -374,13 +374,13 @@ nm_dhcp_dbus_set_state (NMDHCPManager *manager,
 			guint32 new_state = string_to_state (value);
 			if (old_state != new_state) {
 				if (state_is_bound (new_state)) {
-nm_info ("%s(): calling timeout_cleanup\n", __func__);
+nm_info ("%s(): calling timeout_cleanup", __func__);
 					/* Cancel the timeout if the DHCP client is now bound */
 					nm_dhcp_device_timeout_cleanup (device);
 				}
 
 				device->state = new_state;
-				nm_info ("DHCP: device %s state changed %s -> %s\n",
+				nm_info ("DHCP: device %s state changed %s -> %s",
 				         device->iface,
 				         state_to_string (old_state),
 				         state_to_string (device->state));
@@ -537,7 +537,7 @@ static void dhclient_watch_cb (GPid pid, gint status, gpointer user_data)
 	device->dhclient_pid = 0;
 
 	nm_dhcp_device_watch_cleanup (device);
-nm_info ("%s(): calling timeout_cleanup\n", __func__);
+nm_info ("%s(): calling timeout_cleanup", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 
 	g_signal_emit (G_OBJECT (device->manager), signals[STATE_CHANGED], 0, device->iface, device->state);
@@ -679,18 +679,18 @@ nm_dhcp_manager_cancel_transaction_real (NMDHCPDevice *device, gboolean blocking
 	char * pidfile;
 	char * leasefile;
 
-nm_info ("%s(): enter, pid %d\n", __func__, device->dhclient_pid);
+nm_info ("%s(): enter, pid %d", __func__, device->dhclient_pid);
 	if (!device->dhclient_pid)
 {
-nm_info ("%s(): returning, zero pid %d\n", __func__, device->dhclient_pid);
+nm_info ("%s(): returning, zero pid %d", __func__, device->dhclient_pid);
 		return;
 }
 
-nm_info ("%s(): kill -TERM-ing pid %d\n", __func__, device->dhclient_pid);
+nm_info ("%s(): kill -TERM-ing pid %d", __func__, device->dhclient_pid);
 	kill (device->dhclient_pid, SIGTERM);
 
 	/* Yes, the state has to reach DHC_END. */
-nm_info ("%s(): waiting for %d to exit\n", __func__, device->dhclient_pid);
+nm_info ("%s(): waiting for %d to exit", __func__, device->dhclient_pid);
 	while (blocking && i-- > 0) {
 		gint child_status;
 		int ret;
@@ -708,7 +708,7 @@ nm_info ("%s(): waiting for %d to exit\n", __func__, device->dhclient_pid);
 		g_usleep (G_USEC_PER_SEC / 5);
 	}
 
-nm_info ("%s(): i was %d after wait pid %d\n", __func__, i, device->dhclient_pid);
+nm_info ("%s(): i was %d after wait pid %d", __func__, i, device->dhclient_pid);
 	if (i <= 0) {
 		nm_warning ("%s: dhclient pid %d didn't exit, will kill it.",
 		            device->iface, device->dhclient_pid);
@@ -736,11 +736,11 @@ nm_info ("%s(): i was %d after wait pid %d\n", __func__, i, device->dhclient_pid
 	}
 
 	nm_dhcp_device_watch_cleanup (device);
-nm_info ("%s(): calling timeout_cleanup\n", __func__);
+nm_info ("%s(): calling timeout_cleanup", __func__);
 	nm_dhcp_device_timeout_cleanup (device);
 	g_hash_table_remove_all (device->options);
 
-nm_info ("%s(): exit\n", __func__);
+nm_info ("%s(): exit", __func__);
 }
 
 
