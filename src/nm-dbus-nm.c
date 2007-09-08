@@ -232,6 +232,8 @@ static DBusMessage *nm_dbus_nm_set_active_device (DBusConnection *connection, DB
 	NMAccessPoint *	ap = NULL;
 	NMActRequest * req;
 	DBusMessageIter	iter;
+	guint32 mesh_channel = G_MAXUINT32;
+	guint32 mesh_step = G_MAXUINT32;
 
 	g_return_val_if_fail (connection != NULL, NULL);
 	g_return_val_if_fail (message != NULL, NULL);
@@ -305,12 +307,59 @@ static DBusMessage *nm_dbus_nm_set_active_device (DBusConnection *connection, DB
 	}
 	else if (nm_device_is_802_11_mesh_olpc (dev))
 	{
-		nm_info ("User Switch: %s", dev_path);
+		if (dbus_message_iter_next (&iter)) {
+			double freq = 0;
+
+			if (dbus_message_iter_get_arg_type (&iter) != DBUS_TYPE_DOUBLE) {
+				nm_warning ("%s:%d (%s): Invalid argument type (frequency).",
+				            __FILE__, __LINE__, __func__);
+				goto out;
+			}
+
+			/* grab frequency and accept only channels 1, 6, and 11 */
+			dbus_message_iter_get_basic (&iter, &freq);
+			if (freq == 2.412)
+				mesh_channel = 1;
+			else if (freq == 2.437)
+				mesh_channel = 6;
+			else if (freq == 2.462)
+				mesh_channel = 11;
+			else if (freq != 0) {
+				nm_warning ("%s:%d (%s): Invalid argument (frequency): %f.",
+				            __FILE__, __LINE__, __func__, freq);
+				goto out;
+			}
+
+			/* Optional mesh step start */
+			if (dbus_message_iter_next (&iter)) {
+				char * step_string = NULL;
+
+				if (dbus_message_iter_get_arg_type (&iter) != DBUS_TYPE_STRING) {
+					nm_warning ("%s:%d (%s): Invalid argument type (mesh step).",
+					            __FILE__, __LINE__, __func__);
+					goto out;
+				}
+
+				dbus_message_iter_get_basic (&iter, &mesh_step);
+				mesh_step = nm_device_802_11_mesh_olpc_parse_mesh_step (step_string,
+				                                                        G_MAXUINT32);
+			}
+		}
+
+		nm_info ("User Switch: %s, channel %d, step %d", dev_path,
+		         mesh_channel == G_MAXUINT32 ? -1 : mesh_channel,
+		         mesh_step == G_MAXUINT32 ? -1 : mesh_step);
 	}
 
 	nm_device_deactivate (dev);
 	nm_schedule_state_change_signal_broadcast (data->data);
 	req = nm_act_request_new (data->data, dev, ap, TRUE);
+
+	if (mesh_channel != G_MAXUINT32)
+		nm_act_request_set_mesh_channel (req, mesh_channel);
+	if (mesh_step != G_MAXUINT32)
+		nm_act_request_set_mesh_start (req, mesh_step);
+
 	nm_policy_schedule_device_activation (req);
 	nm_act_request_unref (req);
 
@@ -320,8 +369,8 @@ static DBusMessage *nm_dbus_nm_set_active_device (DBusConnection *connection, DB
 		nm_warning ("Could not allocate dbus message.");
 
 out:
-	if (!reply)
-	{
+	if (!reply) {
+		nm_act_request_unref (req);
 		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE,
 						INVALID_ARGS_ERROR, INVALID_ARGS_MESSAGE);
 	}

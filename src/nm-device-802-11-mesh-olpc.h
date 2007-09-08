@@ -22,6 +22,7 @@
 #ifndef NM_DEVICE_802_11_MESH_OLPC_H
 #define NM_DEVICE_802_11_MESH_OLPC_H
 
+#include <glib.h>
 #include <glib-object.h>
 #include <net/ethernet.h>
 
@@ -73,5 +74,8 @@ struct NMData;
 void nm_get_anycast_addrs (struct NMData *data);
 
 double nm_device_802_11_mesh_olpc_get_frequency (NMDevice80211MeshOLPC *self);
+
+guint32 nm_device_802_11_mesh_olpc_parse_mesh_step (const char * step_string,
+                                                    guint32 fallback);
 
 #endif	/* NM_DEVICE_802_11_MESH_OLPC_H */

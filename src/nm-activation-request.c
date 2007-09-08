@@ -44,6 +44,10 @@ struct NMActRequest
 	DBusPendingCall *	user_key_pcall;
 
 	guint			dhcp_timeout_wait; /* in seconds */
+
+	/* Mesh stuff */
+	guint32			mesh_channel;
+	guint32			mesh_start;
 };
 
 
@@ -219,5 +223,33 @@ void nm_act_request_set_dhcp_timeout_wait (NMActRequest *req, guint seconds)
 	g_return_if_fail (req != NULL);
 
 	req->dhcp_timeout_wait = seconds;
+}
+
+void nm_act_request_set_mesh_channel (NMActRequest *req, guint32 channel)
+{
+	g_return_if_fail (req != NULL);
+
+	req->mesh_channel = channel;
+}
+
+guint32 nm_act_request_get_mesh_channel (NMActRequest *req)
+{
+	g_return_if_fail (req != NULL);
+
+	return req->mesh_channel;
+}
+
+void nm_act_request_set_mesh_start (NMActRequest *req, guint32 start)
+{
+	g_return_if_fail (req != NULL);
+
+	req->mesh_start = start;
+}
+
+guint32 nm_act_request_get_mesh_start (NMActRequest *req)
+{
+	g_return_if_fail (req != NULL);
+
+	return req->mesh_start;
 }
 

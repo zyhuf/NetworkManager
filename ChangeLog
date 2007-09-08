@@ -1,3 +1,22 @@
+2007-09-08  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.h
+	  src/nm-device-802-11-mesh-olpc.c
+		- More granular mesh device control.  Mesh devices may be activated
+			with a specific channel and  mesh step, and will be locked to that
+			channel for the duration of the activation.  The default is still
+			the same (4-step activation process on all 3 channels).
+	  
+	* src/nm-activation-request.h
+	  src/nm-activation-request.c
+		- (nm_act_request_set_mesh_channel, nm_act_request_get_mesh_channel,
+		   nm_act_request_set_mesh_start, nm_act_request_get_mesh_start):
+			new functions to support more granular mesh device control
+
+	* src/nm-dbus-nm.c
+		- (nm_dbus_nm_set_active_device): accept mesh channel and mesh step
+			start parameters for mesh device activation
+
 2007-08-30  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.h

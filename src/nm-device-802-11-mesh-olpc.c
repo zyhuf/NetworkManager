@@ -190,6 +190,8 @@ struct _NMDevice80211MeshOLPCPrivate
 	guint32 step;	/* 1, 2, 3, or 4 from behavior description above */
 	guint32 default_first_step;
 
+	gboolean channel_locked;
+	guint32 chans_tried;
 	guint32	channel;
 	gboolean use_mesh_beacons;
 
@@ -358,9 +360,12 @@ nm_device_802_11_mesh_olpc_init (NMDevice80211MeshOLPC * self)
 	self->priv = NM_DEVICE_802_11_MESH_OLPC_GET_PRIVATE (self);
 	self->priv->dispose_has_run = FALSE;
 	self->priv->is_initialized = FALSE;
+	self->priv->capabilities = 0;
+	self->priv->assoc_timeout = NULL;
+	self->priv->wireless_event_id = 0;
+	self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
 }
 
-#if 0
 guint32 get_random_channel (void)
 {
 	GRand * rand;
@@ -378,7 +383,28 @@ guint32 get_random_channel (void)
 	/* Return a random channel of [1, 6, 11] */
 	return ((num % 3) * 5) + 1;
 }
-#endif
+
+guint32
+nm_device_802_11_mesh_olpc_parse_mesh_step (const char * step_string,
+                                            guint32 fallback)
+{
+    guint32 step = fallback;
+
+	g_return_val_if_fail (step_string != NULL, fallback);
+
+	if (!strcmp (step_string, "school-mpp"))
+		step = MESH_S1_SCHOOL_MPP;
+	else if (!strcmp (step_string, "infra"))
+		step = MESH_S2_AP;
+	else if (!strcmp (step_string, "xo-mpp"))
+		step = MESH_S3_XO_MPP;
+	else if (!strcmp (step_string, "local"))
+		step = MESH_S4_P2P_MESH;
+	else
+		nm_warning ("Failed to parse unknown mesh step %s.", step_string);
+
+    return step;
+}
 
 static void
 real_init (NMDevice *dev)
@@ -391,31 +417,36 @@ real_init (NMDevice *dev)
 	char * automesh_path = NULL;
 	char * contents = NULL;
 	gboolean success = FALSE;
+	const char * iface;
 
 	self->priv->is_initialized = TRUE;
-	self->priv->capabilities = 0;
 
-	self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
+	iface = nm_device_get_iface (dev);
+
 	success = g_file_get_contents (MESH_STEP_FILE,
 	                               &contents,
 	                               NULL,
 	                               NULL);
 	if (success && contents) {
 		contents = g_strstrip (contents);
-		if (!strcmp (contents, "school-mpp")) {
-			nm_info ("%s: Mesh behavior override: School Server first", nm_device_get_iface (dev));
-			self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
-		} else if (!strcmp (contents, "infra")) {
-			nm_info ("%s: Mesh behavior override: Infrastructure AP first", nm_device_get_iface (dev));
-			self->priv->default_first_step = MESH_S2_AP;
-		} else if (!strcmp (contents, "xo-mpp")) {
-			nm_info ("%s: Mesh behavior override: XO Mesh Portal first", nm_device_get_iface (dev));
-			self->priv->default_first_step = MESH_S3_XO_MPP;
-		} else if (!strcmp (contents, "local")) {
-			nm_info ("%s: Mesh behavior override: link-local only.", nm_device_get_iface (dev));
-			self->priv->default_first_step = MESH_S4_P2P_MESH;
-		} else {
-			nm_info ("%s: Unknown Mesh behavior override '%s', defaulting to School Server.", nm_device_get_iface (dev), contents);
+		self->priv->default_first_step = nm_device_802_11_mesh_olpc_parse_mesh_step (contents, G_MAXUINT32);
+		switch (self->priv->default_first_step) {
+			case MESH_S1_SCHOOL_MPP:
+				nm_info ("%s: Mesh behavior override: School Server first", iface);
+				break;
+			case MESH_S2_AP:
+				nm_info ("%s: Mesh behavior override: Infrastructure AP first", iface);
+				break;
+			case MESH_S3_XO_MPP:
+				nm_info ("%s: Mesh behavior override: XO Mesh Portal first", iface);
+				break;
+			case MESH_S4_P2P_MESH:
+				nm_info ("%s: Mesh behavior override: link-local only.", iface);
+				break;
+			default:
+				nm_info ("%s: Unknown Mesh behavior override '%s', defaulting to School Server.", iface, contents);
+				self->priv->default_first_step = MESH_S1_SCHOOL_MPP;
+				break;
 		}
 		g_free (contents);
 	}
@@ -426,9 +457,7 @@ real_init (NMDevice *dev)
 		self->priv->use_mesh_beacons = TRUE;
 	}
 
-	self->priv->channel = 1;
-	self->priv->assoc_timeout = NULL;
-	self->priv->wireless_event_id = 0;
+	self->priv->channel = get_random_channel ();
 
 	self->priv->mpp.activated_ids = g_hash_table_new (g_direct_hash,
 	                                                  g_direct_equal);
@@ -1499,21 +1528,50 @@ chan_to_freq (int chan)
 	return (double) frequency_list[chan - 1] / 1000.0;
 }
 
+static int next_chan_table[14][4] = {
+	{-1, -1, -1, -1},
+	{1, 6, 6, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{6, 11, 11, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1},
+	{11, 1, 1, -1},
+	{-1, -1, -1, -1},
+	{-1, -1, -1, -1}
+};
+
 static int
-get_next_channel (NMDevice80211MeshOLPC * self)
+channel_failure_handler_unlocked (NMDevice80211MeshOLPC *self,
+                                  NMActRequest *req,
+                                  gboolean *reinit_state)
 {
-	NMAccessPointList * ap_list;
-	int inc = 0;
-	int ret_chan = -1;
-	int next = self->priv->channel;
-	gboolean fallback = FALSE;
+	gboolean fail = FALSE;
+	int next_chan = -1;
+
+	g_return_val_if_fail (self != NULL, -1);
+	g_return_val_if_fail (req != NULL, -1);
+	g_return_val_if_fail (reinit_state != NULL, -1);
 
 	switch (self->priv->step) {
 		case MESH_S1_SCHOOL_MPP:
-			inc = 5;
-			break;
 		case MESH_S3_XO_MPP:
-			inc = 5;
+			self->priv->chans_tried++;
+nm_info ("chans tried: %d, channel %d", self->priv->chans_tried, self->priv->channel);
+			next_chan = next_chan_table[self->priv->channel][self->priv->chans_tried];
+			if (next_chan < 0) {
+				/* fail; go to next step */
+				self->priv->step++;
+				self->priv->channel = get_random_channel ();
+			}
+			break;
+		case MESH_S4_P2P_MESH:
+			fail = TRUE;
+			*reinit_state = TRUE;
 			break;
 		default:
 			nm_info ("%s: %s():%d unhandled step %d",
@@ -1522,122 +1580,75 @@ get_next_channel (NMDevice80211MeshOLPC * self)
 			         __LINE__,
 			         self->priv->step);
 			g_assert_not_reached ();
-			goto out;
 			break;
 	}
 
-	/* Unfortunately we can't do the mesh check reliably, because we don't
-	 * have good enough scan behavior in the libertas driver, so we're likely
-	 * to miss channels that have meshes on them.  We need null packet support
-	 * in the firmware so that scanning can use power-save mode tricks to do
-	 * full scans, which it currently doesn't do.
-	 */
-	if (!self->priv->use_mesh_beacons) {
-		fallback = TRUE;
-		goto out;
-	}
-
-	ap_list = nm_device_802_11_wireless_ap_list_get (self->priv->ethdev.dev);
-	if (!ap_list) {
-		nm_info ("%s: %s():%d no scan results, falling back to next channel",
-		         nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__);
-		fallback = TRUE;
-		goto out;
-	}
-
-	/* Find the next channel with a mesh on it */
-	while ((next < CHAN_MAX) && (ret_chan < 1)) {
-		NMAPListIter * iter;
-		NMAccessPoint * ap;
-
-		next += inc;
-
-		/* Look for a mesh on this channel */
-		if (!(iter = nm_ap_list_iter_new (ap_list))) {
-			nm_info ("%s: %s():%d couldn't lock scan list, falling back to next channel",
-			         nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__);
-			fallback = TRUE;
-			goto out;
-		}
-
-		while ((ap = nm_ap_list_iter_next (iter))) {
-			double freq = nm_ap_get_freq (ap);
-
-			/* If there's a BSS on this channel that's mesh capable, use it */
-			if (   (freq > 0)
-			    && (chan_to_freq (next) == freq)
-			    && (nm_ap_get_capabilities (ap) & NM_802_11_CAP_MESH_OLPC)) {
-				ret_chan = next;
-nm_info ("%s: %s():%d found mesh on channel %d",
-nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__, ret_chan);
-				break;
-			}
-		}
-
-if (ret_chan < 0) {
-nm_info ("%s: %s():%d no mesh on channel %d",
-nm_device_get_iface (NM_DEVICE (self)), __func__, __LINE__, next);
-		nm_ap_list_iter_free (iter);
+	return fail ? -1 : next_chan;
 }
+
+static int
+channel_failure_handler_locked (NMDevice80211MeshOLPC *self,
+                                NMActRequest *req,
+                                gboolean *reinit_state)
+{
+	int next_chan = -1;
+
+	g_return_val_if_fail (self != NULL, -1);
+	g_return_val_if_fail (req != NULL, -1);
+	g_return_val_if_fail (reinit_state != NULL, -1);
+
+	switch (self->priv->step) {
+		case MESH_S1_SCHOOL_MPP:
+			self->priv->step = MESH_S3_XO_MPP;
+			next_chan = self->priv->channel;
+			break;
+		case MESH_S3_XO_MPP:
+			self->priv->step = MESH_S4_P2P_MESH;
+			next_chan = self->priv->channel;
+			break;
+		case MESH_S4_P2P_MESH:
+			*reinit_state = TRUE;
+			break;
+		default:
+			nm_info ("%s: %s():%d unhandled step %d",
+			         nm_device_get_iface (NM_DEVICE (self)),
+			         __func__,
+			         __LINE__,
+			         self->priv->step);
+			g_assert_not_reached ();
+			break;
 	}
 
-out:
-	/* If there was an error, just pick the next channel */
-	if (fallback)
-		ret_chan = self->priv->channel += inc;
-
-	if (ret_chan > CHAN_MAX)
-		ret_chan = -1;
-nm_info ("%s: returning channel %d\n", nm_device_get_iface (NM_DEVICE (self)), ret_chan);
-	return ret_chan;
+	return next_chan;
 }
 
 static void
 channel_failure_handler (NMDevice80211MeshOLPC *self,
                          NMActRequest *req)
 {
-	gboolean fail = FALSE;
 	gboolean reinit_state = FALSE;
 	int next_chan = -1;
+	guint32 old_step;
+	gboolean fail = FALSE;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (req != NULL);
 
-	switch (self->priv->step) {
-		case MESH_S1_SCHOOL_MPP:
-			/* If the last channel we tried was 11 for school server, we failed */
-			if (self->priv->channel >= 11) {
-				fail = TRUE;
-				break;
-			}
-			next_chan = get_next_channel (self);
-			break;
-		case MESH_S3_XO_MPP:
-			next_chan = get_next_channel (self);
-			break;
-		case MESH_S4_P2P_MESH:
-			fail = TRUE;
-			reinit_state = TRUE;
-			break;
-		default:
-			nm_info ("%s: %s():%d unhandled step %d",
-			         nm_device_get_iface (NM_DEVICE (self)),
-			         __func__,
-			         __LINE__,
-			         self->priv->step);
-			g_assert_not_reached ();
-			break;
-	}
+	old_step = self->priv->step;
+
+	if (self->priv->channel_locked)
+		next_chan = channel_failure_handler_locked (self, req, &reinit_state);
+	else
+		next_chan = channel_failure_handler_unlocked (self, req, &reinit_state);
 
 	/* If the ethdev happened to go away or the new channel is invalid,
 	 * break the chain
 	 */
-nm_info ("%s: step %d, channel %d, next channel %d\n", __func__, self->priv->step, self->priv->channel, next_chan);
-	if (!self->priv->ethdev.dev || (next_chan < 1))
-{
+nm_info ("%s: step %d, channel %d, next channel %d", __func__, old_step, self->priv->channel, next_chan);
+	if (!self->priv->ethdev.dev || (next_chan < 0)) {
 nm_info ("   will fail");
 		fail = TRUE;
-}
+	}
 
 	if (fail) {
 nm_info ("%s: failing activation", __func__);
@@ -1648,7 +1659,9 @@ nm_info ("%s: failing activation", __func__);
 		nm_device_set_active_link (NM_DEVICE (self), FALSE);
 		if (reinit_state) {
 			self->priv->step = self->priv->default_first_step;
-			self->priv->channel = 1;
+			self->priv->channel = get_random_channel ();
+			self->priv->chans_tried = 0;
+			self->priv->channel_locked = FALSE;
 		}
 	} else {
 		nm_info ("Activation (%s/mesh) failed to find a mesh on channel %d.",
@@ -1670,9 +1683,20 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 	/* If the user requested reassociation on the mesh device,
 	 * go back to the the start of the association process.
 	 */
+	self->priv->channel_locked = FALSE;
+	self->priv->chans_tried = 0;
 	if (nm_act_request_get_user_requested (req)) {
-		self->priv->step = self->priv->default_first_step;
-		self->priv->channel = 1;
+		if (nm_act_request_get_mesh_start (req))
+			self->priv->step = nm_act_request_get_mesh_start (req);
+		else
+			self->priv->step = self->priv->default_first_step;
+
+		if (nm_act_request_get_mesh_channel (req)) {
+			self->priv->channel = nm_act_request_get_mesh_channel (req);
+			self->priv->channel_locked = TRUE;
+		} else {
+			self->priv->channel = get_random_channel ();
+		}
 	}
 
 	/* Stop being an MPP if we currently are one */
@@ -2045,9 +2069,6 @@ real_activation_failure_handler (NMDevice *dev,
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 
 	nm_device_set_active_link (dev, FALSE);
-
-	self->priv->step++;
-	self->priv->channel = 1;
 }
 
 

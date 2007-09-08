@@ -53,4 +53,9 @@ void				nm_act_request_set_user_key_pending_call	(NMActRequest *req, DBusPending
 guint			nm_act_request_get_dhcp_timeout_wait	(NMActRequest *req);
 void				nm_act_request_set_dhcp_timeout_wait	(NMActRequest *req, guint dhcp_timeout);
 
+void nm_act_request_set_mesh_channel (NMActRequest *req, guint32 channel);
+guint32 nm_act_request_get_mesh_channel (NMActRequest *req);
+void nm_act_request_set_mesh_start (NMActRequest *req, guint32 start);
+guint32 nm_act_request_get_mesh_start (NMActRequest *req);
+
 #endif
