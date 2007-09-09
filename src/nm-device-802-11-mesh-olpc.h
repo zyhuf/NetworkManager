@@ -78,4 +78,6 @@ double nm_device_802_11_mesh_olpc_get_frequency (NMDevice80211MeshOLPC *self);
 guint32 nm_device_802_11_mesh_olpc_parse_mesh_step (const char * step_string,
                                                     guint32 fallback);
 
+guint32 nm_device_802_11_mesh_olpc_get_mesh_step (NMDevice80211MeshOLPC *self);
+
 #endif	/* NM_DEVICE_802_11_MESH_OLPC_H */

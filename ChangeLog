@@ -2,6 +2,21 @@
 
 	* src/nm-device-802-11-mesh-olpc.h
 	  src/nm-device-802-11-mesh-olpc.c
+	  src/nm-dbus-device.c
+		- (nm_dbus_device_get_mesh_step, nm_device_802_11_mesh_olpc_get_mesh_step):
+			new functions; expose current mesh step over D-Bus
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- (device_activation_started_cb, connect_to_device_signals, real_init,
+		   real_notify_device_removed): Fix case where, when another device
+			(like wired) pre-empts the mesh device, then loses the link sometime
+			later, makes the mesh device pick up where it left off, not at the
+			start of it's activation process like it should
+
+2007-09-08  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-mesh-olpc.h
+	  src/nm-device-802-11-mesh-olpc.c
 		- More granular mesh device control.  Mesh devices may be activated
 			with a specific channel and  mesh step, and will be locked to that
 			channel for the duration of the activation.  The default is still

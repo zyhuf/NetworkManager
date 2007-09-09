@@ -247,6 +247,28 @@ static DBusMessage *nm_dbus_device_get_frequency (DBusConnection *connection, DB
 	return reply;
 }
 
+static DBusMessage *nm_dbus_device_get_mesh_step (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
+{
+	DBusMessage * reply = NULL;
+	gboolean success = FALSE;
+	NMDevice * dev;
+
+	g_return_val_if_fail (data && data->data && data->dev && connection && message, NULL);
+
+	dev = data->dev;
+	if (!nm_device_is_802_11_mesh_olpc (dev)) {
+		reply = nm_dbus_create_error_message (message, NM_DBUS_INTERFACE, "InvalidDeviceType",
+				"Request is not valid for this device type.");
+	} else if ((reply = dbus_message_new_method_return (message))) {
+		guint32 step;
+
+		step = nm_device_802_11_mesh_olpc_get_mesh_step (NM_DEVICE_802_11_MESH_OLPC (dev));
+		dbus_message_append_args (reply, DBUS_TYPE_UINT32, &step, DBUS_TYPE_INVALID);
+	}
+
+	return reply;
+}
+
 static DBusMessage *nm_dbus_device_get_networks (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
 {
 	DBusMessage	*reply = NULL;
@@ -547,6 +569,7 @@ NMDbusMethodList *nm_dbus_device_methods_setup (void)
 	nm_dbus_method_list_add_method (list, "getCapabilities",	nm_dbus_device_get_capabilities);
 	nm_dbus_method_list_add_method (list, "getDriver",		nm_dbus_device_get_driver);
 	nm_dbus_method_list_add_method (list, "getFrequency",	nm_dbus_device_get_frequency);
+	nm_dbus_method_list_add_method (list, "getMeshStep",	nm_dbus_device_get_mesh_step);
 
 	return (list);
 }

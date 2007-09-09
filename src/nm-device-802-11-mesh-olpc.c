@@ -56,6 +56,7 @@
 
 static void channel_failure_handler (NMDevice80211MeshOLPC *self, NMActRequest *req);
 static void aipd_cleanup (NMDevice80211MeshOLPC *self);
+static void device_activation_started_cb (GObject *obj, gpointer user_data);
 static void mpp_clear_hash_tables (NMDevice80211MeshOLPC *self);
 static void mpp_device_activated_cb (GObject *obj, gpointer user_data);
 static void mpp_device_deactivated_cb (GObject *obj, gpointer user_data);
@@ -165,6 +166,9 @@ struct _NMDevice80211MeshOLPCPrivate
 	struct _autoipd		aipd;
 	struct _mpp			mpp;
 
+	GHashTable *	activation_started_ids;
+	struct iw_range	range;
+
 	/* Steps:
 	 *
 	 * 1. For each channel in [1, 6, 11]:
@@ -194,8 +198,6 @@ struct _NMDevice80211MeshOLPCPrivate
 	guint32 chans_tried;
 	guint32	channel;
 	gboolean use_mesh_beacons;
-
-	struct iw_range	range;
 };
 
 
@@ -388,7 +390,7 @@ guint32
 nm_device_802_11_mesh_olpc_parse_mesh_step (const char * step_string,
                                             guint32 fallback)
 {
-    guint32 step = fallback;
+	guint32 step = fallback;
 
 	g_return_val_if_fail (step_string != NULL, fallback);
 
@@ -403,7 +405,7 @@ nm_device_802_11_mesh_olpc_parse_mesh_step (const char * step_string,
 	else
 		nm_warning ("Failed to parse unknown mesh step %s.", step_string);
 
-    return step;
+	return step;
 }
 
 static void
@@ -459,11 +461,14 @@ real_init (NMDevice *dev)
 
 	self->priv->channel = get_random_channel ();
 
+	self->priv->activation_started_ids = g_hash_table_new (g_direct_hash,
+	                                                       g_direct_equal);
 	self->priv->mpp.activated_ids = g_hash_table_new (g_direct_hash,
 	                                                  g_direct_equal);
 	self->priv->mpp.deactivated_ids = g_hash_table_new (g_direct_hash,
 	                                                    g_direct_equal);
-	if (   !self->priv->mpp.activated_ids
+	if (   !self->priv->activation_started_ids
+	    || !self->priv->mpp.activated_ids
 	    || !self->priv->mpp.deactivated_ids) {
 		nm_warning ("%s: couldn't allocate MPP tables.",
 		            nm_device_get_iface (NM_DEVICE (self)));
@@ -535,9 +540,11 @@ ethdev_scan_approval_hook (NMDevice80211Wireless *ethdev,
 	if (nm_device_is_activating (NM_DEVICE (self)))
 		return FALSE;
 
+#if 0
 	nm_info ("%s: allowing scan for %s",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
+#endif
 
 	return TRUE;
 }
@@ -552,9 +559,11 @@ ethdev_scan_started_cb (GObject * obj,
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (ethdev != NULL);
 
+#if 0
 	nm_info ("%s: scan started event for %s",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
+#endif
 
 	self->priv->ethdev.scanning = TRUE;
 }
@@ -569,9 +578,11 @@ ethdev_scan_done_cb (GObject * obj,
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (ethdev != NULL);
 
+#if 0
 	nm_info ("%s: scan done event for %s",
 	         nm_device_get_iface (NM_DEVICE (self)),
 	         nm_device_get_iface (NM_DEVICE (ethdev)));
+#endif
 
 	self->priv->ethdev.scanning = FALSE;
 
@@ -645,9 +656,34 @@ cleanup_ethdev (NMDevice80211MeshOLPC *self)
 }
 
 static void
+device_activation_started_cb (GObject * obj,
+                              gpointer user_data)
+{
+	NMDevice80211MeshOLPC * self = NM_DEVICE_802_11_MESH_OLPC (user_data);
+	NMDevice * dev = NM_DEVICE (obj);
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (dev != NULL);
+
+	/* Don't do anything if the mesh device is in step 2 (AP) because
+	 * that's an intentional forcing of activation of the ethdev and we
+	 * don't want to lose the mesh step in that case.
+	 */
+	if ((NM_DEVICE (self) == dev) || (self->priv->step == MESH_S2_AP))
+		return;
+
+	/* If another device begins to activate, reset the mesh device's
+	 * step to the default step so that when the other device loses its link
+	 * and the mesh device starts activating again, that the mesh device
+	 * starts at the right step.
+	 */
+	self->priv->step = self->priv->default_first_step;
+}
+
+static void
 connect_to_device_signals (NMDevice80211MeshOLPC *self, NMDevice *dev)
 {
-	guint32 act_id, deact_id;
+	guint32 id;
 
 	g_return_if_fail (self != NULL);
 	g_return_if_fail (dev != NULL);
@@ -655,27 +691,37 @@ connect_to_device_signals (NMDevice80211MeshOLPC *self, NMDevice *dev)
 	/* If there wasn't enough memory for the activated/deactivated signal
 	 * hash tables, don't connect to the signals.
 	 */
-	if (!self->priv->mpp.activated_ids || !self->priv->mpp.deactivated_ids)
+	if (   !self->priv->activation_started_ids
+	    || !self->priv->mpp.activated_ids
+	    || !self->priv->mpp.deactivated_ids)
 		return;
 
 	/* Attach to the activation success & deactivated signals of every
 	 * device known about so far.
 	 */
-	act_id = g_signal_connect (G_OBJECT (dev),
-	                           "activation-success",
-	                           G_CALLBACK (mpp_device_activated_cb),
-	                           self);
-	g_hash_table_insert (self->priv->mpp.activated_ids,
+	id = g_signal_connect (G_OBJECT (dev),
+	                       "activation-started",
+	                       G_CALLBACK (device_activation_started_cb),
+	                       self);
+	g_hash_table_insert (self->priv->activation_started_ids,
 	                     dev,
-	                     GUINT_TO_POINTER (act_id));
+	                     GUINT_TO_POINTER (id));
 
-	deact_id = g_signal_connect (G_OBJECT (dev),
-	                             "deactivated",
-	                             G_CALLBACK (mpp_device_deactivated_cb),
-	                             self);		
+	id = g_signal_connect (G_OBJECT (dev),
+	                       "activation-success",
+	                       G_CALLBACK (mpp_device_activated_cb),
+	                       self);
 	g_hash_table_insert (self->priv->mpp.activated_ids,
 	                     dev,
-	                     GUINT_TO_POINTER (deact_id));		
+	                     GUINT_TO_POINTER (id));
+
+	id = g_signal_connect (G_OBJECT (dev),
+	                       "deactivated",
+	                       G_CALLBACK (mpp_device_deactivated_cb),
+	                       self);		
+	g_hash_table_insert (self->priv->mpp.deactivated_ids,
+	                     dev,
+	                     GUINT_TO_POINTER (id));
 }
 
 static void
@@ -797,6 +843,11 @@ real_notify_device_removed (NMDevice *dev,
 	}
 
 	/* Disconnect from devices' activated/deactivated signals */
+	if (self->priv->activation_started_ids) {
+		g_hash_table_foreach (self->priv->activation_started_ids,
+		                      dev_removed_disconnect_from_signal,
+		                      removed_dev);
+	}
 	if (self->priv->mpp.activated_ids) {
 		g_hash_table_foreach (self->priv->mpp.activated_ids,
 		                      dev_removed_disconnect_from_signal,
@@ -1143,6 +1194,14 @@ out:
 	return success;
 }
 
+guint32
+nm_device_802_11_mesh_olpc_get_mesh_step (NMDevice80211MeshOLPC *self)
+{
+	g_return_val_if_fail (self != NULL, 0);
+
+	return self->priv->step;
+}
+
 
 /*************************************************************/
 /* Mesh Portal Pointer service stuff                         */
@@ -1255,7 +1314,7 @@ mpp_device_activated_cb (GObject * obj,
 	if (self->priv->mpp.primary)
 		mpp_cleanup (self);
 
-    /* Only do MPP stuff on 1, 6, 11 */
+	/* Only do MPP stuff on 1, 6, 11 */
 	if (nm_device_is_802_11_wireless (primary_dev)) {
 		freq = nm_device_802_11_wireless_get_frequency (NM_DEVICE_802_11_WIRELESS (primary_dev));
 		freq /= 1000000;
