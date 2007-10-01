@@ -459,7 +459,10 @@ real_init (NMDevice *dev)
 		self->priv->use_mesh_beacons = TRUE;
 	}
 
-	self->priv->channel = get_random_channel ();
+	if (self->priv->default_first_step == MESH_S4_P2P_MESH)
+		self->priv->channel = 1;
+	else
+		self->priv->channel = get_random_channel ();
 
 	self->priv->activation_started_ids = g_hash_table_new (g_direct_hash,
 	                                                       g_direct_equal);
@@ -1718,7 +1721,10 @@ nm_info ("%s: failing activation", __func__);
 		nm_device_set_active_link (NM_DEVICE (self), FALSE);
 		if (reinit_state) {
 			self->priv->step = self->priv->default_first_step;
-			self->priv->channel = get_random_channel ();
+			if (self->priv->default_first_step == MESH_S4_P2P_MESH)
+				self->priv->channel = 1;
+			else
+				self->priv->channel = get_random_channel ();
 			self->priv->chans_tried = 0;
 			self->priv->channel_locked = FALSE;
 		}
@@ -1754,7 +1760,10 @@ real_act_stage1_prepare (NMDevice *dev, NMActRequest *req)
 			self->priv->channel = nm_act_request_get_mesh_channel (req);
 			self->priv->channel_locked = TRUE;
 		} else {
-			self->priv->channel = get_random_channel ();
+			if (self->priv->default_first_step == MESH_S4_P2P_MESH)
+				self->priv->channel = 1;
+			else
+				self->priv->channel = get_random_channel ();
 		}
 	}
 
