@@ -126,14 +126,16 @@ real_write_supplicant_config (NMAPSecurity *instance,
 			"SET_NETWORK %i key_mgmt NONE", nwid))
 		goto out;
 
-	/*
-	 * If the user selected "Shared" (aka restricted) key, set it explicitly.  Otherwise,
-	 * let wpa_supplicant default to the right thing, which is an open key.
-	 */
-	if (get_auth_algorithm (NM_AP_SECURITY_WEP (instance)) == IW_AUTH_ALG_SHARED_KEY)
-	{
-		if (!nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, msg,
-			"SET_NETWORK %i auth_alg SHARED", nwid));
+	switch (get_auth_algorithm (NM_AP_SECURITY_WEP (instance))) {
+		case IW_AUTH_ALG_SHARED_KEY:
+			nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, msg,
+					"SET_NETWORK %i auth_alg SHARED", nwid);
+			break;
+		case IW_AUTH_ALG_OPEN_SYSTEM:
+		default:
+			nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, msg,
+					"SET_NETWORK %i auth_alg OPEN", nwid);
+			break;
 	}
 
 	msg = g_strdup_printf ("SET_NETWORK %i wep_key0 <key>", nwid);

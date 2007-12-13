@@ -1,3 +1,8 @@
+2007-12-13  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-ap-security-wep.c
+		- (real_write_supplicant_config): always set auth_alg appropriately
+
 2007-09-08  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-mesh-olpc.h
