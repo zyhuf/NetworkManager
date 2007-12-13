@@ -2694,7 +2694,7 @@ supplicant_status_cb (GIOChannel *source,
 }
 
 
-#define NM_SUPPLICANT_TIMEOUT	20	/* how long we wait for wpa_supplicant to associate (in seconds) */
+#define NM_SUPPLICANT_TIMEOUT	40	/* how long we wait for wpa_supplicant to associate (in seconds) */
 
 static unsigned int
 get_supplicant_timeout (NMDevice80211Wireless *self)

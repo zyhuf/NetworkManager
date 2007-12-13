@@ -1,5 +1,11 @@
 2007-12-13  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-wireless.c
+		- Bump supplicant timeout to 40 seconds because libertas scanning
+			behavior sucks and NM might kill the supplicant too early
+
+2007-12-13  Dan Williams  <dcbw@redhat.com>
+
 	* src/nm-ap-security-wep.c
 		- (real_write_supplicant_config): always set auth_alg appropriately
 
