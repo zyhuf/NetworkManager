@@ -2396,6 +2396,8 @@ nm_device_802_11_mesh_olpc_dispose (GObject *object)
 	g_signal_handler_disconnect (G_OBJECT (data->netlink_monitor),
 	                             self->priv->wireless_event_id);
 
+	nm_policy_remove_nbd_notifier (NM_DEVICE (self));
+
 	/* Chain up to the parent class */
 	parent_class = NM_DEVICE_CLASS (g_type_class_peek_parent (klass));
 	G_OBJECT_CLASS (parent_class)->dispose (object);

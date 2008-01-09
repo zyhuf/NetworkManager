@@ -40,5 +40,6 @@ void			nm_policy_schedule_activation_failed	(NMActRequest *req);
 void nm_policy_schedule_deactivate (NMDevice * dev);
 
 void nm_policy_add_nbd_notifier (NMDevice *dev);
+void nm_policy_remove_nbd_notifier (NMDevice *dev);
 
 #endif

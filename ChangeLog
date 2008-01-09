@@ -1,3 +1,14 @@
+2008-01-09  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManagerPolicy.c
+	  src/NetworkManagerPolicy.h
+		- (nm_policy_remove_nbd_notifier): new function; remove a device from
+			the no-best-device notification list
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- (nm_device_802_11_mesh_olpc_dispose): ensure the mesh device removes
+			itself from the no-best-device notification list
+
 2007-12-13  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.c

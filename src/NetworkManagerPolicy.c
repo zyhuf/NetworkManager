@@ -54,6 +54,13 @@ void nm_policy_add_nbd_notifier (NMDevice *dev)
 	nbd_notifiers = g_slist_append (nbd_notifiers, dev);
 }
 
+void nm_policy_remove_nbd_notifier (NMDevice *dev)
+{
+	g_return_if_fail (dev != NULL);
+
+	nbd_notifiers = g_slist_remove (nbd_notifiers, dev);
+}
+
 
 /*
  * nm_policy_activation_finish
