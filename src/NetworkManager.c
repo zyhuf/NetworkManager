@@ -322,7 +322,7 @@ NMDevice * nm_create_device_and_add_to_list (NMData *data, const char *udi, cons
 			}
 
 			data->dev_list = g_slist_append (data->dev_list, dev);
-			nm_device_deactivate (dev);
+			nm_device_deactivate (dev, TRUE);
 
 			/* Notify other devices of the new device */
 			for (elt = data->dev_list; elt; elt = g_slist_next (elt)) {

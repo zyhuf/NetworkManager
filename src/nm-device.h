@@ -103,7 +103,7 @@ struct _NMDeviceClass
 												 NMIP4Config **config);
 
 	void			(* deactivate)			(NMDevice *self);
-	void			(* deactivate_quickly)	(NMDevice *self);
+	void			(* deactivate_quickly)	(NMDevice *self, gboolean force);
 
 	void			(* activation_failure_handler)	(NMDevice *self,
 											 struct NMActRequest *req);
@@ -204,8 +204,8 @@ void			nm_device_activate_schedule_stage2_device_config		(struct NMActRequest *r
 void			nm_device_activate_schedule_stage4_ip_config_get		(struct NMActRequest *req);
 void			nm_device_activate_schedule_stage4_ip_config_timeout	(struct NMActRequest *req);
 void			nm_device_activate_schedule_stage5_ip_config_commit		(struct NMActRequest *req);
-void			nm_device_deactivate		(NMDevice *dev);
-gboolean		nm_device_deactivate_quickly	(NMDevice *dev);
+void			nm_device_deactivate		(NMDevice *dev, gboolean force);
+gboolean		nm_device_deactivate_quickly	(NMDevice *dev, gboolean force);
 gboolean		nm_device_is_activating		(NMDevice *dev);
 void			nm_device_activation_cancel	(NMDevice *dev);
 gboolean		nm_device_activation_should_cancel (NMDevice *self);

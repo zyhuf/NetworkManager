@@ -1,3 +1,42 @@
+2008-01-18  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device.c
+	  src/nm-device.h
+		- (nm_device_deactivate_quickly, nm_device_deactivate): both get a new
+			argument 'force', which is used to indicate to subclasses that any
+			persistent device state should be completely cleared, becasue the
+			device is not intended to be usable after deactivation.  Should be
+			set to TRUE for cases like disabling wireless and NM shutdown.
+
+	* src/nm-dbus-nm.c
+		- (nm_dbus_nm_set_active_device): fix for nm_device_deactivate() changes
+		- (nm_dbus_nm_set_wireless_enabled): set TX power on when enabling,
+			set TX power off when disabling.  
+		- (nm_dbus_nm_sleep, nm_dbus_nm_wake): return success/fail value to
+			callers over D-Bus
+
+	* src/NetworkManagerPolicy.c
+		- (nm_policy_activation_failed, nm_policy_deactivate,
+		   nm_policy_device_change_check, nm_policy_device_activate): fix for
+			nm_device_deactivate() changes
+
+	* src/NetworkManager.c
+		- (nm_create_device_and_add_to_list): fix for nm_device_deactivate()
+			changes
+
+	* src/nm-device-802-11-wireless.c
+	  src/nm-device-802-11-wireless.h
+		- (real_init): ensure wireless TX power is on
+		- (nm_device_802_11_wireless_set_tx_power_on): new function; control
+			wireless TX power
+
+	* src/nm-device-802-11-mesh-olpc.c
+		- (real_init): ensure wireless TX power is on
+		- (real_deactivate_quickly): for forced deactivations (wireless disabled,
+			etc) reset the mesh state machine so that upon enabling wireless,
+			the mesh device starts at the beginning looking for a school server
+			instead of where it stopped prior to disabling wireless
+
 2008-01-09  Dan Williams  <dcbw@redhat.com>
 
 	* src/NetworkManagerPolicy.c

@@ -331,7 +331,7 @@ nm_device_stop (NMDevice *self)
 {
 	g_return_if_fail (self != NULL);
 
-	nm_device_deactivate (self);
+	nm_device_deactivate (self, TRUE);
 	nm_device_bring_down (self);
 
 	if (self->priv->loop)
@@ -1493,7 +1493,7 @@ nm_device_activation_cancel (NMDevice *self)
  *
  */
 gboolean
-nm_device_deactivate_quickly (NMDevice *self)
+nm_device_deactivate_quickly (NMDevice *self, gboolean force)
 {
 	NMData *		app_data;
 	NMActRequest *	act_request;
@@ -1528,7 +1528,7 @@ nm_device_deactivate_quickly (NMDevice *self)
 
 	/* Call device type-specific deactivation */
 	if (NM_DEVICE_GET_CLASS (self)->deactivate_quickly)
-		NM_DEVICE_GET_CLASS (self)->deactivate_quickly (self);
+		NM_DEVICE_GET_CLASS (self)->deactivate_quickly (self, force);
 
 	g_signal_emit (G_OBJECT (self), nm_device_signals[DEACTIVATED], 0);
 
@@ -1542,7 +1542,7 @@ nm_device_deactivate_quickly (NMDevice *self)
  *
  */
 void
-nm_device_deactivate (NMDevice *self)
+nm_device_deactivate (NMDevice *self, gboolean force)
 {
 	NMData *		app_data;
 	NMIP4Config *	config;
@@ -1552,7 +1552,7 @@ nm_device_deactivate (NMDevice *self)
 
 	nm_info ("Deactivating device %s.", nm_device_get_iface (self));
 
-	nm_device_deactivate_quickly (self);
+	nm_device_deactivate_quickly (self, force);
 
 	app_data = self->priv->app_data;
 

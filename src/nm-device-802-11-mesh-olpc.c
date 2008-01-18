@@ -64,7 +64,6 @@ static void mpp_device_deactivated_cb (GObject *obj, gpointer user_data);
 static void mpp_cleanup (NMDevice80211MeshOLPC *self);
 static gboolean aipd_exec (NMDevice80211MeshOLPC *self);
 static gboolean aipd_monitor_start (NMDevice80211MeshOLPC *self);
-static void real_deactivate_quickly (NMDevice *dev);
 static void assoc_timeout_cleanup (NMDevice80211MeshOLPC * self);
 static gboolean is_mpp_active (NMDevice80211MeshOLPC *self);
 static gboolean mpp_autoip_start (NMDevice80211MeshOLPC *self);
@@ -425,6 +424,8 @@ real_init (NMDevice *dev)
 	self->priv->is_initialized = TRUE;
 
 	iface = nm_device_get_iface (dev);
+
+	nm_device_802_11_wireless_set_tx_power_on (dev, TRUE);
 
 	success = g_file_get_contents (MESH_STEP_FILE,
 	                               &contents,
@@ -871,7 +872,7 @@ real_notify_device_removed (NMDevice *dev,
 }
 
 static void
-real_deactivate_quickly (NMDevice *dev)
+real_deactivate_quickly (NMDevice *dev, gboolean force)
 {
 	NMDevice80211MeshOLPC *	self = NM_DEVICE_802_11_MESH_OLPC (dev);
 	NMDHCPManager * dhcp_mgr = nm_dhcp_manager_get (NULL);
@@ -888,6 +889,19 @@ real_deactivate_quickly (NMDevice *dev)
 
 	/* Remove any dhclient.conf file we may have created for mshX */
 	remove (ETC_DHCLIENT_CONF_PATH);
+
+	/* If this is a forced device deactivation, reset everything and start
+	 * the mesh discovery process all over.
+	 */
+	if (force) {
+		self->priv->step = self->priv->default_first_step;
+		if (self->priv->default_first_step == MESH_S4_P2P_MESH)
+			self->priv->channel = 1;
+		else
+			self->priv->channel = get_random_channel ();
+		self->priv->chans_tried = 0;
+		self->priv->channel_locked = FALSE;
+	}
 }
 
 
@@ -1734,7 +1748,7 @@ nm_info ("%s: failing activation", __func__);
 		         nm_device_get_iface (NM_DEVICE (self)),
 		         self->priv->channel);
 		self->priv->channel = next_chan;
-		real_deactivate_quickly (NM_DEVICE (self));
+		real_deactivate_quickly (NM_DEVICE (self), FALSE);
 		nm_device_activate_schedule_stage2_device_config (req);
 	}
 }

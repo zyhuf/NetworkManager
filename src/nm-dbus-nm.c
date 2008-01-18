@@ -351,7 +351,7 @@ static DBusMessage *nm_dbus_nm_set_active_device (DBusConnection *connection, DB
 		         mesh_step == G_MAXUINT32 ? -1 : mesh_step);
 	}
 
-	nm_device_deactivate (dev);
+	nm_device_deactivate (dev, FALSE);
 	nm_schedule_state_change_signal_broadcast (data->data);
 	req = nm_act_request_new (data->data, dev, ap, TRUE);
 
@@ -539,40 +539,50 @@ static DBusMessage *nm_dbus_nm_remove_test_device (DBusConnection *connection, D
 
 static DBusMessage *nm_dbus_nm_set_wireless_enabled (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
 {
-	gboolean	enabled = FALSE;
-	DBusError	err;
-	NMData	*app_data;
+	gboolean enabled = FALSE;
+	DBusError err;
+	NMData *app_data;
+	GSList *elt;
+	DBusMessage *reply;
+	gboolean success = FALSE;
 
 	g_return_val_if_fail (data && data->data && connection && message, NULL);
 
 	dbus_error_init (&err);
 	if (!dbus_message_get_args (message, &err, DBUS_TYPE_BOOLEAN, &enabled, DBUS_TYPE_INVALID))
-		return NULL;
+		goto out;
 
 	app_data = data->data;
 	app_data->wireless_enabled = enabled;
 
-	if (!enabled)
-	{
-		GSList	*elt;
+	nm_lock_mutex (app_data->dev_list_mutex, __FUNCTION__);
+	for (elt = app_data->dev_list; elt; elt = g_slist_next (elt)) {
+		NMDevice *dev = (NMDevice *)(elt->data);
+		if (   nm_device_is_802_11_wireless (dev)
+		    || nm_device_is_802_11_mesh_olpc (dev)) {
 
-		/* Physically down all wireless devices */
-		nm_lock_mutex (app_data->dev_list_mutex, __FUNCTION__);
-		for (elt = app_data->dev_list; elt; elt = g_slist_next (elt))
-		{
-			NMDevice	*dev = (NMDevice *)(elt->data);
-			if (nm_device_is_802_11_wireless (dev) || nm_device_is_802_11_mesh_olpc (dev))
-			{
-				nm_device_deactivate (dev);
+			if (enabled) {
+				nm_info ("%s: (%s) setting TX power ON", __func__, nm_device_get_iface (dev));
+				nm_device_802_11_wireless_set_tx_power_on (dev, TRUE);
+			} else {
+				nm_device_deactivate (dev, TRUE);
 				nm_device_bring_down (dev);
+				nm_info ("%s: (%s) setting TX power OFF", __func__, nm_device_get_iface (dev));
+				nm_device_802_11_wireless_set_tx_power_on (dev, FALSE);
 			}
 		}
-		nm_unlock_mutex (app_data->dev_list_mutex, __FUNCTION__);
 	}
+	nm_unlock_mutex (app_data->dev_list_mutex, __FUNCTION__);
 
 	nm_policy_schedule_device_change_check (data->data);
+	success = TRUE;
 
-	return NULL;
+out:
+	reply = dbus_message_new_method_return (message);
+	if (reply)
+		dbus_message_append_args (reply, DBUS_TYPE_BOOLEAN, &success, DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *nm_dbus_nm_get_wireless_enabled (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
@@ -590,6 +600,8 @@ static DBusMessage *nm_dbus_nm_get_wireless_enabled (DBusConnection *connection,
 static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
 {
 	NMData	*app_data;
+	DBusMessage *reply = NULL;
+	gboolean success = TRUE;
 
 	g_return_val_if_fail (data && data->data && connection && message, NULL);
 
@@ -633,7 +645,7 @@ static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *m
 		{
 			NMDevice *dev = (NMDevice *)(elt->data);
 			nm_device_set_removed (dev, TRUE);
-			nm_device_deactivate_quickly (dev);
+			nm_device_deactivate_quickly (dev, TRUE);
 			nm_system_device_set_up_down (dev, FALSE);
 		}
 		nm_unlock_mutex (app_data->dev_list_mutex, __FUNCTION__);
@@ -644,7 +656,11 @@ static DBusMessage *nm_dbus_nm_sleep (DBusConnection *connection, DBusMessage *m
 		nm_unlock_mutex (app_data->dialup_list_mutex, __FUNCTION__);
 	}
 
-	return NULL;
+	reply = dbus_message_new_method_return (message);
+	if (reply)
+		dbus_message_append_args (reply, DBUS_TYPE_BOOLEAN, &success, DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *nm_dbus_nm_wake (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)
@@ -652,6 +668,8 @@ static DBusMessage *nm_dbus_nm_wake (DBusConnection *connection, DBusMessage *me
 	NMData	*app_data;
 	DBusMessageIter iter;
 	gboolean enable_networking = FALSE;
+	DBusMessage *reply = NULL;
+	gboolean success = TRUE;
 
 	g_return_val_if_fail (data && data->data && connection && message, NULL);
 
@@ -694,7 +712,11 @@ static DBusMessage *nm_dbus_nm_wake (DBusConnection *connection, DBusMessage *me
 		nm_policy_schedule_device_change_check (data->data);
 	}
 
-	return NULL;
+	reply = dbus_message_new_method_return (message);
+	if (reply)
+		dbus_message_append_args (reply, DBUS_TYPE_BOOLEAN, &success, DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *nm_dbus_nm_get_state (DBusConnection *connection, DBusMessage *message, NMDbusCBData *data)

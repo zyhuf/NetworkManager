@@ -32,6 +32,7 @@
 
 #include "nm-device.h"
 #include "nm-device-802-11-wireless.h"
+#include "nm-device-802-11-mesh-olpc.h"
 #include "nm-device-private.h"
 #include "NetworkManagerAPList.h"
 #include "NetworkManagerDbus.h"
@@ -416,6 +417,8 @@ real_init (NMDevice *dev)
 	nm_device_802_11_wireless_set_scan_interval (app_data, self, NM_WIRELESS_SCAN_INTERVAL_ACTIVE);
 
 	nm_device_802_11_wireless_set_mode (self, IW_MODE_INFRA);
+nm_info ("%s: setting TX power on", nm_device_get_iface (dev));
+	nm_device_802_11_wireless_set_tx_power_on (dev, TRUE);
 
 	/* Non-scanning devices show the entire allowed AP list as their
 	 * available networks.
@@ -650,7 +653,7 @@ real_start (NMDevice *dev)
 }
 
 static void
-real_deactivate_quickly (NMDevice *dev)
+real_deactivate_quickly (NMDevice *dev, gboolean force)
 {
 	NMDevice80211Wireless *	self = NM_DEVICE_802_11_WIRELESS (dev);
 
@@ -1137,6 +1140,56 @@ nm_device_802_11_wireless_is_scanning (NMDevice80211Wireless *self)
 	g_return_val_if_fail (self != NULL, FALSE);
 
 	return self->priv->scanning;
+}
+
+/*
+ * nm_device_set_tx_power_on
+ *
+ * Control TX power of the device
+ *
+ */
+gboolean
+nm_device_802_11_wireless_set_tx_power_on (NMDevice *self, gboolean on)
+{
+	NMSock * sk;
+	gboolean success = FALSE;
+	const char * iface;
+	struct iwreq wrq;
+
+	g_return_val_if_fail (self != NULL, FALSE);
+
+	if (!nm_device_is_802_11_wireless (self) && !nm_device_is_802_11_mesh_olpc (self))
+		return FALSE;
+
+	iface = nm_device_get_iface (NM_DEVICE (self));
+	sk = nm_dev_sock_open (NM_DEVICE (self), DEV_WIRELESS, __func__, NULL);
+	if (!sk) {
+		nm_warning ("%s: couldn't open socket to device", iface);
+		return FALSE;
+	}
+
+#ifdef IOCTL_DEBUG
+	nm_info ("%s: About to SET IWTXPOW.", iface);
+#endif
+
+	memset (&wrq, 0, sizeof (wrq));
+	wrq.u.txpower.fixed = on ? 0 : 1;
+	wrq.u.txpower.disabled = on ? 0 : 1;
+	wrq.u.txpower.flags = IW_TXPOW_DBM;
+
+	if (iw_set_ext (nm_dev_sock_get_fd (sk), iface, SIOCSIWTXPOW, &wrq) == 0) {
+		success = TRUE;
+		nm_info ("%s: set TX power %s", iface, on ? "on" : "off");
+	} else {
+		nm_warning ("%s: error setting TX power %s: (%d) %s",
+		            iface,
+		            on ? "on" : "off",
+		            errno,
+		            strerror (errno));
+	}
+	nm_dev_sock_close (sk);
+
+	return success;
 }
 
 

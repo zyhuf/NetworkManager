@@ -128,6 +128,8 @@ void	nm_device_802_11_wireless_register_scan_approval_hook (NMDevice80211Wireles
 
 double nm_device_802_11_wireless_get_frequency (NMDevice80211Wireless *self);
 
+gboolean nm_device_802_11_wireless_set_tx_power_on (NMDevice *self, gboolean on);
+
 G_END_DECLS
 
 #endif	/* NM_DEVICE_802_11_WIRELESS_H */
