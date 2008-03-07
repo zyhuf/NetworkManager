@@ -1,4 +1,8 @@
-2008-03-04  Dan Williams  <dcbw@redhat.com>
+2008-03-06  Dan Williams  <dcbw@redhat.com>
+
+	Release 0.6.6
+
+2008-03-06  Dan Williams  <dcbw@redhat.com>
 
 	* autogen.sh
 		- Die gnome-common, die
