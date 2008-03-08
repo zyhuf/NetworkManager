@@ -2,6 +2,15 @@
 
 	Patch from Bas Zoetekouw <bas@debian.org>
 
+	* src/named-manager/nm-named-manager.c
+		- (compute_searches): prefer searches before domains
+		- (compute_domain): new function
+		- (rewrite_resolv_conf): write out the 'domain' and 'searches' options
+
+2008-03-08  Dan Williams  <dcbw@redhat.com>
+
+	Patch from Bas Zoetekouw <bas@debian.org>
+
 	* src/dhcp-manager/nm-dhcp-manager.c
 		- (nm_dhcp_manager_get_ip4_config): handle domain-search option too
 

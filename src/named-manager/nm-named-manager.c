@@ -319,7 +319,7 @@ compute_nameservers (NMNamedManager *mgr, NMIP4Config *config)
 static char *
 compute_searches (NMNamedManager *mgr, NMIP4Config *config)
 {
-	int i, num_searches;
+	int i, num_searches, num_domains;
 	GString *str = NULL;
 
 	g_return_val_if_fail (mgr != NULL, g_strdup (""));
@@ -328,14 +328,47 @@ compute_searches (NMNamedManager *mgr, NMIP4Config *config)
 	if (!config)
 		return g_strdup ("");
 
-	num_searches = nm_ip4_config_get_num_domains (config);
-	for (i = 0; i < num_searches; i++)
-	{
-		if (!str)
-			str = g_string_new ("search");
+	num_searches = nm_ip4_config_get_num_searches (config);
+	num_domains  = nm_ip4_config_get_num_domains  (config);
 
-		g_string_append_c (str, ' ');
-		g_string_append (str, nm_ip4_config_get_domain (config, i));		
+	/* ISC DHCP 3.1 provides support for the domain-search option. This is the
+	 * correct way for a DHCP server to provide a domain search list. Wedging
+	 * multiple domains into the domain-name option is a horrible hack.
+	 *
+	 * So, we handle it like this (as proposed by Andrew Pollock at
+	 * http://bugs.debian.org/465158):
+	 *
+	 * - if the domain-search option is present in the data received via DHCP,
+	 *   use it in favour of the domain-name option for setting the search
+	 *   directive in /etc/resolv.conf
+	 *
+	 * - if the domain-name option is present in the data received via DHCP, use
+	 *   it to set the domain directive in /etc/resolv.conf
+	 *   (this is handled in compute_domain() below)
+	 *
+	 * - if only the domain-name option is present in the data received via DHCP
+	 *   (and domain-search is not), for backwards compatibility, set the search
+	 *   directive in /etc/resolv.conf to the specified domain names
+	 */
+
+	if ((num_searches == 0) && (num_domains > 0)) {
+		/* old, pre-ISC-3.1 fallback:
+		 * use (possibly multiple entries from) domain-name for the search entry */
+		str = g_string_new ("search");
+		for (i = 0; i < num_domains; i++) {
+			g_string_append_c (str, ' ');
+			g_string_append (str, nm_ip4_config_get_domain (config, i));
+		}
+	} else if (num_searches > 0) {
+		/* the "correct", post-ISC-3.1 situation: use searches just as received */
+		str = g_string_new ("search");
+		for (i = 0; i < num_searches; i++) {
+			g_string_append_c (str, ' ');
+			g_string_append (str, nm_ip4_config_get_search (config, i));
+		}
+	} else /* num_searches == 0 && num_domains == 0 */ {
+		/* no info available at all */
+		return g_strdup ("");
 	}
 
 	if (!str)
@@ -346,38 +379,62 @@ compute_searches (NMNamedManager *mgr, NMIP4Config *config)
 	return g_string_free (str, FALSE);
 }
 
+static char *
+compute_domain (NMNamedManager *mgr, NMIP4Config *config)
+{
+	int num_domains;
+	GString *str = NULL;
+
+	g_return_val_if_fail (mgr != NULL, g_strdup (""));
+
+	/* config can be NULL */
+	if (!config)
+		return g_strdup ("");
+
+	num_domains = nm_ip4_config_get_num_domains (config);
+	if (num_domains == 0)
+		return g_strdup ("");
+
+	str = g_string_new ("domain ");
+	g_string_append (str, nm_ip4_config_get_domain (config, 0));
+	g_string_append_c (str, '\n');
+
+	return g_string_free (str, FALSE);
+}
+
 static gboolean
 rewrite_resolv_conf (NMNamedManager *mgr, NMIP4Config *config, GError **error)
 {
 	const char *	tmp_resolv_conf = RESOLV_CONF ".tmp";
 	char *		searches = NULL;
+	char *		domain   = NULL;
 	FILE *		f;
 	NMIP4Config *ns_config = config;
+	gboolean success = FALSE;
 
 	/* If no config, we don't have anything to update, so exit silently */
 	if (!config)
 		return TRUE;
 
 	/* If the sysadmin disabled modifying resolv.conf, exit silently */
-	if (!nm_system_should_modify_resolv_conf ())
-	{
+	if (!nm_system_should_modify_resolv_conf ()) {
 		nm_info ("DHCP returned name servers but system has disabled dynamic modification!");
 		return TRUE;
 	}
 
 	if ((f = fopen (tmp_resolv_conf, "w")) == NULL)
-		goto lose;
+		goto done;
 
 	if (fprintf (f, "### BEGIN INFO\n#\n") < 0)
-		goto lose;
+		goto done;
 	if (fprintf (f, "# Modified_by:  NetworkManager\n") < 0)
-		goto lose;
+		goto done;
 	if (fprintf (f, "# Process:      /usr/bin/NetworkManager\n") < 0)
-		goto lose;
+		goto done;
 	if (fprintf (f, "# Process_id:   %d\n", getpid ()) < 0)
-		goto lose;
+		goto done;
 	if (fprintf (f, "#\n### END INFO\n\n") < 0)
-		goto lose;
+		goto done;
 
 	/* If the ip4 config is a secondary config and has no nameservers, use the
 	 * nameservers from the primary config.
@@ -388,39 +445,47 @@ rewrite_resolv_conf (NMNamedManager *mgr, NMIP4Config *config, GError **error)
 	}
 	g_return_val_if_fail (ns_config != NULL, FALSE);
 
+	domain   = compute_domain   (mgr, ns_config);
 	searches = compute_searches (mgr, ns_config);
 
 	if (mgr->priv->use_named == TRUE) {
 		/* Using caching-nameserver & local DNS */
-		if (fprintf (f, "%s%s%s", "; Use a local caching nameserver controlled by NetworkManager\n\n", searches, "\nnameserver 127.0.0.1\n") < 0)
-			goto lose;
+		if (fprintf (f, "%s%s%s%s",
+		             "; Use a local caching nameserver controlled by NetworkManager\n\n",
+		             domain,
+		             searches,
+		             "\nnameserver 127.0.0.1\n") < 0)
+			goto done;
 	} else {
 		/* Using glibc resolver */
 		char *nameservers = compute_nameservers (mgr, ns_config);
 
+		fprintf (f, "%s\n\n", domain);
 		fprintf (f, "%s\n\n", searches);
-		g_free (searches);
-
 		fprintf (f, "%s\n\n", nameservers);
+
 		g_free (nameservers);
 	}
 
-	if (fclose (f) < 0)
-		goto lose;
+	if (fclose (f) == 0) {
+		if (rename (tmp_resolv_conf, RESOLV_CONF) == 0) {
+			nm_system_update_dns ();
+			success = TRUE;
+		}
+	}
 
-	if (rename (tmp_resolv_conf, RESOLV_CONF) < 0)
-		goto lose;
-	nm_system_update_dns ();
-	return TRUE;
-
-lose:
+done:
+	g_free (domain);
 	g_free (searches);
 	fclose (f);
-	g_set_error (error,
-		     NM_NAMED_MANAGER_ERROR,
-		     NM_NAMED_MANAGER_ERROR_SYSTEM,
-		     "Could not update " RESOLV_CONF ": %s\n", g_strerror (errno));
-	return FALSE;
+
+	if (!success) {
+		g_set_error (error,
+			     NM_NAMED_MANAGER_ERROR,
+			     NM_NAMED_MANAGER_ERROR_SYSTEM,
+			     "Could not update " RESOLV_CONF ": %s\n", g_strerror (errno));
+	}
+	return success;
 }
 
 static const char *
