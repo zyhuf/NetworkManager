@@ -46,6 +46,7 @@ struct NMIP4Config
 
 	GSList *	nameservers;
 	GSList *	domains;
+	GSList *	searches;
 
 	gchar *	hostname;
 	gchar *	nis_domain;
@@ -264,17 +265,6 @@ guint32 nm_ip4_config_get_num_nis_servers (NMIP4Config *config)
 	return (g_slist_length (config->nis_servers));
 }
 
-void nm_ip4_config_add_domain (NMIP4Config *config, const char *domain)
-{
-	g_return_if_fail (config != NULL);
-	g_return_if_fail (domain != NULL);
-
-	if (!strlen (domain))
-		return;
-
-	config->domains = g_slist_append (config->domains, g_strdup (domain));
-}
-
 void nm_ip4_config_set_hostname (NMIP4Config *config, const char *hostname)
 {
 	g_return_if_fail (config != NULL);
@@ -310,6 +300,17 @@ const char *nm_ip4_config_get_nis_domain (NMIP4Config *config)
 	return config->nis_domain;
 }
 
+void nm_ip4_config_add_domain (NMIP4Config *config, const char *domain)
+{
+	g_return_if_fail (config != NULL);
+	g_return_if_fail (domain != NULL);
+
+	if (!strlen (domain))
+		return;
+
+	config->domains = g_slist_append (config->domains, g_strdup (domain));
+}
+
 const char *nm_ip4_config_get_domain (NMIP4Config *config, guint i)
 {
 	const char *domain;
@@ -327,6 +328,34 @@ guint32 nm_ip4_config_get_num_domains (NMIP4Config *config)
 	g_return_val_if_fail (config != NULL, 0);
 
 	return (g_slist_length (config->domains));
+}
+
+void nm_ip4_config_add_search (NMIP4Config *config, const char *search)
+{
+	g_return_if_fail (config != NULL);
+	g_return_if_fail (search != NULL);
+	g_return_if_fail (strlen (search) > 0);
+
+	config->searches = g_slist_append (config->searches, g_strdup (search));
+}
+
+const char *nm_ip4_config_get_search (NMIP4Config *config, guint i)
+{
+	const char *search;
+
+	g_return_val_if_fail (config != NULL, NULL);
+	g_return_val_if_fail (i < g_slist_length (config->searches), NULL);
+
+	if ((search = (const char *) g_slist_nth_data (config->searches, i)))
+		return search;
+	return NULL;
+}
+
+guint32 nm_ip4_config_get_num_searches (NMIP4Config *config)
+{
+	g_return_val_if_fail (config != NULL, 0);
+
+	return (g_slist_length (config->searches));
 }
 
 guint32 nm_ip4_config_get_mtu (NMIP4Config *config)
