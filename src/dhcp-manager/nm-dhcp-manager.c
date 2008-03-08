@@ -472,6 +472,7 @@ NMIP4Config * nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager, NMActReque
 	guint32		num_ip4_nis_servers = 0;
 	char *		hostname = NULL;
 	char *		domain_names = NULL;
+	char *		domain_searches = NULL;
 	char *		nis_domain = NULL;
 	guint32 *		ip4_nis_servers = NULL;
 	struct in_addr	temp_addr;
@@ -520,6 +521,7 @@ NMIP4Config * nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager, NMActReque
 	get_ip4_string (manager, dev, "host_name", &hostname, TRUE);
 	get_ip4_uint32s (manager, dev, "domain_name_servers", &ip4_nameservers, &num_ip4_nameservers, FALSE);
 	get_ip4_string (manager, dev, "domain_name", &domain_names, TRUE);
+	get_ip4_string (manager, dev, "domain_search", &domain_searches, TRUE);
 	get_ip4_string (manager, dev, "nis_domain", &nis_domain, TRUE);
 	get_ip4_uint32s (manager, dev, "nis_servers", &ip4_nis_servers, &num_ip4_nis_servers, TRUE);
 
@@ -557,13 +559,26 @@ NMIP4Config * nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager, NMActReque
 
 	if (domain_names)
 	{
-		char **searches = g_strsplit (domain_names, " ", 0);
+		char **domains = g_strsplit (domain_names, " ", 0);
+		char **s;
+
+		for (s = domains; *s; s++)
+		{
+			nm_info ("  domain name '%s'", *s);
+			nm_ip4_config_add_domain (ip4_config, *s);
+		}
+		g_strfreev (domains);
+	}
+
+	if (domain_searches)
+	{
+		char **searches = g_strsplit (domain_searches, " ", 0);
 		char **s;
 
 		for (s = searches; *s; s++)
 		{
-			nm_info ("  domain name '%s'", *s);
-			nm_ip4_config_add_domain (ip4_config, *s);
+			nm_info ("  domain search '%s'", *s);
+			nm_ip4_config_add_search (ip4_config, *s);
 		}
 		g_strfreev (searches);
 	}
