@@ -1,3 +1,12 @@
+2008-03-26  Dan Williams  <dcbw@redhat.com>
+
+	Patch from Valentine Sinitsyn <e_val@inbox.ru>   (gnome.org #353265)
+
+	* src/named-manager/nm-named-manager.c
+		- (compute_nameservers): return blank string if not config
+		- (rewrite_resolv_conf): write blank resolv.conf if no config, so that
+			cases like disabling wireless remove old information
+
 2008-03-08  Dan Williams  <dcbw@redhat.com>
 
 	Patch from Bas Zoetekouw <bas@debian.org>

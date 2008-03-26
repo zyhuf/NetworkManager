@@ -288,6 +288,10 @@ compute_nameservers (NMNamedManager *mgr, NMIP4Config *config)
 	g_return_val_if_fail (mgr != NULL, g_strdup (""));
 	g_return_val_if_fail (config != NULL, g_strdup (""));
 
+	/* config can be NULL */
+	if (!config)
+		return g_strdup ("");
+
 	num_nameservers = nm_ip4_config_get_num_nameservers (config);
 	if (num_nameservers > 3)
 		num_nameservers = 3; /* 'man resolv.conf' says we can't have > 3 */
@@ -411,10 +415,6 @@ rewrite_resolv_conf (NMNamedManager *mgr, NMIP4Config *config, GError **error)
 	FILE *		f;
 	NMIP4Config *ns_config = config;
 	gboolean success = FALSE;
-
-	/* If no config, we don't have anything to update, so exit silently */
-	if (!config)
-		return TRUE;
 
 	/* If the sysadmin disabled modifying resolv.conf, exit silently */
 	if (!nm_system_should_modify_resolv_conf ()) {
