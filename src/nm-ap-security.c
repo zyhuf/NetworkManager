@@ -145,6 +145,11 @@ nm_ap_security_new_from_ap (NMAccessPoint *ap)
 		security = NM_AP_SECURITY (nm_ap_security_leap_new_from_ap (ap));
 	else if (!nm_ap_get_encrypted (ap))
 		security = nm_ap_security_new (IW_AUTH_CIPHER_NONE);
+	else {
+		nm_warning ("%s: unhandled security for AP '%s' with caps 0x%X, enc %d",
+		            __func__, nm_ap_get_essid (ap) ? nm_ap_get_essid (ap) : "(none)",
+		            caps, nm_ap_get_encrypted (ap));
+	}
 
 	return security;
 }
