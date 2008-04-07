@@ -1,3 +1,4 @@
+# translation of NetworkManager-openvpn.NETWORKMANAGER_0_6_0_RELEASE.po to Español
 # Spanish message file for YaST2 (@memory@).
 # Copyright (C) 2005 SUSE Linux Products GmbH.
 # Copyright (C) 2002, 2003 SuSE Linux AG.
@@ -7,15 +8,15 @@
 # Javier Moreno <javier.moreno@alufis35.uv.es>, 2000.
 # Jordi Jaen Pallares <jordi@suse.de>, 1999, 2000, 2001.
 # Pablo Iranzo Gómez <Pablo.Iranzo@uv.es>, 2000.
-# Jorge González <jorgegonz@svn.gnome.org>, 2007.
+# Jorge González <jorgegonz@svn.gnome.org>, 2007, 2008.
 msgid ""
 msgstr ""
-"Project-Id-Version: NetworkManager-openvpn.NETWORKMANAGER_0_6_0_RELEASE.es\n"
+"Project-Id-Version: NetworkManager-openvpn.NETWORKMANAGER_0_6_0_RELEASE\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2007-06-18 03:38+0100\n"
-"PO-Revision-Date: 2007-08-22 15:05+0200\n"
+"POT-Creation-Date: 2007-08-22 14:06+0100\n"
+"PO-Revision-Date: 2008-04-07 19:29+0200\n"
 "Last-Translator: Jorge González <jorgegonz@svn.gnome.org>\n"
-"Language-Team: Spanish <traductores@es.gnome.org>\n"
+"Language-Team: Español <gnome-es-list@gnome.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -334,7 +335,7 @@ msgstr "65536"
 # clients/online_update_details.ycp:113
 #: ../properties/nm-openvpn-dialog.glade.h:5
 msgid "<b>Connection Information</b>"
-msgstr "<b>Información de la conexión</b>                 <b>"
+msgstr "<b>Información de la conexión</b>"
 
 #: ../properties/nm-openvpn-dialog.glade.h:6
 msgid "<b>Connection Name</b>"
@@ -391,8 +392,8 @@ msgid ""
 "Name used to identify the connection to the private network, e.g. \"Campus "
 "VPN\" or \"Corporate Network\""
 msgstr ""
-"Nombre a usar para identificar la conexión con la red privada, ej: «Campus VPN» "
-"o «Red de la empresa»"
+"Nombre a usar para identificar la conexión con la red privada, ej: «Campus "
+"VPN» o «Red de la empresa»"
 
 #: ../properties/nm-openvpn-dialog.glade.h:18
 msgid "Network"
@@ -415,16 +416,17 @@ msgid ""
 "Please enter the information provided by your system administrator below. Do "
 "not enter your password here as you will be prompted when connecting."
 msgstr ""
-"Introduzca debajo la información proporcionada por el administrador de su sistema. No "
-"introduzca aquí su contraseña ya que se le preguntará al conectar."
+"Introduzca debajo la información proporcionada por el administrador de su "
+"sistema. No introduzca aquí su contraseña ya que se le preguntará al "
+"conectar."
 
 #: ../properties/nm-openvpn-dialog.glade.h:23
 msgid ""
 "Please note that the file you import is not an OpenVPN configuration file. "
 "Ask your administrator for the file."
 msgstr ""
-"Note que el archivo que ha importado no es un archivo de configuración para OpenVPN. "
-"Pregunte a su administrador acerca del archivo."
+"Note que el archivo que ha importado no es un archivo de configuración para "
+"OpenVPN. Pregunte a su administrador acerca del archivo."
 
 # include/partitioning/lvm_ui_lib.ycp:363 include/partitioning/raid_ui.ycp:349
 # include/partitioning/lvm_ui_lib.ycp:363 include/partitioning/raid_ui.ycp:349
@@ -514,8 +516,8 @@ msgid ""
 "The VPN login failed because the user name and password were not accepted or "
 "the certificate password was wrong."
 msgstr ""
-"El registro en la red VPN falló porque no se aceptaron el nombre de usuario y la contraseña o "
-"el certificado de la contraseña era incorrecto."
+"El registro en la red VPN falló porque no se aceptaron el nombre de usuario "
+"y la contraseña o el certificado de la contraseña era incorrecto."
 
 #: ../src/nm-openvpn-service.c:129
 msgid "The VPN login failed because the VPN program could not be started."
@@ -526,20 +528,22 @@ msgid ""
 "The VPN login failed because the VPN program could not connect to the VPN "
 "server."
 msgstr ""
-"El registro en la red VPN falló porque el programa VPN no pudo conectarse al servidor "
-"VPN."
+"El registro en la red VPN falló porque el programa VPN no pudo conectarse al "
+"servidor VPN."
 
 #: ../src/nm-openvpn-service.c:133
 msgid "The VPN login failed because the VPN configuration options were invalid."
-msgstr "El registro en la red VPN falló porque las opciones de configuración VPN no son válidas."
+msgstr ""
+"El registro en la red VPN falló porque las opciones de configuración VPN no "
+"son válidas."
 
 #: ../src/nm-openvpn-service.c:135
 msgid ""
 "The VPN login failed because the VPN program received an invalid "
 "configuration from the VPN server."
 msgstr ""
-"El registro en la red VPN falló porque el programa VPN recibió una configuración "
-"no válida del servidor VPN."
+"El registro en la red VPN falló porque el programa VPN recibió una "
+"configuración no válida del servidor VPN."
 
 # clients/rc_config_step1.ycp:296
 #: ../src/nm-openvpn-service.c:137
