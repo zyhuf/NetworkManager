@@ -31,6 +31,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "nm-device.h"
 #include "nm-device-802-11-wireless.h"
@@ -295,14 +296,34 @@ real_get_generic_capabilities (NMDevice *dev)
 	guint32			caps = NM_DEVICE_CAP_NONE;
 	iwrange			range;
 	struct iwreq		wrq;
+	int i = 24;
+	const char *iface;
 
 	/* Check for Wireless Extensions support >= 16 for wireless devices */
 
 	if (!(sk = nm_dev_sock_open (dev, DEV_WIRELESS, __func__, NULL)))
 		goto out;
 
-	if (iw_get_range_info (nm_dev_sock_get_fd (sk), nm_device_get_iface (dev), &range) < 0)
+	iface = nm_device_get_iface (dev);
+
+	/* Need to give some drivers time to recover after suspend/resume
+	 * (ipw3945 specifically; see rhbz #362421, rhbz #312911)
+	 */
+	while (i-- > 0) {
+		err = iw_get_range_info (nm_dev_sock_get_fd (sk), iface, &range);
+		if (err == 0)
+			break;
+
+		if ((err < 0) && (errno != EAGAIN))  /* Real error */
+			goto out;
+
+		g_usleep (G_USEC_PER_SEC / 4);
+	}
+
+	if (i <= 0) {
+		nm_warning ("%s: device took too long to respond to IWRANGE query.", iface);
 		goto out;
+	}
 
 	if (range.we_version_compiled < 16)
 	{

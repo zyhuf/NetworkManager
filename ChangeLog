@@ -1,5 +1,13 @@
 2008-04-10  Dan Williams  <dcbw@redhat.com>
 
+	* src/nm-device-802-11-wireless.c
+		- (real_get_generic_capabilities): give the driver some time to respond;
+			mainly for ipw3945 and the binary regulatory daemon which stupidly
+			need a few seconds after resume to actually work.  People should
+			really start using iwlwifi instead.
+
+2008-04-10  Dan Williams  <dcbw@redhat.com>
+
 	Patch from Alan Jenkins <alan-jenkins@tuffmail.co.uk>
 
 	* dispatcher-daemon/NetworkManagerDispatcher.c
