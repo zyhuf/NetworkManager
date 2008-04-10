@@ -52,6 +52,14 @@ typedef enum NMDAction	NMDAction;
 
 #define NMD_DEFAULT_PID_FILE	LOCALSTATEDIR"/run/NetworkManagerDispatcher.pid"
 
+/*
+ * Saved device path -> interface name mappings.
+ * (char* -> char*)
+ *
+ * Used in case the network device is removed before we can query the interface name.
+ */
+static GHashTable *dev_name_table = NULL;
+
 static DBusConnection *nmd_dbus_init (void);
 
 /*
@@ -176,6 +184,38 @@ static char * nmd_get_device_name (DBusConnection *connection, char *path)
 }
 
 /*
+ * nmd_dispatch
+ *
+ * Determine the device interface name and call execute_scripts
+ */
+static void nmd_dispatch(DBusConnection *connection, char *dev_object_path, NMDAction action)
+{
+	char *	dev_iface_name;
+
+	dev_iface_name = g_hash_table_lookup (dev_name_table, dev_object_path);
+	
+	if (!dev_iface_name) {
+		dev_iface_name = nmd_get_device_name (connection, dev_object_path);
+		
+		if (!dev_iface_name)
+			return;
+
+		g_hash_table_insert (dev_name_table, g_strdup (dev_object_path), dev_iface_name);
+	}
+			
+	nm_info ("Device %s (%s) is now %s.", dev_object_path, dev_iface_name,
+			(action == NMD_DEVICE_NOW_INACTIVE ? "down" :
+			(action == NMD_DEVICE_NOW_ACTIVE ? "up" : "error")));
+
+	nmd_execute_scripts (action, dev_iface_name);
+
+	if (action == NMD_DEVICE_NOW_INACTIVE) {
+		g_hash_table_remove (dev_name_table, dev_object_path);
+	}
+}
+
+
+/*
  * nmd reinit_dbus
  *
  * Reconnect to the system message bus if the connection was dropped.
@@ -225,23 +265,10 @@ static DBusHandlerResult nmd_dbus_filter (DBusConnection *connection, DBusMessag
 	{
 		if (dbus_message_get_args (message, &error, DBUS_TYPE_OBJECT_PATH, &dev_object_path, DBUS_TYPE_INVALID))
 		{
-			char *	dev_iface_name = NULL;
-
 			dev_object_path = nm_dbus_unescape_object_path (dev_object_path);
 			if (dev_object_path)
-				dev_iface_name = nmd_get_device_name (connection, dev_object_path);
-
-			if (dev_object_path && dev_iface_name)
-			{
-				nm_info ("Device %s (%s) is now %s.", dev_object_path, dev_iface_name,
-						(action == NMD_DEVICE_NOW_INACTIVE ? "down" :
-						(action == NMD_DEVICE_NOW_ACTIVE ? "up" : "error")));
-
-				nmd_execute_scripts (action, dev_iface_name);
-			}
-
+				nmd_dispatch (connection, dev_object_path, action);
 			g_free (dev_object_path);
-			g_free (dev_iface_name);
 
 			handled = TRUE;
 		}
@@ -401,6 +428,8 @@ int main (int argc, char *argv[])
 	g_type_init ();
 	if (!g_thread_supported ())
 		g_thread_init (NULL);
+
+	dev_name_table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
 	/* Connect to the NetworkManager dbus service and run the main loop */
 	if ((connection = nmd_dbus_init ()))

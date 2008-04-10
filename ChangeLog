@@ -1,3 +1,12 @@
+2008-04-10  Dan Williams  <dcbw@redhat.com>
+
+	Patch from Alan Jenkins <alan-jenkins@tuffmail.co.uk>
+
+	* dispatcher-daemon/NetworkManagerDispatcher.c
+		- Cache device interface name so it's available after the device has
+			been removed; otherwise the device might be gone from NM before
+			the dispatcher has had time to ask NM for the interface name
+
 2008-03-26  Dan Williams  <dcbw@redhat.com>
 
 	Patch from Valentine Sinitsyn <e_val@inbox.ru>   (gnome.org #353265)
