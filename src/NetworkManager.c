@@ -791,7 +791,7 @@ static gboolean sigterm_pipe_handler (GIOChannel *src, GIOCondition condition, g
 {
 	NMData *		data = user_data;
 
-	nm_info ("Caught terminiation signal");
+	nm_info ("Caught termination signal");
 	g_main_loop_quit (data->main_loop);
 	return FALSE;
 }
