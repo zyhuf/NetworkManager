@@ -1,3 +1,10 @@
+2008-06-04  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-wireless.c
+		- (supplicant_send_network_config): always send scan_ssid=1 for
+			infrastructure networks; drivers will ignore it if they
+			don't support it
+
 2008-04-10  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-device-802-11-wireless.c

@@ -2466,16 +2466,6 @@ supplicant_send_network_config (NMDevice80211Wireless *self,
 			"SET_NETWORK %i ssid %s", nwid, hex_essid))
 		goto out;
 
-	/* For non-broadcast networks, we need to set "scan_ssid 1" to scan with probe request frames.
-	 * However, don't try to probe Ad-Hoc networks.
-	 */
-	if (!nm_ap_get_broadcast (ap) && !is_adhoc)
-	{
-		if (!nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, NULL,
-				"SET_NETWORK %i scan_ssid 1", nwid))
-			goto out;
-	}
-
 	/* Ad-Hoc ? */
 	if (is_adhoc) {
 		guint32 adhoc_freq = nm_ap_get_freq (ap);
@@ -2494,6 +2484,13 @@ supplicant_send_network_config (NMDevice80211Wireless *self,
 		nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, NULL,
 		                                        "SET_NETWORK %i frequency %d",
 		                                        nwid, adhoc_freq);
+	}
+	else
+	{
+		/* Request that APs be probe-scanned when possible */
+		if (!nm_utils_supplicant_request_with_check (ctrl, "OK", __func__, NULL,
+				"SET_NETWORK %i scan_ssid 1", nwid))
+			goto out;
 	}
 
 	if (nm_device_activation_should_cancel (NM_DEVICE (self)))
