@@ -3152,9 +3152,18 @@ add_new_ap_to_device_list (NMDevice80211Wireless *dev,
 {
 	GTimeVal cur_time;
 	NMAccessPointList *	ap_list;
+	const struct ether_addr *addr;
+	const char bad_bssid1[ETH_ALEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	const char bad_bssid2[ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 	g_return_if_fail (dev != NULL);
 	g_return_if_fail (ap != NULL);
+
+	/* Ignore invalid APs */
+	addr = nm_ap_get_address (ap);
+	if (   !memcmp (addr->ether_addr_octet, bad_bssid1, ETH_ALEN)
+	    || !memcmp (addr->ether_addr_octet, bad_bssid2, ETH_ALEN))
+    	return;
 
 	g_get_current_time (&cur_time);
 	nm_ap_set_last_seen (ap, &cur_time);
