@@ -69,6 +69,8 @@ static NMAccessPoint *nm_dbus_get_ap_from_object_path (const char *path, NMDevic
 
 		compare_path = g_strdup_printf ("%s/%s/Networks/%s",
 		                                NM_DBUS_PATH_DEVICES, escaped_dev, escaped_ssid);
+		g_free (escaped_dev);
+		g_free (escaped_ssid);
 
 		len = strlen (compare_path);
 		if (strncmp (path, compare_path, len) == 0) {
