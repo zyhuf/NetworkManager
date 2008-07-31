@@ -19,10 +19,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -32,8 +28,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libhal/libhal.h"
-#include "../../logger.h"
+#include "nm-utils.h"
+#include "probe-modem.h"
+
 
 #define MODEM_CAP_GSM         0x0001 /* GSM commands */
 #define MODEM_CAP_IS707_A     0x0002 /* CDMA circuit switched data commands */
@@ -115,31 +112,15 @@ static int modem_probe_caps(int fd)
 	return ret;
 }
 
-int main(int argc, char *argv[])
+int probe_modem (const char* device, const char *udi, LibHalContext *ctx)
 {
 	struct termios orig, attrs;
-	DBusError error;
-	LibHalContext *ctx;
-	char *udi;
-	char *device;
 	int fd, caps;
-
-	setup_logger();
-
-	if ((udi = getenv("UDI")) == NULL) {
-		HAL_ERROR(("UDI is not set"));
-		return -1;
-	}
-	
-	if ((device = getenv("HAL_PROP_SERIAL_DEVICE")) == NULL) {
-		HAL_ERROR(("HAL_PROP_SERIAL_DEVICE is not set"));
-		return -1;
-	}
 
 	fd = open(device, O_RDWR|O_NDELAY);
 
 	if (-1 == fd) {
-		HAL_ERROR(("open(%s): %s", device, strerror(errno)));
+		nm_error("open(%s): %s", device, strerror(errno));
 		return -1;
 	}
 
@@ -160,26 +141,21 @@ int main(int argc, char *argv[])
 	tcsetattr(fd, TCSANOW, &orig);
 
 	if (caps < 0) {
-		HAL_ERROR(("Couldn't get caps"));
+		nm_debug("Couldn't get caps");
 		return -1;
 	}
 	
-	dbus_error_init (&error);
-
-	if ((ctx = libhal_ctx_init_direct(&error)) == NULL) {
-		HAL_ERROR(("ctx init failed"));
-		return -1;
-	}
-
 	if (caps & MODEM_CAP_GSM) {
-		HAL_DEBUG(("Found GSM modem"));
+		nm_debug("Found GSM modem");
 		libhal_device_property_strlist_append(ctx, udi, "modem.command_sets", "GSM-07.07", NULL);
 		libhal_device_property_strlist_append(ctx, udi, "modem.command_sets", "GSM-07.05", NULL);
+		return 1;
 	}
 	
 	if (caps & MODEM_CAP_IS707_A) {
-		HAL_DEBUG(("Found CDMA modem"));
+		nm_debug("Found CDMA modem");
 		libhal_device_property_strlist_append(ctx, udi, "modem.command_sets", "IS-707-A", NULL);
+		return 1;
 	}
 	
 	return 0;

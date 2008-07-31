@@ -15,6 +15,7 @@
 #include "nm-device-ethernet.h"
 #include "nm-gsm-device.h"
 #include "nm-cdma-device.h"
+#include "probe-modem.h"
 
 /* Killswitch poll frequency in seconds */
 #define RFKILL_POLL_FREQUENCY 6
@@ -231,6 +232,7 @@ modem_device_creator (NMHalManager *self, const char *udi, gboolean managed)
 	char **capabilities, **iter;
 	gboolean type_gsm = FALSE;
 	gboolean type_cdma = FALSE;
+	gboolean type_v250 = FALSE;
 
 	serial_device = libhal_device_get_property_string (priv->hal_ctx, udi, "serial.device", NULL);
 
@@ -244,6 +246,7 @@ modem_device_creator (NMHalManager *self, const char *udi, gboolean managed)
 	if (!serial_device || !driver_name)
 		goto out;
 
+retry:
 	capabilities = libhal_device_get_property_strlist (priv->hal_ctx, udi, "modem.command_sets", NULL);
 	/* 'capabilites' may be NULL */
 	for (iter = capabilities; iter && *iter; iter++) {
@@ -254,6 +257,10 @@ modem_device_creator (NMHalManager *self, const char *udi, gboolean managed)
 		if (!strcmp (*iter, "IS-707-A")) {
 			type_cdma = TRUE;
 			break;
+		}
+		if (!strcmp (*iter, "V.250")) {
+			type_v250 = TRUE;
+			/* no break here! */
 		}
 	}
 	g_strfreev (capabilities);
@@ -272,6 +279,14 @@ modem_device_creator (NMHalManager *self, const char *udi, gboolean managed)
 			}
 		}
 		g_strfreev (capabilities);
+	}
+
+	/* V.250 probe */
+	if (!type_gsm && !type_cdma && type_v250) {
+		if (probe_modem (serial_device, udi, priv->hal_ctx) == 1) {
+			/* probe changed something */
+			goto retry;
+		}
 	}
 
 	if (type_gsm)
