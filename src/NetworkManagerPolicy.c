@@ -41,8 +41,6 @@
 #include "nm-device.h"
 #include "nm-device-wifi.h"
 #include "nm-device-ethernet.h"
-#include "nm-gsm-device.h"
-#include "nm-cdma-device.h"
 #include "nm-dbus-manager.h"
 #include "nm-setting-ip4-config.h"
 #include "nm-setting-connection.h"
@@ -99,10 +97,10 @@ update_default_route (NMPolicy *policy, NMDevice *new)
 static guint32
 get_device_priority (NMDevice *dev)
 {
-	if (NM_IS_CDMA_DEVICE (dev))
+	if (nm_device_get_device_type (dev) == NM_DEVICE_TYPE_CDMA)
 		return 2;
 
-	if (NM_IS_GSM_DEVICE (dev))
+	if (nm_device_get_device_type (dev) == NM_DEVICE_TYPE_GSM)
 		return 3;
 
 	if (NM_IS_DEVICE_WIFI (dev))

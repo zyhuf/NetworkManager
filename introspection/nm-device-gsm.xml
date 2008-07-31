@@ -3,6 +3,10 @@
 <node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.freedesktop.NetworkManager.Device.Gsm">
 
+   <signal name="SignalQuality">
+     <arg name="quality" type="u"/>
+   </signal>
+
     <signal name="PropertiesChanged">
         <arg name="properties" type="a{sv}" tp:type="String_Variant_Map">
             <tp:docstring>
