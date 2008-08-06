@@ -1,4 +1,27 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
+
+/*
+ * Dan Williams <dcbw@redhat.com>
+ * Tambet Ingo <tambet@gmail.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301 USA.
+ *
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ * (C) Copyright 2007 - 2008 Novell, Inc.
+ */
 
 #include <glib-object.h>
 #include <dbus/dbus-glib.h>
@@ -21,6 +44,37 @@
 #include "nm-setting-serial.h"
 #include "nm-setting-gsm.h"
 #include "nm-setting-cdma.h"
+
+GQuark
+nm_connection_error_quark (void)
+{
+	static GQuark quark;
+
+	if (G_UNLIKELY (!quark))
+		quark = g_quark_from_static_string ("nm-connection-error-quark");
+	return quark;
+}
+
+/* This should really be standard. */
+#define ENUM_ENTRY(NAME, DESC) { NAME, "" #NAME "", DESC }
+
+GType
+nm_connection_error_get_type (void)
+{
+	static GType etype = 0;
+
+	if (etype == 0) {
+		static const GEnumValue values[] = {
+			/* Unknown error. */
+			ENUM_ENTRY (NM_CONNECTION_ERROR_UNKNOWN, "UnknownError"),
+			/* The required 'connection' setting was not found. */
+			ENUM_ENTRY (NM_CONNECTION_ERROR_CONNECTION_SETTING_NOT_FOUND, "ConnectionSettingNotFound"),
+			{ 0, 0, 0 }
+		};
+		etype = g_enum_register_static ("NMConnectionError", values);
+	}
+	return etype;
+}
 
 typedef struct {
 	GHashTable *settings;
@@ -407,7 +461,7 @@ gboolean
 nm_connection_verify (NMConnection *connection, GError **error)
 {
 	NMConnectionPrivate *priv;
-	NMSetting *connection_setting;
+	NMSetting *s_con;
 	VerifySettingsInfo info;
 
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), FALSE);
@@ -417,9 +471,12 @@ nm_connection_verify (NMConnection *connection, GError **error)
 	priv = NM_CONNECTION_GET_PRIVATE (connection);
 
 	/* First, make sure there's at least 'connection' setting */
-	connection_setting = nm_connection_get_setting (connection, NM_TYPE_SETTING_CONNECTION);
-	if (!connection_setting) {
-		g_warning ("'connection' setting not present.");
+	s_con = nm_connection_get_setting (connection, NM_TYPE_SETTING_CONNECTION);
+	if (!s_con) {
+		g_set_error (error,
+		             NM_CONNECTION_ERROR,
+		             NM_CONNECTION_ERROR_CONNECTION_SETTING_NOT_FOUND,
+		             "connection setting not found");
 		return FALSE;
 	}
 

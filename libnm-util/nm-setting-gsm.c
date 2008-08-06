@@ -1,4 +1,27 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
+
+/*
+ * Dan Williams <dcbw@redhat.com>
+ * Tambet Ingo <tambet@gmail.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301 USA.
+ *
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ * (C) Copyright 2007 - 2008 Novell, Inc.
+ */
 
 #include <string.h>
 #include "nm-setting-gsm.h"
@@ -110,7 +133,40 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 		return FALSE;
 	}
 
+	if (self->username && !strlen (self->username)) {
+		g_set_error (error,
+		             NM_SETTING_GSM_ERROR,
+		             NM_SETTING_GSM_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_GSM_USERNAME);
+		return FALSE;
+	}
+
+	if (self->password && !strlen (self->password)) {
+		g_set_error (error,
+		             NM_SETTING_GSM_ERROR,
+		             NM_SETTING_GSM_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_GSM_USERNAME);
+		return FALSE;
+	}
+
 	return TRUE;
+}
+
+static GPtrArray *
+need_secrets (NMSetting *setting)
+{
+	NMSettingGsm *self = NM_SETTING_GSM (setting);
+	GPtrArray *secrets = NULL;
+
+	if (self->password)
+		return NULL;
+
+	if (self->username) {
+		secrets = g_ptr_array_sized_new (1);
+		g_ptr_array_add (secrets, NM_SETTING_GSM_PASSWORD);
+	}
+
+	return secrets;
 }
 
 static void
@@ -233,6 +289,7 @@ nm_setting_gsm_class_init (NMSettingGsmClass *setting_class)
 	object_class->get_property = get_property;
 	object_class->finalize     = finalize;
 	parent_class->verify       = verify;
+	parent_class->need_secrets = need_secrets;
 
 	/* Properties */
 	g_object_class_install_property

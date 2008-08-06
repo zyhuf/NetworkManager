@@ -1,4 +1,27 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
+
+/*
+ * Dan Williams <dcbw@redhat.com>
+ * Tambet Ingo <tambet@gmail.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301 USA.
+ *
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ * (C) Copyright 2007 - 2008 Novell, Inc.
+ */
 
 #ifndef NM_CONNECTION_H
 #define NM_CONNECTION_H
@@ -21,6 +44,18 @@ typedef enum {
 	NM_CONNECTION_SCOPE_SYSTEM,
 	NM_CONNECTION_SCOPE_USER
 } NMConnectionScope;
+
+typedef enum
+{
+	NM_CONNECTION_ERROR_UNKNOWN = 0,
+	NM_CONNECTION_ERROR_CONNECTION_SETTING_NOT_FOUND
+} NMConnectionError;
+
+#define NM_TYPE_CONNECTION_ERROR (nm_connection_error_get_type ()) 
+GType nm_connection_error_get_type (void);
+
+#define NM_CONNECTION_ERROR nm_connection_error_quark ()
+GQuark nm_connection_error_quark (void);
 
 #define NM_CONNECTION_SCOPE "scope"
 #define NM_CONNECTION_PATH "path"

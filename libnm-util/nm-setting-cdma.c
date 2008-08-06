@@ -1,5 +1,26 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 
+/*
+ * Dan Williams <dcbw@redhat.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301 USA.
+ *
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ */
+
 #include <string.h>
 #include "nm-setting-cdma.h"
 #include "nm-setting-serial.h"
@@ -96,7 +117,40 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 		return FALSE;
 	}
 
+	if (self->username && !strlen (self->username)) {
+		g_set_error (error,
+		             NM_SETTING_CDMA_ERROR,
+		             NM_SETTING_CDMA_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_CDMA_USERNAME);
+		return FALSE;
+	}
+
+	if (self->password && !strlen (self->password)) {
+		g_set_error (error,
+		             NM_SETTING_CDMA_ERROR,
+		             NM_SETTING_CDMA_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_CDMA_PASSWORD);
+		return FALSE;
+	}
+
 	return TRUE;
+}
+
+static GPtrArray *
+need_secrets (NMSetting *setting)
+{
+	NMSettingCdma *self = NM_SETTING_CDMA (setting);
+	GPtrArray *secrets = NULL;
+
+	if (self->password)
+		return NULL;
+
+	if (self->username) {
+		secrets = g_ptr_array_sized_new (1);
+		g_ptr_array_add (secrets, NM_SETTING_CDMA_PASSWORD);
+	}
+
+	return secrets;
 }
 
 static void
@@ -175,6 +229,7 @@ nm_setting_cdma_class_init (NMSettingCdmaClass *setting_class)
 	object_class->get_property = get_property;
 	object_class->finalize     = finalize;
 	parent_class->verify       = verify;
+	parent_class->need_secrets = need_secrets;
 
 	/* Properties */
 	g_object_class_install_property

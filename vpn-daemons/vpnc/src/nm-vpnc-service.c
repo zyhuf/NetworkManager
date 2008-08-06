@@ -30,13 +30,15 @@ static const char *vpnc_binary_paths[] =
 	NULL
 };
 
-#define NM_VPNC_HELPER_PATH		BINDIR"/nm-vpnc-service-vpnc-helper"
+#define NM_VPNC_HELPER_PATH		LIBEXECDIR"/nm-vpnc-service-vpnc-helper"
 #define NM_VPNC_UDP_ENCAPSULATION_PORT	0 /* random port */
 
 typedef struct {
 	const char *name;
 	GType type;
 } ValidProperty;
+
+#define LEGACY_NAT_KEEPALIVE "NAT-Keepalive packet interval"
 
 static ValidProperty valid_properties[] = {
 	{ NM_VPNC_KEY_GATEWAY,               G_TYPE_STRING },
@@ -53,6 +55,8 @@ static ValidProperty valid_properties[] = {
 	{ NM_VPNC_KEY_DPD_IDLE_TIMEOUT,      G_TYPE_INT },
 	{ NM_VPNC_KEY_NAT_TRAVERSAL_MODE,    G_TYPE_STRING },
 	{ NM_VPNC_KEY_CISCO_UDP_ENCAPS_PORT, G_TYPE_INT },
+	/* Legacy options that are ignored */
+	{ LEGACY_NAT_KEEPALIVE,              G_TYPE_STRING },
 	{ NULL,                              G_TYPE_NONE }
 };
 

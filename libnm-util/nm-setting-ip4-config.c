@@ -1,5 +1,28 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 
+/*
+ * Dan Williams <dcbw@redhat.com>
+ * Tambet Ingo <tambet@gmail.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301 USA.
+ *
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ * (C) Copyright 2007 - 2008 Novell, Inc.
+ */
+
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
@@ -89,7 +112,7 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 			             NM_SETTING_IP4_CONFIG_ADDRESSES);
 			return FALSE;
 		}
-	} else if (   !strcmp (self->method, NM_SETTING_IP4_CONFIG_METHOD_AUTOIP)
+	} else if (   !strcmp (self->method, NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL)
 	           || !strcmp (self->method, NM_SETTING_IP4_CONFIG_METHOD_SHARED)) {
 		if (self->dns && self->dns->len) {
 			g_set_error (error,
@@ -114,7 +137,7 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 			             NM_SETTING_IP4_CONFIG_ADDRESSES);
 			return FALSE;
 		}
-	} else if (!strcmp (self->method, NM_SETTING_IP4_CONFIG_METHOD_DHCP)) {
+	} else if (!strcmp (self->method, NM_SETTING_IP4_CONFIG_METHOD_AUTO)) {
 		/* nothing to do */
 	} else {
 		g_set_error (error,
@@ -125,12 +148,18 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 	}
 
 	if (self->dhcp_client_id && !strlen (self->dhcp_client_id)) {
-		g_warning ("invalid DHCP client ID");
+		g_set_error (error,
+		             NM_SETTING_IP4_CONFIG_ERROR,
+		             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID);
 		return FALSE;
 	}
 
 	if (self->dhcp_hostname && !strlen (self->dhcp_hostname)) {
-		g_warning ("invalid DHCP client ID");
+		g_set_error (error,
+		             NM_SETTING_IP4_CONFIG_ERROR,
+		             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+		             NM_SETTING_IP4_CONFIG_DHCP_HOSTNAME);
 		return FALSE;
 	}
 
@@ -139,13 +168,39 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 		NMSettingIP4Address *addr = (NMSettingIP4Address *) iter->data;
 
 		if (!addr->address) {
-			g_warning ("invalid IP4 address #%d", i);
+			g_set_error (error,
+			             NM_SETTING_IP4_CONFIG_ERROR,
+			             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+			             NM_SETTING_IP4_CONFIG_ADDRESSES);
 			return FALSE;
 		}
 
 		if (!addr->prefix || addr->prefix > 32) {
-			g_warning ("invalid IP4 address prefix %d for address #%d",
-			           addr->prefix, i);
+			g_set_error (error,
+			             NM_SETTING_IP4_CONFIG_ERROR,
+			             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+			             NM_SETTING_IP4_CONFIG_ADDRESSES);
+			return FALSE;
+		}
+	}
+
+	/* Validate routes */
+	for (iter = self->routes, i = 0; iter; iter = g_slist_next (iter), i++) {
+		NMSettingIP4Address *addr = (NMSettingIP4Address *) iter->data;
+
+		if (!addr->address) {
+			g_set_error (error,
+			             NM_SETTING_IP4_CONFIG_ERROR,
+			             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+			             NM_SETTING_IP4_CONFIG_ROUTES);
+			return FALSE;
+		}
+
+		if (!addr->prefix || addr->prefix > 32) {
+			g_set_error (error,
+			             NM_SETTING_IP4_CONFIG_ERROR,
+			             NM_SETTING_IP4_CONFIG_ERROR_INVALID_PROPERTY,
+			             NM_SETTING_IP4_CONFIG_ROUTES);
 			return FALSE;
 		}
 	}
@@ -172,6 +227,7 @@ finalize (GObject *object)
 
 	nm_utils_slist_free (self->dns_search, g_free);
 	nm_utils_slist_free (self->addresses, g_free);
+	nm_utils_slist_free (self->routes, g_free);
 
 	G_OBJECT_CLASS (nm_setting_ip4_config_parent_class)->finalize (object);
 }
@@ -199,6 +255,7 @@ set_property (GObject *object, guint prop_id,
 	case PROP_ADDRESSES:
 		nm_utils_slist_free (setting->addresses, g_free);
 		setting->addresses = nm_utils_ip4_addresses_from_gvalue (value);
+		break;
 	case PROP_ROUTES:
 		nm_utils_slist_free (setting->routes, g_free);
 		setting->routes = nm_utils_ip4_addresses_from_gvalue (value);
