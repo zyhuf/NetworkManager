@@ -907,7 +907,7 @@ nm_ppp_manager_update_secrets (NMPPPManager *manager,
 	NMPPPManagerPrivate *priv = NM_PPP_MANAGER_GET_PRIVATE (manager);
 
 	g_return_if_fail (NM_IS_PPP_MANAGER (manager));
-	g_return_if_fail (device != NULL);
+	/*g_return_if_fail (device != NULL);*/
 	g_return_if_fail (priv->pending_secrets_context != NULL);
 
 	if (error_message) {
