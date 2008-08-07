@@ -338,12 +338,9 @@ real_act_stage2_config (NMDevice *device, NMDeviceStateReason *reason)
 	req = nm_device_get_act_request (device);
 	g_assert (req);
 
-	priv->ppp_manager = nm_ppp_manager_new ();
+	priv->ppp_manager = nm_ppp_manager_new (nm_device_get_iface (device));
 
-	if (nm_ppp_manager_start (priv->ppp_manager,
-						 nm_device_get_iface (device),
-						 req,
-						 &err)) {
+	if (nm_ppp_manager_start (priv->ppp_manager, req, &err)) {
 		g_signal_connect (priv->ppp_manager, "state-changed",
 					   G_CALLBACK (ppp_state_changed),
 					   device);

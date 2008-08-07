@@ -8,8 +8,9 @@
 #define MM_DBUS_INTERFACE       "org.freedesktop.ModemManager"
 #define MM_DBUS_INTERFACE_MODEM "org.freedesktop.ModemManager.Modem"
 
-#define MM_MODEM_TYPE_GSM  1
-#define MM_MODEM_TYPE_CDMA 2
+#define MM_MODEM_TYPE_UNKNOWN  0
+#define MM_MODEM_TYPE_GSM      1
+#define MM_MODEM_TYPE_CDMA     2
 
 #define MM_MODEM_ERROR_GENERAL        MM_DBUS_INTERFACE_MODEM ".GeneralError"
 #define MM_MODEM_ERROR_PIN_NEEDED     MM_DBUS_INTERFACE_MODEM ".PINNeeded"

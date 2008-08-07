@@ -114,9 +114,9 @@ create_modem (NMModemManager *manager, const char *path)
 {
 	NMModemManagerPrivate *priv = NM_MODEM_MANAGER_GET_PRIVATE (manager);
 	NMModemDevice *modem;
-	char *data_device;
-	char *driver;
-	uint modem_type;
+	char *data_device = NULL;
+	char *driver = NULL;
+	uint modem_type = MM_MODEM_TYPE_UNKNOWN;
 
 	if (g_hash_table_lookup (priv->modems, path)) {
 		nm_warning ("Modem with path %s already exists, ignoring", path);
@@ -126,6 +126,21 @@ create_modem (NMModemManager *manager, const char *path)
 	if (!get_modem_properties (nm_dbus_manager_get_connection (priv->dbus_mgr), path,
 						  &data_device, &driver, &modem_type))
 		return;
+
+	if (modem_type == MM_MODEM_TYPE_UNKNOWN) {
+		nm_warning ("Modem with path %s has unknown type, ignoring", path);
+		return;
+	}
+
+	if (!driver || !strlen (driver)) {
+		nm_warning ("Modem with path %s has unknown driver, ignoring", path);
+		return;
+	}
+
+	if (!data_device || !strlen (data_device)) {
+		nm_warning ("Modem with path %s has unknown data device, ignoring", path);
+		return;
+	}
 
 	modem = nm_modem_device_new (path,
 						    data_device,
