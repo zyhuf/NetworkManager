@@ -1,3 +1,8 @@
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-pptp-pppd-plugin.c
+		- (nm_ip_up): use correct option index (bgo #517468)
+
 2007-09-14   Clytie Siddall <clytie@riverland.net.au>
 
 	* configure.in: Added 'vi' to ALL_LINGUAS.

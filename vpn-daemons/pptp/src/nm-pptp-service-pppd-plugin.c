@@ -111,12 +111,12 @@ static void pptp_ip_up(void *opaque, int arg)
   guint32 i=0;
  
   g_return_if_fail (con != NULL);
-  if (ipcp_gotoptions[ifunit].ouraddr==0) {
+  if (ipcp_gotoptions[0].ouraddr==0) {
     nm_warning ("nm-pptp-service-pptp-helper didn't receive an Internal IP4 Address from pptp.");
     send_config_error (con, "IP4 Address");
     return;
   }
-  uint_ip4_address=ipcp_gotoptions[ifunit].ouraddr;
+  uint_ip4_address=ipcp_gotoptions[0].ouraddr;
   
   if (!(message = dbus_message_new_method_call (NM_DBUS_SERVICE_PPTP, NM_DBUS_PATH_PPTP, NM_DBUS_INTERFACE_PPTP, "signalIP4Config")))
     {
@@ -125,37 +125,37 @@ static void pptp_ip_up(void *opaque, int arg)
     }
 
 
-  if (ipcp_gotoptions[ifunit].dnsaddr) {
-    if (ipcp_gotoptions[ifunit].dnsaddr[0]!=0) {
+  if (ipcp_gotoptions[0].dnsaddr) {
+    if (ipcp_gotoptions[0].dnsaddr[0]!=0) {
       uint_ip4_dns_len++; 
-      uint_ip4_dns1=ipcp_gotoptions[ifunit].dnsaddr[0];
-      if (ipcp_gotoptions[ifunit].dnsaddr[1]!=0) {
+      uint_ip4_dns1=ipcp_gotoptions[0].dnsaddr[0];
+      if (ipcp_gotoptions[0].dnsaddr[1]!=0) {
         uint_ip4_dns_len++;
-        uint_ip4_dns2=ipcp_gotoptions[ifunit].dnsaddr[1];
+        uint_ip4_dns2=ipcp_gotoptions[0].dnsaddr[1];
       }  
     }
 //    if (uint_ip4_dns_len > 0)
 //    {
 //      uint_ip4_dns = g_new0(guint32,uint_ip4_dns_len);
 //      for (i = 0; i < uint_ip4_dns_len; ++i)
-//        uint_ip4_dns[i] = ipcp_gotoptions[ifunit].dnsaddr[i];
+//        uint_ip4_dns[i] = ipcp_gotoptions[0].dnsaddr[i];
 //    }
   }
 
-  if (ipcp_gotoptions[ifunit].winsaddr) {
-    if (ipcp_gotoptions[ifunit].winsaddr[0]!=0) {
+  if (ipcp_gotoptions[0].winsaddr) {
+    if (ipcp_gotoptions[0].winsaddr[0]!=0) {
       uint_ip4_wins_len++; 
-      uint_ip4_wins1=ipcp_gotoptions[ifunit].winsaddr[0];
-      if (ipcp_gotoptions[ifunit].winsaddr[1]!=0) {
+      uint_ip4_wins1=ipcp_gotoptions[0].winsaddr[0];
+      if (ipcp_gotoptions[0].winsaddr[1]!=0) {
         uint_ip4_wins_len++;
-        uint_ip4_wins2=ipcp_gotoptions[ifunit].winsaddr[1];
+        uint_ip4_wins2=ipcp_gotoptions[0].winsaddr[1];
       }
     }
 //    if (uint_ip4_wins_len > 0)
 //    {
 //      uint_ip4_wins = g_new0(guint32,uint_ip4_wins_len);
 //      for (i = 0; i < uint_ip4_wins_len; ++i)
-//        uint_ip4_wins[i] = ipcp_gotoptions[ifunit].winsaddr[i];
+//        uint_ip4_wins[i] = ipcp_gotoptions[0].winsaddr[i];
 //    }
   }
  
