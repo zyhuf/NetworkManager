@@ -1,3 +1,9 @@
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-openvpn-service.c
+		- (nm_openvpn_start_openvpn_binary): don't use --ns-cert-type
+			(bgo #423324)
+
 2008-03-13  Dan Williams  <dcbw@redhat.com>
 
 	* nm-openvpn-service.name.in

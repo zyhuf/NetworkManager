@@ -739,8 +739,6 @@ nm_openvpn_start_openvpn_binary (NmOpenVPNData *data,
     case NM_OPENVPN_CONTYPE_X509:
 
       g_ptr_array_add (openvpn_argv, (gpointer) "--client");
-      g_ptr_array_add (openvpn_argv, (gpointer) "--ns-cert-type");
-      g_ptr_array_add (openvpn_argv, (gpointer) "server");
 
       for (i = 0; i < num_items; ++i) {
 	if ( strcmp( data_items[i], "ca" ) == 0) {
