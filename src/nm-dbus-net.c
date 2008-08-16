@@ -131,11 +131,13 @@ static DBusMessage *nm_dbus_net_get_address (DBusConnection *connection, DBusMes
 
 	if ((reply = dbus_message_new_method_return (message)))
 	{
-		char		buf[20];
+		const struct ether_addr *addr = nm_ap_get_address (data->ap);
+		char *buf;
 
-		memset (&buf[0], 0, 20);
-		iw_ether_ntop((const struct ether_addr *) (nm_ap_get_address (data->ap)), &buf[0]);
+		buf = g_malloc0 (25);
+		iw_ether_ntop (addr, buf);
 		dbus_message_append_args (reply, DBUS_TYPE_STRING, &buf, DBUS_TYPE_INVALID);
+		g_free (buf);
 	}
 
 	return reply;
