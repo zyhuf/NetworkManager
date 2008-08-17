@@ -1918,7 +1918,7 @@ request_and_convert_scan_results (NMDevice80211Wireless *self)
 		g_free (buf);
 		buf = NULL;
 
-		if ((errno == E2BIG) && (buflen < 100000))	/* Buffer not big enough */
+		if ((errno == E2BIG) && (buflen <= (IW_SCAN_MAX_DATA * 32) + 2))	/* Buffer not big enough */
 		{
 			buflen *= 2;
 		}

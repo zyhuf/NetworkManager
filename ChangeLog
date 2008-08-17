@@ -1,3 +1,10 @@
+2008-08-17  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device-802-11-wireless.c
+		- (request_and_convert_scan_results): increase buffer size; since the
+			buffer length gets doubled, the existing code would effectively
+			reject buffer sizes of greater than 64k (bgo #501835)
+
 2008-08-15  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-dbus-net.c
