@@ -25,31 +25,11 @@
 #endif
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include "NetworkManagerGeneric.h"
 #include "NetworkManagerSystem.h"
-#include "NetworkManagerUtils.h"
-#include "nm-device.h"
-#include "nm-utils.h"
-
-/*
- * Mostly a mix of the Gentoo and RedHat Backends
- */
-
-/*
- * nm_system_init
- *
- * Initializes the distribution-specific system backend
- *
- */
-void nm_system_init (void)
-{
-	nm_generic_init ();
-}
 
 /*
  * nm_system_enable_loopback
@@ -64,18 +44,6 @@ void nm_system_enable_loopback (void)
 
 
 /*
- * nm_system_kill_all_dhcp_daemons
- *
- * Kill all DHCP daemons currently running, done at startup.
- *
- */
-void nm_system_kill_all_dhcp_daemons (void)
-{
-	nm_spawn_process ("/bin/killall -q dhcpcd");
-}
-
-
-/*
  * nm_system_update_dns
  *
  * Make glibc/nscd aware of any changes to the resolv.conf file by
@@ -85,45 +53,5 @@ void nm_system_kill_all_dhcp_daemons (void)
 void nm_system_update_dns (void)
 {
 	/* I'm not running nscd */
-}
-
-/*
- * nm_system_activate_nis
- *
- * set up the nis domain and write a yp.conf
- *
- */
-void nm_system_activate_nis (NMIP4Config *config)
-{
-}
-
-/*
- * nm_system_shutdown_nis
- *
- * shutdown ypbind
- *
- */
-void nm_system_shutdown_nis (void)
-{
-}
-
-/*
- * nm_system_set_hostname
- *
- * set the hostname
- *
- */
-void nm_system_set_hostname (NMIP4Config *config)
-{
-}
-
-/*
- * nm_system_should_modify_resolv_conf
- *
- * Can NM update resolv.conf, or is it locked down?
- */
-gboolean nm_system_should_modify_resolv_conf (void)
-{
-	return TRUE;
 }
 

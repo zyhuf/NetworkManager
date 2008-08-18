@@ -65,6 +65,8 @@ NetworkManager_SOURCES =				\
 		nm-gsm-device.h		\
 		nm-cdma-device.c		\
 		nm-cdma-device.h		\
+		nm-hso-gsm-device.c \
+		nm-hso-gsm-device.h \
 		wpa.c				\
 		wpa.h				\
 		nm-netlink.c			\
@@ -179,10 +181,8 @@ EXTRA_DIST = \
 	$(NetworkManager_DATA)
 
 rundir=$(localstatedir)/run/NetworkManager
-dispatcherdir=$(sysconfdir)/NetworkManager/dispatcher.d
 install-data-hook:
-	   $(mkinstalldirs) -m 0700 $(DESTDIR)$(rundir)
-	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)
+	$(mkinstalldirs) -m 0700 $(DESTDIR)$(rundir)
 
 CLEANFILES = $(BUILT_SOURCES)
 

@@ -28,29 +28,12 @@
 #endif
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
 
 #include "NetworkManagerGeneric.h"
 #include "NetworkManagerSystem.h"
 #include "NetworkManagerUtils.h"
-#include "nm-device.h"
-#include "nm-utils.h"
-#include "shvar.h"
-
-/*
- * nm_system_init
- *
- * Initializes the distribution-specific system backend
- *
- */
-void nm_system_init (void)
-{
-	nm_generic_init ();
-}
 
 /*
  * nm_system_enable_loopback
@@ -63,18 +46,6 @@ void nm_system_enable_loopback (void)
   /* No need to run net.lo if it is already running */
 	if (nm_spawn_process ("/etc/init.d/net.lo status") != 0)
 		nm_spawn_process("/etc/init.d/net.lo start");
-}
-
-/*
- * nm_system_kill_all_dhcp_daemons
- *
- * Kill all DHCP daemons currently running, done at startup
- *
- */
-void nm_system_kill_all_dhcp_daemons (void)
-{
-        /* TODO */
-        /* Tell dhcdbd to kill its dhclient instance */
 }
 
 /*
@@ -93,45 +64,4 @@ void nm_system_update_dns (void)
 	nm_spawn_process("/usr/bin/killall -q nscd");
  #endif
 }
-
-/*
- * nm_system_activate_nis
- *
- * set up the nis domain and write a yp.conf
- *
- */
-void nm_system_activate_nis (NMIP4Config *config)
-{
-}
-
-/*
- * nm_system_shutdown_nis
- *
- * shutdown ypbind
- *
- */
-void nm_system_shutdown_nis (void)
-{
-}
-
-/*
- * nm_system_set_hostname
- *
- * set the hostname
- *
- */
-void nm_system_set_hostname (NMIP4Config *config)
-{
-}
-
-/*
- * nm_system_should_modify_resolv_conf
- *
- * Can NM update resolv.conf, or is it locked down?
- */
-gboolean nm_system_should_modify_resolv_conf (void)
-{
-	return TRUE;
-}
-
 

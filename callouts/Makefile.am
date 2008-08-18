@@ -59,6 +59,7 @@ nm_dispatcher_action_CPPFLAGS = \
 nm_dispatcher_action_LDADD = \
 	$(DBUS_LIBS) \
 	$(GTHREAD_LIBS) \
+	$(top_builddir)/libnm-glib/libnm_glib.la \
 	$(top_builddir)/libnm-util/libnm-util.la
 
 nm-dispatcher-glue.h: nm-dispatcher.xml
@@ -76,6 +77,10 @@ edit = @sed \
 	-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
 	-e 's|@localstatedir[@]|$(localstatedir)|g' \
 	-e 's|@libexecdir[@]|$(libexecdir)|g'
+
+dispatcherdir=$(sysconfdir)/NetworkManager/dispatcher.d
+install-data-hook:
+	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)
 
 BUILT_SOURCES = nm-dispatcher-glue.h
 

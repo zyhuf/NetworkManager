@@ -1,3 +1,47 @@
+2008-08-18  Claude Paroz  <claude@2xlibre.net>
+
+	* properties/nm-openvpn-dialog.glade: Removed translatable property on non
+	user-visible strings and stock labels.
+
+2008-08-14  Tambet Ingo  <tambet@gmail.com>
+
+	* src/nm-openvpn-service.c (nm_openvpn_socket_data_cb): Detect private key
+	verification errors too.
+
+	* auth-dialog/main.c (pem_is_encrypted): GIOChannel isn't a GObject, use the
+	correct unreferencing function for it.
+
+2008-08-12  Dan Williams  <dcbw@redhat.com>
+
+	* properties/auth-helpers.c
+	  properties/nm-openvpn-dialog.glade
+		- Handle shared -> static change
+		- Hook up the Static Key "Local IP Address" entry
+
+	* properties/import-export.c
+		- Handle shared -> static change
+
+	* src/nm-openvpn-service.c
+	  src/nm-openvpn-service.h
+		- (nm_openvpn_start_openvpn_binary): always dup strings when adding to
+			the argument array so that freeing the array later actually works
+		- (validate_one_property): validate addresses too
+		- (nm_openvpn_properties_validate): fix determination of error/success
+		- (real_connect): fix stray ; causing all connection attempts to fail
+
+2008-08-11  Dan Williams  <dcbw@redhat.com>
+
+	Update to match NM svn3924 vpn setting changes; verify options better;
+	return more informative errors on VPN launch failures; change some config
+	options (tap-dev, proto-tcp, connection-type) to better reflect their
+	usage.
+
+2008-08-08  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-openvpn-service.c
+		- (nm_openvpn_socket_data_cb): handle spaces in passwords and usernames
+			(bgo #482139)
+
 2008-08-06  Dan Williams  <dcbw@redhat.com>
 
 	* src/nm-openvpn-service-openvpn-helper.c

@@ -1,8 +1,10 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 
 /* NetworkManager system settings service
  *
  * Søren Sandmann <sandmann@daimi.au.dk>
+ * Dan Williams <dcbw@redhat.com>
+ * Tambet Ingo <tambet@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +20,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * (C) Copyright 2007 Red Hat, Inc.
+ * (C) Copyright 2007 - 2008 Red Hat, Inc.
+ * (C) Copyright 2008 Novell, Inc.
  */
 
 #include <NetworkManager.h>
@@ -263,7 +266,9 @@ nm_sysconfig_settings_class_init (NMSysconfigSettingsClass *class)
 	dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (settings_class),
 	                                 &dbus_glib_nm_settings_system_object_info);
 
-	dbus_g_error_domain_register (NM_SYSCONFIG_SETTINGS_ERROR, NULL, NM_TYPE_SYSCONFIG_SETTINGS_ERROR);
+	dbus_g_error_domain_register (NM_SYSCONFIG_SETTINGS_ERROR,
+	                              NM_DBUS_IFACE_SETTINGS_SYSTEM,
+	                              NM_TYPE_SYSCONFIG_SETTINGS_ERROR);
 }
 
 static void
@@ -453,6 +458,8 @@ impl_settings_add_connection (NMSysconfigSettings *self,
 
 	connection = nm_connection_new_from_hash (hash, &cnfh_error);
 	if (connection) {
+		GError *add_error = NULL;
+
 		/* Here's how it works:
 		   1) plugin writes a connection.
 		   2) plugin notices that a new connection is available for reading.
@@ -461,9 +468,12 @@ impl_settings_add_connection (NMSysconfigSettings *self,
 		*/
 
 		success = FALSE;
-		for (iter = priv->plugins; iter && success == FALSE; iter = iter->next)
+		for (iter = priv->plugins; iter && success == FALSE; iter = iter->next) {
 			success = nm_system_config_interface_add_connection (NM_SYSTEM_CONFIG_INTERFACE (iter->data),
-													   connection);
+													   connection, &add_error);
+			if (!success && add_error)
+				g_error_free (add_error);
+		}
 
 		g_object_unref (connection);
 
@@ -491,3 +501,4 @@ impl_settings_add_connection (NMSysconfigSettings *self,
 		return TRUE;
 	}
 }
+

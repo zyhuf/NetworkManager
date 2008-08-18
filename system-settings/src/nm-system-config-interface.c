@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 /* NetworkManager -- Network link manager
  *
  * Dan Williams <dcbw@redhat.com>
@@ -139,7 +139,8 @@ nm_system_config_interface_supports_add (NMSystemConfigInterface *config)
 
 gboolean
 nm_system_config_interface_add_connection (NMSystemConfigInterface *config,
-								   NMConnection *connection)
+                                           NMConnection *connection,
+                                           GError **error)
 {
 	gboolean success = FALSE;
 
@@ -147,7 +148,7 @@ nm_system_config_interface_add_connection (NMSystemConfigInterface *config,
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), FALSE);
 
 	if (NM_SYSTEM_CONFIG_INTERFACE_GET_INTERFACE (config)->add_connection)
-		success = NM_SYSTEM_CONFIG_INTERFACE_GET_INTERFACE (config)->add_connection (config, connection);
+		success = NM_SYSTEM_CONFIG_INTERFACE_GET_INTERFACE (config)->add_connection (config, connection, error);
 
 	return success;
 }

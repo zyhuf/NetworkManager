@@ -1,3 +1,350 @@
+2008-08-17  Dan Williams  <dcbw@redhat.com>
+
+	* include/NetworkManager.h
+	  introspection/nm-device.xml
+	  src/nm-gsm-device.c
+		- Finer-grained GSM registration failure error codes
+
+2008-08-17  Dan Williams  <dcbw@redhat.com>
+
+	* callouts/Makefile.am
+	  src/Makefile.am
+		- Move dispatcher directory creation to callouts/Makefile.am
+
+	* system-settings/plugins/keyfile/Makefile.am
+		- Create keyfile connections directory in DESTDIR (bgo #546833)
+
+2008-08-15  Dan Williams  <dcbw@redhat.com>
+
+	Do connection sharing in a cleaner manner; all required iptables rules
+	are now stored in the activation request and pertain only to the device
+	which is being shared to other computers. (rh #458625)
+
+	* src/nm-activation-request.c
+	  src/nm-activation-request.h
+		- (nm_act_request_add_share_rule): new function; add a sharing rule to
+			the activation request which will get torn down automatically when
+			the activation request dies
+		- (nm_act_request_set_shared): push sharing rules to iptables when sharing
+			is started, and tear them down when sharing is stopped
+
+	* src/nm-device.c
+		- (start_sharing): start up sharing by doing the required iptables magic
+		- (share_init): poke the right bits of the kernel and load the right
+			modules for NAT
+		- (nm_device_activate_stage5_ip_config_commit): start NAT-ing this
+			connection if it's a 'shared' connection
+
+	* src/NetworkManagerPolicy.c
+		- Remove all sharing stuff; done in the device code itself
+
+2008-08-15  Dan Williams  <dcbw@redhat.com>
+
+	* src/dnsmasq-manager/nm-dnsmasq-manager.c
+		- (create_dm_cmd_line): send the right router address
+
+2008-08-15  Dan Williams  <dcbw@redhat.com>
+
+	* src/ppp-manager/nm-ppp-manager.c
+		- (pppd_timed_out): ensure timeouts fail the connection
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-properties-changed-signal.c
+	  src/nm-properties-changed-signal.h
+		- Add a property spec flag for "don't export this property" in
+			property changed signals
+
+	* src/nm-hso-gsm-device.c
+	  src/nm-gsm-device.c
+	  src/nm-cdma-device.c
+		- Don't export monitor interface or netdev interface properties
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManagerPolicy.c
+		- (update_routing_and_dns): 'hso' devices can be default even if they
+			don't have a gateway
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device.c
+		- (nm_device_deactivate_quickly): tear down activation request after
+			calling device-specific deactivation
+
+	* src/nm-hso-gsm-device.c
+		- (real_deactivate_quickly): terminate connection when deactivating
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-activation-request.h
+		- Add HSO secrets caller
+
+	* src/nm-gsm-device.c
+	  src/nm-gsm-device.h
+		- (modem_wait_for_reply): add a 'user_data' argument so callers can pass
+			something to the callback function
+		- (set_apn, set_apn_done): call class dial function, not a static one
+		- (nm_gsm_device_class_init): add a class 'dial' function
+
+	* src/nm-hal-manager.c
+		- (get_hso_netdev): find the hso-driven hardware's net device
+		- (modem_device_creator): recognize hso-driven hardware and create the
+			right type of device object for it
+
+	* src/Makefile.am
+	  src/nm-hso-gsm-device.c
+	  src/nm-hso-gsm-device.h
+		- Implement support for devices driven by the 'hso' driver as a subclass
+			of NMGsmDevice
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManagerSystem.c
+		- (nm_system_device_is_up_with_iface): ensure ifreq is cleared before using
+		- (nm_system_device_set_up_down_with_iface): cleanups; only return
+			success if the operation really was successful
+
+2008-08-14  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-netlink-monitor.c
+	  src/nm-netlink-monitor.h
+	  src/nm-device-ethernet.c
+		- (nm_netlink_monitor_request_status): return an error on failure
+		- (constructor): don't segfault on missing error
+
+2008-08-13  Dan Williams  <dcbw@redhat.com>
+
+	* callouts/nm-dispatcher-action.c
+		- Add IP4 config info to script environment
+
+2008-08-12  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-device.c
+		- (nm_device_set_ip4_config): don't touch hostnames here; distros
+			that want to use DHCP hostnames should use dispatcher scripts
+			for that
+
+	* src/NetworkManagerSystem.h
+	  src/backends/NetworkManagerArch.c
+	  src/backends/NetworkManagerDebian.c
+	  src/backends/NetworkManagerFrugalware.c
+	  src/backends/NetworkManagerGeneric.c
+	  src/backends/NetworkManagerGeneric.h
+	  src/backends/NetworkManagerGentoo.c
+	  src/backends/NetworkManagerMandriva.c
+	  src/backends/NetworkManagerPaldo.c
+	  src/backends/NetworkManagerRedHat.c
+	  src/backends/NetworkManagerSlackware.c
+	  src/backends/NetworkManagerSuSE.c
+		- Remove nm_system_set_hostname(), no longer used
+	  
+	* src/backends/Makefile.am
+	  src/backends/shvar.c
+	  src/backends/shvar.h
+		- Remove shvar.*; no longer used
+
+2008-08-12  Dan Williams  <dcbw@redhat.com>
+
+	Revert most of the 'hostname' patch.  Too much stuff still breaks when
+	hostname is updated at runtime.  Distros or users who want hostname updates
+	can use dispatcher scripts to update the hostname if they need it.
+
+2008-08-12  Dan Williams  <dcbw@redhat.com>
+
+	* introspection/nm-settings-system.xml
+	  system-settings/src/dbus-settings.c
+	  system-settings/src/dbus-settings.h
+		- Add a 'Hostname' property (rw) which represents the configured
+			hostname and domain of the system, if any
+
+	* system-settings/src/nm-system-config-error.c
+	  system-settings/src/nm-system-config-error.h
+	  system-settings/src/nm-system-config-interface.c
+	  system-settings/src/nm-system-config-interface.h
+		- Add a 'hostname' property to the plugin interface
+		- Add a method to send updated hostname to plugins to save in their
+			backing configuration store
+
+	* system-settings/plugins/keyfile/nm-keyfile-connection.c
+	  system-settings/plugins/keyfile/plugin.c
+	  system-settings/plugins/keyfile/writer.c
+	  system-settings/plugins/keyfile/writer.h
+	  system-settings/plugins/ifcfg-suse/plugin.c
+		- Add minimal hostname support
+
+	* system-settings/plugins/ifcfg-fedora/plugin.c
+		- Add support for updating system hostname in /etc/sysconfig/network
+
+2008-08-12  Dan Williams  <dcbw@redhat.com>
+
+	* system-settings/plugins/ifcfg-fedora/shvar.c
+	  system-settings/plugins/ifcfg-fedora/shvar.c
+		- Fix double-free caused by svSetValue() followed by svCloseFile()
+
+2008-08-12  Tambet Ingo  <tambet@gmail.com>
+
+	* Makefile.am: Fix distcheck.
+
+2008-08-12  Tambet Ingo  <tambet@gmail.com>
+
+	* libnm-glib/*.c. Document some more.
+
+2008-08-12  Tambet Ingo  <tambet@gmail.com>
+
+	Start documenting libnm-glib public API using gtk-doc.
+
+	* libnm-glib/nm-serial-device.c: 
+	* libnm-glib/nm-object.c: 
+	* libnm-glib/nm-gsm-device.c: 
+	* libnm-glib/nm-device.c: 
+	* libnm-glib/nm-device-wifi.c: 
+	* libnm-glib/nm-device-ethernet.c: 
+	* libnm-glib/nm-client.c: 
+	* libnm-glib/nm-cdma-device.c: Document the public API.
+
+	* docs/libnm-glib/libnm-glib.types: Implement.
+
+	* docs/libnm-glib/Makefile.am: Implement.
+
+	* autogen.sh: 
+	* configure.in: 
+	* Makefile.am: Add gtk-doc support.
+
+2008-08-12  Tambet Ingo  <tambet@gmail.com>
+
+	* src/backends/*: Get rid of nm_system_should_modify_resolv_conf().
+
+	* src/named-manager/nm-named-manager.c (rewrite_resolv_conf): Calculate
+	the composite result of all the IP4 configurations and call a distro
+	specific update_resolv_conf().
+	(update_resolv_conf): Implement one for directly writing to 
+	/etc/resolv.conf and one for opensuse to call netconfig.
+
+2008-08-11  Dan Williams  <dcbw@redhat.com>
+
+	* src/ppp-manager/nm-ppp-manager.c
+		- (impl_ppp_manager_need_secrets): pass interface as required
+
+2008-08-11  Dan Williams  <dcbw@redhat.com>
+
+	Merge the vpn-properties setting with the vpn setting since it was pointless
+	to keep both of them around.  Convert the vpn 'data' hash table to a hash
+	of string:string (instead of string:variant) so that system settings plugins
+	can have an easier time dealing with the arbitrary key/value pairs.
+
+2008-08-11  Dan Williams  <dcbw@redhat.com>
+
+	* libnm-util/nm-utils.c
+		- (nm_utils_register_value_transformations): add value transform for
+			a hash table of string:string
+
+2008-08-10  Dan Williams  <dcbw@redhat.com>
+
+	* libnm-glib/nm-vpn-plugin.c
+		- (nm_vpn_plugin_connect): stop plugin after connection failure from
+			an idle handler so the Connect reply gets delivered before the
+			stop StateChanged signal
+
+2008-08-10  Dan Williams  <dcbw@redhat.com>
+
+	* src/nm-ip4-config.c
+		- (get_property): use common ip4 address/route conversion functions
+		- (nm_ip4_config_replace_address, nm_ip4_config_replace_route): should
+			copy the new route here, not take ownership
+
+2008-08-08  Tambet Ingo  <tambet@gmail.com>
+
+	* system-settings/plugins/ifcfg-suse/parser.c (make_ip4_setting):
+	Update the IP4 setting's method name.
+
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* introspection/nm-ip4-config.xml
+	  libnm-glib/libnm-glib-test.c
+	  libnm-glib/nm-ip4-config.c
+	  libnm-glib/nm-ip4-config.h
+	  src/NetworkManagerSystem.h
+	  src/backends/NetworkManagerArch.c
+	  src/backends/NetworkManagerDebian.c
+	  src/backends/NetworkManagerFrugalware.c
+	  src/backends/NetworkManagerGeneric.c
+	  src/backends/NetworkManagerGeneric.h
+	  src/backends/NetworkManagerGentoo.c
+	  src/backends/NetworkManagerMandriva.c
+	  src/backends/NetworkManagerPaldo.c
+	  src/backends/NetworkManagerRedHat.c
+	  src/backends/NetworkManagerSlackware.c
+	  src/backends/NetworkManagerSuSE.c
+	  src/dhcp-manager/nm-dhcp-manager.c
+	  src/nm-device.c
+	  src/nm-ip4-config.c
+	  src/nm-ip4-config.h
+		- Remove NIS logic; should be done from dispatcher scripts instead
+
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* src/dhcp-manager/nm-dhcp-manager.c
+		- (nm_dhcp_manager_get_ip4_config): fix regression which caused
+			mis-handling of DHCP responses that returned more than one router
+			(found by Grant Williamson)
+
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* callouts/nm-dispatcher-action.c
+		- (nm_dispatcher_action): grab device path and create the device; pass
+			the device's DHCP4 config to script caller
+		- (dispatch_scripts): dump the DHCP4 config to the environment of called
+			scripts
+
+	* libnm-glib/nm-dhcp4-config.c
+	  libnm-glib/nm-dhcp4-config.h
+		- (nm_dhcp4_config_get_options): expose
+		- (nm_dhcp4_config_get_one_option): renamed from nm_dhcp4_config_get_option
+
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* include/NetworkManager.h
+		- Add the DHCP4Config D-Bus interface
+
+	* libnm-glib/Makefile.am
+	  libnm-glib/nm-dhcp4-config.c
+	  libnm-glib/nm-dhcp4-config.h
+		- Handle DHCP4 config objects exported by NM over D-Bus
+
+	* libnm-glib/nm-device.c
+	  libnm-glib/nm-device.h
+		- Add a 'dhcp4-config' property
+
+	* libnm-glib/libnm-glib-test.c
+		- Print out DHCP4 config for devices
+		- Fix some crashes when no connections are active
+
+	* src/nm-device-interface.c
+	  src/nm-device.c
+	  src/nm-dhcp4-config.c
+	  src/nm-dhcp4-config.h
+		- Treat dhcp4-config object as an object path at the D-Bus interface so
+			that when it doesn't exist we can proxy it as "/" which dbus-glib
+			doesn't let us do when the property type is G_TYPE_OBJECT
+
+2008-08-07  Dan Williams  <dcbw@redhat.com>
+
+	* src/NetworkManager.c
+	  src/NetworkManagerSystem.h
+	  src/backends/NetworkManagerArch.c
+	  src/backends/NetworkManagerDebian.c
+	  src/backends/NetworkManagerFrugalware.c
+	  src/backends/NetworkManagerGeneric.c
+	  src/backends/NetworkManagerGeneric.h
+	  src/backends/NetworkManagerGentoo.c
+	  src/backends/NetworkManagerMandriva.c
+	  src/backends/NetworkManagerPaldo.c
+	  src/backends/NetworkManagerRedHat.c
+	  src/backends/NetworkManagerSlackware.c
+	  src/backends/NetworkManagerSuSE.c
+		- (nm_system_init, nm_system_kill_all_dhcp_daemons): remove, unused
+
 2008-08-06  Dan Williams  <dcbw@redhat.com>
 
 	* libnm-glib/nm-ip4-config.c

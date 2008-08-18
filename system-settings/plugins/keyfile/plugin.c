@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 
 #include <config.h>
 #include <sys/stat.h>
@@ -182,9 +182,11 @@ get_connections (NMSystemConfigInterface *config)
 }
 
 static gboolean
-add_connection (NMSystemConfigInterface *config, NMConnection *connection)
+add_connection (NMSystemConfigInterface *config,
+                NMConnection *connection,
+                GError **error)
 {
-	return write_connection (connection);
+	return write_connection (connection, error);
 }
 
 /* GObject */

@@ -106,18 +106,30 @@ dump_ip4_config (NMIP4Config *cfg)
 		for (i = 0; i < ptr_array->len; i++)
 			g_print ("\t%s\n", (const char *) g_ptr_array_index (ptr_array, i));
 	}
+}
 
-	g_print ("IP4 NIS domain: %s\n", nm_ip4_config_get_nis_domain (cfg));
+static void
+print_one_dhcp4_option (gpointer key, gpointer data, gpointer user_data)
+{
+	const char *option = (const char *) key;
+	const char *value = (const char *) data;
 
-	array = nm_ip4_config_get_nis_servers (cfg);
-	if (array) {
-		g_print ("IP4 NIS servers:\n");
-		for (i = 0; i < array->len; i++) {
-			tmp = ip4_address_as_string (g_array_index (array, guint32, i));
-			g_print ("\t%s\n", tmp);
-			g_free (tmp);
-		}
-	}
+	g_print ("  %s:   %s\n", option, value);
+}
+
+static void
+dump_dhcp4_config (NMDHCP4Config *config)
+{
+	GHashTable *options = NULL;
+
+	if (!config)
+		return;
+
+	g_print ("\nDHCP4 Options:\n");
+	g_print ("-------------------------------------\n");
+
+	g_object_get (G_OBJECT (config), NM_DHCP4_CONFIG_OPTIONS, &options, NULL);
+	g_hash_table_foreach (options, print_one_dhcp4_option, NULL);
 }
 
 static void
@@ -206,6 +218,8 @@ dump_device (NMDevice *device)
 		dump_wired (NM_DEVICE_ETHERNET (device));
 	else if (NM_IS_DEVICE_WIFI (device))
 		dump_wireless (NM_DEVICE_WIFI (device));
+
+	dump_dhcp4_config (nm_device_get_dhcp4_config (device));
 }
 
 static gboolean
@@ -238,7 +252,7 @@ active_connections_changed (NMClient *client, GParamSpec *pspec, gpointer user_d
 
 	g_print ("Active connections changed:\n");
 	connections = nm_client_get_active_connections (client);
-	for (i = 0; i < connections->len; i++) {
+	for (i = 0; connections && (i < connections->len); i++) {
 		NMActiveConnection *connection;
 		const GPtrArray *devices;
 
@@ -266,7 +280,7 @@ test_get_active_connections (NMClient *client)
 
 	g_print ("Active connections:\n");
 	connections = nm_client_get_active_connections (client);
-	for (i = 0; i < connections->len; i++) {
+	for (i = 0; connections && (i < connections->len); i++) {
 		const GPtrArray *devices;
 
 		g_print ("    %s\n", nm_object_get_path (g_ptr_array_index (connections, i)));

@@ -434,7 +434,10 @@ nm_netlink_monitor_request_status (NMNetlinkMonitor  *monitor,
 
 	/* Update the link cache with latest state */
 	if (nl_cache_refill (priv->nlh, priv->nlh_link_cache)) {
-		nm_warning ("Error updating link cache: %s", nl_geterror ());
+		g_set_error (error, NM_NETLINK_MONITOR_ERROR,
+		             NM_NETLINK_MONITOR_ERROR_LINK_CACHE_UPDATE,
+		             _("error updating link cache: %s"),
+		             nl_geterror ());
 		return FALSE;
 	}
 
@@ -487,7 +490,7 @@ nm_netlink_monitor_error_handler (GIOChannel       *channel,
 {
 	GError *socket_error;
  
-	g_return_val_if_fail (!(io_condition & ~(NM_NETLINK_MONITOR_ERROR_CONDITIONS)), FALSE);
+	g_return_val_if_fail (io_condition & NM_NETLINK_MONITOR_ERROR_CONDITIONS, FALSE);
 
 	socket_error = g_error_new (NM_NETLINK_MONITOR_ERROR,
 	                            NM_NETLINK_MONITOR_ERROR_WAITING_FOR_SOCKET_DATA,

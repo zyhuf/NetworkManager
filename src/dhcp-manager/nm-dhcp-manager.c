@@ -747,9 +747,20 @@ nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager,
 	}
 
 	str = g_hash_table_lookup (device->options, "new_routers");
-	if (str && (inet_pton (AF_INET, str, &tmp_addr) > 0)) {
-		addr->gateway = tmp_addr.s_addr;
-		nm_info("  gateway %s", str);
+	if (str) {
+		char **routers = g_strsplit (str, " ", 0);
+		char **s;
+
+		for (s = routers; *s; s++) {
+			/* FIXME: how to handle multiple routers? */
+			if (inet_pton (AF_INET, *s, &tmp_addr) > 0) {
+				addr->gateway = tmp_addr.s_addr;
+				nm_info ("  gateway %s", *s);
+				break;
+			} else
+				nm_warning ("Ignoring invalid gateway '%s'", *s);
+		}
+		g_strfreev (routers);
 	}
 
 	nm_ip4_config_take_address (ip4_config, addr);
@@ -796,27 +807,6 @@ nm_dhcp_manager_get_ip4_config (NMDHCPManager *manager,
 		for (s = searches; *s; s++) {
 			nm_info ("  domain search '%s'", *s);
 			nm_ip4_config_add_search (ip4_config, *s);
-		}
-		g_strfreev (searches);
-	}
-
-	str = g_hash_table_lookup (device->options, "new_nis_domain");
-	if (str) {
-		nm_ip4_config_set_nis_domain (ip4_config, str);
-		nm_info ("  nis domain '%s'", str);
-	}
-
-	str = g_hash_table_lookup (device->options, "new_nis_servers");
-	if (str) {
-		char **searches = g_strsplit (str, " ", 0);
-		char **s;
-
-		for (s = searches; *s; s++) {
-			if (inet_pton (AF_INET, *s, &tmp_addr) > 0) {
-				nm_ip4_config_add_nis_server (ip4_config, tmp_addr.s_addr);
-				nm_info ("  nis server '%s'", *s);
-			} else
-				nm_warning ("Ignoring invalid nis server '%s'", *s);
 		}
 		g_strfreev (searches);
 	}
@@ -894,7 +884,7 @@ copy_dhcp4_config_option (gpointer key,
 	char *tmp_key = NULL;
 	const char **p;
 	static const char *filter_options[] = {
-		"interface", "pid", "reason", NULL
+		"interface", "pid", "reason", "dhcp_message_type", NULL
 	};
 	
 	/* Filter out stuff that's not actually new DHCP options */

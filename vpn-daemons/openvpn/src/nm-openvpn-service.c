@@ -1,8 +1,8 @@
-/* -*- Mode: C; tab-width: 5; indent-tabs-mode: t; c-basic-offset: 5 -*- */
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 /* nm-openvpn-service - openvpn integration with NetworkManager
  *
  * Tim Niemueller <tim@niemueller.de>
- * Based on work by Dan Williams <dcbw@redhat.com>
+ * Dan Williams <dcbw@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,11 +44,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <NetworkManager.h>
 #include <NetworkManagerVPN.h>
 #include <nm-setting-vpn.h>
-#include <nm-setting-vpn-properties.h>
 
 #include "nm-openvpn-service.h"
 #include "nm-utils.h"
@@ -63,9 +63,6 @@ typedef struct {
 	char *username;
 	char *password;
 	char *certpass;
-	gint child_stdin_fd;
-	gint child_stdout_fd;
-	gint child_stderr_fd;
 	GIOChannel *socket_channel;
 	guint socket_channel_eventid;
 } NMOpenvpnPluginIOData;
@@ -80,39 +77,59 @@ typedef struct {
 typedef struct {
 	const char *name;
 	GType type;
+	gint int_min;
+	gint int_max;
+	gboolean address;
 } ValidProperty;
 
 static ValidProperty valid_properties[] = {
-	{ NM_OPENVPN_KEY_CA,                   G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_CERT,                 G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_CIPHER,               G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_COMP_LZO,             G_TYPE_BOOLEAN },
-	{ NM_OPENVPN_KEY_CONNECTION_TYPE,      G_TYPE_INT },
-	{ NM_OPENVPN_KEY_TAP_DEV,              G_TYPE_BOOLEAN },
-	{ NM_OPENVPN_KEY_KEY,                  G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_LOCAL_IP,             G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_PROTO_TCP,            G_TYPE_BOOLEAN },
-	{ NM_OPENVPN_KEY_PORT,                 G_TYPE_INT },
-	{ NM_OPENVPN_KEY_REMOTE,               G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_REMOTE_IP,            G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_SHARED_KEY,           G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_SHARED_KEY_DIRECTION, G_TYPE_INT },
-	{ NM_OPENVPN_KEY_TA,                   G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_TA_DIR,               G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_USERNAME,             G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_PASSWORD,             G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_CERTPASS,             G_TYPE_STRING },
-	{ NM_OPENVPN_KEY_NOSECRET,             G_TYPE_STRING },
-	{ NULL,                                G_TYPE_NONE }
+	{ NM_OPENVPN_KEY_CA,                   G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_CERT,                 G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_CIPHER,               G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_COMP_LZO,             G_TYPE_BOOLEAN, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_CONNECTION_TYPE,      G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_TAP_DEV,              G_TYPE_BOOLEAN, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_KEY,                  G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_LOCAL_IP,             G_TYPE_STRING, 0, 0, TRUE },
+	{ NM_OPENVPN_KEY_PROTO_TCP,            G_TYPE_BOOLEAN, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_PORT,                 G_TYPE_INT, 1, 65535, FALSE },
+	{ NM_OPENVPN_KEY_REMOTE,               G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_REMOTE_IP,            G_TYPE_STRING, 0, 0, TRUE },
+	{ NM_OPENVPN_KEY_STATIC_KEY,           G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_STATIC_KEY_DIRECTION, G_TYPE_INT, 0, 1, FALSE },
+	{ NM_OPENVPN_KEY_TA,                   G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_TA_DIR,               G_TYPE_INT, 0, 1, FALSE },
+	{ NM_OPENVPN_KEY_USERNAME,             G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_PASSWORD,             G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_CERTPASS,             G_TYPE_STRING, 0, 0, FALSE },
+	{ NM_OPENVPN_KEY_NOSECRET,             G_TYPE_STRING, 0, 0, FALSE },
+	{ NULL,                                G_TYPE_NONE, FALSE }
 };
 
-static void
-validate_one_property (gpointer key, gpointer val, gpointer user_data)
+static gboolean
+validate_address (const char *address)
 {
-	gboolean *failed = (gboolean *) user_data;
+	const char *p = address;
+
+	if (!address || !strlen (address))
+		return FALSE;
+
+	/* Ensure it's a valid DNS name or IP address */
+	while (*p) {
+		if (!isalnum (*p) && (*p != '-') && (*p != '.'))
+			return FALSE;
+		p++;
+	}
+	return TRUE;
+}
+
+static void
+validate_one_property (gpointer key, gpointer value, gpointer user_data)
+{
+	GError **error = (GError **) user_data;
 	int i;
 
-	if (*failed)
+	if (*error)
 		return;
 
 	/* 'name' is the setting name; always allowed but unused */
@@ -121,27 +138,79 @@ validate_one_property (gpointer key, gpointer val, gpointer user_data)
 
 	for (i = 0; valid_properties[i].name; i++) {
 		ValidProperty prop = valid_properties[i];
+		long int tmp;
 
-		if (!strcmp (prop.name, (char *) key) && prop.type == G_VALUE_TYPE ((GValue *) val))
-			/* Property is ok */
-			return;
+		if (strcmp (prop.name, (char *) key))
+			continue;
+
+		switch (prop.type) {
+		case G_TYPE_STRING:
+			if (!prop.address || validate_address ((const char *) value))
+				return; /* valid */
+
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "invalid address '%s'",
+			             (const char *) key);
+			break;
+		case G_TYPE_INT:
+			errno = 0;
+			tmp = strtol ((char *) value, NULL, 10);
+			if (errno == 0 && tmp >= prop.int_min && tmp <= prop.int_max)
+				return; /* valid */
+
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "invalid integer property '%s' or out of range [%d -> %d]",
+			             (const char *) key, prop.int_min, prop.int_max);
+			break;
+		case G_TYPE_BOOLEAN:
+			if (!strcmp ((char *) value, "yes") || !strcmp ((char *) value, "no"))
+				return; /* valid */
+
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "invalid boolean property '%s' (not yes or no)",
+			             (const char *) key);
+			break;
+		default:
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "unhandled property '%s' type %s",
+			             (const char *) key, g_type_name (prop.type));
+			break;
+		}
 	}
 
 	/* Did not find the property from valid_properties or the type did not match */
-	*failed = TRUE;
+	if (!valid_properties[i].name) {
+		g_set_error (error,
+		             NM_VPN_PLUGIN_ERROR,
+		             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+		             "property '%s' invalid or not supported",
+		             (const char *) key);
+	}
 }
 
 static gboolean
-nm_openvpn_properties_validate (GHashTable *properties)
+nm_openvpn_properties_validate (GHashTable *properties, GError **error)
 {
-	gboolean failed = FALSE;
+	if (g_hash_table_size (properties) < 1) {
+		g_set_error (error,
+		             NM_VPN_PLUGIN_ERROR,
+		             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+		             "%s",
+		             "No VPN configuration options.");
+		return FALSE;
+	}
 
-	if (g_hash_table_size (properties) < 1)
-		return failed;
+	g_hash_table_foreach (properties, validate_one_property, error);
 
-	g_hash_table_foreach (properties, validate_one_property, &failed);
-
-	return !failed;
+	return *error ? FALSE : TRUE;
 }
 
 static void
@@ -164,6 +233,26 @@ nm_openvpn_disconnect_management_socket (NMOpenvpnPlugin *plugin)
 
 	g_free (priv->io_data);
 	priv->io_data = NULL;
+}
+
+static char *
+ovpn_quote_string (const char *unquoted)
+{
+	char *quoted = NULL, *q;
+	char *u = (char *) unquoted;
+
+	g_return_val_if_fail (unquoted != NULL, NULL);
+
+	/* FIXME: use unpaged memory */
+	quoted = q = g_malloc0 (strlen (unquoted) * 2);
+	while (*u) {
+		/* Escape certain characters */
+		if (*u == ' ' || *u == '\\' || *u == '"')
+			*q++ = '\\';
+		*q++ = *u++;
+	}
+
+	return quoted;
 }
 
 static gboolean
@@ -189,10 +278,19 @@ nm_openvpn_socket_data_cb (GIOChannel *source, GIOCondition condition, gpointer 
 	if (sscanf (str, ">PASSWORD:Need '%a[^']'", &auth) > 0 ) {
 		if (strcmp (auth, "Auth") == 0) {
 			if (io_data->username != NULL && io_data->password != NULL) {
-				buf = g_strdup_printf ("username \"%s\" %s\n"
-								   "password \"%s\" %s\n",
-								   auth, io_data->username,
-								   auth, io_data->password);
+				char *quser, *qpass;
+
+				/* Quote strings passed back to openvpn */
+				quser = ovpn_quote_string (io_data->username);
+				qpass = ovpn_quote_string (io_data->password);
+				buf = g_strdup_printf ("username \"%s\" \"%s\"\n"
+				                       "password \"%s\" \"%s\"\n",
+				                       auth, quser,
+				                       auth, qpass);
+				memset (qpass, 0, strlen (qpass));
+				g_free (qpass);
+				g_free (quser);
+
 				/* Will always write everything in blocking channels (on success) */
 				g_io_channel_write_chars (source, buf, strlen (buf), &written, NULL);
 				g_io_channel_flush (source, NULL);
@@ -200,7 +298,14 @@ nm_openvpn_socket_data_cb (GIOChannel *source, GIOCondition condition, gpointer 
 			}
 		} else if (!strcmp (auth, "Private Key")) {
 			if (io_data->certpass) {
-				buf = g_strdup_printf ("password \"%s\" %s\n", auth, io_data->certpass);
+				char *qpass;
+
+				/* Quote strings passed back to openvpn */
+				qpass = ovpn_quote_string (io_data->certpass);
+				buf = g_strdup_printf ("password \"%s\" \"%s\"\n", auth, qpass);
+				memset (qpass, 0, strlen (qpass));
+				g_free (qpass);
+
 				/* Will always write everything in blocking channels (on success) */
 				g_io_channel_write_chars (source, buf, strlen (buf), &written, NULL);
 				g_io_channel_flush (source, NULL);
@@ -213,9 +318,13 @@ nm_openvpn_socket_data_cb (GIOChannel *source, GIOCondition condition, gpointer 
 			nm_vpn_plugin_failure (NM_VPN_PLUGIN (plugin), NM_VPN_PLUGIN_FAILURE_CONNECT_FAILED);
 			nm_openvpn_disconnect_management_socket (plugin);
 		}
-
 	} else if (strstr (str, ">PASSWORD:Verification Failed: ") == str) {
 		nm_warning ("Password verification failed");
+		nm_vpn_plugin_failure (NM_VPN_PLUGIN (plugin), NM_VPN_PLUGIN_FAILURE_LOGIN_FAILED);
+		nm_openvpn_disconnect_management_socket (plugin);
+		again = FALSE;
+	} else if (strstr (str, "private key password verification failed")) {
+		nm_warning ("Private key verification failed");
 		nm_vpn_plugin_failure (NM_VPN_PLUGIN (plugin), NM_VPN_PLUGIN_FAILURE_LOGIN_FAILED);
 		nm_openvpn_disconnect_management_socket (plugin);
 		again = FALSE;
@@ -261,8 +370,8 @@ nm_openvpn_connect_timer_cb (gpointer data)
 			return FALSE;
 		}
 	} else {
-		GIOChannel            *openvpn_socket_channel;
-		guint                  openvpn_socket_channel_eventid;
+		GIOChannel *openvpn_socket_channel;
+		guint openvpn_socket_channel_eventid;
 
 		openvpn_socket_channel = g_io_channel_unix_new (socket_fd);
 		openvpn_socket_channel_eventid = g_io_add_watch (openvpn_socket_channel,
@@ -328,20 +437,21 @@ openvpn_watch_cb (GPid pid, gint status, gpointer user_data)
 	nm_vpn_plugin_set_state (plugin, NM_VPN_SERVICE_STATE_STOPPED);
 }
 
-static int
+static const char *
 get_connection_type (GHashTable *properties)
 {
-	int connection_type = NM_OPENVPN_CONTYPE_INVALID;
-	gpointer tmp;
+	const char *ctype;
 
-	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CONNECTION_TYPE);
-	if (tmp)
-		connection_type = g_value_get_int ((GValue *) tmp);
+	ctype = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CONNECTION_TYPE);
+	if (ctype) {
+		if (   !strcmp (ctype, NM_OPENVPN_CONTYPE_TLS)
+		    || !strcmp (ctype, NM_OPENVPN_CONTYPE_STATIC_KEY)
+		    || !strcmp (ctype, NM_OPENVPN_CONTYPE_PASSWORD)
+		    || !strcmp (ctype, NM_OPENVPN_CONTYPE_PASSWORD_TLS))
+			return ctype;
+	}
 
-	if (connection_type < NM_OPENVPN_CONTYPE_INVALID || connection_type > NM_OPENVPN_CONTYPE_PASSWORD_TLS)
-		connection_type = NM_OPENVPN_CONTYPE_INVALID;
-
-	return connection_type;
+	return NULL;
 }
 
 static const char *
@@ -363,215 +473,275 @@ nm_find_openvpn (void)
 	return *openvpn_binary;
 }
 
-static gint
-nm_openvpn_start_openvpn_binary (NMOpenvpnPlugin *plugin, GHashTable *properties)
+static void
+free_openvpn_args (GPtrArray *args)
+{
+	g_ptr_array_foreach (args, (GFunc) g_free, NULL);
+	g_ptr_array_free (args, TRUE);
+}
+
+static void
+add_openvpn_arg (GPtrArray *args, const char *arg)
+{
+	g_return_if_fail (args != NULL);
+	g_return_if_fail (arg != NULL);
+
+	g_ptr_array_add (args, (gpointer) g_strdup (arg));
+}
+
+static gboolean
+add_openvpn_arg_int (GPtrArray *args, const char *arg)
+{
+	long int tmp_int;
+
+	g_return_val_if_fail (args != NULL, FALSE);
+	g_return_val_if_fail (arg != NULL, FALSE);
+
+	/* Convert -> int and back to string for security's sake since
+	 * strtol() ignores some leading and trailing characters.
+	 */
+	errno = 0;
+	tmp_int = strtol (arg, NULL, 10);
+	if (errno != 0)
+		return FALSE;
+	g_ptr_array_add (args, (gpointer) g_strdup_printf ("%d", (guint32) tmp_int));
+	return TRUE;
+}
+
+static gboolean
+nm_openvpn_start_openvpn_binary (NMOpenvpnPlugin *plugin,
+                                 GHashTable *properties,
+                                 GError **error)
 {
 	NMOpenvpnPluginPrivate *priv = NM_OPENVPN_PLUGIN_GET_PRIVATE (plugin);
-	GPid	pid;
-	const char *openvpn_binary;
-	GPtrArray *openvpn_argv;
+	const char *openvpn_binary, *connection_type, *tmp;
+	GPtrArray *args;
 	GSource *openvpn_watch;
-	gpointer tmp;
-	gint	stdin_fd;
-	gint stdout_fd;
-	gint stderr_fd;
-	int connection_type;
-	GError *err = NULL;
+	GPid pid;
 
 	/* Find openvpn */
 	openvpn_binary = nm_find_openvpn ();
 	if (!openvpn_binary) {
-		nm_info ("Could not find openvpn binary.");
-		return -1;
+		g_set_error (error,
+		             NM_VPN_PLUGIN_ERROR,
+		             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+		             "%s",
+		             "Could not find the openvpn binary.");
+		return FALSE;
 	}
 
 	connection_type = get_connection_type (properties);
-	if (connection_type == NM_OPENVPN_CONTYPE_INVALID)
-		return -1;
+	if (!connection_type) {
+		g_set_error (error,
+		             NM_VPN_PLUGIN_ERROR,
+		             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+		             "%s",
+		             "Invalid connection type.");
+		return FALSE;
+	}
 
-	openvpn_argv = g_ptr_array_new ();
-	g_ptr_array_add (openvpn_argv, (gpointer) (openvpn_binary));
+	args = g_ptr_array_new ();
+	add_openvpn_arg (args, openvpn_binary);
 
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_REMOTE);
-	if (tmp) {
-		g_ptr_array_add (openvpn_argv, (gpointer) "--remote");
-		g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+	if (tmp && strlen (tmp)) {
+		add_openvpn_arg (args, "--remote");
+		add_openvpn_arg (args, tmp);
 	}
 
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_COMP_LZO);
-	if (tmp && g_value_get_boolean ((GValue *) tmp))
-		g_ptr_array_add (openvpn_argv, (gpointer) "--comp-lzo");
+	if (tmp && !strcmp (tmp, "yes"))
+		add_openvpn_arg (args, "--comp-lzo");
 
-	g_ptr_array_add (openvpn_argv, (gpointer) "--nobind");
+	add_openvpn_arg (args, "--nobind");
 
 	/* Device, either tun or tap */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--dev");
+	add_openvpn_arg (args, "--dev");
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_TAP_DEV);
-	if (tmp && g_value_get_boolean ((GValue *) tmp))
-		g_ptr_array_add (openvpn_argv, (gpointer) "tap");
+	if (tmp && !strcmp (tmp, "yes"))
+		add_openvpn_arg (args, "tap");
 	else
-		g_ptr_array_add (openvpn_argv, (gpointer) "tun");
+		add_openvpn_arg (args, "tun");
 
 	/* Protocol, either tcp or udp */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--proto");
+	add_openvpn_arg (args, "--proto");
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_PROTO_TCP);
-	if (tmp && g_value_get_boolean ((GValue *) tmp))
-		g_ptr_array_add (openvpn_argv, (gpointer) "tcp-client");
+	if (tmp && !strcmp (tmp, "yes"))
+		add_openvpn_arg (args, "tcp-client");
 	else
-		g_ptr_array_add (openvpn_argv, (gpointer) "udp");
+		add_openvpn_arg (args, "udp");
 
 	/* Port */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--port");
+	add_openvpn_arg (args, "--port");
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_PORT);
-	if (tmp)
-		/* The string here is leaked, big deal. */
-		g_ptr_array_add (openvpn_argv, g_strdup_printf ("%u", g_value_get_int ((GValue *) tmp)));
-	else
+	if (tmp && strlen (tmp)) {
+		if (!add_openvpn_arg_int (args, tmp)) {
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "Invalid port number '%s'.",
+			             tmp);
+			free_openvpn_args (args);
+			return FALSE;
+		}
+	} else {
 		/* Default to IANA assigned port 1194 */
-		g_ptr_array_add (openvpn_argv, (GValue *) "1194");
+		add_openvpn_arg (args, "1194");
+	}
 
 	/* Cipher */
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CIPHER);
-	if (tmp) {
-		g_ptr_array_add (openvpn_argv, (gpointer) "--cipher");
-		g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+	if (tmp && strlen (tmp)) {
+		add_openvpn_arg (args, "--cipher");
+		add_openvpn_arg (args, tmp);
 	}
 
 	/* TA */
 	tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_TA);
-	if (tmp) {
-		g_ptr_array_add (openvpn_argv, (gpointer) "--tls-auth");
-		g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+	if (tmp && strlen (tmp)) {
+		add_openvpn_arg (args, "--tls-auth");
+		add_openvpn_arg (args, tmp);
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_TA_DIR);
-		if (tmp && strlen (g_value_get_string (tmp)))
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp))
+			add_openvpn_arg (args, tmp);
 	}
 
 	/* Syslog */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--syslog");
-	g_ptr_array_add (openvpn_argv, (gpointer) "nm-openvpn");
+	add_openvpn_arg (args, "--syslog");
+	add_openvpn_arg (args, "nm-openvpn");
 
 	/* Up script, called when connection has been established or has been restarted */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--up");
-	g_ptr_array_add (openvpn_argv, (gpointer) NM_OPENVPN_HELPER_PATH);
-	g_ptr_array_add (openvpn_argv, (gpointer) "--up-restart");
+	add_openvpn_arg (args, "--up");
+	add_openvpn_arg (args, NM_OPENVPN_HELPER_PATH);
+	add_openvpn_arg (args, "--up-restart");
 
 	/* Keep key and tun if restart is needed */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--persist-key");
-	g_ptr_array_add (openvpn_argv, (gpointer) "--persist-tun");
+	add_openvpn_arg (args, "--persist-key");
+	add_openvpn_arg (args, "--persist-tun");
 
 	/* Management socket for localhost access to supply username and password */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--management");
-	g_ptr_array_add (openvpn_argv, (gpointer) "127.0.0.1");
+	add_openvpn_arg (args, "--management");
+	add_openvpn_arg (args, "127.0.0.1");
 	/* with have nobind, thus 1194 should be free, it is the IANA assigned port */
-	g_ptr_array_add (openvpn_argv, (gpointer) "1194");
+	add_openvpn_arg (args, "1194");
 	/* Query on the management socket for user/pass */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--management-query-passwords");
+	add_openvpn_arg (args, "--management-query-passwords");
 
 	/* do not let openvpn setup routes, NM will handle it */
-	g_ptr_array_add (openvpn_argv, (gpointer) "--route-noexec");
+	add_openvpn_arg (args, "--route-noexec");
 
 	/* Now append configuration options which are dependent on the configuration type */
-	switch (connection_type) {
-	case NM_OPENVPN_CONTYPE_TLS:
-		g_ptr_array_add (openvpn_argv, (gpointer) "--client");
+	if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_TLS)) {
+		add_openvpn_arg (args, "--client");
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CA);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--ca");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--ca");
+			add_openvpn_arg (args, tmp);
 		}
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CERT);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--cert");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--cert");
+			add_openvpn_arg (args, tmp);
 		}
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_KEY);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--key");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--key");
+			add_openvpn_arg (args, tmp);
 		}
-		break;
+	} else if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_STATIC_KEY)) {
+		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_STATIC_KEY);
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--secret");
+			add_openvpn_arg (args, tmp);
 
-	case NM_OPENVPN_CONTYPE_STATIC_KEY:
-		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_SHARED_KEY);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--secret");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+			tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_STATIC_KEY_DIRECTION);
+			if (tmp && strlen (tmp))
+				add_openvpn_arg (args, tmp);
 		}
 
-		g_ptr_array_add (openvpn_argv, (gpointer) "--ifconfig");
+		add_openvpn_arg (args, "--ifconfig");
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_LOCAL_IP);
 		if (!tmp) {
 			/* Insufficient data (FIXME: this should really be detected when validating the properties */
-			g_ptr_array_free (openvpn_argv, TRUE);
-			return -1;
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "%s",
+			             "Missing required local IP address for static key mode.");
+			free_openvpn_args (args);
+			return FALSE;
 		}
-		g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		add_openvpn_arg (args, tmp);
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_REMOTE_IP);
 		if (!tmp) {
 			/* Insufficient data (FIXME: this should really be detected when validating the properties */
-			g_ptr_array_free (openvpn_argv, TRUE);
-			return -1;
+			g_set_error (error,
+			             NM_VPN_PLUGIN_ERROR,
+			             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+			             "%s",
+			             "Missing required remote IP address for static key mode.");
+			free_openvpn_args (args);
+			return FALSE;
 		}
-		g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
-		break;
-
-	case NM_OPENVPN_CONTYPE_PASSWORD:
+		add_openvpn_arg (args, tmp);
+	} else if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD)) {
 		/* Client mode */
-		g_ptr_array_add (openvpn_argv, (gpointer) "--client");
+		add_openvpn_arg (args, "--client");
 		/* Use user/path authentication */
-		g_ptr_array_add (openvpn_argv, (gpointer) "--auth-user-pass");
+		add_openvpn_arg (args, "--auth-user-pass");
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CA);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--ca");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--ca");
+			add_openvpn_arg (args, tmp);
 		}
-		break;
-
-	case NM_OPENVPN_CONTYPE_PASSWORD_TLS:
-		g_ptr_array_add (openvpn_argv, (gpointer) "--client");
+	} else if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD_TLS)) {
+		add_openvpn_arg (args, "--client");
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CA);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--ca");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--ca");
+			add_openvpn_arg (args, tmp);
 		}
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CERT);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--cert");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--cert");
+			add_openvpn_arg (args, tmp);
 		}
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_KEY);
-		if (tmp) {
-			g_ptr_array_add (openvpn_argv, (gpointer) "--key");
-			g_ptr_array_add (openvpn_argv, (gpointer) g_value_get_string ((GValue *) tmp));
+		if (tmp && strlen (tmp)) {
+			add_openvpn_arg (args, "--key");
+			add_openvpn_arg (args, tmp);
 		}
 
 		/* Use user/path authentication */
-		g_ptr_array_add (openvpn_argv, (gpointer) "--auth-user-pass");
-		break;
+		add_openvpn_arg (args, "--auth-user-pass");
+	} else {
+		g_set_error (error,
+		             NM_VPN_PLUGIN_ERROR,
+		             NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
+		             "Unknown connection type '%s'.",
+		             connection_type);
+		free_openvpn_args (args);
+		return FALSE;
 	}
 
-	g_ptr_array_add (openvpn_argv, NULL);
+	g_ptr_array_add (args, NULL);
 
-	if (!g_spawn_async_with_pipes (NULL, (char **) openvpn_argv->pdata, NULL,
-							 G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin_fd,
-							 &stdout_fd, &stderr_fd, &err)) {
-		g_ptr_array_free (openvpn_argv, TRUE);
-		nm_warning ("openvpn failed to start.  error: '%s'", err->message);
-		g_error_free (err);
-		return -1;
+	if (!g_spawn_async (NULL, (char **) args->pdata, NULL,
+	                    G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, error)) {
+		free_openvpn_args (args);
+		return FALSE;
 	}
-	g_ptr_array_free (openvpn_argv, TRUE);
+	free_openvpn_args (args);
 
 	nm_info ("openvpn started with pid %d", pid);
 
@@ -586,72 +756,47 @@ nm_openvpn_start_openvpn_binary (NMOpenvpnPlugin *plugin, GHashTable *properties
 	   X509USERPASS: Will require username and password and maybe certificate password
 	   X509: May require certificate password
 	*/
-	if (connection_type == NM_OPENVPN_CONTYPE_PASSWORD ||
-	    connection_type == NM_OPENVPN_CONTYPE_PASSWORD_TLS ||
-	    connection_type == NM_OPENVPN_CONTYPE_TLS) {
+	if (   !strcmp (connection_type, NM_OPENVPN_CONTYPE_TLS)
+	    || !strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD)
+	    || !strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD_TLS)) {
+		NMOpenvpnPluginIOData *io_data;
 
-		NMOpenvpnPluginIOData  *io_data;
-
-		io_data                  = g_new0 (NMOpenvpnPluginIOData, 1);
-		io_data->child_stdin_fd  = stdin_fd;
-		io_data->child_stdout_fd = stdout_fd;
-		io_data->child_stderr_fd = stderr_fd;
+		io_data = g_new0 (NMOpenvpnPluginIOData, 1);
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_USERNAME);
-		if (tmp)
-			io_data->username = g_strdup ((char *) g_value_get_string ((GValue *) tmp));
+		io_data->username = tmp ? g_strdup (tmp) : NULL;
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_PASSWORD);
-		if (tmp)
-			io_data->password = g_strdup ((char *) g_value_get_string ((GValue *) tmp));
+		io_data->password = tmp ? g_strdup (tmp) : NULL;
 
 		tmp = g_hash_table_lookup (properties, NM_OPENVPN_KEY_CERTPASS);
-		if (tmp)
-			io_data->certpass = g_strdup ((char *) g_value_get_string ((GValue *) tmp));
+		io_data->certpass = tmp ? g_strdup (tmp) : NULL;
 
 		priv->io_data = io_data;
 
 		nm_openvpn_schedule_connect_timer (plugin);
 	}
 
-	return stdin_fd;
+	return TRUE;
 }
 
 static gboolean
 real_connect (NMVPNPlugin   *plugin,
-		    NMConnection  *connection,
-		    GError       **err)
+              NMConnection  *connection,
+              GError       **error)
 {
-	NMSettingVPNProperties *properties;
-	gint fd;
-	gboolean success = FALSE;
+	NMSettingVPN *s_vpn;
 
-	properties = NM_SETTING_VPN_PROPERTIES (nm_connection_get_setting (connection, NM_TYPE_SETTING_VPN_PROPERTIES));
-	if (!properties || !nm_openvpn_properties_validate (properties->data)) {
-		g_set_error (err,
-				   NM_VPN_PLUGIN_ERROR,
-				   NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
-				   "%s",
-				   "Invalid arguments.");
-		goto out;
-	}
+	s_vpn = NM_SETTING_VPN (nm_connection_get_setting (connection, NM_TYPE_SETTING_VPN));
+	g_assert (s_vpn);
 
-	if ((fd = nm_openvpn_start_openvpn_binary (NM_OPENVPN_PLUGIN (plugin), properties->data)) < 0) {
-		g_set_error (err,
-				   NM_VPN_PLUGIN_ERROR,
-				   NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
-				   "%s",
-				   "Could not start openvpn binary.");
-		goto out;
-	}
+	if (!nm_openvpn_properties_validate (s_vpn->data, error))
+		return FALSE;
 
-	success = TRUE;
+	if (!nm_openvpn_start_openvpn_binary (NM_OPENVPN_PLUGIN (plugin), s_vpn->data, error))
+		return FALSE;
 
- out:
-	/* FIXME: It never did that but I guess it should? */
-/* 	close (fd); */
-
-	return success;
+	return TRUE;
 }
 
 static gboolean
@@ -660,15 +805,15 @@ real_need_secrets (NMVPNPlugin *plugin,
                    char **setting_name,
                    GError **error)
 {
-	NMSettingVPNProperties *s_vpn_props;
-	int connection_type;
+	NMSettingVPN *s_vpn;
+	const char *connection_type;
 	gboolean need_secrets = FALSE;
 
 	g_return_val_if_fail (NM_IS_VPN_PLUGIN (plugin), FALSE);
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), FALSE);
 
-	s_vpn_props = NM_SETTING_VPN_PROPERTIES (nm_connection_get_setting (connection, NM_TYPE_SETTING_VPN_PROPERTIES));
-	if (!s_vpn_props) {
+	s_vpn = NM_SETTING_VPN (nm_connection_get_setting (connection, NM_TYPE_SETTING_VPN));
+	if (!s_vpn) {
 		g_set_error (error,
 		             NM_VPN_PLUGIN_ERROR,
 		             NM_VPN_PLUGIN_ERROR_CONNECTION_INVALID,
@@ -677,30 +822,28 @@ real_need_secrets (NMVPNPlugin *plugin,
 		return FALSE;
 	}
 
-	connection_type = get_connection_type (s_vpn_props->data);
-	switch (connection_type) {
-	case NM_OPENVPN_CONTYPE_PASSWORD_TLS:
+	connection_type = get_connection_type (s_vpn->data);
+	if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD_TLS)) {
 		/* Will require username and password and maybe certificate password */
-		if (!g_hash_table_lookup (s_vpn_props->data, NM_OPENVPN_KEY_CERTPASS))
+		if (!g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_CERTPASS))
 			need_secrets = TRUE;
-		/* Fall through */
-	case NM_OPENVPN_CONTYPE_PASSWORD:
+
+		if (!g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_USERNAME) ||
+		    !g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_PASSWORD))
+			need_secrets = TRUE;
+	} else if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_PASSWORD)) {
 		/* Will require username and password */
-		if (!g_hash_table_lookup (s_vpn_props->data, NM_OPENVPN_KEY_USERNAME) ||
-		    !g_hash_table_lookup (s_vpn_props->data, NM_OPENVPN_KEY_PASSWORD))
+		if (!g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_USERNAME) ||
+		    !g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_PASSWORD))
 			need_secrets = TRUE;
-		break;
-	case NM_OPENVPN_CONTYPE_TLS:
+	} else if (!strcmp (connection_type, NM_OPENVPN_CONTYPE_TLS)) {
 		/* May require certificate password */
-		if (!g_hash_table_lookup (s_vpn_props->data, NM_OPENVPN_KEY_CERTPASS))
+		if (!g_hash_table_lookup (s_vpn->data, NM_OPENVPN_KEY_CERTPASS))
 			need_secrets = TRUE;
-		break;
-	default:
-		break;
 	}
 
 	if (need_secrets)
-		*setting_name = NM_SETTING_VPN_PROPERTIES_SETTING_NAME;
+		*setting_name = NM_SETTING_VPN_SETTING_NAME;
 
 	return need_secrets;
 }

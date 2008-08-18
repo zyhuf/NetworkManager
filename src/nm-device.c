@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #include "nm-device-interface.h"
 #include "nm-device.h"
@@ -1199,6 +1200,140 @@ nm_device_activate_schedule_stage4_ip_config_timeout (NMDevice *self)
 	         nm_device_get_iface (self));
 }
 
+static void
+share_child_setup (gpointer user_data G_GNUC_UNUSED)
+{
+	/* We are in the child process at this point */
+	pid_t pid = getpid ();
+	setpgid (pid, pid);
+}
+
+static gboolean
+share_init (void)
+{
+	int fd, count, status;
+	char *modules[] = { "ip_tables", "iptable_nat", "nf_nat_ftp", "nf_nat_irc",
+	                    "nf_nat_sip", "nf_nat_tftp", "nf_nat_pptp", "nf_nat_h323",
+	                    NULL };
+	char **iter;
+
+	fd = open ("/proc/sys/net/ipv4/ip_forward", O_WRONLY | O_TRUNC);
+	if (fd) {
+		count = write (fd, "1\n", 2);
+		if (count != 2) {
+			nm_warning ("%s: Error starting IP forwarding: (%d) %s",
+			            __func__, errno, strerror (errno));
+			return FALSE;
+		}
+		close (fd);
+	}
+
+	fd = open ("/proc/sys/net/ipv4/ip_dynaddr", O_WRONLY | O_TRUNC);
+	if (fd) {
+		count = write (fd, "1\n", 2);
+		if (count != 2) {
+			nm_warning ("%s: Error starting IP forwarding: (%d) %s",
+			            __func__, errno, strerror (errno));
+		}
+		close (fd);
+	}
+
+	for (iter = modules; *iter; iter++) {
+		char *argv[3] = { "/sbin/modprobe", *iter, NULL };
+		char *envp[1] = { NULL };
+		GError *error = NULL;
+
+		if (!g_spawn_sync ("/", argv, envp, G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL,
+		                   share_child_setup, NULL, NULL, NULL, &status, &error)) {
+			nm_info ("%s: Error loading NAT module %s: (%d) %s",
+			         __func__, *iter, error ? error->code : 0,
+			         (error && error->message) ? error->message : "unknown");
+			if (error)
+				g_error_free (error);
+		}
+	}
+
+	return TRUE;
+}
+
+static void
+add_share_rule (NMActRequest *req, const char *table, const char *fmt, ...)
+{
+	va_list args;
+	char *cmd;
+
+	va_start (args, fmt);
+	cmd = g_strdup_vprintf (fmt, args);
+	va_end (args);
+
+	nm_act_request_add_share_rule (req, table, cmd);
+	g_free (cmd);
+}
+
+static gboolean
+start_sharing (NMDevice *self)
+{
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+	NMActRequest *req;
+	GError *error = NULL;
+	char str_addr[INET_ADDRSTRLEN + 1];
+	char str_mask[INET_ADDRSTRLEN + 1];
+	guint32 netmask, network;
+	NMIP4Config *ip4_config;
+	const NMSettingIP4Address *ip4_addr;
+	const char *iface;
+
+	iface = nm_device_get_ip_iface (self);
+	if (!iface)
+		iface = nm_device_get_iface (self);
+
+	ip4_config = nm_device_get_ip4_config (self);
+	if (!ip4_config)
+		return FALSE;
+
+	ip4_addr = nm_ip4_config_get_address (ip4_config, 0);
+	if (!ip4_addr || !ip4_addr->address)
+		return FALSE;
+
+	netmask = nm_utils_ip4_prefix_to_netmask (ip4_addr->prefix);
+	if (!inet_ntop (AF_INET, &netmask, str_mask, sizeof (str_mask)))
+		return FALSE;
+
+	network = ip4_addr->address & netmask;
+	if (!inet_ntop (AF_INET, &network, str_addr, sizeof (str_addr)))
+		return FALSE;
+
+	if (!share_init ())
+		return FALSE;
+
+	req = nm_device_get_act_request (self);
+	g_assert (req);
+
+	add_share_rule (req, "filter", "INPUT --in-interface %s --protocol tcp --destination-port 53 --jump ACCEPT", iface);
+	add_share_rule (req, "filter", "INPUT --in-interface %s --protocol udp --destination-port 53 --jump ACCEPT", iface);
+	add_share_rule (req, "filter", "INPUT --in-interface %s --protocol tcp --destination-port 67 --jump ACCEPT", iface);
+	add_share_rule (req, "filter", "INPUT --in-interface %s --protocol udp --destination-port 67 --jump ACCEPT", iface);
+	add_share_rule (req, "filter", "FORWARD --in-interface %s --jump REJECT", iface);
+	add_share_rule (req, "filter", "FORWARD --out-interface %s --jump REJECT", iface);
+	add_share_rule (req, "filter", "FORWARD --in-interface %s --out-interface %s --jump ACCEPT", iface, iface);
+	add_share_rule (req, "filter", "FORWARD --source %s/%s --in-interface %s --jump ACCEPT", str_addr, str_mask, iface);
+	add_share_rule (req, "filter", "FORWARD --destination %s/%s --out-interface %s --match state --state ESTABLISHED,RELATED --jump ACCEPT", str_addr, str_mask, iface);
+	add_share_rule (req, "nat", "POSTROUTING --source %s/%s --destination ! %s/%s --jump MASQUERADE", str_addr, str_mask, str_addr, str_mask);
+
+	nm_act_request_set_shared (req, TRUE);
+
+	if (!nm_dnsmasq_manager_start (priv->dnsmasq_manager, ip4_config, &error)) {
+		nm_warning ("(%s): failed to start dnsmasq: %s", iface, error->message);
+		g_error_free (error);
+		nm_act_request_set_shared (req, FALSE);
+		return FALSE;
+	}
+
+	priv->dnsmasq_state_id = g_signal_connect (priv->dnsmasq_manager, "state-changed",
+	                                           G_CALLBACK (dnsmasq_state_changed_cb),
+	                                           self);
+	return TRUE;
+}
 
 /*
  * nm_device_activate_stage5_ip_config_commit
@@ -1237,18 +1372,11 @@ nm_device_activate_stage5_ip_config_commit (gpointer user_data)
 	connection = nm_act_request_get_connection (nm_device_get_act_request (self));
 	s_ip4 = (NMSettingIP4Config *) nm_connection_get_setting (connection, NM_TYPE_SETTING_IP4_CONFIG);
 	if (s_ip4 && !strcmp (s_ip4->method, "shared")) {
-		GError *error = NULL;
-
-		if (!nm_dnsmasq_manager_start (priv->dnsmasq_manager, ip4_config, &error)) {
-			nm_warning ("(%s): failed to start dnsmasq: %s", iface, error->message);
-			g_error_free (error);
+		if (!start_sharing (self)) {
+			nm_warning ("Activation (%s) Stage 5 of 5 (IP Configure Commit) start sharing failed.", iface);
 			nm_device_state_changed (self, NM_DEVICE_STATE_FAILED, NM_DEVICE_STATE_REASON_SHARED_START_FAILED);
 			goto out;
 		}
-
-		priv->dnsmasq_state_id = g_signal_connect (priv->dnsmasq_manager, "state-changed",
-		                                           G_CALLBACK (dnsmasq_state_changed_cb),
-		                                           self);
 	}
 
 	nm_device_state_changed (self, NM_DEVICE_STATE_ACTIVATED, NM_DEVICE_STATE_REASON_NONE);
@@ -1329,8 +1457,6 @@ nm_device_deactivate_quickly (NMDevice *self)
 
 	priv = NM_DEVICE_GET_PRIVATE (self);
 
-	nm_system_shutdown_nis ();
-
 	/* Break the activation chain */
 	if (priv->act_source_id) {
 		g_source_remove (priv->act_source_id);
@@ -1363,12 +1489,12 @@ nm_device_deactivate_quickly (NMDevice *self)
 
 	aipd_cleanup (self);
 
-	/* Tear down an existing activation request */
-	clear_act_request (self);
-
 	/* Call device type-specific deactivation */
 	if (NM_DEVICE_GET_CLASS (self)->deactivate_quickly)
 		NM_DEVICE_GET_CLASS (self)->deactivate_quickly (self);
+
+	/* Tear down an existing activation request */
+	clear_act_request (self);
 
 	return TRUE;
 }
@@ -1736,13 +1862,14 @@ nm_device_set_ip4_config (NMDevice *self, NMIP4Config *config, NMDeviceStateReas
 	g_return_val_if_fail (reason != NULL, FALSE);
 
 	priv = NM_DEVICE_GET_PRIVATE (self);
+	ip_iface = nm_device_get_ip_iface (self);
 
 	if (priv->ip4_config) {
 		NMNamedManager *named_mgr;
 
 		/* Remove any previous IP4 Config from the named manager */
 		named_mgr = nm_named_manager_get ();
-		nm_named_manager_remove_ip4_config (named_mgr, priv->ip4_config);
+		nm_named_manager_remove_ip4_config (named_mgr, ip_iface, priv->ip4_config);
 		g_object_unref (named_mgr);
 
 		g_object_unref (priv->ip4_config);
@@ -1754,14 +1881,9 @@ nm_device_set_ip4_config (NMDevice *self, NMIP4Config *config, NMDeviceStateReas
 
 	priv->ip4_config = g_object_ref (config);
 
-	ip_iface = nm_device_get_ip_iface (self);
-
 	success = nm_system_device_set_from_ip4_config (ip_iface, config);
-	if (success) {
+	if (success)
 		nm_device_update_ip4_address (self);
-		nm_system_set_hostname (config);
-		nm_system_activate_nis (config);
-	}
 
 	g_object_notify (G_OBJECT (self), NM_DEVICE_INTERFACE_IP4_CONFIG);
 
@@ -2062,9 +2184,9 @@ get_property (GObject *object, guint prop_id,
 	case NM_DEVICE_INTERFACE_PROP_DHCP4_CONFIG:
 		if (   ((state == NM_DEVICE_STATE_ACTIVATED) || (state == NM_DEVICE_STATE_IP_CONFIG))
 		    && nm_device_get_use_dhcp (self))
-			g_value_set_object (value, priv->dhcp4_config);
+			g_value_set_boxed (value, nm_dhcp4_config_get_dbus_path (priv->dhcp4_config));
 		else
-			g_value_set_object (value, NULL);
+			g_value_set_boxed (value, "/");
 		break;
 	case NM_DEVICE_INTERFACE_PROP_STATE:
 		g_value_set_uint (value, priv->state);

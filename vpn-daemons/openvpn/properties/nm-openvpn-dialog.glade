@@ -241,7 +241,7 @@
                         <child>
                           <widget class="GtkLabel" id="label14">
                             <property name="visible">True</property>
-                            <property name="label" translatable="yes">page 1</property>
+                            <property name="label">page 1</property>
                           </widget>
                           <packing>
                             <property name="type">tab</property>
@@ -322,7 +322,7 @@
                         <child>
                           <widget class="GtkLabel" id="label15">
                             <property name="visible">True</property>
-                            <property name="label" translatable="yes">page 2</property>
+                            <property name="label">page 2</property>
                           </widget>
                           <packing>
                             <property name="type">tab</property>
@@ -466,7 +466,7 @@
                         <child>
                           <widget class="GtkLabel" id="label16">
                             <property name="visible">True</property>
-                            <property name="label" translatable="yes">page 3</property>
+                            <property name="label">page 3</property>
                           </widget>
                           <packing>
                             <property name="type">tab</property>
@@ -477,7 +477,7 @@
                         <child>
                           <widget class="GtkTable" id="table6">
                             <property name="visible">True</property>
-                            <property name="n_rows">3</property>
+                            <property name="n_rows">4</property>
                             <property name="n_columns">2</property>
                             <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
@@ -566,6 +566,36 @@
                                 <property name="y_options"></property>
                               </packing>
                             </child>
+                            <child>
+                              <widget class="GtkLabel" id="label20">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Local IP Address:</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkAlignment" id="alignment18">
+                                <property name="visible">True</property>
+                                <property name="xalign">1</property>
+                                <property name="xscale">0</property>
+                                <child>
+                                  <widget class="GtkEntry" id="sk_local_address_entry">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                  </widget>
+                                </child>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
                           </widget>
                           <packing>
                             <property name="position">3</property>
@@ -574,7 +604,7 @@
                         <child>
                           <widget class="GtkLabel" id="label17">
                             <property name="visible">True</property>
-                            <property name="label" translatable="yes">page 4</property>
+                            <property name="label">page 4</property>
                           </widget>
                           <packing>
                             <property name="type">tab</property>
@@ -786,6 +816,9 @@
                     <property name="column_spacing">12</property>
                     <property name="row_spacing">6</property>
                     <child>
+                      <placeholder/>
+                    </child>
+                    <child>
                       <widget class="GtkLabel" id="tls_auth_label">
                         <property name="visible">True</property>
                         <property name="xalign">0</property>
@@ -812,9 +845,6 @@
                         <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
                       </packing>
-                    </child>
-                    <child>
-                      <placeholder/>
                     </child>
                     <child>
                       <widget class="GtkAlignment" id="alignment19">
@@ -925,7 +955,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">gtk-cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="use_stock">True</property>
                 <property name="response_id">-6</property>
               </widget>
@@ -935,7 +965,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">gtk-ok</property>
+                <property name="label">gtk-ok</property>
                 <property name="use_stock">True</property>
                 <property name="response_id">-5</property>
               </widget>

@@ -17,8 +17,6 @@ typedef struct {
 	char *hostname;
 	GArray *nameservers;
 	GPtrArray *domains;
-	char *nis_domain;
-	GArray *nis_servers;
 	GSList *routes;
 } NMIP4ConfigPrivate;
 
@@ -28,8 +26,6 @@ enum {
 	PROP_HOSTNAME,
 	PROP_NAMESERVERS,
 	PROP_DOMAINS,
-	PROP_NIS_DOMAIN,
-	PROP_NIS_SERVERS,
 	PROP_ROUTES,
 
 	LAST_PROP
@@ -62,8 +58,6 @@ demarshal_ip4_array (NMObject *object, GParamSpec *pspec, GValue *value, gpointe
 		return FALSE;
 
 	if (!strcmp (pspec->name, NM_IP4_CONFIG_NAMESERVERS))
-		nm_object_queue_notify (object, NM_IP4_CONFIG_NAMESERVERS);
-	else if (!strcmp (pspec->name, NM_IP4_CONFIG_NIS_SERVERS))
 		nm_object_queue_notify (object, NM_IP4_CONFIG_NAMESERVERS);
 	return TRUE;
 }
@@ -102,8 +96,6 @@ register_for_property_changed (NMIP4Config *config)
 		{ NM_IP4_CONFIG_HOSTNAME,    nm_object_demarshal_generic,  &priv->hostname },
 		{ NM_IP4_CONFIG_NAMESERVERS, demarshal_ip4_array,          &priv->nameservers },
 		{ NM_IP4_CONFIG_DOMAINS,     demarshal_domains,            &priv->domains },
-		{ NM_IP4_CONFIG_NIS_DOMAIN,  nm_object_demarshal_generic,  &priv->nis_domain },
-		{ NM_IP4_CONFIG_NIS_SERVERS, demarshal_ip4_array,          &priv->nis_servers },
 		{ NM_IP4_CONFIG_ROUTES,      demarshal_ip4_routes_array,   &priv->routes },
 		{ NULL },
 	};
@@ -153,11 +145,8 @@ finalize (GObject *object)
 	g_slist_free (priv->routes);
 
 	g_free (priv->hostname);
-	g_free (priv->nis_domain);
 	if (priv->nameservers)
 		g_array_free (priv->nameservers, TRUE);
-	if (priv->nis_servers)
-		g_array_free (priv->nis_servers, TRUE);
 
 	if (priv->domains) {
 		g_ptr_array_foreach (priv->domains, (GFunc) g_free, NULL);
@@ -189,12 +178,6 @@ get_property (GObject *object,
 	case PROP_DOMAINS:
 		g_value_set_boxed (value, nm_ip4_config_get_domains (self));
 		break;
-	case PROP_NIS_DOMAIN:
-		g_value_set_string (value, nm_ip4_config_get_nis_domain (self));
-		break;
-	case PROP_NIS_SERVERS:
-		g_value_set_boxed (value, nm_ip4_config_get_nis_servers (self));
-		break;
 	case PROP_ROUTES:
 		nm_utils_ip4_routes_to_gvalue (priv->routes, value);
 		break;
@@ -217,6 +200,12 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 	object_class->finalize = finalize;
 
 	/* properties */
+
+	/**
+	 * NMIP4Config:addresses:
+	 *
+	 * The #GPtrArray containing #NMSettingIP4Address<!-- -->es of the configuration.
+	 **/
 	g_object_class_install_property
 		(object_class, PROP_ADDRESSES,
 		 g_param_spec_pointer (NM_IP4_CONFIG_ADDRESSES,
@@ -224,6 +213,11 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 						       "Addresses",
 						       G_PARAM_READABLE));
 
+	/**
+	 * NMIP4Config:hostname:
+	 *
+	 * The host name string of the configuration.
+	 **/
 	g_object_class_install_property
 		(object_class, PROP_HOSTNAME,
 		 g_param_spec_string (NM_IP4_CONFIG_HOSTNAME,
@@ -232,6 +226,11 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 						    NULL,
 						    G_PARAM_READABLE));
 
+	/**
+	 * NMIP4Config:nameservers:
+	 *
+	 * The #GArray containing name servers (%guint32<!-- -->es) of the configuration.
+	 **/
 	g_object_class_install_property
 		(object_class, PROP_NAMESERVERS,
 		 g_param_spec_boxed (NM_IP4_CONFIG_NAMESERVERS,
@@ -240,6 +239,11 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 						    NM_TYPE_UINT_ARRAY,
 						    G_PARAM_READABLE));
 
+	/**
+	 * NMIP4Config:domains:
+	 *
+	 * The #GPtrArray containing domain strings of the configuration.
+	 **/
 	g_object_class_install_property
 		(object_class, PROP_DOMAINS,
 		 g_param_spec_boxed (NM_IP4_CONFIG_DOMAINS,
@@ -248,22 +252,11 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 						    NM_TYPE_STRING_ARRAY,
 						    G_PARAM_READABLE));
 
-	g_object_class_install_property
-		(object_class, PROP_NIS_DOMAIN,
-		 g_param_spec_string (NM_IP4_CONFIG_NIS_DOMAIN,
-						    "NIS domain",
-						    "NIS domain",
-						    NULL,
-						    G_PARAM_READABLE));
-
-	g_object_class_install_property
-		(object_class, PROP_NIS_SERVERS,
-		 g_param_spec_boxed (NM_IP4_CONFIG_NIS_SERVERS,
-						    "NIS servers",
-						    "NIS servers",
-						    NM_TYPE_UINT_ARRAY,
-						    G_PARAM_READABLE));
-
+	/**
+	 * NMIP4Config:routes:
+	 *
+	 * The #GPtrArray containing #NMSettingIP4Route<!-- -->s of the configuration.
+	 **/
 	g_object_class_install_property
 		(object_class, PROP_ROUTES,
 		 g_param_spec_pointer (NM_IP4_CONFIG_ROUTES,
@@ -272,6 +265,15 @@ nm_ip4_config_class_init (NMIP4ConfigClass *config_class)
 						       G_PARAM_READABLE));
 }
 
+/**
+ * nm_ip4_config_new:
+ * @connection: the #DBusGConnection
+ * @object_path: the DBus object path of the device
+ *
+ * Creates a new #NMIP4Config.
+ *
+ * Returns: a new IP4 configuration
+ **/
 GObject *
 nm_ip4_config_new (DBusGConnection *connection, const char *object_path)
 {
@@ -281,6 +283,15 @@ nm_ip4_config_new (DBusGConnection *connection, const char *object_path)
 									 NULL);
 }
 
+/**
+ * nm_ip4_config_get_addresses:
+ * @config: a #NMIP4Config
+ *
+ * Gets the IP4 addresses (containing the address, prefix, and gateway).
+ *
+ * Returns: the #GSList containing #NMSettingIP4Address<!-- -->es. This is the internal copy
+ * used by the configuration and must not be modified.
+ **/
 const GSList *
 nm_ip4_config_get_addresses (NMIP4Config *config)
 {
@@ -306,6 +317,15 @@ nm_ip4_config_get_addresses (NMIP4Config *config)
 	return priv->addresses;
 }
 
+/**
+ * nm_ip4_config_get_hostname:
+ * @config: a #NMIP4Config
+ *
+ * Gets the host name.
+ *
+ * Returns: the host name from the configuration. This is the internal copy used by the
+ * configuration and must not be modified.
+ **/
 const char *
 nm_ip4_config_get_hostname (NMIP4Config *config)
 {
@@ -323,6 +343,15 @@ nm_ip4_config_get_hostname (NMIP4Config *config)
 	return priv->hostname;
 }
 
+/**
+ * nm_ip4_config_get_nameservers:
+ * @config: a #NMIP4Config
+ *
+ * Gets the domain name servers (DNS).
+ *
+ * Returns: the #GArray containing %guint32<!-- -->s. This is the internal copy used by the
+ * configuration and must not be modified.
+ **/
 const GArray *
 nm_ip4_config_get_nameservers (NMIP4Config *config)
 {
@@ -349,7 +378,15 @@ nm_ip4_config_get_nameservers (NMIP4Config *config)
 
 	return priv->nameservers;
 }
-
+/**
+ * nm_ip4_config_get_domains:
+ * @config: a #NMIP4Config
+ *
+ * Gets the domain names.
+ *
+ * Returns: the #GPtrArray containing domains as strings. This is the 
+ * internal copy used by the configuration, and must not be modified.
+ **/
 const GPtrArray *
 nm_ip4_config_get_domains (NMIP4Config *config)
 {
@@ -380,50 +417,15 @@ nm_ip4_config_get_domains (NMIP4Config *config)
 	return handle_ptr_array_return (priv->domains);
 }
 
-const char *
-nm_ip4_config_get_nis_domain (NMIP4Config *config)
-{
-	NMIP4ConfigPrivate *priv;
-
-	g_return_val_if_fail (NM_IS_IP4_CONFIG (config), NULL);
-
-	priv = NM_IP4_CONFIG_GET_PRIVATE (config);
-	if (!priv->nis_domain) {
-		priv->nis_domain = nm_object_get_string_property (NM_OBJECT (config),
-		                                                  NM_DBUS_INTERFACE_IP4_CONFIG,
-		                                                  "NisDomain");
-	}
-
-	return priv->nis_domain;
-}
-
-const GArray *
-nm_ip4_config_get_nis_servers (NMIP4Config *config)
-{
-	NMIP4ConfigPrivate *priv;
-	GArray *array = NULL;
-	GValue value = {0,};
-
-	g_return_val_if_fail (NM_IS_IP4_CONFIG (config), NULL);
-
-	priv = NM_IP4_CONFIG_GET_PRIVATE (config);
-	if (!priv->nis_servers) {
-		if (nm_object_get_property (NM_OBJECT (config),
-									NM_DBUS_INTERFACE_IP4_CONFIG,
-									"NisServers",
-									&value)) {
-			array = (GArray *) g_value_get_boxed (&value);
-			if (array && array->len) {
-				priv->nis_servers = g_array_sized_new (FALSE, TRUE, sizeof (guint32), array->len);
-				g_array_append_vals (priv->nis_servers, array->data, array->len);
-			}
-			g_value_unset (&value);
-		}
-	}
-
-	return priv->nis_servers;
-}
-
+/**
+ * nm_ip4_config_get_routes:
+ * @config: a #NMIP4Config
+ *
+ * Gets the routes.
+ *
+ * Returns: the #GSList containing #NMSettingIP4Route<!-- -->s. This is the 
+ * internal copy used by the configuration, and must not be modified.
+ **/
 const GSList *
 nm_ip4_config_get_routes (NMIP4Config *config)
 {
