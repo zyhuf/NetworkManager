@@ -265,40 +265,40 @@ msgstr "Αδύνατη η διαπίστωση του αρχείου PKCS#12: %d
 #: ../src/nm-netlink-monitor.c:194 ../src/nm-netlink-monitor.c:454
 #, c-format
 msgid "error processing netlink message: %s"
-msgstr "σφάλμα κατά την επεξεργασία του μηνύματος netlink: %s"
+msgstr "σφάλμα κατά την επεξεργασία μηνύματος netlink: %s"
 
 #: ../src/nm-netlink-monitor.c:251
 #, c-format
 msgid "unable to allocate netlink handle for monitoring link status: %s"
 msgstr ""
-"αδύνατη η εκχώρηση χειριστή netlink για την παρακολούθηση της κατάστασης του "
-"συνδέσμου: %s"
+"αδύνατη η δέσμευση χειριστή netlink για την παρακολούθηση της κατάστασης της "
+"σύνδεσης: %s"
 
 #: ../src/nm-netlink-monitor.c:261
 #, c-format
 msgid "unable to connect to netlink for monitoring link status: %s"
 msgstr ""
-"αδύνατη η σύνδεση με το netlink για την παρακολούθηση της κατάστασης του "
-"συνδέσμου: %s"
+"αδύνατη η σύνδεση με το netlink για την παρακολούθηση της κατάστασης της "
+"σύνδεσης: %s"
 
 #: ../src/nm-netlink-monitor.c:269
 #, c-format
 msgid "unable to join netlink group for monitoring link status: %s"
 msgstr ""
 "αδύνατη η ένταξη στην ομάδα του netlink για την παρακολούθηση της κατάστασης "
-"του συνδέσμου: %s"
+"της σύνδεσης: %s"
 
 #: ../src/nm-netlink-monitor.c:277
 #, c-format
 msgid "unable to allocate netlink link cache for monitoring link status: %s"
 msgstr ""
-"αδύνατη η εκχώρηση λανθάνουσας μνήμης στο σύνδεσμο netlink για την "
-"παρακολούθηση της κατάστασης του συνδέσμου: %s"
+"αδύνατη η εκχώρηση λανθάνουσας μνήμης στη σύνδεση netlink για την "
+"παρακολούθηση της κατάστασης της σύνδεσης δικτύου: %s"
 
 #: ../src/nm-netlink-monitor.c:418
 #, c-format
 msgid "error updating link cache: %s"
-msgstr "σφάλμα κατά την ενημέρωση της λανθάνουσας μνήμης του συνδέσμου: s%"
+msgstr "σφάλμα κατά την ενημέρωση της λανθάνουσας μνήμης της σύνδεσης: s%"
 
 #: ../src/nm-netlink-monitor.c:484
 msgid "error occurred while waiting for data on socket"
