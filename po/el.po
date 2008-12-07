@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: NetworkManager.HEAD\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-12-07 15:20+0000\n"
+"POT-Creation-Date: 2008-12-07 22:30+0000\n"
 "PO-Revision-Date: 2008-12-07 01:52+0200\n"
 "Last-Translator: Jennie Petoumenou <epetoumenou@gmail.com>\n"
 "Language-Team: Greek <team@gnome.gr>\n"
@@ -298,7 +298,7 @@ msgstr ""
 #: ../src/nm-netlink-monitor.c:418
 #, c-format
 msgid "error updating link cache: %s"
-msgstr "σφάλμα κατά την ενημέρωση της λανθάνουσας μνήμης της σύνδεσης: s%"
+msgstr "σφάλμα κατά την ενημέρωση της λανθάνουσας μνήμης της σύνδεσης: %s"
 
 #: ../src/nm-netlink-monitor.c:484
 msgid "error occurred while waiting for data on socket"
