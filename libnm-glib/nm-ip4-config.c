@@ -353,9 +353,9 @@ nm_ip4_config_get_addresses (NMIP4Config *config)
 		return priv->addresses;
 
 	if (!_nm_object_get_property (NM_OBJECT (config),
-	                             "org.freedesktop.DBus.Properties",
-	                             "Addresses",
-	                             &value)) {
+	                              NM_DBUS_INTERFACE_IP4_CONFIG,
+	                              "Addresses",
+	                              &value)) {
 		return NULL;
 	}
 
@@ -512,9 +512,9 @@ nm_ip4_config_get_routes (NMIP4Config *config)
 		return priv->routes;
 
 	if (!_nm_object_get_property (NM_OBJECT (config),
-	                             "org.freedesktop.DBus.Properties",
-	                             "Routes",
-	                             &value)) {
+	                              NM_DBUS_INTERFACE_IP4_CONFIG,
+	                              "Routes",
+	                              &value)) {
 		return NULL;
 	}
 
