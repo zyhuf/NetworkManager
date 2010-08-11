@@ -152,6 +152,8 @@ set_property (GObject *object, guint prop_id,
 	case PROP_STRENGTH:
 		nm_ap_set_strength (ap, g_value_get_char (value));
 		break;
+	case PROP_HW_ADDRESS:
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -241,7 +243,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							NM_802_11_AP_FLAGS_NONE,
 							NM_802_11_AP_FLAGS_PRIVACY,
 							NM_802_11_AP_FLAGS_NONE,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_WPA_FLAGS,
@@ -251,7 +253,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							NM_802_11_AP_SEC_NONE,
 							all_sec_flags,
 							NM_802_11_AP_SEC_NONE,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_RSN_FLAGS,
@@ -261,7 +263,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							NM_802_11_AP_SEC_NONE,
 							all_sec_flags,
 							NM_802_11_AP_SEC_NONE,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_SSID,
@@ -269,7 +271,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 	                         "SSID",
 	                         "SSID",
 	                         DBUS_TYPE_G_UCHAR_ARRAY,
-	                         G_PARAM_READWRITE));
+	                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_FREQUENCY,
@@ -277,7 +279,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							"Frequency",
 							"Frequency",
 							0, 10000, 0,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_HW_ADDRESS,
@@ -285,7 +287,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							  "MAC Address",
 							  "Hardware MAC address",
 							  NULL,
-							  G_PARAM_READABLE));
+							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 	
 	g_object_class_install_property
 		(object_class, PROP_MODE,
@@ -293,7 +295,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 						   "Mode",
 						   "Mode",
 						   NM_802_11_MODE_ADHOC, NM_802_11_MODE_INFRA, NM_802_11_MODE_INFRA,
-						   G_PARAM_READWRITE));
+						   G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_MAX_BITRATE,
@@ -301,7 +303,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							"Max Bitrate",
 							"Max Bitrate",
 							0, G_MAXUINT16, 0,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property
 		(object_class, PROP_STRENGTH,
@@ -309,7 +311,7 @@ nm_ap_class_init (NMAccessPointClass *ap_class)
 							"Strength",
 							"Strength",
 							G_MININT8, G_MAXINT8, 0,
-							G_PARAM_READWRITE));
+							G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	/* Signals */
 	signals[PROPERTIES_CHANGED] = 
