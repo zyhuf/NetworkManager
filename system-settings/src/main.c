@@ -130,7 +130,7 @@ load_plugins (Application *app, const char *plugins, GError **error)
 	for (iter = plist; *iter; iter++) {
 		GModule *plugin;
 		char *full_name, *path;
-		const char *pname = *iter;
+		const char *pname = g_strstrip (*iter);
 		GObject *obj;
 		GObject * (*factory_func) (void);
 
