@@ -167,11 +167,11 @@ get_property (GObject *object, guint prop_id,
 			g_value_set_string (value, "org.freedesktop.NetworkManagerSystemSettings");
 		break;
 	case PROP_CONNECTION:
-		g_value_set_string (value, nm_connection_get_path (connection));
+		g_value_set_boxed (value, nm_connection_get_path (connection));
 		break;
 	case PROP_SPECIFIC_OBJECT:
 		g_object_get (priv->parent, NM_ACTIVE_CONNECTION_SPECIFIC_OBJECT, &str, NULL);
-		g_value_take_string (value, str);
+		g_value_take_boxed (value, str);
 		break;
 	case PROP_DEVICES:
 		compat = nm_device_get_compat (NM_DEVICE (nm_act_request_get_device (priv->parent)));
