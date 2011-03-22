@@ -5,6 +5,7 @@ INCLUDES = -I${top_srcdir} \
            -I${top_srcdir}/src/settings/ \
            -I${top_srcdir}/src/ \
            -I${top_srcdir}/src/modem-manager/ \
+           -I${top_srcdir}/src/vpn-manager/ \
            -I${top_srcdir}/libnm-util
 
 EXTRA_DIST = \
@@ -15,7 +16,8 @@ EXTRA_DIST = \
 	nm-compat-manager.xml \
 	nm-compat-settings.xml \
 	nm-compat-exported-connection.xml \
-	nm-compat-active-connection.xml
+	nm-compat-active-connection.xml \
+	nm-compat-vpn-connection.xml
 
 nm-compat-device-cdma-glue.h: nm-compat-device-cdma.xml
 	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_device_cdma --mode=glib-server --output=$@ $<
@@ -41,6 +43,9 @@ nm-compat-exported-connection-glue.h: nm-compat-exported-connection.xml
 nm-compat-active-connection-glue.h: nm-compat-active-connection.xml
 	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_active_connection --mode=glib-server --output=$@ $<
 
+nm-compat-vpn-connection-glue.h: nm-compat-vpn-connection.xml
+	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_vpn_connection --mode=glib-server --output=$@ $<
+
 BUILT_SOURCES = \
 	nm-compat-device-cdma-glue.h \
 	nm-compat-device-gsm-glue.h \
@@ -49,7 +54,8 @@ BUILT_SOURCES = \
 	nm-compat-manager-glue.h \
 	nm-compat-settings-glue.h \
 	nm-compat-exported-connection-glue.h \
-	nm-compat-active-connection-glue.h
+	nm-compat-active-connection-glue.h \
+	nm-compat-vpn-connection-glue.h
 
 noinst_LTLIBRARIES = libcompat.la
 
@@ -59,7 +65,9 @@ libcompat_la_SOURCES = \
 	nm-compat-device.c \
 	nm-compat-device.h \
 	nm-compat-active-connection.c \
-	nm-compat-active-connection.h
+	nm-compat-active-connection.h \
+	nm-compat-vpn-connection.c \
+	nm-compat-vpn-connection.h
 
 libcompat_la_CPPFLAGS = \
 	$(DBUS_CFLAGS) \

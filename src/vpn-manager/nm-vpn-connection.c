@@ -48,6 +48,7 @@
 #include "nm-netlink-monitor.h"
 #include "nm-glib-compat.h"
 #include "settings/nm-settings-connection.h"
+#include "compat/nm-compat-vpn-connection.h"
 
 #include "nm-vpn-connection-glue.h"
 
@@ -77,6 +78,8 @@ typedef struct {
 	char *banner;
 
 	struct rtnl_route *gw_route;
+
+	NMCompatVpnConnection *compat;
 } NMVPNConnectionPrivate;
 
 #define NM_VPN_CONNECTION_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_VPN_CONNECTION, NMVPNConnectionPrivate))
@@ -233,6 +236,8 @@ nm_vpn_connection_new (NMConnection *connection,
 	                                     self);
 
 	nm_vpn_connection_base_export (NM_VPN_CONNECTION_BASE (self), connection);
+
+	priv->compat = nm_compat_vpn_connection_new (self);
 
 	return self;
 }
@@ -1041,6 +1046,7 @@ dispose (GObject *object)
 
 	g_object_unref (priv->act_request);
 	g_object_unref (priv->connection);
+	g_object_unref (priv->compat);
 
 	G_OBJECT_CLASS (nm_vpn_connection_parent_class)->dispose (object);
 }
