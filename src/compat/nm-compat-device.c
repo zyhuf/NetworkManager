@@ -262,7 +262,7 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_STATE:
 		g_object_get (priv->parent, NM_DEVICE_INTERFACE_STATE, &u, NULL);
-		g_value_set_uint (value, u);
+		g_value_set_uint (value, new_state_to_old (u));
 		break;
 	case PROP_MANAGED:
 		g_object_get (priv->parent, NM_DEVICE_INTERFACE_MANAGED, &bool, NULL);
