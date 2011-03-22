@@ -142,7 +142,6 @@ static void
 set_property (GObject *object, guint prop_id,
 			  const GValue *value, GParamSpec *pspec)
 {
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 }
 
 static void

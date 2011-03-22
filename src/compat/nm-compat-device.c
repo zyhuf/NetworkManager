@@ -128,9 +128,16 @@ new_state_to_old (NMDeviceState state)
 }
 
 static void
-state_changed_cb (NMDevice *parent, NMDeviceState state, NMCompatDevice *self)
+state_changed_cb (NMDevice *parent,
+	              NMDeviceState new_state,
+	              NMDeviceState old_state,
+	              NMDeviceStateReason reason,
+                  NMCompatDevice *self)
 {
-	g_signal_emit (self, signals[STATE_CHANGED], 0, new_state_to_old (state));
+	g_signal_emit (self, signals[STATE_CHANGED], 0,
+	               new_state_to_old (new_state),
+	               new_state_to_old (old_state),
+	               reason);
 }
 
 static void
@@ -194,7 +201,6 @@ static void
 set_property (GObject *object, guint prop_id,
 			  const GValue *value, GParamSpec *pspec)
 {
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 }
 
 #define NM_OLD_DEVICE_TYPE_GSM 3
@@ -209,6 +215,9 @@ get_property (GObject *object, guint prop_id,
 	char *str;
 	guint32 u;
 	gboolean bool;
+
+	if (priv->parent == NULL)
+		return;
 
 	switch (prop_id) {
 	case PROP_UDI:
