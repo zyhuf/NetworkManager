@@ -55,6 +55,7 @@
 #include "nm-ip6-manager.h"
 #include "nm-marshal.h"
 #include "nm-rfkill.h"
+#include "compat/nm-compat-device.h"
 
 #define NM_ACT_REQUEST_IP4_CONFIG "nm-act-request-ip4-config"
 #define NM_ACT_REQUEST_IP6_CONFIG "nm-act-request-ip6-config"
@@ -148,6 +149,8 @@ typedef struct {
 
 	/* inhibit autoconnect feature */
 	gboolean	autoconnect_inhibit;
+
+	NMCompatDevice *compat;
 } NMDevicePrivate;
 
 static gboolean check_connection_compatible (NMDeviceInterface *device,
@@ -295,6 +298,8 @@ constructor (GType type,
 	priv->dhcp_manager = nm_dhcp_manager_get ();
 
 	update_accept_ra_save (dev);
+
+	priv->compat = nm_compat_device_new (dev);
 
 	priv->initialized = TRUE;
 	return object;
@@ -3369,6 +3374,8 @@ dispose (GObject *object)
 
 	clear_act_request (self);
 
+	g_object_unref (priv->compat);
+
 out:
 	G_OBJECT_CLASS (nm_device_parent_class)->dispose (object);
 }
@@ -3913,5 +3920,11 @@ nm_device_clear_autoconnect_inhibit (NMDevice *device)
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (device);
 	g_return_if_fail (priv);
 	priv->autoconnect_inhibit = FALSE;
+}
+
+gpointer
+nm_device_get_compat (NMDevice *device)
+{
+	return NM_DEVICE_GET_PRIVATE (device)->compat;
 }
 

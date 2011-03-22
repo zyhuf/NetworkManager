@@ -571,6 +571,7 @@ Makefile
 include/Makefile
 include/nm-version.h
 src/Makefile
+src/compat/Makefile
 src/tests/Makefile
 marshallers/Makefile
 src/logging/Makefile

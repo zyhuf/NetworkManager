@@ -39,6 +39,7 @@
 #include "nm-dbus-glib-types.h"
 #include "nm-active-connection-glue.h"
 #include "nm-settings-connection.h"
+#include "compat/nm-compat-active-connection.h"
 
 
 G_DEFINE_TYPE (NMActRequest, nm_act_request, G_TYPE_OBJECT)
@@ -79,6 +80,8 @@ typedef struct {
 	char *ac_path;
 
 	gboolean assumed;
+
+	NMCompatActiveConnection *compat;
 } NMActRequestPrivate;
 
 enum {
@@ -465,6 +468,12 @@ device_state_changed (NMDevice *device,
 	}
 }
 
+gpointer
+nm_act_request_get_compat (NMActRequest *req)
+{
+	return NM_ACT_REQUEST_GET_PRIVATE (req)->compat;
+}
+
 /********************************************************************/
 
 NMActRequest *
@@ -516,6 +525,8 @@ nm_act_request_init (NMActRequest *req)
 	dbus_g_connection_register_g_object (nm_dbus_manager_get_connection (dbus_mgr),
 	                                     priv->ac_path,
 	                                     G_OBJECT (req));
+
+	priv->compat = nm_compat_active_connection_new (req, nm_dbus_manager_get_connection (dbus_mgr));
 	g_object_unref (dbus_mgr);
 }
 
@@ -589,6 +600,7 @@ dispose (GObject *object)
 	g_slist_free (priv->secrets_calls);
 
 	g_object_unref (priv->connection);
+	g_object_unref (priv->compat);
 
 	G_OBJECT_CLASS (nm_act_request_parent_class)->dispose (object);
 }

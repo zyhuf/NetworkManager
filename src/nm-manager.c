@@ -59,6 +59,8 @@
 #include "nm-settings-connection.h"
 #include "nm-manager-auth.h"
 #include "NetworkManagerUtils.h"
+#include "compat/nm-compat-manager.h"
+#include "compat/nm-compat-device.h"
 
 #define NM_AUTOIP_DBUS_SERVICE "org.freedesktop.nm_avahi_autoipd"
 #define NM_AUTOIP_DBUS_IFACE   "org.freedesktop.nm_avahi_autoipd"
@@ -178,7 +180,10 @@ struct PendingActivation {
 	PendingActivationFunc callback;
 	NMAuthChain *chain;
 
+	guint timeout_id;
+
 	char *connection_path;
+	gboolean user_connection;
 	NMConnection *connection;
 	char *specific_object_path;
 	char *device_path;
@@ -209,6 +214,11 @@ typedef struct {
 
 	NMSettings *settings;
 	char *hostname;
+
+	GHashTable *user_connections;
+	DBusGProxy *user_proxy;
+	NMAuthCallResult user_net_perm; 
+	NMCompatManager *compat;
 
 	RadioState radio_states[RFKILL_TYPE_MAX];
 	gboolean sleeping;
@@ -251,6 +261,11 @@ enum {
 	PROPERTIES_CHANGED,
 	CHECK_PERMISSIONS,
 	USER_PERMISSIONS_CHANGED,
+
+	CONNECTIONS_ADDED,
+	CONNECTION_ADDED,
+	CONNECTION_UPDATED,
+	CONNECTION_REMOVED,
 
 	LAST_SIGNAL
 };
@@ -621,6 +636,7 @@ nm_manager_get_state (NMManager *manager)
 {
 	g_return_val_if_fail (NM_IS_MANAGER (manager), NM_STATE_UNKNOWN);
 
+	nm_manager_update_state (manager);
 	return NM_MANAGER_GET_PRIVATE (manager)->state;
 }
 
@@ -670,6 +686,7 @@ pending_activation_new (NMManager *manager,
                         DBusGMethodInvocation *context,
                         const char *device_path,
                         const char *connection_path,
+                        gboolean user_connection,
                         GHashTable *settings,
                         const char *specific_object_path,
                         PendingActivationFunc callback,
@@ -737,6 +754,7 @@ pending_activation_new (NMManager *manager,
 
 	pending->device_path = g_strdup (device_path);
 	pending->connection_path = g_strdup (connection_path);
+	pending->user_connection = user_connection;
 	pending->connection = connection;
 
 	/* "/" is special-cased to NULL to get through D-Bus */
@@ -852,6 +870,8 @@ pending_activation_destroy (PendingActivation *pending,
 	if (pending->chain)
 		nm_auth_chain_unref (pending->chain);
 
+	g_source_remove (pending->timeout_id);
+
 	memset (pending, 0, sizeof (PendingActivation));
 	g_slice_free (PendingActivation, pending);
 }
@@ -887,6 +907,23 @@ get_active_connections (NMManager *manager, NMConnection *filter)
 	g_object_unref (vpn_manager);
 
 	return active;
+}
+
+GSList *
+nm_manager_compat_get_active_connections (NMManager *self)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	GSList *iter, *list = NULL;
+
+	/* Add active device connections */
+	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
+		NMActRequest *req;
+
+		req = nm_device_get_act_request (NM_DEVICE (iter->data));
+		if (req)
+			list = g_slist_append (list, req);
+	}
+	return list;
 }
 
 /*******************************************************************/
@@ -943,6 +980,503 @@ system_hostname_changed_cb (NMSettings *settings,
 	g_object_notify (G_OBJECT (self), NM_MANAGER_HOSTNAME);
 
 	g_free (hostname);
+}
+
+/*******************************************************************/
+/* Compat user connection stuff                                    */
+/*******************************************************************/
+
+static void
+emit_removed (gpointer key, gpointer value, gpointer user_data)
+{
+	NMManager *manager = NM_MANAGER (user_data);
+	NMConnection *connection = NM_CONNECTION (value);
+
+	g_signal_emit (manager, signals[CONNECTION_REMOVED], 0, connection);
+}
+
+static void
+user_proxy_cleanup (NMManager *self, gboolean resync_bt)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+
+	if (priv->user_connections) {
+		g_hash_table_foreach (priv->user_connections, emit_removed, self);
+		g_hash_table_remove_all (priv->user_connections);
+	}
+
+	priv->user_net_perm = NM_AUTH_CALL_RESULT_UNKNOWN;
+
+	if (priv->user_proxy) {
+		g_object_unref (priv->user_proxy);
+		priv->user_proxy = NULL;
+	}
+
+	if (resync_bt) {
+		/* Resync BT devices since they are generated from connections */
+		bluez_manager_resync_devices (self);
+	}
+}
+
+typedef struct GetSettingsInfo {
+	NMManager *manager;
+	NMConnection *connection;
+	DBusGProxy *proxy;
+	guint32 *calls;
+} GetSettingsInfo;
+
+static void
+free_get_settings_info (gpointer data)
+{
+	GetSettingsInfo *info = (GetSettingsInfo *) data;
+
+	/* If this was the last pending call for a batch of GetSettings calls,
+	 * send out the connections-added signal.
+	 */
+	if (info->calls) {
+		(*info->calls)--;
+		if (*info->calls == 0) {
+			g_slice_free (guint32, (gpointer) info->calls);
+			g_signal_emit (info->manager, signals[CONNECTIONS_ADDED], 0);
+
+			/* Update the Bluetooth connections for all the new connections */
+			bluez_manager_resync_devices (info->manager);
+		}
+	}
+
+	if (info->manager) {
+		g_object_unref (info->manager);
+		info->manager = NULL;
+	}
+	if (info->connection) {
+		g_object_unref (info->connection);
+		info->connection = NULL;
+	}
+	if (info->proxy) {
+		g_object_unref (info->proxy);
+		info->proxy = NULL;
+	}
+
+	g_slice_free (GetSettingsInfo, data);	
+}
+
+static void
+user_connection_get_settings_cb  (DBusGProxy *proxy,
+                                  DBusGProxyCall *call_id,
+                                  gpointer user_data)
+{
+	GetSettingsInfo *info = (GetSettingsInfo *) user_data;
+	GError *err = NULL;
+	GHashTable *settings = NULL;
+	NMConnection *connection;
+	NMManager *manager;
+
+	g_return_if_fail (info != NULL);
+
+	if (!dbus_g_proxy_end_call (proxy, call_id, &err,
+	                            DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
+	                            G_TYPE_INVALID)) {
+		nm_log_info (LOGD_SETTINGS, "couldn't retrieve user connection settings: %s.",
+		             err && err->message ? err->message : "(unknown)");
+		g_error_free (err);
+		goto out;
+	}
+
+	manager = info->manager;
+	connection = info->connection;
+ 	if (connection == NULL) {
+		const char *path = dbus_g_proxy_get_path (proxy);
+		NMManagerPrivate *priv;
+		GError *error = NULL;
+		NMConnection *existing = NULL;
+
+		connection = nm_connection_new_from_hash (settings, &error);
+		if (connection == NULL) {
+			nm_log_warn (LOGD_SETTINGS, "invalid user connection: '%s' / '%s' invalid: %d",
+			             g_type_name (nm_connection_lookup_setting_type_by_quark (error->domain)),
+			             error->message, error->code);
+			g_error_free (error);
+			goto out;
+		}
+
+		nm_connection_set_path (connection, path);
+		g_object_set_data (G_OBJECT (connection), "user", GUINT_TO_POINTER (1));
+
+		/* Add the new connection to the internal hashes only if the same
+		 * connection isn't already there.
+		 */
+		priv = NM_MANAGER_GET_PRIVATE (manager);
+
+		existing = g_hash_table_lookup (priv->user_connections, path);
+		if (!existing || !nm_connection_compare (existing, connection, NM_SETTING_COMPARE_FLAG_EXACT)) {
+			g_hash_table_insert (priv->user_connections,
+			                     g_strdup (path),
+			                     connection);
+			existing = NULL;
+
+			/* Attach the D-Bus proxy representing the remote NMConnection
+			 * to the local NMConnection object to ensure it stays alive to
+			 * continue delivering signals.  It'll be destroyed once the
+			 * NMConnection is destroyed.
+			 */
+			g_object_set_data_full (G_OBJECT (connection),
+			                        "proxy",
+			                        g_object_ref (info->proxy),
+									g_object_unref);
+		} else
+			g_object_unref (connection);
+
+		/* If the connection-added signal is supposed to be batched, don't
+		 * emit the single connection-added here.  Also, don't emit the signal
+		 * if the connection wasn't actually added to the system or user hashes.
+		 */
+		if (!info->calls && !existing) {
+			g_signal_emit (manager, signals[CONNECTION_ADDED], 0, connection);
+			/* Update the Bluetooth connections for that single new connection */
+			bluez_manager_resync_devices (manager);
+		}
+	}
+
+out:
+	if (settings)
+		g_hash_table_destroy (settings);
+}
+
+static void
+remove_connection (NMManager *manager,
+                   NMConnection *connection,
+                   GHashTable *hash)
+{
+	/* Destroys the connection, then associated DBusGProxy due to the
+	 * weak reference notify function placed on the connection when it
+	 * was created.
+	 */
+	g_object_ref (connection);
+	g_hash_table_remove (hash, nm_connection_get_path (connection));
+	g_signal_emit (manager, signals[CONNECTION_REMOVED], 0, connection);
+	g_object_unref (connection);
+
+	bluez_manager_resync_devices (manager);
+}
+
+static void
+user_connection_removed_cb (DBusGProxy *proxy, gpointer user_data)
+{
+	NMManager *manager = NM_MANAGER (user_data);
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+	NMConnection *connection = NULL;
+	const char *path;
+
+	path = dbus_g_proxy_get_path (proxy);
+	if (path) {
+		connection = g_hash_table_lookup (priv->user_connections, path);
+		if (connection)
+			remove_connection (manager, connection, priv->user_connections);
+	}
+}
+
+static void
+user_connection_updated_cb (DBusGProxy *proxy,
+                            GHashTable *settings,
+                            gpointer user_data)
+{
+	NMManager *manager = NM_MANAGER (user_data);
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+	NMConnection *new_connection;
+	NMConnection *old_connection = NULL;
+	gboolean valid = FALSE;
+	GError *error = NULL;
+	const char *path;
+
+	path = dbus_g_proxy_get_path (proxy);
+	if (path)
+		old_connection = g_hash_table_lookup (priv->user_connections, path);
+
+	g_return_if_fail (old_connection != NULL);
+
+	new_connection = nm_connection_new_from_hash (settings, &error);
+	if (!new_connection) {
+		/* New connection invalid, remove existing connection */
+		nm_log_warn (LOGD_SETTINGS, "invalid user connection: '%s' / '%s' invalid: %d",
+		             g_type_name (nm_connection_lookup_setting_type_by_quark (error->domain)),
+		             error->message, error->code);
+		g_error_free (error);
+		remove_connection (manager, old_connection, priv->user_connections);
+		return;
+	}
+	g_object_unref (new_connection);
+
+	valid = nm_connection_replace_settings (old_connection, settings, NULL);
+	if (valid) {
+		g_signal_emit (manager, signals[CONNECTION_UPDATED], 0, old_connection);
+		bluez_manager_resync_devices (manager);
+	} else {
+		remove_connection (manager, old_connection, priv->user_connections);
+	}
+}
+
+#define NM_DBUS_SERVICE_USER_SETTINGS "org.freedesktop.NetworkManagerUserSettings"
+
+static void
+user_internal_new_connection_cb (NMManager *manager,
+                                 const char *path,
+                                 guint32 *counter)
+{
+	GetSettingsInfo *info;
+	DBusGProxy *con_proxy;
+	DBusGConnection *g_connection;
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+
+	g_connection = nm_dbus_manager_get_connection (priv->dbus_mgr);
+	con_proxy = dbus_g_proxy_new_for_name (g_connection,
+	                                       NM_DBUS_SERVICE_USER_SETTINGS,
+	                                       path,
+	                                       NM_DBUS_IFACE_SETTINGS_CONNECTION);
+	if (!con_proxy) {
+		nm_log_err (LOGD_SETTINGS, "could not init user connection proxy");
+		return;
+	}
+
+	dbus_g_proxy_add_signal (con_proxy, "Updated",
+	                         DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT,
+	                         G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal (con_proxy, "Updated",
+	                             G_CALLBACK (user_connection_updated_cb),
+	                             manager,
+	                             NULL);
+
+	dbus_g_proxy_add_signal (con_proxy, "Removed", G_TYPE_INVALID, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal (con_proxy, "Removed",
+	                             G_CALLBACK (user_connection_removed_cb),
+	                             manager,
+	                             NULL);
+
+	info = g_slice_new0 (GetSettingsInfo);
+	info->manager = g_object_ref (manager);
+	info->proxy = con_proxy;
+	if (counter) {
+		info->calls = counter;
+		(*info->calls)++;
+	}
+	dbus_g_proxy_begin_call (con_proxy, "GetSettings",
+	                         user_connection_get_settings_cb,
+	                         info,
+	                         free_get_settings_info,
+	                         G_TYPE_INVALID);
+}
+
+static void
+user_list_connections_cb  (DBusGProxy *proxy,
+                           DBusGProxyCall *call_id,
+                           gpointer user_data)
+{
+	NMManager *manager = NM_MANAGER (user_data);
+	GError *err = NULL;
+	GPtrArray *ops;
+	guint32 *counter = NULL;
+	int i;
+
+	if (!dbus_g_proxy_end_call (proxy, call_id, &err,
+	                            DBUS_TYPE_G_ARRAY_OF_OBJECT_PATH, &ops,
+	                            G_TYPE_INVALID)) {
+		nm_log_warn (LOGD_SETTINGS, "couldn't retrieve user connections: %s",
+		             err && err->message ? err->message : "(unknown)");
+		g_clear_error (&err);
+		return;
+	}
+
+	/* Keep track of all calls made here; don't want to emit connection-added for
+	 * each one, but emit connections-added when they are all done.
+	 */
+	counter = g_slice_new0 (guint32);
+	for (i = 0; i < ops->len; i++) {
+		char *op = g_ptr_array_index (ops, i);
+
+		user_internal_new_connection_cb (manager, op, counter);
+		g_free (op);
+	}
+	g_ptr_array_free (ops, TRUE);
+}
+
+static void
+user_proxy_destroyed_cb (DBusGProxy *proxy, NMManager *self)
+{
+	nm_log_dbg (LOGD_SETTINGS, "Removing user connections...");
+
+	/* At this point the user proxy is already being disposed */
+	NM_MANAGER_GET_PRIVATE (self)->user_proxy = NULL;
+
+	/* User Settings service disappeared; throw away user connections */
+	user_proxy_cleanup (self, TRUE);
+}
+
+static void
+user_new_connection_cb (DBusGProxy *proxy, const char *path, gpointer user_data)
+{
+	user_internal_new_connection_cb (NM_MANAGER (user_data), path, NULL);
+}
+
+static gboolean
+user_settings_authorized (NMManager *self, NMAuthChain *chain)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+//	NMAuthCallResult old_net_perm = priv->user_net_perm;
+
+	/* If the user could potentially get authorization to use networking and/or
+	 * to use user connections, the user settings service is authorized.
+	 */
+	priv->user_net_perm = GPOINTER_TO_UINT (nm_auth_chain_get_data (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL));
+
+	nm_log_dbg (LOGD_SETTINGS, "User connections permissions: net %d", priv->user_net_perm);
+
+//	if (old_net_perm != priv->user_net_perm)
+//		g_signal_emit (self, signals[USER_PERMISSIONS_CHANGED], 0);
+
+	/* If the user can't control the network they certainly aren't allowed
+	 * to provide user connections.
+	 */
+	if (   priv->user_net_perm == NM_AUTH_CALL_RESULT_UNKNOWN
+	    || priv->user_net_perm == NM_AUTH_CALL_RESULT_NO)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void
+user_proxy_auth_done (NMAuthChain *chain,
+                      GError *error,
+                      DBusGMethodInvocation *context,
+                      gpointer user_data)
+{
+	NMManager *self = NM_MANAGER (user_data);
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	gboolean authorized = FALSE;
+
+	priv->auth_chains = g_slist_remove (priv->auth_chains, chain);
+
+	if (error) {
+		nm_log_warn (LOGD_SETTINGS, "User connections unavailable: (%d) %s",
+		             error->code, error->message ? error->message : "(unknown)");
+	} else
+		authorized = user_settings_authorized (self, chain);
+
+	if (authorized) {
+		/* If authorized, finish setting up the user settings service proxy */
+		nm_log_dbg (LOGD_SETTINGS, "Requesting user connections...");
+
+		authorized = TRUE;
+
+		dbus_g_proxy_add_signal (priv->user_proxy,
+			                     "NewConnection",
+			                     DBUS_TYPE_G_OBJECT_PATH,
+			                     G_TYPE_INVALID);
+		dbus_g_proxy_connect_signal (priv->user_proxy, "NewConnection",
+			                         G_CALLBACK (user_new_connection_cb),
+			                         self,
+			                         NULL);
+
+		/* Clean up when the user settings proxy goes away */
+		g_signal_connect (priv->user_proxy, "destroy",
+			              G_CALLBACK (user_proxy_destroyed_cb),
+			              self);
+
+		/* Request user connections */
+		dbus_g_proxy_begin_call (priv->user_proxy, "ListConnections",
+			                     user_list_connections_cb,
+			                     self,
+			                     NULL,
+			                     G_TYPE_INVALID);
+	} else {
+		/* Otherwise, we ignore the user settings service completely */
+		user_proxy_cleanup (self, TRUE);
+	}
+
+	nm_auth_chain_unref (chain);
+}
+
+static void
+user_proxy_init (NMManager *self)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	DBusGConnection *bus;
+	NMAuthChain *chain;
+	GError *error = NULL;
+
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (priv->user_proxy == NULL);
+
+	/* Don't try to initialize the user settings proxy if the user
+	 * settings service doesn't actually exist.
+	 */
+	if (!nm_dbus_manager_name_has_owner (priv->dbus_mgr, NM_DBUS_SERVICE_USER_SETTINGS))
+		return;
+
+	bus = nm_dbus_manager_get_connection (priv->dbus_mgr);
+	priv->user_proxy = dbus_g_proxy_new_for_name_owner (bus,
+	                                                    NM_DBUS_SERVICE_USER_SETTINGS,
+	                                                    NM_DBUS_PATH_SETTINGS,
+	                                                    NM_DBUS_IFACE_SETTINGS,
+	                                                    &error);
+	if (!priv->user_proxy) {
+		nm_log_err (LOGD_SETTINGS, "could not init user settings proxy: (%d) %s",
+		            error ? error->code : -1,
+		            error && error->message ? error->message : "(unknown)");
+		g_clear_error (&error);
+		return;
+	}
+
+	/* Kick off some PolicyKit authorization requests to figure out what
+	 * permissions this user settings service has.
+	 */
+	chain = nm_auth_chain_new (priv->authority,
+	                           NULL,
+	                           priv->user_proxy,
+	                           user_proxy_auth_done,
+	                           self);
+	priv->auth_chains = g_slist_prepend (priv->auth_chains, chain);
+
+//	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_USE_USER_CONNECTIONS, FALSE);
+	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL, FALSE);
+}
+
+static void
+nm_manager_name_owner_changed (NMDBusManager *mgr,
+                               const char *name,
+                               const char *old,
+                               const char *new,
+                               gpointer user_data)
+{
+	NMManager *manager = NM_MANAGER (user_data);
+	gboolean old_owner_good = (old && (strlen (old) > 0));
+	gboolean new_owner_good = (new && (strlen (new) > 0));
+
+	if (strcmp (name, NM_DBUS_SERVICE_USER_SETTINGS) == 0) {
+		if (!old_owner_good && new_owner_good)
+			user_proxy_init (manager);
+		else
+			user_proxy_cleanup (manager, TRUE);
+	}
+}
+
+gboolean
+nm_manager_compat_auto_user_connections_allowed (NMManager *self)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+
+	return (priv->user_net_perm == NM_AUTH_CALL_RESULT_YES);
+}
+
+GSList *
+nm_manager_compat_get_user_connections (NMManager *self)
+{
+	GHashTableIter iter;
+	GSList *list = NULL;
+	gpointer connection = NULL;
+
+	g_hash_table_iter_init (&iter, NM_MANAGER_GET_PRIVATE (self)->user_connections);
+	while (g_hash_table_iter_next (&iter, NULL, (gpointer) &connection))
+		list = g_slist_append (list, connection);
+	return list;
 }
 
 /*******************************************************************/
@@ -1444,6 +1978,7 @@ add_device (NMManager *self, NMDevice *device)
 	                                     G_OBJECT (device));
 	nm_log_info (LOGD_CORE, "(%s): exported as %s", iface, path);
 	g_free (path);
+	nm_compat_device_export (nm_device_get_compat (device), nm_dbus_manager_get_connection (priv->dbus_mgr));
 
 	/* Check if we should assume the device's active connection by matching its
 	 * config with an existing system connection.
@@ -1989,14 +2524,18 @@ static void
 pending_activate (NMManager *self, PendingActivation *pending)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	NMSettingsConnection *connection;
+	NMConnection *connection = NULL;
 	const char *path = NULL;
 	GError *error = NULL;
 	char *sender;
 
 	/* Ok, we're authorized */
 
-	connection = nm_settings_get_connection_by_path (priv->settings, pending->connection_path);
+	if (pending->user_connection)
+		connection = g_hash_table_lookup (priv->user_connections, pending->connection_path);
+	else
+		connection = (NMConnection *) nm_settings_get_connection_by_path (priv->settings, pending->connection_path);
+
 	if (!connection) {
 		error = g_error_new_literal (NM_MANAGER_ERROR,
 		                             NM_MANAGER_ERROR_UNKNOWN_CONNECTION,
@@ -2007,7 +2546,7 @@ pending_activate (NMManager *self, PendingActivation *pending)
 	sender = dbus_g_method_get_sender (pending->context);
 	g_assert (sender);
 	path = nm_manager_activate_connection (self,
-	                                       NM_CONNECTION (connection),
+	                                       connection,
 	                                       pending->specific_object_path,
 	                                       pending->device_path,
 	                                       sender,
@@ -2053,9 +2592,75 @@ impl_manager_activate_connection (NMManager *self,
 	                                  context,
 	                                  device_path,
 	                                  connection_path,
+	                                  FALSE,
 	                                  NULL,
 	                                  specific_object_path,
 	                                  activation_auth_done,
+	                                  &error);
+	if (pending)
+		pending_activation_check_authorized (pending, priv->dbus_mgr);
+	else {
+		g_assert (error);
+		dbus_g_method_return_error (context, error);
+		g_error_free (error);
+	}
+}
+
+static gboolean
+compat_recheck_activation (gpointer user_data)
+{
+	PendingActivation *pending = user_data;
+
+	g_assert (pending->user_connection);
+	pending_activate (pending->manager, pending);
+	return FALSE;
+}
+
+static void
+compat_activation_auth_done (PendingActivation *pending, GError *error)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (pending->manager);
+
+	if (error) {
+		pending_activation_destroy (pending, error, NULL);
+		return;
+	}
+
+	/* If we don't know about the connection yet, wait for it */
+	if (pending->user_connection) {
+		if (!g_hash_table_lookup (priv->user_connections, pending->connection_path))
+			pending->timeout_id = g_timeout_add_seconds (4, compat_recheck_activation, pending);
+	}
+
+	/* Otherwise activate it immediately */
+	if (pending->timeout_id == 0)
+		pending_activate (pending->manager, pending);
+}
+
+void
+nm_manager_compat_activate_connection (NMManager *self,
+                                       gboolean user_connection,
+                                       const char *connection_path,
+                                       const char *device_path,
+                                       const char *specific_object_path,
+                                       DBusGMethodInvocation *context)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	PendingActivation *pending;
+	GError *error = NULL;
+
+	/* Need to check the caller's permissions and stuff before we can
+	 * activate the connection.
+	 */
+	pending = pending_activation_new (self,
+	                                  priv->authority,
+	                                  context,
+	                                  device_path,
+	                                  connection_path,
+	                                  user_connection,
+	                                  NULL,
+	                                  specific_object_path,
+	                                  compat_activation_auth_done,
 	                                  &error);
 	if (pending)
 		pending_activation_check_authorized (pending, priv->dbus_mgr);
@@ -2122,6 +2727,7 @@ impl_manager_add_and_activate_connection (NMManager *self,
 	                                  context,
 	                                  device_path,
 	                                  NULL,
+	                                  FALSE,
 	                                  settings,
 	                                  specific_object_path,
 	                                  add_and_activate_auth_done,
@@ -2297,6 +2903,14 @@ impl_manager_deactivate_connection (NMManager *self,
 
 	nm_auth_chain_set_data (chain, "path", g_strdup (active_path), g_free);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL, TRUE);
+}
+
+void
+nm_manager_compat_deactivate_connection (NMManager *self,
+                                         const char *active_path,
+                                         DBusGMethodInvocation *context)
+{
+	impl_manager_deactivate_connection (self, active_path, context);
 }
 
 static void
@@ -2511,6 +3125,14 @@ impl_manager_sleep (NMManager *self,
 #endif
 }
 
+void
+nm_manager_compat_sleep (NMManager *self,
+                         gboolean do_sleep,
+                         DBusGMethodInvocation *context)
+{
+	impl_manager_sleep (self, do_sleep, context);
+}
+
 static void
 upower_sleeping_cb (DBusGProxy *proxy, gpointer user_data)
 {
@@ -2646,6 +3268,14 @@ impl_manager_enable (NMManager *self,
 
 	nm_auth_chain_set_data (chain, "enable", GUINT_TO_POINTER (enable), NULL);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_ENABLE_DISABLE_NETWORK, TRUE);
+}
+
+void
+nm_manager_compat_enable (NMManager *self,
+                          gboolean enable,
+                          DBusGMethodInvocation *context)
+{
+	impl_manager_enable (self, enable, context);
 }
 
 /* Permissions */
@@ -2806,6 +3436,12 @@ nm_manager_start (NMManager *self)
 
 	system_unmanaged_devices_changed_cb (priv->settings, NULL, self);
 	system_hostname_changed_cb (priv->settings, NULL, self);
+
+	/* Get user connections if the user settings service is around, otherwise
+	 * they will be queried when the user settings service shows up on the
+	 * bus in nm_manager_name_owner_changed().
+	 */
+	user_proxy_init (self);
 
 	nm_udev_manager_query_devices (priv->udev_mgr);
 	bluez_manager_resync_devices (self);
@@ -3091,6 +3727,11 @@ nm_manager_get (NMSettings *settings,
 
 	dbus_g_connection_register_g_object (bus, NM_DBUS_PATH, G_OBJECT (singleton));
 
+	g_signal_connect (priv->dbus_mgr,
+	                  "name-owner-changed",
+	                  G_CALLBACK (nm_manager_name_owner_changed),
+	                  singleton);
+
 	priv->udev_mgr = nm_udev_manager_new ();
 	g_signal_connect (priv->udev_mgr,
 	                  "device-added",
@@ -3116,6 +3757,9 @@ nm_manager_get (NMSettings *settings,
 			  "bdaddr-removed",
 			  G_CALLBACK (bluez_manager_bdaddr_removed_cb),
 			  singleton);
+
+	/* Compat manager */
+	priv->compat = nm_compat_manager_new (singleton, bus);
 
 	return singleton;
 }
@@ -3147,6 +3791,10 @@ dispose (GObject *object)
 
 	g_free (priv->hostname);
 	g_free (priv->config_file);
+
+	user_proxy_cleanup (manager, FALSE);
+	g_hash_table_destroy (priv->user_connections);
+	priv->user_connections = NULL;
 
 	g_object_unref (priv->settings);
 
@@ -3390,6 +4038,10 @@ nm_manager_init (NMManager *manager)
 
 	priv->dbus_mgr = nm_dbus_manager_get ();
 
+	priv->user_connections = g_hash_table_new_full (g_str_hash,
+	                                                g_str_equal,
+	                                                g_free,
+	                                                g_object_unref);
 	priv->modem_manager = nm_modem_manager_get ();
 	priv->modem_added_id = g_signal_connect (priv->modem_manager, "modem-added",
 	                                         G_CALLBACK (modem_added), manager);
@@ -3630,6 +4282,8 @@ nm_manager_class_init (NMManagerClass *manager_class)
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE, 0);
 
+	/* Compat junk */
+
 	signals[USER_PERMISSIONS_CHANGED] =
 		g_signal_new ("user-permissions-changed",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -3637,6 +4291,38 @@ nm_manager_class_init (NMManagerClass *manager_class)
 		              0, NULL, NULL,
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE, 0);
+
+	signals[CONNECTIONS_ADDED] =
+		g_signal_new ("connections-added",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_FIRST,
+		              0, NULL, NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE, 0);
+
+	signals[CONNECTION_ADDED] =
+		g_signal_new ("connection-added",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_FIRST,
+		              0, NULL, NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE, 1, G_TYPE_OBJECT);
+
+	signals[CONNECTION_UPDATED] =
+		g_signal_new ("connection-updated",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_FIRST,
+		              0, NULL, NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE, 1, G_TYPE_OBJECT);
+
+	signals[CONNECTION_REMOVED] =
+		g_signal_new ("connection-removed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_FIRST,
+		              0, NULL, NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE, 1, G_TYPE_OBJECT);
 
 	dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (manager_class),
 	                                 &dbus_glib_nm_manager_object_info);

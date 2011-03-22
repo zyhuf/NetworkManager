@@ -102,4 +102,31 @@ NMState nm_manager_get_state (NMManager *manager);
 GPtrArray * nm_manager_get_active_connections_by_connection (NMManager *manager,
                                                              NMConnection *connection);
 
+/* Compat manager accessors */
+
+GSList *nm_manager_compat_get_active_connections (NMManager *self);
+
+void nm_manager_compat_enable (NMManager *self,
+                               gboolean enable,
+                               DBusGMethodInvocation *context);
+
+void nm_manager_compat_sleep (NMManager *self,
+                              gboolean do_sleep,
+                              DBusGMethodInvocation *context);
+
+void nm_manager_compat_deactivate_connection (NMManager *self,
+                                              const char *active_path,
+                                              DBusGMethodInvocation *context);
+
+GSList *nm_manager_compat_get_user_connections (NMManager *self);
+
+gboolean nm_manager_compat_auto_user_connections_allowed (NMManager *self);
+
+void nm_manager_compat_activate_connection (NMManager *self,
+                                            gboolean user_settings,
+                                            const char *connection_path,
+                                            const char *device_path,
+                                            const char *specific_object_path,
+                                            DBusGMethodInvocation *context);
+
 #endif /* NM_MANAGER_H */

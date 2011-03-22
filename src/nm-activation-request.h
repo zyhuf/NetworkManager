@@ -83,6 +83,8 @@ GObject *     nm_act_request_get_device (NMActRequest *req);
 
 gboolean      nm_act_request_get_assumed (NMActRequest *req);
 
+gpointer nm_act_request_get_compat (NMActRequest *req);
+
 /* Secrets handling */
 
 typedef void (*NMActRequestSecretsFunc) (NMActRequest *req,

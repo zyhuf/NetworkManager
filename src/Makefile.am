@@ -8,6 +8,7 @@ SUBDIRS= \
 	ppp-manager \
 	backends \
 	dnsmasq-manager \
+	compat \
 	modem-manager \
 	bluez-manager \
 	settings
@@ -264,6 +265,7 @@ NetworkManager_LDADD = \
 	./modem-manager/libmodem-manager.la \
 	./bluez-manager/libbluez-manager.la \
 	./settings/libsettings.la \
+	./compat/libcompat.la \
 	$(WIMAX_LIBS) \
 	./backends/libnmbackend.la \
 	$(top_builddir)/libnm-util/libnm-util.la \

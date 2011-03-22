@@ -192,6 +192,8 @@ void nm_device_clear_autoconnect_inhibit (NMDevice *device);
 
 gboolean nm_device_dhcp4_renew (NMDevice *device, gboolean release);
 
+gpointer nm_device_get_compat (NMDevice *device);
+
 G_END_DECLS
 
 #endif	/* NM_DEVICE_H */

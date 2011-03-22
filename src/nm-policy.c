@@ -706,9 +706,12 @@ auto_activate_device (gpointer user_data)
 	if (nm_device_get_act_request (data->device))
 		goto out;
 
-	iter = connections = nm_settings_get_connections (policy->settings);
+	connections = nm_settings_get_connections (policy->settings);
+	if (nm_manager_compat_auto_user_connections_allowed (policy->manager))
+		connections = g_slist_concat (connections, nm_manager_compat_get_user_connections (policy->manager));
 
 	/* Remove connections that shouldn't be auto-activated */
+	iter = connections;
 	while (iter) {
 		NMConnection *candidate = NM_CONNECTION (iter->data);
 		gboolean ignore = FALSE;
@@ -1146,6 +1149,12 @@ nm_policy_new (NMManager *manager,
 	_connect_manager_signal (policy, "notify::" NM_MANAGER_NETWORKING_ENABLED, sleeping_changed);
 	_connect_manager_signal (policy, "device-added", device_added);
 	_connect_manager_signal (policy, "device-removed", device_removed);
+
+	/* Compat bits */
+	_connect_manager_signal (policy, "connections-added", connections_loaded);
+	_connect_manager_signal (policy, "connection-added", connection_added);
+	_connect_manager_signal (policy, "connection-updated", connection_updated);
+	_connect_manager_signal (policy, "connection-removed", connection_removed);
 
 	_connect_settings_signal (policy, NM_SETTINGS_SIGNAL_CONNECTIONS_LOADED, connections_loaded);
 	_connect_settings_signal (policy, NM_SETTINGS_SIGNAL_CONNECTION_ADDED, connection_added);
