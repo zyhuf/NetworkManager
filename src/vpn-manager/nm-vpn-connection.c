@@ -62,6 +62,7 @@ typedef struct {
 	gboolean user_requested;
 	gulong user_uid;
 	NMActRequest *act_request;
+	DBusGProxy *user_proxy;
 	guint32 secrets_id;
 
 	NMDevice *parent_dev;
@@ -774,6 +775,104 @@ nm_vpn_connection_get_compat (NMVPNConnection *connection)
 /******************************************************************************/
 
 static void
+user_get_secrets_cb (DBusGProxy *proxy,
+                     DBusGProxyCall *call,
+                     gpointer user_data)
+{
+	NMVPNConnection *self = NM_VPN_CONNECTION (user_data);
+	NMVPNConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (self);
+	GHashTable *settings = NULL;
+	GError *error = NULL;
+
+	nm_log_dbg (LOGD_SETTINGS, "VPN user secrets request reply");
+
+	if (dbus_g_proxy_end_call (proxy, call, &error,
+	                           DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
+	                           G_TYPE_INVALID)) {
+		nm_log_dbg (LOGD_SETTINGS, "got user connection secrets size %d", g_hash_table_size (settings));
+		nm_connection_update_secrets (priv->connection, NM_SETTING_VPN_SETTING_NAME, settings, &error);
+
+#if 0
+		if (g_hash_table_lookup (settings, info->setting_name)) {
+			GHashTableIter iter;
+			const char *setting_name = NULL;
+			GHashTable *setting = NULL;
+			g_hash_table_iter_init (&iter, settings);
+			while (g_hash_table_iter_next (&iter, (gpointer) &setting_name, (gpointer) &setting)) {
+				GHashTableIter setting_iter;
+				const char *key = NULL;
+				GValue *val = NULL;
+
+				g_hash_table_iter_init (&setting_iter, setting);
+				while (g_hash_table_iter_next (&setting_iter, (gpointer) &key, (gpointer) &val))
+					g_message ("   %s => %s", key, g_strdup_value_contents (val));
+			}
+		} else {
+			GHashTableIter iter;
+			const char *key = NULL;
+			GValue *val = NULL;
+
+			g_hash_table_iter_init (&iter, settings);
+			while (g_hash_table_iter_next (&iter, (gpointer) &key, (gpointer) &val))
+				g_message ("   %s => %s", key, g_strdup_value_contents (val));
+		}
+#endif
+		g_hash_table_destroy (settings);
+	} else {
+		nm_log_warn (LOGD_SETTINGS, "failed to get user VPN secrets: %s", error->message);
+	}
+
+	priv->secrets_id = 0;
+	g_object_unref (priv->user_proxy);
+
+	if (error)
+		nm_vpn_connection_fail (self, NM_VPN_CONNECTION_STATE_REASON_NO_SECRETS);
+	else
+		really_activate (self);
+
+	g_clear_error (&error);
+}
+
+static guint32
+user_get_secrets (NMVPNConnection *self, const char *setting_name)
+{
+	NMVPNConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (self);
+	NMDBusManager *dbus_mgr;
+	DBusGConnection *bus;
+	GPtrArray *hints;
+	static guint32 counter = 3000000000;
+
+	/* User connection */
+	dbus_mgr = nm_dbus_manager_get ();
+	bus = nm_dbus_manager_get_connection (dbus_mgr);
+	priv->user_proxy = dbus_g_proxy_new_for_name (bus,
+	                                              "org.freedesktop.NetworkManagerUserSettings",
+	                                              nm_connection_get_path (priv->connection),
+	                                              NM_DBUS_IFACE_SETTINGS_CONNECTION_SECRETS);
+	g_object_unref (dbus_mgr);
+
+	if (!priv->user_proxy) {
+		nm_log_warn (LOGD_SETTINGS, "could not create user VPN secrets proxy");
+		return 0;
+	}
+
+	hints = g_ptr_array_sized_new (0);
+	dbus_g_proxy_begin_call_with_timeout (priv->user_proxy, "GetSecrets",
+	                                      user_get_secrets_cb,
+	                                      self,
+	                                      NULL,
+	                                      120000,
+	                                      G_TYPE_STRING, setting_name,
+	                                      DBUS_TYPE_G_ARRAY_OF_STRING, hints,
+	                                      G_TYPE_BOOLEAN, FALSE,
+	                                      G_TYPE_INVALID);
+	nm_log_dbg (LOGD_SETTINGS, "new user VPN secrets request");
+	g_ptr_array_free (hints, TRUE);
+
+	return counter++;
+}
+
+static void
 vpn_secrets_cb (NMSettingsConnection *connection,
                 guint32 call_id,
                 const char *setting_name,
@@ -827,15 +926,19 @@ connection_need_secrets_cb  (DBusGProxy *proxy,
 			    nm_connection_get_id (priv->connection),
 			    setting_name);
 
-	priv->secrets_id = nm_settings_connection_get_secrets (NM_SETTINGS_CONNECTION (priv->connection),
-	                                                       priv->user_requested,
-	                                                       priv->user_uid,
-	                                                       setting_name,
-	                                                       NM_ACT_REQUEST_GET_SECRETS_FLAG_ALLOW_INTERACTION,
-	                                                       NULL,
-	                                                       vpn_secrets_cb,
-	                                                       self,
-	                                                       &local);
+	if (NM_IS_SETTINGS_CONNECTION (priv->connection)) {
+		priv->secrets_id = nm_settings_connection_get_secrets (NM_SETTINGS_CONNECTION (priv->connection),
+			                                                   priv->user_requested,
+			                                                   priv->user_uid,
+			                                                   setting_name,
+			                                                   NM_ACT_REQUEST_GET_SECRETS_FLAG_ALLOW_INTERACTION,
+			                                                   NULL,
+			                                                   vpn_secrets_cb,
+			                                                   self,
+			                                                   &local);
+	} else
+		priv->secrets_id = user_get_secrets (self, setting_name);
+
 	if (!priv->secrets_id) {
 		if (local)
 			nm_log_err (LOGD_VPN, "failed to get secrets: (%d) %s", local->code, local->message);
@@ -975,13 +1078,24 @@ connection_state_changed (NMVPNConnection *self,
 
 	/* Clear any in-progress secrets request */
 	if (priv->secrets_id) {
-		nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), priv->secrets_id);
+		if (NM_IS_SETTINGS_CONNECTION (priv->connection))
+			nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), priv->secrets_id);
 		priv->secrets_id = 0;
+	}
+	if (priv->user_proxy) {
+		g_object_unref (priv->user_proxy);
+		priv->user_proxy = NULL;
 	}
 
 	switch (state) {
 	case NM_VPN_CONNECTION_STATE_NEED_AUTH:
-		get_existing_secrets (self);
+		if (NM_IS_SETTINGS_CONNECTION (priv->connection))
+			get_existing_secrets (self);
+		else {
+			/* Don't bother with existing secrets if it's user settings */
+			existing_secrets_cb ((NMSettingsConnection *) priv->connection,
+			                     0, NM_SETTING_VPN_SETTING_NAME, NULL, self);
+		}
 		break;
 	case NM_VPN_CONNECTION_STATE_ACTIVATED:
 		/* Secrets no longer needed now that we're connected */
@@ -1045,9 +1159,14 @@ dispose (GObject *object)
 	if (priv->proxy)
 		g_object_unref (priv->proxy);
 
-	if (priv->secrets_id) {
+	if (priv->secrets_id && NM_IS_SETTINGS_CONNECTION (priv->connection)) {
 		nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection),
 		                                       priv->secrets_id);
+	}
+
+	if (priv->user_proxy) {
+		/* User secrets call gets cleaned up when proxy is unrefed */
+		g_object_unref (priv->user_proxy);
 	}
 
 	g_object_unref (priv->act_request);
