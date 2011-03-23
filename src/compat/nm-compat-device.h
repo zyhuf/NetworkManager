@@ -23,6 +23,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <dbus/dbus-glib-lowlevel.h>
 #include "nm-device.h"
 
 #define NM_TYPE_COMPAT_DEVICE            (nm_compat_device_get_type ())
@@ -32,22 +33,22 @@
 #define NM_IS_COMPAT_DEVICE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((obj), NM_TYPE_COMPAT_DEVICE))
 #define NM_COMPAT_DEVICE_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_COMPAT_DEVICE, NMCompatDeviceClass))
 
+#define NM_COMPAT_DEVICE_PARENT "parent"
+
 typedef struct {
 	GObject parent;
 } NMCompatDevice;
 
 typedef struct {
 	GObjectClass parent;
-
-	void (*properties_changed) (NMCompatDevice *self, GHashTable *properties);
 } NMCompatDeviceClass;
 
 GType nm_compat_device_get_type (void);
 
-NMCompatDevice *nm_compat_device_new (NMDevice *parent);
-
 void nm_compat_device_export (NMCompatDevice *compat, DBusGConnection *bus);
 
 const char *nm_compat_device_get_path (NMCompatDevice *compat);
+
+NMDevice *nm_compat_device_get_parent (NMCompatDevice *compat);
 
 #endif /* NM_COMPAT_DEVICE_H */

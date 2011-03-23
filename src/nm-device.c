@@ -299,8 +299,6 @@ constructor (GType type,
 
 	update_accept_ra_save (dev);
 
-	priv->compat = nm_compat_device_new (dev);
-
 	priv->initialized = TRUE;
 	return object;
 
@@ -3926,5 +3924,14 @@ gpointer
 nm_device_get_compat (NMDevice *device)
 {
 	return NM_DEVICE_GET_PRIVATE (device)->compat;
+}
+
+void
+nm_device_set_compat (NMDevice *device, gpointer compat)
+{
+	g_return_if_fail (NM_IS_COMPAT_DEVICE (compat));
+	g_return_if_fail (NM_DEVICE_GET_PRIVATE (device)->compat == NULL);
+
+	NM_DEVICE_GET_PRIVATE (device)->compat = NM_COMPAT_DEVICE (compat);
 }
 

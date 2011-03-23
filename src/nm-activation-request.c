@@ -135,7 +135,7 @@ user_get_secrets_cb (DBusGProxy *proxy,
 	if (dbus_g_proxy_end_call (proxy, call, &error,
 	                           DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
 	                           G_TYPE_INVALID)) {
-		nm_log_dbg (LOGD_SETTINGS, "got user connection secrets");
+		nm_log_dbg (LOGD_SETTINGS, "got user connection secrets size %d", g_hash_table_size (settings));
 		nm_connection_update_secrets (priv->connection, info->setting_name, settings, &error);
 
 #if 0
@@ -163,7 +163,6 @@ user_get_secrets_cb (DBusGProxy *proxy,
 				g_message ("   %s => %s", key, g_strdup_value_contents (val));
 		}
 #endif
-
 		g_hash_table_destroy (settings);
 	} else {
 		nm_log_warn (LOGD_SETTINGS, "failed to get user connection secrets: %s", error->message);
@@ -715,7 +714,8 @@ dispose (GObject *object)
 	for (iter = priv->secrets_calls; iter; iter = g_slist_next (iter)) {
 		GetSecretsInfo *info = iter->data;
 
-		nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), info->call_id);
+		if (!info->user_proxy)
+			nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), info->call_id);
 		g_free (info);
 	}
 	g_slist_free (priv->secrets_calls);

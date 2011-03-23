@@ -55,6 +55,7 @@
 #include "nm-setting-ip4-config.h"
 #include "nm-setting-ip6-config.h"
 #include "nm-system.h"
+#include "compat/nm-compat-device-wifi.h"
 
 static gboolean impl_device_get_access_points (NMDeviceWifi *device,
                                                GPtrArray **aps,
@@ -719,6 +720,8 @@ constructor (GType type,
 		priv->ipw_rfkill_path = NULL;
 	}
 	priv->ipw_rfkill_state = nm_device_wifi_get_ipw_rfkill_state (self);
+
+	nm_device_set_compat (NM_DEVICE (self), nm_compat_device_wifi_new (NM_DEVICE_WIFI (self)));
 
 	return object;
 
@@ -1622,22 +1625,29 @@ nm_device_wifi_ap_list_print (NMDeviceWifi *self)
 	nm_log_dbg (LOGD_WIFI_SCAN, "Current AP list: done");
 }
 
+GPtrArray *
+nm_device_wifi_get_access_points (NMDeviceWifi *self)
+{
+	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
+	GSList *elt;
+	GPtrArray *aps;
+
+	aps = g_ptr_array_new ();
+	for (elt = priv->ap_list; elt; elt = g_slist_next (elt)) {
+		NMAccessPoint * ap = NM_AP (elt->data);
+
+		if (nm_ap_get_ssid (ap))
+			g_ptr_array_add (aps, g_strdup (nm_ap_get_dbus_path (ap)));
+	}
+	return aps;
+}
+
 static gboolean
 impl_device_get_access_points (NMDeviceWifi *self,
                                GPtrArray **aps,
                                GError **err)
 {
-	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
-	GSList *elt;
-
-	*aps = g_ptr_array_new ();
-
-	for (elt = priv->ap_list; elt; elt = g_slist_next (elt)) {
-		NMAccessPoint * ap = NM_AP (elt->data);
-
-		if (nm_ap_get_ssid (ap))
-			g_ptr_array_add (*aps, g_strdup (nm_ap_get_dbus_path (ap)));
-	}
+	*aps = nm_device_wifi_get_access_points (self);
 	return TRUE;
 }
 

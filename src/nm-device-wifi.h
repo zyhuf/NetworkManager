@@ -100,6 +100,8 @@ NMAccessPoint * nm_device_wifi_get_activation_ap (NMDeviceWifi *self);
 
 RfKillState nm_device_wifi_get_ipw_rfkill_state (NMDeviceWifi *self);
 
+GPtrArray *nm_device_wifi_get_access_points (NMDeviceWifi *self);
+
 G_END_DECLS
 
 #endif	/* NM_DEVICE_WIFI_H */

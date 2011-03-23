@@ -1982,7 +1982,8 @@ add_device (NMManager *self, NMDevice *device)
 	                                     G_OBJECT (device));
 	nm_log_info (LOGD_CORE, "(%s): exported as %s", iface, path);
 	g_free (path);
-	nm_compat_device_export (nm_device_get_compat (device), nm_dbus_manager_get_connection (priv->dbus_mgr));
+	if (nm_device_get_compat (device))
+		nm_compat_device_export (nm_device_get_compat (device), nm_dbus_manager_get_connection (priv->dbus_mgr));
 
 	/* Check if we should assume the device's active connection by matching its
 	 * config with an existing system connection.

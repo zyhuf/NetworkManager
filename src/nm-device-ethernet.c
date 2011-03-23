@@ -58,6 +58,7 @@
 #include "nm-logging.h"
 #include "nm-properties-changed-signal.h"
 #include "nm-dhcp-manager.h"
+#include "compat/nm-compat-device-ethernet.h"
 
 #include "nm-device-ethernet-glue.h"
 
@@ -469,6 +470,8 @@ constructor (GType type,
 		             nm_device_get_driver (self));
 		priv->carrier = TRUE;
 	}
+
+	nm_device_set_compat (self, nm_compat_device_ethernet_new (NM_DEVICE_ETHERNET (self)));
 
 	return object;
 }

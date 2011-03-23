@@ -112,7 +112,8 @@ impl_compat_manager_get_devices (NMCompatManager *self,
 	for (iter = list; iter; iter = iter->next) {
 		NMCompatDevice *compat = nm_device_get_compat (NM_DEVICE (iter->data));
 
-		g_ptr_array_add (*devices, g_strdup (nm_compat_device_get_path (compat)));
+		if (compat)
+			g_ptr_array_add (*devices, g_strdup (nm_compat_device_get_path (compat)));
 	}
 	return TRUE;
 }
@@ -216,7 +217,8 @@ device_added_cb (NMManager *parent, NMDevice *device, NMCompatManager *self)
 {
 	NMCompatDevice *compat = nm_device_get_compat (device);
 
-	g_signal_emit (self, signals[DEVICE_ADDED], 0, compat);
+	if (compat)
+		g_signal_emit (self, signals[DEVICE_ADDED], 0, compat);
 }
 
 static void
@@ -224,7 +226,8 @@ device_removed_cb (NMManager *parent, NMDevice *device, NMCompatManager *self)
 {
 	NMCompatDevice *compat = nm_device_get_compat (device);
 
-	g_signal_emit (self, signals[DEVICE_REMOVED], 0, compat);
+	if (compat)
+		g_signal_emit (self, signals[DEVICE_REMOVED], 0, compat);
 }
 
 /*************************************************************************/

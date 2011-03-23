@@ -13,6 +13,8 @@ EXTRA_DIST = \
 	nm-compat-device-gsm.xml \
 	nm-compat-device-serial.xml \
 	nm-compat-device.xml \
+	nm-compat-device-ethernet.xml \
+	nm-compat-device-wifi.xml \
 	nm-compat-manager.xml \
 	nm-compat-settings.xml \
 	nm-compat-exported-connection.xml \
@@ -30,6 +32,12 @@ nm-compat-device-serial-glue.h: nm-compat-device-serial.xml
 
 nm-compat-device-glue.h: nm-compat-device.xml
 	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_device --mode=glib-server --output=$@ $<
+
+nm-compat-device-ethernet-glue.h: nm-compat-device-ethernet.xml
+	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_device_ethernet --mode=glib-server --output=$@ $<
+
+nm-compat-device-wifi-glue.h: nm-compat-device-wifi.xml
+	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_device_wifi --mode=glib-server --output=$@ $<
 
 nm-compat-manager-glue.h: nm-compat-manager.xml
 	$(AM_V_GEN) dbus-binding-tool --prefix=nm_compat_manager --mode=glib-server --output=$@ $<
@@ -51,6 +59,8 @@ BUILT_SOURCES = \
 	nm-compat-device-gsm-glue.h \
 	nm-compat-device-serial-glue.h \
 	nm-compat-device-glue.h \
+	nm-compat-device-ethernet-glue.h \
+	nm-compat-device-wifi-glue.h \
 	nm-compat-manager-glue.h \
 	nm-compat-settings-glue.h \
 	nm-compat-exported-connection-glue.h \
@@ -64,6 +74,10 @@ libcompat_la_SOURCES = \
 	nm-compat-manager.h \
 	nm-compat-device.c \
 	nm-compat-device.h \
+	nm-compat-device-ethernet.c \
+	nm-compat-device-ethernet.h \
+	nm-compat-device-wifi.c \
+	nm-compat-device-wifi.h \
 	nm-compat-active-connection.c \
 	nm-compat-active-connection.h \
 	nm-compat-vpn-connection.c \
