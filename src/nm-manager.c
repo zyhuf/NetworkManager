@@ -515,11 +515,15 @@ manager_device_state_changed (NMDevice *device,
 
 	if (new_state == NM_DEVICE_STATE_ACTIVATED) {
 		NMActRequest *req;
+		NMConnection *connection;
 
 		req = nm_device_get_act_request (device);
-		if (req)
-			nm_settings_connection_update_timestamp (NM_SETTINGS_CONNECTION (nm_act_request_get_connection (req)),
-			                                         (guint64) time (NULL));
+		if (req) {
+			connection = nm_act_request_get_connection (req);
+			if (NM_IS_SETTINGS_CONNECTION (connection))
+				nm_settings_connection_update_timestamp (NM_SETTINGS_CONNECTION (connection),
+				                                         (guint64) time (NULL));
+		}
 	}
 }
 
@@ -3984,11 +3988,15 @@ periodic_update_active_connection_timestamps (gpointer user_data)
 		const char *active_path = g_ptr_array_index (active, i);
 		NMActRequest *req;
 		NMDevice *device = NULL;
+		NMConnection *connection;
 
 		req = nm_manager_get_act_request_by_path (manager, active_path, &device);
-		if (device && nm_device_get_state (device) == NM_DEVICE_STATE_ACTIVATED)
-			nm_settings_connection_update_timestamp (NM_SETTINGS_CONNECTION (nm_act_request_get_connection (req)),
-			                                         (guint64) time (NULL));
+		if (device && nm_device_get_state (device) == NM_DEVICE_STATE_ACTIVATED) {
+			connection = nm_act_request_get_connection (req);
+			if (NM_IS_SETTINGS_CONNECTION (connection))
+				nm_settings_connection_update_timestamp (NM_SETTINGS_CONNECTION (connection),
+				                                         (guint64) time (NULL));
+		}
 	}
 
 	return TRUE;

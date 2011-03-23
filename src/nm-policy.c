@@ -731,7 +731,8 @@ auto_activate_device (gpointer user_data)
 
 		/* Ignore connections that aren't visible to any logged-in users */
 		if (ignore == FALSE) {
-			if (!nm_settings_connection_is_visible (NM_SETTINGS_CONNECTION (candidate)))
+			if (   NM_IS_SETTINGS_CONNECTION (candidate)
+			    && !nm_settings_connection_is_visible (NM_SETTINGS_CONNECTION (candidate)))
 				ignore = TRUE;
 		}
 

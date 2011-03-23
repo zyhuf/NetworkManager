@@ -104,7 +104,91 @@ typedef struct {
 	guint32 call_id;
 	NMActRequestSecretsFunc callback;
 	gpointer callback_data;
+
+	char *setting_name;
+	DBusGProxy *user_proxy;
 } GetSecretsInfo;
+
+static void
+free_get_secrets_info (GetSecretsInfo *info)
+{
+	g_free (info->setting_name);
+	if (info->user_proxy)
+		g_object_unref (info->user_proxy);
+	memset (info, 0, sizeof (*info));
+	g_free (info);
+}
+
+static void
+user_get_secrets_cb (DBusGProxy *proxy,
+                     DBusGProxyCall *call,
+                     gpointer user_data)
+{
+	GetSecretsInfo *info = user_data;
+	NMActRequestPrivate *priv = NM_ACT_REQUEST_GET_PRIVATE (info->self);
+	GHashTable *settings = NULL;
+	GError *error = NULL;
+
+	g_return_if_fail (info != NULL);
+	g_return_if_fail (info->setting_name);
+
+	if (dbus_g_proxy_end_call (proxy, call, &error,
+	                           DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
+	                           G_TYPE_INVALID)) {
+		nm_connection_update_secrets (priv->connection, info->setting_name, settings, &error);
+		g_hash_table_destroy (settings);
+	}
+
+	priv->secrets_calls = g_slist_remove (priv->secrets_calls, info);
+	info->callback (info->self, info->call_id, priv->connection, error, info->callback_data);
+	g_clear_error (&error);
+
+	free_get_secrets_info (info);
+}
+
+static guint32
+user_get_secrets (NMActRequest *self,
+                  const char *setting_name,
+                  guint32 flags,
+                  const char *hint,
+                  GetSecretsInfo *info)
+{
+	NMActRequestPrivate *priv = NM_ACT_REQUEST_GET_PRIVATE (self);
+	NMDBusManager *dbus_mgr;
+	DBusGConnection *bus;
+	GPtrArray *hints;
+	static guint32 counter = 3000000000;  /* start high to avoid collision with system connections */
+
+	/* User connection */
+	dbus_mgr = nm_dbus_manager_get ();
+	bus = nm_dbus_manager_get_connection (dbus_mgr);
+	info->user_proxy = dbus_g_proxy_new_for_name (bus,
+	                                              "org.freedesktop.NetworkManagerUserSettings",
+	                                              nm_connection_get_path (priv->connection),
+	                                              "org.freedesktop.NetworkManagerSettings.Connection.Secrets");
+	g_object_unref (dbus_mgr);
+
+	if (!info->user_proxy) {
+		nm_log_warn (LOGD_SETTINGS, "could not create user connection secrets proxy");
+		return 0;
+	}
+
+	hints = g_ptr_array_sized_new (1);
+	if (hint)
+		g_ptr_array_add (hints, (gpointer) hint);
+
+	dbus_g_proxy_begin_call_with_timeout (info->user_proxy, "GetSecrets",
+	                                      user_get_secrets_cb,
+	                                      info,
+	                                      NULL,
+	                                      120000,
+	                                      G_TYPE_STRING, setting_name,
+	                                      DBUS_TYPE_G_ARRAY_OF_STRING, hints,
+	                                      G_TYPE_BOOLEAN, (flags & NM_ACT_REQUEST_GET_SECRETS_FLAG_REQUEST_NEW),
+	                                      G_TYPE_INVALID);
+	g_ptr_array_free (hints, TRUE);
+	return counter++;
+}
 
 static void
 get_secrets_cb (NMSettingsConnection *connection,
@@ -120,7 +204,7 @@ get_secrets_cb (NMSettingsConnection *connection,
 	priv->secrets_calls = g_slist_remove (priv->secrets_calls, info);
 
 	info->callback (info->self, call_id, NM_CONNECTION (connection), error, info->callback_data);
-	g_free (info);
+	free_get_secrets_info (info);
 }
 
 guint32
@@ -144,21 +228,26 @@ nm_act_request_get_secrets (NMActRequest *self,
 	info->self = self;
 	info->callback = callback;
 	info->callback_data = callback_data;
+	info->setting_name = g_strdup (setting_name);
 
-	call_id = nm_settings_connection_get_secrets (NM_SETTINGS_CONNECTION (priv->connection),
-	                                              priv->user_requested,
-	                                              priv->user_uid,
-	                                              setting_name,
-	                                              flags,
-	                                              hint,
-	                                              get_secrets_cb,
-	                                              info,
-	                                              NULL);
+	if (NM_IS_SETTINGS_CONNECTION (priv->connection)) {
+		call_id = nm_settings_connection_get_secrets (NM_SETTINGS_CONNECTION (priv->connection),
+			                                          priv->user_requested,
+			                                          priv->user_uid,
+			                                          setting_name,
+			                                          flags,
+			                                          hint,
+			                                          get_secrets_cb,
+			                                          info,
+			                                          NULL);
+	} else
+		call_id = user_get_secrets (self, setting_name, flags, hint, info);
+
 	if (call_id > 0) {
 		info->call_id = call_id;
 		priv->secrets_calls = g_slist_append (priv->secrets_calls, info);
 	} else
-		g_free (info);
+		free_get_secrets_info (info);
 
 	return call_id;
 }
@@ -183,8 +272,10 @@ nm_act_request_cancel_secrets (NMActRequest *self, guint32 call_id)
 			priv->secrets_calls = g_slist_remove_link (priv->secrets_calls, iter);
 			g_slist_free (iter);
 
-			nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), call_id);
-			g_free (info);
+			if (NM_IS_SETTINGS_CONNECTION (priv->connection))
+				nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), call_id);
+			/* For user connections destroying the proxy cancels the request */
+			free_get_secrets_info (info);
 			break;
 		}
 	}
