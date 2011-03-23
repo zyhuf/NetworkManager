@@ -30,6 +30,7 @@
 #include "NetworkManagerVPN.h"
 #include "nm-marshal.h"
 #include "nm-logging.h"
+#include "compat/nm-compat-active-connection.h"
 
 G_DEFINE_TYPE (NMVPNManager, nm_vpn_manager, G_TYPE_OBJECT)
 
@@ -319,9 +320,16 @@ nm_vpn_manager_get_connection_for_active (NMVPNManager *manager,
 		for (elt = active; elt; elt = g_slist_next (elt)) {
 			NMVPNConnection *vpn = NM_VPN_CONNECTION (elt->data);
 			const char *ac_path;
+			const char *compat_path = NULL;
+			NMCompatActiveConnection *compat;
 
 			ac_path = nm_vpn_connection_get_active_connection_path (vpn);
-			if (ac_path && !strcmp (ac_path, active_path))
+			compat = nm_vpn_connection_get_compat (vpn);
+			if (compat)
+				compat_path = nm_compat_active_connection_get_path (compat);
+
+			if (   g_strcmp0 (ac_path, active_path) == 0
+			    || g_strcmp0 (compat_path, active_path) == 0)
 				return nm_vpn_connection_get_connection (vpn);
 		}
 	}

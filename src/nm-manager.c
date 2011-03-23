@@ -61,6 +61,7 @@
 #include "NetworkManagerUtils.h"
 #include "compat/nm-compat-manager.h"
 #include "compat/nm-compat-device.h"
+#include "compat/nm-compat-active-connection.h"
 
 #define NM_AUTOIP_DBUS_SERVICE "org.freedesktop.nm_avahi_autoipd"
 #define NM_AUTOIP_DBUS_IFACE   "org.freedesktop.nm_avahi_autoipd"
@@ -2868,12 +2869,19 @@ impl_manager_deactivate_connection (NMManager *self,
 	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
 		NMActRequest *req;
 		const char *req_path = NULL;
+		const char *compat_path = NULL;
+		NMCompatActiveConnection *compat;
 
 		req = nm_device_get_act_request (NM_DEVICE (iter->data));
-		if (req)
+		if (req) {
 			req_path = nm_act_request_get_active_connection_path (req);
+			compat = nm_act_request_get_compat (req);
+			if (compat)
+				compat_path = nm_compat_active_connection_get_path (compat);
+		}
 
-		if (req_path && !strcmp (active_path, req_path)) {
+		if (   g_strcmp0 (active_path, req_path) == 0
+		    || g_strcmp0 (active_path, compat_path) == 0) {
 			connection = nm_act_request_get_connection (req);
 			break;
 		}

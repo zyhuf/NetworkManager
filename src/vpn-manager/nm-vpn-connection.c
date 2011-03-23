@@ -765,6 +765,12 @@ nm_vpn_connection_disconnect (NMVPNConnection *connection,
 	                                 reason);
 }
 
+gpointer
+nm_vpn_connection_get_compat (NMVPNConnection *connection)
+{
+	return NM_VPN_CONNECTION_GET_PRIVATE (connection)->compat;
+}
+
 /******************************************************************************/
 
 static void
