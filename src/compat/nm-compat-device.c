@@ -33,7 +33,7 @@
 #include "nm-device-modem.h"
 #include "nm-properties-changed-signal.h"
 
-G_DEFINE_ABSTRACT_TYPE (NMCompatDevice, nm_compat_device, G_TYPE_OBJECT);
+G_DEFINE_TYPE (NMCompatDevice, nm_compat_device, G_TYPE_OBJECT);
 
 #define NM_COMPAT_DEVICE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_COMPAT_DEVICE, NMCompatDevicePrivate))
 
@@ -168,6 +168,14 @@ nm_compat_device_export (NMCompatDevice *self, DBusGConnection *bus)
 
 	priv->path = g_strdup_printf ("/org/freedesktop/NetworkManagerCompat/Devices/%d", idx++);
 	dbus_g_connection_register_g_object (bus, priv->path, G_OBJECT (self));
+}
+
+NMCompatDevice *
+nm_compat_device_new (NMDevice *parent)
+{
+	return (NMCompatDevice *) g_object_new (NM_TYPE_COMPAT_DEVICE,
+	                                        NM_COMPAT_DEVICE_PARENT, parent,
+	                                        NULL);
 }
 
 static GObject*

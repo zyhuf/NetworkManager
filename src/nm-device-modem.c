@@ -30,6 +30,8 @@
 #include "nm-rfkill.h"
 #include "nm-marshal.h"
 #include "nm-logging.h"
+#include "compat/nm-compat-device-gsm.h"
+#include "compat/nm-compat-device-cdma.h"
 
 static void device_interface_init (NMDeviceInterface *iface_class);
 
@@ -360,6 +362,28 @@ nm_device_modem_new (NMModem *modem, const char *driver)
 	                                  NULL);
 }
 
+static GObject*
+constructor (GType type,
+			 guint n_construct_params,
+			 GObjectConstructParam *construct_params)
+{
+	GObject *object;
+
+	object = G_OBJECT_CLASS (nm_device_modem_parent_class)->constructor (type,
+	                                                                     n_construct_params,
+	                                                                     construct_params);
+	if (object) {
+		NMDeviceModemPrivate *priv = NM_DEVICE_MODEM_GET_PRIVATE (object);
+
+		if (priv->current_caps & NM_DEVICE_MODEM_CAPABILITY_GSM_UMTS)
+			nm_device_set_compat (NM_DEVICE (object), nm_compat_device_gsm_new (NM_DEVICE_MODEM (object)));
+		else if (priv->current_caps & NM_DEVICE_MODEM_CAPABILITY_CDMA_EVDO)
+			nm_device_set_compat (NM_DEVICE (object), nm_compat_device_cdma_new (NM_DEVICE_MODEM (object)));
+	}
+
+	return object;
+}
+
 static void
 device_interface_init (NMDeviceInterface *iface_class)
 {
@@ -455,6 +479,7 @@ nm_device_modem_class_init (NMDeviceModemClass *mclass)
 	g_type_class_add_private (object_class, sizeof (NMDeviceModemPrivate));
 
 	/* Virtual methods */
+	object_class->constructor = constructor;
 	object_class->finalize = finalize;
 	object_class->get_property = get_property;
 	object_class->set_property = set_property;

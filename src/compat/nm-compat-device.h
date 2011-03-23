@@ -45,6 +45,8 @@ typedef struct {
 
 GType nm_compat_device_get_type (void);
 
+NMCompatDevice *nm_compat_device_new (NMDevice *parent);
+
 void nm_compat_device_export (NMCompatDevice *compat, DBusGConnection *bus);
 
 const char *nm_compat_device_get_path (NMCompatDevice *compat);

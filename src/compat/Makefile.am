@@ -78,6 +78,10 @@ libcompat_la_SOURCES = \
 	nm-compat-device-ethernet.h \
 	nm-compat-device-wifi.c \
 	nm-compat-device-wifi.h \
+	nm-compat-device-gsm.c \
+	nm-compat-device-gsm.h \
+	nm-compat-device-cdma.c \
+	nm-compat-device-cdma.h \
 	nm-compat-active-connection.c \
 	nm-compat-active-connection.h \
 	nm-compat-vpn-connection.c \
