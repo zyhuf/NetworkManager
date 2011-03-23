@@ -165,7 +165,7 @@ user_get_secrets (NMActRequest *self,
 	info->user_proxy = dbus_g_proxy_new_for_name (bus,
 	                                              "org.freedesktop.NetworkManagerUserSettings",
 	                                              nm_connection_get_path (priv->connection),
-	                                              "org.freedesktop.NetworkManagerSettings.Connection.Secrets");
+	                                              NM_DBUS_IFACE_SETTINGS_CONNECTION_SECRETS);
 	g_object_unref (dbus_mgr);
 
 	if (!info->user_proxy) {
