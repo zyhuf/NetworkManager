@@ -135,8 +135,38 @@ user_get_secrets_cb (DBusGProxy *proxy,
 	if (dbus_g_proxy_end_call (proxy, call, &error,
 	                           DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
 	                           G_TYPE_INVALID)) {
+		nm_log_dbg (LOGD_SETTINGS, "got user connection secrets");
 		nm_connection_update_secrets (priv->connection, info->setting_name, settings, &error);
+
+#if 0
+		if (g_hash_table_lookup (settings, info->setting_name)) {
+			GHashTableIter iter;
+			const char *setting_name = NULL;
+			GHashTable *setting = NULL;
+			g_hash_table_iter_init (&iter, settings);
+			while (g_hash_table_iter_next (&iter, (gpointer) &setting_name, (gpointer) &setting)) {
+				GHashTableIter setting_iter;
+				const char *key = NULL;
+				GValue *val = NULL;
+
+				g_hash_table_iter_init (&setting_iter, setting);
+				while (g_hash_table_iter_next (&setting_iter, (gpointer) &key, (gpointer) &val))
+					g_message ("   %s => %s", key, g_strdup_value_contents (val));
+			}
+		} else {
+			GHashTableIter iter;
+			const char *key = NULL;
+			GValue *val = NULL;
+
+			g_hash_table_iter_init (&iter, settings);
+			while (g_hash_table_iter_next (&iter, (gpointer) &key, (gpointer) &val))
+				g_message ("   %s => %s", key, g_strdup_value_contents (val));
+		}
+#endif
+
 		g_hash_table_destroy (settings);
+	} else {
+		nm_log_warn (LOGD_SETTINGS, "failed to get user connection secrets: %s", error->message);
 	}
 
 	priv->secrets_calls = g_slist_remove (priv->secrets_calls, info);
