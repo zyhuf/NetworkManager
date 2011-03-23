@@ -301,6 +301,9 @@ get_property (GObject *object, guint prop_id,
 	GSList *iter, *list;
 	GPtrArray *active;
 
+	if (!priv->manager)
+		return;
+
 	switch (prop_id) {
 	case PROP_VERSION:
 		g_value_set_string (value, VERSION);
