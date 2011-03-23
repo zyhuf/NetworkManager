@@ -874,7 +874,8 @@ pending_activation_destroy (PendingActivation *pending,
 	if (pending->chain)
 		nm_auth_chain_unref (pending->chain);
 
-	g_source_remove (pending->timeout_id);
+	if (pending->timeout_id)
+		g_source_remove (pending->timeout_id);
 
 	memset (pending, 0, sizeof (PendingActivation));
 	g_slice_free (PendingActivation, pending);
@@ -2653,6 +2654,26 @@ nm_manager_compat_activate_connection (NMManager *self,
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	PendingActivation *pending;
 	GError *error = NULL;
+	GSList *iter;
+	const char *real_dev_path = NULL;
+
+	/* Find the compat device path */
+	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
+		NMDevice *device = iter->data;
+		NMCompatDevice *compat = nm_device_get_compat (device);
+
+		if (compat && (g_strcmp0 (device_path, nm_compat_device_get_path (compat)) == 0)) {
+			real_dev_path = nm_device_get_path (device);
+			break;
+		}
+	}
+
+	if (!real_dev_path) {
+		error = g_error_new_literal (NM_MANAGER_ERROR, NM_MANAGER_ERROR_UNKNOWN_DEVICE, "Device not found");
+		dbus_g_method_return_error (context, error);
+		g_error_free (error);
+		return;
+	}
 
 	/* Need to check the caller's permissions and stuff before we can
 	 * activate the connection.
@@ -2660,7 +2681,7 @@ nm_manager_compat_activate_connection (NMManager *self,
 	pending = pending_activation_new (self,
 	                                  priv->authority,
 	                                  context,
-	                                  device_path,
+	                                  real_dev_path,
 	                                  connection_path,
 	                                  user_connection,
 	                                  NULL,
