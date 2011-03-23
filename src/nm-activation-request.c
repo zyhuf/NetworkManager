@@ -125,12 +125,16 @@ user_get_secrets_cb (DBusGProxy *proxy,
                      gpointer user_data)
 {
 	GetSecretsInfo *info = user_data;
-	NMActRequestPrivate *priv = NM_ACT_REQUEST_GET_PRIVATE (info->self);
+	NMActRequestPrivate *priv;
 	GHashTable *settings = NULL;
 	GError *error = NULL;
 
+	nm_log_dbg (LOGD_SETTINGS, "(%p) user secrets request reply", info);
+
 	g_return_if_fail (info != NULL);
 	g_return_if_fail (info->setting_name);
+
+	priv = NM_ACT_REQUEST_GET_PRIVATE (info->self);
 
 	if (dbus_g_proxy_end_call (proxy, call, &error,
 	                           DBUS_TYPE_G_MAP_OF_MAP_OF_VARIANT, &settings,
@@ -215,6 +219,8 @@ user_get_secrets (NMActRequest *self,
 	                                      DBUS_TYPE_G_ARRAY_OF_STRING, hints,
 	                                      G_TYPE_BOOLEAN, (flags & NM_ACT_REQUEST_GET_SECRETS_FLAG_REQUEST_NEW),
 	                                      G_TYPE_INVALID);
+	nm_log_dbg (LOGD_SETTINGS, "(%p) new user secrets request", info);
+
 	g_ptr_array_free (hints, TRUE);
 	return counter++;
 }
@@ -714,9 +720,9 @@ dispose (GObject *object)
 	for (iter = priv->secrets_calls; iter; iter = g_slist_next (iter)) {
 		GetSecretsInfo *info = iter->data;
 
-		if (!info->user_proxy)
+		if (NM_IS_SETTINGS_CONNECTION (priv->connection))
 			nm_settings_connection_cancel_secrets (NM_SETTINGS_CONNECTION (priv->connection), info->call_id);
-		g_free (info);
+		free_get_secrets_info (info);
 	}
 	g_slist_free (priv->secrets_calls);
 
