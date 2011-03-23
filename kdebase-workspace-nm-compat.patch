@@ -221,3 +221,51 @@ diff -up kdebase-workspace-4.6.1/solid/networkmanager-0.7/manager.cpp.compat kde
  {
      kDebug(1441) << NMNetworkManager::DBUS_SERVICE;
  }
+diff -up kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-ethernet.xml.compat kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-ethernet.xml
+--- kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-ethernet.xml.compat	2011-03-23 10:58:34.591823501 -0500
++++ kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-ethernet.xml	2011-03-23 10:58:39.481762370 -0500
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ 
+ <node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+-  <interface name="org.freedesktop.NetworkManager.Device.Wired">
++  <interface name="org.freedesktop.NetworkManagerCompat.Device.Wired">
+ 
+     <property name="HwAddress" type="s" access="read">
+       <tp:docstring>
+diff -up kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-ethernetinterface.h.compat kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-ethernetinterface.h
+--- kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-ethernetinterface.h.compat	2011-03-23 10:58:48.815645681 -0500
++++ kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-ethernetinterface.h	2011-03-23 10:58:53.599585872 -0500
+@@ -28,7 +28,7 @@ class OrgFreedesktopNetworkManagerDevice
+     Q_OBJECT
+ public:
+     static inline const char *staticInterfaceName()
+-    { return "org.freedesktop.NetworkManager.Device.Wired"; }
++    { return "org.freedesktop.NetworkManagerCompat.Device.Wired"; }
+ 
+ public:
+     OrgFreedesktopNetworkManagerDeviceWiredInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent = 0);
+diff -up kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-wifi.xml.bar kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-wifi.xml
+--- kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-wifi.xml.bar	2011-03-23 11:00:13.977581010 -0500
++++ kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/introspection/nm-device-wifi.xml	2011-03-23 11:00:19.949506349 -0500
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ 
+ <node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+-  <interface name="org.freedesktop.NetworkManager.Device.Wireless">
++  <interface name="org.freedesktop.NetworkManagerCompat.Device.Wireless">
+     <method name="GetAccessPoints">
+       <annotation name="org.freedesktop.DBus.GLib.CSymbol" value="impl_device_get_access_points"/>
+       <arg name="access_points" type="ao" direction="out">
+diff -up kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-wifiinterface.h.bar kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-wifiinterface.h
+--- kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-wifiinterface.h.bar	2011-03-23 11:00:32.229352829 -0500
++++ kdebase-workspace-4.6.1/solid/networkmanager-0.7/dbus/nm-device-wifiinterface.h	2011-03-23 11:00:38.372276033 -0500
+@@ -28,7 +28,7 @@ class OrgFreedesktopNetworkManagerDevice
+     Q_OBJECT
+ public:
+     static inline const char *staticInterfaceName()
+-    { return "org.freedesktop.NetworkManager.Device.Wireless"; }
++    { return "org.freedesktop.NetworkManagerCompat.Device.Wireless"; }
+ 
+ public:
+     OrgFreedesktopNetworkManagerDeviceWirelessInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent = 0);
