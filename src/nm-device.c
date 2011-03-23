@@ -3372,7 +3372,8 @@ dispose (GObject *object)
 
 	clear_act_request (self);
 
-	g_object_unref (priv->compat);
+	if (priv->compat)
+		g_object_unref (priv->compat);
 
 out:
 	G_OBJECT_CLASS (nm_device_parent_class)->dispose (object);
