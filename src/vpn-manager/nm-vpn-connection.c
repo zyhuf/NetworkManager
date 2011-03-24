@@ -843,7 +843,7 @@ user_get_secrets (NMVPNConnection *self, const char *setting_name)
 	NMDBusManager *dbus_mgr;
 	DBusGConnection *bus;
 	GPtrArray *hints;
-	static guint32 counter = 3000000000;
+	static guint32 counter = 3000000000u;
 
 	/* User connection */
 	dbus_mgr = nm_dbus_manager_get ();

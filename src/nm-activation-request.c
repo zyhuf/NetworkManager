@@ -190,7 +190,7 @@ user_get_secrets (NMActRequest *self,
 	NMDBusManager *dbus_mgr;
 	DBusGConnection *bus;
 	GPtrArray *hints;
-	static guint32 counter = 3000000000;  /* start high to avoid collision with system connections */
+	static guint32 counter = 3000000000u;  /* start high to avoid collision with system connections */
 
 	/* User connection */
 	dbus_mgr = nm_dbus_manager_get ();
