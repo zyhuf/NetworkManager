@@ -23,6 +23,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <dbus/dbus-glib-lowlevel.h>
 #include "nm-vpn-connection.h"
 #include "nm-compat-active-connection.h"
 
@@ -49,6 +50,6 @@ typedef struct {
 
 GType nm_compat_vpn_connection_get_type (void);
 
-NMCompatVpnConnection *nm_compat_vpn_connection_new (NMVPNConnection *parent);
+NMCompatVpnConnection *nm_compat_vpn_connection_new (NMVPNConnection *parent, DBusGConnection *bus);
 
 #endif /* NM_COMPAT_VPN_CONNECTION_H */

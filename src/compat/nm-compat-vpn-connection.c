@@ -21,8 +21,6 @@
 #include "config.h"
 
 #include <glib.h>
-#include <stdio.h>
-#include <string.h>
 
 #include "NetworkManager.h"
 #include "nm-dbus-glib-types.h"
@@ -31,17 +29,6 @@
 #include "nm-compat-vpn-connection.h"
 
 G_DEFINE_TYPE (NMCompatVpnConnection, nm_compat_vpn_connection, NM_TYPE_COMPAT_ACTIVE_CONNECTION)
-
-#define NM_COMPAT_VPN_CONNECTION_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), \
-                                                 NM_TYPE_COMPAT_VPN_CONNECTION, \
-                                                 NMCompatVpnConnectionPrivate))
-
-typedef struct {
-	gboolean disposed;
-
-	NMVPNConnection *parent;
-} NMCompatVpnConnectionPrivate;
-
 
 enum {
 	PROP_0,
@@ -56,7 +43,6 @@ enum {
 	LAST_SIGNAL
 };
 static guint signals[LAST_SIGNAL] = { 0 };
-
 
 #include "nm-compat-vpn-connection-glue.h"
 
@@ -80,16 +66,18 @@ vpn_state_changed_cb (NMVPNConnection *vpn,
 /*************************************************************************/
 
 NMCompatVpnConnection *
-nm_compat_vpn_connection_new (NMVPNConnection *parent)
+nm_compat_vpn_connection_new (NMVPNConnection *parent, DBusGConnection *bus)
 {
 	NMCompatVpnConnection *self;
 
-	self = (NMCompatVpnConnection *) g_object_new (NM_TYPE_COMPAT_VPN_CONNECTION, NULL);
+	self = (NMCompatVpnConnection *) g_object_new (NM_TYPE_COMPAT_VPN_CONNECTION,
+	                                               "parent", parent,
+	                                               NULL);
 	if (self) {
-		NM_COMPAT_VPN_CONNECTION_GET_PRIVATE (self)->parent = parent;
 		g_signal_connect (parent, "notify::" NM_VPN_CONNECTION_VPN_STATE, G_CALLBACK (prop_reemit_cb), self);
 		g_signal_connect (parent, "notify::" NM_VPN_CONNECTION_BANNER, G_CALLBACK (prop_reemit_cb), self);
 		g_signal_connect (parent, "vpn-state-changed", G_CALLBACK (vpn_state_changed_cb), self);
+		nm_compat_active_connection_export (NM_COMPAT_ACTIVE_CONNECTION (self), bus);
 	}
 
 	return self;
@@ -104,36 +92,34 @@ static void
 get_property (GObject *object, guint prop_id,
 			  GValue *value, GParamSpec *pspec)
 {
-	NMCompatVpnConnection *self = NM_COMPAT_VPN_CONNECTION (object);
-	NMCompatVpnConnectionPrivate *priv = NM_COMPAT_VPN_CONNECTION_GET_PRIVATE (self);
-	char *str;
-	guint32 u;
+	GObject *parent = nm_compat_active_connection_get_parent (NM_COMPAT_ACTIVE_CONNECTION (object));
 
-	if (priv->parent == NULL)
-		return;
+	if (parent)
+		g_object_get_property (parent, pspec->name, value);
+}
 
-	switch (prop_id) {
-	case PROP_VPN_STATE:
-		g_object_get (priv->parent, NM_VPN_CONNECTION_VPN_STATE, &u, NULL);
-		g_value_set_uint (value, u);
-		break;
-	case PROP_BANNER:
-		g_object_get (priv->parent, NM_VPN_CONNECTION_BANNER, &str, NULL);
-		g_value_take_string (value, str);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
+static NMConnection *
+get_connection (NMCompatActiveConnection *compat, GObject *parent)
+{
+	/* Parent should be an NMVPNConnection */
+	return nm_vpn_connection_get_connection (NM_VPN_CONNECTION (parent));
+}
+
+static NMDevice *
+get_device (NMCompatActiveConnection *compat, GObject *parent)
+{
+	/* Parent should be an NMVPNConnection */
+	return nm_vpn_connection_get_parent_device (NM_VPN_CONNECTION (parent));
 }
 
 static void
 nm_compat_vpn_connection_class_init (NMCompatVpnConnectionClass *compat_class)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (compat_class);
+	NMCompatActiveConnectionClass *ac_class = NM_COMPAT_ACTIVE_CONNECTION_CLASS (compat_class);
 
-	g_type_class_add_private (compat_class, sizeof (NMCompatVpnConnectionPrivate));
-
+	ac_class->get_connection = get_connection;
+	ac_class->get_device = get_device;
 	object_class->get_property = get_property;
 
 	/* properties */

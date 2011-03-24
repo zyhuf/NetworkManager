@@ -23,7 +23,9 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <dbus/dbus-glib-lowlevel.h>
 #include "nm-activation-request.h"
+#include "nm-device.h"
 
 #define NM_TYPE_COMPAT_ACTIVE_CONNECTION            (nm_compat_active_connection_get_type ())
 #define NM_COMPAT_ACTIVE_CONNECTION(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_COMPAT_ACTIVE_CONNECTION, NMCompatActiveConnection))
@@ -39,13 +41,16 @@ typedef struct {
 typedef struct {
 	GObjectClass parent;
 
-	void (*properties_changed) (NMCompatActiveConnection *self, GHashTable *properties);
+	NMConnection * (*get_connection) (NMCompatActiveConnection *self, GObject *parent);
+	NMDevice *     (*get_device)     (NMCompatActiveConnection *self, GObject *parent);
 } NMCompatActiveConnectionClass;
 
 GType nm_compat_active_connection_get_type (void);
 
-NMCompatActiveConnection *nm_compat_active_connection_new (NMActRequest *parent, DBusGConnection *bus);
+void nm_compat_active_connection_export (NMCompatActiveConnection *self, DBusGConnection *bus);
 
 const char *nm_compat_active_connection_get_path (NMCompatActiveConnection *self);
+
+GObject *nm_compat_active_connection_get_parent (NMCompatActiveConnection *self);
 
 #endif /* NM_COMPAT_ACTIVE_CONNECTION_H */

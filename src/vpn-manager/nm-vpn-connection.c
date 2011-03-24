@@ -211,6 +211,7 @@ nm_vpn_connection_new (NMConnection *connection,
 {
 	NMVPNConnection *self;
 	NMVPNConnectionPrivate *priv;
+	NMDBusManager *dbus_mgr;
 
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), NULL);
 	g_return_val_if_fail (NM_IS_ACT_REQUEST (act_request), NULL);
@@ -238,7 +239,9 @@ nm_vpn_connection_new (NMConnection *connection,
 
 	nm_vpn_connection_base_export (NM_VPN_CONNECTION_BASE (self), connection);
 
-	priv->compat = nm_compat_vpn_connection_new (self);
+	dbus_mgr = nm_dbus_manager_get ();
+	priv->compat = nm_compat_vpn_connection_new (self, nm_dbus_manager_get_connection (dbus_mgr));
+	g_object_unref (dbus_mgr);
 
 	return self;
 }

@@ -84,6 +84,8 @@ libcompat_la_SOURCES = \
 	nm-compat-device-cdma.h \
 	nm-compat-active-connection.c \
 	nm-compat-active-connection.h \
+	nm-compat-act-request.c \
+	nm-compat-act-request.h \
 	nm-compat-vpn-connection.c \
 	nm-compat-vpn-connection.h
 
