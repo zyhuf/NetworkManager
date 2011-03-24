@@ -128,10 +128,10 @@ impl_compat_manager_enable (NMCompatManager *self,
 
 static void
 impl_compat_manager_sleep (NMCompatManager *self,
-                            gboolean enable,
-                            DBusGMethodInvocation *context)
+                           gboolean do_sleep,
+                           DBusGMethodInvocation *context)
 {
-	nm_manager_compat_enable (NM_COMPAT_MANAGER_GET_PRIVATE (self)->manager, enable, context);
+	nm_manager_compat_sleep (NM_COMPAT_MANAGER_GET_PRIVATE (self)->manager, do_sleep, context);
 }
 
 #define NM_DBUS_SERVICE_USER_SETTINGS "org.freedesktop.NetworkManagerUserSettings"
