@@ -919,17 +919,36 @@ GSList *
 nm_manager_compat_get_active_connections (NMManager *self)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	GSList *iter, *list = NULL;
+	GSList *iter, *list = NULL, *vpns;
+	NMCompatActiveConnection *compat;
 
 	/* Add active device connections */
 	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
 		NMActRequest *req;
 
 		req = nm_device_get_act_request (NM_DEVICE (iter->data));
-		if (req)
-			list = g_slist_append (list, req);
+		if (req) {
+			compat = nm_act_request_get_compat (req);
+			g_assert (compat);
+			list = g_slist_prepend (list, compat);
+		}
 	}
-	return list;
+
+	/* And VPN connections */
+	vpns = nm_vpn_manager_get_active_connections (priv->vpn_manager);
+	for (iter = vpns; iter; iter = g_slist_next (iter)) {
+		NMVPNConnection *vpn = NM_VPN_CONNECTION (iter->data);
+
+		compat = nm_vpn_connection_get_compat (vpn);
+		g_assert (compat);
+		list = g_slist_prepend (list, compat);
+
+		/* nm_vpn_manager_get_active_connections() refs each returned object */
+		g_object_unref (vpn);
+	}
+	g_slist_free (vpns);
+
+	return g_slist_reverse (list);
 }
 
 /*******************************************************************/

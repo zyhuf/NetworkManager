@@ -297,7 +297,6 @@ get_property (GObject *object, guint prop_id,
 	NMCompatManager *self = NM_COMPAT_MANAGER (object);
 	NMCompatManagerPrivate *priv = NM_COMPAT_MANAGER_GET_PRIVATE (self);
 	NMState state = NM_STATE_UNKNOWN;
-	gboolean b = FALSE;
 	GSList *iter, *list;
 	GPtrArray *active;
 
@@ -305,46 +304,23 @@ get_property (GObject *object, guint prop_id,
 		return;
 
 	switch (prop_id) {
-	case PROP_VERSION:
-		g_value_set_string (value, VERSION);
-		break;
 	case PROP_STATE:
 		g_object_get (priv->manager, NM_MANAGER_STATE, &state, NULL);
 		g_value_set_uint (value, new_state_to_old (state));
-		break;
-	case PROP_NETWORKING_ENABLED:
-		g_object_get (priv->manager, NM_MANAGER_NETWORKING_ENABLED, &b, NULL);
-		g_value_set_boolean (value, b);
-		break;
-	case PROP_WIRELESS_ENABLED:
-		g_object_get (priv->manager, NM_MANAGER_WIRELESS_ENABLED, &b, NULL);
-		g_value_set_boolean (value, b);
-		break;
-	case PROP_WIRELESS_HARDWARE_ENABLED:
-		g_object_get (priv->manager, NM_MANAGER_WIRELESS_HARDWARE_ENABLED, &b, NULL);
-		g_value_set_boolean (value, b);
-		break;
-	case PROP_WWAN_ENABLED:
-		g_object_get (priv->manager, NM_MANAGER_WWAN_ENABLED, &b, NULL);
-		g_value_set_boolean (value, b);
-		break;
-	case PROP_WWAN_HARDWARE_ENABLED:
-		g_object_get (priv->manager, NM_MANAGER_WWAN_HARDWARE_ENABLED, &b, NULL);
-		g_value_set_boolean (value, b);
 		break;
 	case PROP_ACTIVE_CONNECTIONS:
 		list = nm_manager_compat_get_active_connections (priv->manager);
 		active = g_ptr_array_sized_new (g_slist_length (list));
 		for (iter = list; iter; iter = g_slist_next (iter)) {
-			NMCompatActiveConnection *compat;
+			NMCompatActiveConnection *compat = NM_COMPAT_ACTIVE_CONNECTION (iter->data);
 
-			compat = nm_act_request_get_compat (NM_ACT_REQUEST (iter->data));
 			g_ptr_array_add (active, g_strdup (nm_compat_active_connection_get_path (compat)));
 		}
 		g_value_take_boxed (value, active);
+		g_slist_free (list);
 		break;
 	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		g_object_get_property (G_OBJECT (priv->manager), pspec->name, value);
 		break;
 	}
 }
