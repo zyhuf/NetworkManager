@@ -3647,7 +3647,9 @@ prop_filter (DBusConnection *connection,
 	if (dbus_message_iter_get_arg_type (&iter) != DBUS_TYPE_STRING)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	dbus_message_iter_get_basic (&iter, &propiface);
-	if (!propiface || strcmp (propiface, NM_DBUS_INTERFACE))
+	if (!propiface)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	if (g_strcmp0 (propiface, NM_DBUS_INTERFACE) && g_strcmp0 (propiface, "org.freedesktop.NetworkManagerCompat"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	dbus_message_iter_next (&iter);
 
