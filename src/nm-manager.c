@@ -942,9 +942,6 @@ nm_manager_compat_get_active_connections (NMManager *self)
 		compat = nm_vpn_connection_get_compat (vpn);
 		g_assert (compat);
 		list = g_slist_prepend (list, compat);
-
-		/* nm_vpn_manager_get_active_connections() refs each returned object */
-		g_object_unref (vpn);
 	}
 	g_slist_free (vpns);
 
