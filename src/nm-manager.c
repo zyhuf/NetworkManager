@@ -2899,6 +2899,7 @@ impl_manager_deactivate_connection (NMManager *self,
 		if (   g_strcmp0 (active_path, req_path) == 0
 		    || g_strcmp0 (active_path, compat_path) == 0) {
 			connection = nm_act_request_get_connection (req);
+			active_path = req_path; /* ensure we have real (not compat) path */
 			break;
 		}
 	}
@@ -2920,7 +2921,7 @@ impl_manager_deactivate_connection (NMManager *self,
 	 * deactivate the connection.
 	 */
 	if (!nm_auth_get_caller_uid (context, 
-		                         priv->dbus_mgr,
+	                             priv->dbus_mgr,
 	                             &sender_uid,
 	                             &error_desc)) {
 		error = g_error_new_literal (NM_MANAGER_ERROR,
