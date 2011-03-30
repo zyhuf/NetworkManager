@@ -217,7 +217,7 @@ user_get_secrets (NMActRequest *self,
 	                                      120000,
 	                                      G_TYPE_STRING, setting_name,
 	                                      DBUS_TYPE_G_ARRAY_OF_STRING, hints,
-	                                      G_TYPE_BOOLEAN, (flags & NM_ACT_REQUEST_GET_SECRETS_FLAG_REQUEST_NEW),
+	                                      G_TYPE_BOOLEAN, (flags & NM_SETTINGS_GET_SECRETS_FLAG_REQUEST_NEW),
 	                                      G_TYPE_INVALID);
 	nm_log_dbg (LOGD_SETTINGS, "(%p) new user secrets request", info);
 
