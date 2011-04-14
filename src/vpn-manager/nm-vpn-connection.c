@@ -61,7 +61,6 @@ typedef struct {
 
 	gboolean user_requested;
 	gulong user_uid;
-	NMActRequest *act_request;
 	DBusGProxy *user_proxy;
 	guint32 secrets_id;
 	char *username;
@@ -205,7 +204,6 @@ device_ip4_config_changed (NMDevice *device,
 
 NMVPNConnection *
 nm_vpn_connection_new (NMConnection *connection,
-                       NMActRequest *act_request,
                        NMDevice *parent_device,
                        gboolean user_requested,
                        gulong user_uid)
@@ -215,7 +213,6 @@ nm_vpn_connection_new (NMConnection *connection,
 	NMDBusManager *dbus_mgr;
 
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), NULL);
-	g_return_val_if_fail (NM_IS_ACT_REQUEST (act_request), NULL);
 	g_return_val_if_fail (NM_IS_DEVICE (parent_device), NULL);
 
 	self = (NMVPNConnection *) g_object_new (NM_TYPE_VPN_CONNECTION, NULL);
@@ -228,7 +225,6 @@ nm_vpn_connection_new (NMConnection *connection,
 	priv->user_uid = user_uid;
 	priv->connection = g_object_ref (connection);
 	priv->parent_dev = g_object_ref (parent_device);
-	priv->act_request = g_object_ref (act_request);
 
 	priv->device_monitor = g_signal_connect (parent_device, "state-changed",
 									 G_CALLBACK (device_state_changed),
@@ -1207,7 +1203,6 @@ dispose (GObject *object)
 		g_object_unref (priv->user_proxy);
 	}
 
-	g_object_unref (priv->act_request);
 	g_object_unref (priv->connection);
 	g_object_unref (priv->compat);
 	g_free (priv->username);

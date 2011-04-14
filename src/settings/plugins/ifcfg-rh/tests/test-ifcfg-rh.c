@@ -1883,6 +1883,157 @@ test_read_wired_static_routes_legacy (void)
 	g_object_unref (connection);
 }
 
+static void
+test_read_wired_ipv4_manual (const char *file, const char *expected_id)
+{
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIP4Config *s_ip4;
+	char *unmanaged = NULL;
+	char *keyfile = NULL;
+	char *routefile = NULL;
+	char *route6file = NULL;
+	gboolean ignore_error = FALSE;
+	GError *error = NULL;
+	const char *tmp;
+	const char *expected_address1 = "1.2.3.4";
+	const char *expected_address2 = "9.8.7.6";
+	const char *expected_address3 = "3.3.3.3";
+	guint32 expected_prefix1 = 24;
+	guint32 expected_prefix2 = 16;
+	guint32 expected_prefix3 = 8;
+	NMIP4Address *ip4_addr;
+	struct in_addr addr;
+
+	connection = connection_from_file (file,
+	                                   NULL,
+	                                   TYPE_ETHERNET,
+	                                   NULL,
+	                                   &unmanaged,
+	                                   &keyfile,
+	                                   &routefile,
+	                                   &route6file,
+	                                   &error,
+	                                   &ignore_error);
+	ASSERT (connection != NULL,
+	        "wired-ipv4-manual-read", "failed to read %s: %s", file, error->message);
+
+	ASSERT (nm_connection_verify (connection, &error),
+	        "wired-ipv4-manual-verify", "failed to verify %s: %s", file, error->message);
+
+	ASSERT (unmanaged == FALSE,
+	        "wired-ipv4-manual-verify", "failed to verify %s: unexpected unmanaged value", file);
+
+	/* ===== CONNECTION SETTING ===== */
+
+	s_con = NM_SETTING_CONNECTION (nm_connection_get_setting (connection, NM_TYPE_SETTING_CONNECTION));
+	ASSERT (s_con != NULL,
+	        "wired-ipv4-manual-verify-connection", "failed to verify %s: missing %s setting",
+	        file,
+	        NM_SETTING_CONNECTION_SETTING_NAME);
+
+	/* ID */
+	tmp = nm_setting_connection_get_id (s_con);
+	ASSERT (tmp != NULL,
+	        "wired-ipv4-manual-verify-connection", "failed to verify %s: missing %s / %s key",
+	        file,
+	        NM_SETTING_CONNECTION_SETTING_NAME,
+	        NM_SETTING_CONNECTION_ID);
+	ASSERT (strcmp (tmp, expected_id) == 0,
+	        "wired-ipv4-manual-verify-connection", "failed to verify %s: unexpected %s / %s key value",
+	        file,
+	        NM_SETTING_CONNECTION_SETTING_NAME,
+	        NM_SETTING_CONNECTION_ID);
+
+	/* ===== WIRED SETTING ===== */
+
+	s_wired = NM_SETTING_WIRED (nm_connection_get_setting (connection, NM_TYPE_SETTING_WIRED));
+	ASSERT (s_wired != NULL,
+	        "wired-ipv4-manual-verify-wired", "failed to verify %s: missing %s setting",
+	        file,
+	        NM_SETTING_WIRED_SETTING_NAME);
+
+	/* ===== IPv4 SETTING ===== */
+
+	s_ip4 = NM_SETTING_IP4_CONFIG (nm_connection_get_setting (connection, NM_TYPE_SETTING_IP4_CONFIG));
+	ASSERT (s_ip4 != NULL,
+	        "wired-ipv4-manual-verify-ip4", "failed to verify %s: missing %s setting",
+	        file,
+	        NM_SETTING_IP4_CONFIG_SETTING_NAME);
+
+	/* Method */
+	tmp = nm_setting_ip4_config_get_method (s_ip4);
+	ASSERT (strcmp (tmp, NM_SETTING_IP4_CONFIG_METHOD_MANUAL) == 0,
+	        "wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
+	        file,
+	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
+	        NM_SETTING_IP4_CONFIG_METHOD);
+
+	/* IP addresses */
+	ASSERT (nm_setting_ip4_config_get_num_addresses (s_ip4) == 3,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
+		file,
+		NM_SETTING_IP4_CONFIG_SETTING_NAME,
+		NM_SETTING_IP4_CONFIG_ADDRESSES);
+
+	/* Address #1 */
+	ip4_addr = nm_setting_ip4_config_get_address (s_ip4, 0);
+	ASSERT (ip4_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: missing IP4 address #1",
+		file);
+
+	ASSERT (nm_ip4_address_get_prefix (ip4_addr) == expected_prefix1,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #1 prefix",
+		file);
+
+	ASSERT (inet_pton (AF_INET, expected_address1, &addr) > 0,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: couldn't convert IP address #1",
+		file);
+	ASSERT (nm_ip4_address_get_address (ip4_addr) == addr.s_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #1",
+		file);
+
+	/* Address #2 */
+	ip4_addr = nm_setting_ip4_config_get_address (s_ip4, 1);
+	ASSERT (ip4_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: missing IP4 address #2",
+		file);
+
+	ASSERT (nm_ip4_address_get_prefix (ip4_addr) == expected_prefix2,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #2 prefix",
+		file);
+
+	ASSERT (inet_pton (AF_INET, expected_address2, &addr) > 0,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: couldn't convert IP address #2",
+		file);
+	ASSERT (nm_ip4_address_get_address (ip4_addr) == addr.s_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #2",
+		file);
+
+	/* Address #3 */
+	ip4_addr = nm_setting_ip4_config_get_address (s_ip4, 2);
+	ASSERT (ip4_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: missing IP4 address #3",
+		file);
+
+	ASSERT (nm_ip4_address_get_prefix (ip4_addr) == expected_prefix3,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #3 prefix",
+		file);
+
+	ASSERT (inet_pton (AF_INET, expected_address3, &addr) > 0,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: couldn't convert IP address #3",
+		file);
+	ASSERT (nm_ip4_address_get_address (ip4_addr) == addr.s_addr,
+		"wired-ipv4-manual-verify-ip4", "failed to verify %s: unexpected IP4 address #3",
+		file);
+
+	g_free (keyfile);
+	g_free (routefile);
+	g_free (route6file);
+	g_object_unref (connection);
+}
+
 #define TEST_IFCFG_WIRED_IPV6_MANUAL TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ipv6-manual"
 
 static void
@@ -5828,6 +5979,75 @@ test_read_wired_qeth_static (void)
 	        TEST_IFCFG_WIRED_QETH_STATIC,
 	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
 	        NM_SETTING_IP4_CONFIG_METHOD);
+
+	g_object_unref (connection);
+}
+
+#define TEST_IFCFG_WIRED_CTC_STATIC TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ctc-static"
+
+static void
+test_read_wired_ctc_static (void)
+{
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	char *unmanaged = NULL;
+	char *keyfile = NULL;
+	char *routefile = NULL;
+	char *route6file = NULL;
+	gboolean ignore_error = FALSE;
+	GError *error = NULL;
+	const char *tmp;
+	const char *expected_id = "System test-wired-ctc-static";
+	const char *expected_channel0 = "0.0.1b00";
+	const char *expected_channel1 = "0.0.1b01";
+	const GPtrArray *subchannels;
+	gboolean success;
+
+	connection = connection_from_file (TEST_IFCFG_WIRED_CTC_STATIC,
+	                                   NULL,
+	                                   TYPE_ETHERNET,
+	                                   NULL,
+	                                   &unmanaged,
+	                                   &keyfile,
+	                                   &routefile,
+	                                   &route6file,
+	                                   &error,
+	                                   &ignore_error);
+	g_assert_no_error (error);
+	g_assert (connection);
+	
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
+	g_assert (unmanaged == FALSE);
+
+	/* ===== CONNECTION SETTING ===== */
+	s_con = nm_connection_get_setting_connection (connection);
+	g_assert (s_con != NULL);
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, expected_id);
+
+	/* ===== WIRED SETTING ===== */
+	s_wired = nm_connection_get_setting_wired (connection);
+	g_assert (s_wired != NULL);
+
+	g_assert (nm_setting_wired_get_mac_address (s_wired) == NULL);
+
+	/* Subchannels */
+	subchannels = nm_setting_wired_get_s390_subchannels (s_wired);
+	g_assert (subchannels != NULL);
+	g_assert_cmpint (subchannels->len, ==, 2);
+
+	g_assert_cmpstr (g_ptr_array_index (subchannels, 0), ==, expected_channel0);
+	g_assert_cmpstr (g_ptr_array_index (subchannels, 1), ==, expected_channel1);
+
+	/* Nettype */
+	g_assert_cmpstr (nm_setting_wired_get_s390_nettype (s_wired), ==, "ctc");
+
+	/* port name */
+	tmp = nm_setting_wired_get_s390_option_by_key (s_wired, "ctcprot");
+	g_assert (tmp != NULL);
+	g_assert_cmpstr (tmp, ==, "0");
 
 	g_object_unref (connection);
 }
@@ -10086,6 +10306,131 @@ test_write_wired_qeth_dhcp (void)
 }
 
 static void
+test_write_wired_ctc_dhcp (void)
+{
+	NMConnection *connection;
+	NMConnection *reread;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIP4Config *s_ip4;
+	NMSettingIP6Config *s_ip6;
+	char *uuid;
+	GPtrArray *subchans;
+	gboolean success;
+	GError *error = NULL;
+	char *testfile = NULL;
+	char *unmanaged = NULL;
+	char *keyfile = NULL;
+	char *routefile = NULL;
+	char *route6file = NULL;
+	gboolean ignore_error = FALSE;
+	shvarFile *ifcfg;
+	char *tmp;
+
+	connection = nm_connection_new ();
+	g_assert (connection);
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	g_assert (s_con);
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	uuid = nm_utils_uuid_generate ();
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wired ctc Static",
+	              NM_SETTING_CONNECTION_UUID, uuid,
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
+	              NULL);
+	g_free (uuid);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	g_assert (s_wired);
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	subchans = g_ptr_array_sized_new (2);
+	g_ptr_array_add (subchans, "0.0.600");
+	g_ptr_array_add (subchans, "0.0.601");
+	g_object_set (s_wired,
+	              NM_SETTING_WIRED_S390_SUBCHANNELS, subchans,
+	              NM_SETTING_WIRED_S390_NETTYPE, "ctc",
+	              NULL);
+	g_ptr_array_free (subchans, TRUE);
+	nm_setting_wired_add_s390_option (s_wired, "ctcprot", "0");
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIP4Config *) nm_setting_ip4_config_new ();
+	g_assert (s_ip4);
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO, NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIP6Config *) nm_setting_ip6_config_new ();
+	g_assert (s_ip6);
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE, NULL);
+
+	/* Verify */
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
+
+	/* Save the ifcfg */
+	success = writer_new_connection (connection,
+	                                 TEST_SCRATCH_DIR "/network-scripts/",
+	                                 &testfile,
+	                                 &error);
+	g_assert_no_error (error);
+	g_assert (success);
+	g_assert (testfile != NULL);
+
+	/* Ensure the CTCPROT item gets written out as it's own option */
+	ifcfg = svNewFile (testfile);
+	g_assert (ifcfg);
+
+	tmp = svGetValue (ifcfg, "CTCPROT", TRUE);
+	g_assert (tmp);
+	g_assert_cmpstr (tmp, ==, "0");
+
+	/* And that it's not in the generic OPTIONS string */
+	tmp = svGetValue (ifcfg, "OPTIONS", TRUE);
+	g_assert (tmp == NULL);
+
+	svCloseFile (ifcfg);
+
+	/* re-read the connection for comparison */
+	reread = connection_from_file (testfile,
+	                               NULL,
+	                               TYPE_ETHERNET,
+	                               NULL,
+	                               &unmanaged,
+	                               &keyfile,
+	                               &routefile,
+	                               &route6file,
+	                               &error,
+	                               &ignore_error);
+	unlink (testfile);
+
+	g_assert (reread);
+	success = nm_connection_verify (reread, &error);
+	g_assert_no_error (error);
+	g_assert (success);
+
+	success = nm_connection_compare (connection, reread, NM_SETTING_COMPARE_FLAG_EXACT);
+	g_assert (success);
+
+	if (route6file)
+		unlink (route6file);
+
+	g_free (testfile);
+	g_free (keyfile);
+	g_free (routefile);
+	g_free (route6file);
+	g_object_unref (connection);
+	g_object_unref (reread);
+}
+
+static void
 test_write_permissions (void)
 {
 	NMConnection *connection;
@@ -10697,6 +11042,11 @@ test_read_vlan_interface (void)
 #define TEST_IFCFG_WIRED_STATIC           TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-static"
 #define TEST_IFCFG_WIRED_STATIC_BOOTPROTO TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-static-bootproto"
 
+#define TEST_IFCFG_WIRED_IPV4_MANUAL_1 TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ipv4-manual-1"
+#define TEST_IFCFG_WIRED_IPV4_MANUAL_2 TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ipv4-manual-2"
+#define TEST_IFCFG_WIRED_IPV4_MANUAL_3 TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ipv4-manual-3"
+#define TEST_IFCFG_WIRED_IPV4_MANUAL_4 TEST_IFCFG_DIR"/network-scripts/ifcfg-test-wired-ipv4-manual-4"
+
 #define DEFAULT_HEX_PSK "7d308b11df1b4243b0f78e5f3fc68cdbb9a264ed0edf4c188edf329ff5b467f0"
 
 int main (int argc, char **argv)
@@ -10724,6 +11074,10 @@ int main (int argc, char **argv)
 	test_read_wired_defroute_no_gatewaydev_yes ();
 	test_read_wired_static_routes ();
 	test_read_wired_static_routes_legacy ();
+	test_read_wired_ipv4_manual (TEST_IFCFG_WIRED_IPV4_MANUAL_1, "System test-wired-ipv4-manual-1");
+	test_read_wired_ipv4_manual (TEST_IFCFG_WIRED_IPV4_MANUAL_2, "System test-wired-ipv4-manual-2");
+	test_read_wired_ipv4_manual (TEST_IFCFG_WIRED_IPV4_MANUAL_3, "System test-wired-ipv4-manual-3");
+	test_read_wired_ipv4_manual (TEST_IFCFG_WIRED_IPV4_MANUAL_4, "System test-wired-ipv4-manual-4");
 	test_read_wired_ipv6_manual ();
 	test_read_wired_ipv6_only ();
 	test_read_wired_dhcp6_only ();
@@ -10758,6 +11112,7 @@ int main (int argc, char **argv)
 	test_read_wifi_wpa_eap_ttls_tls ();
 	test_read_wifi_wep_eap_ttls_chap ();
 	test_read_wired_qeth_static ();
+	test_read_wired_ctc_static ();
 	test_read_wifi_wep_no_keys ();
 	test_read_permissions ();
 	test_read_wifi_wep_agent_keys ();
@@ -10819,6 +11174,7 @@ int main (int argc, char **argv)
 	test_write_wifi_wpa_eap_ttls_mschapv2 ();
 	test_write_wifi_dynamic_wep_leap ();
 	test_write_wired_qeth_dhcp ();
+	test_write_wired_ctc_dhcp ();
 	test_write_permissions ();
 	test_write_wifi_wep_agent_keys ();
 
