@@ -30,6 +30,9 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_INSTALL
 
+# C++ only required if --enable-qt=yes
+AC_PROG_CXX
+
 dnl Initialize libtool
 LT_PREREQ([2.2])
 LT_INIT([disable-static])
@@ -263,6 +266,20 @@ AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
 GOBJECT_INTROSPECTION_CHECK([0.9.6])
+
+# Qt4
+PKG_CHECK_MODULES(QT, [Qt >= 4 QtCore QtDBus], [have_qt=yes],[have_qt=no])
+AC_ARG_ENABLE(qt, AS_HELP_STRING([--enable-qt], [enable Qt examples]),
+                     [enable_qt=${enableval}], [enable_qt=${have_qt}])
+if (test "${enable_qt}" = "yes"); then
+	if test x"$have_qt" = x"no"; then
+		AC_MSG_ERROR(Qt development headers are required)
+	fi
+	AC_SUBST(QT_CFLAGS)
+	AC_SUBST(QT_LIBS)
+fi
+AM_CONDITIONAL(WITH_QT, test "${enable_qt}" = "yes")
+
 
 AC_ARG_WITH(udev-dir, AS_HELP_STRING([--with-udev-dir=DIR], [where the udev base directory is]))
 if test -n "$with_udev_dir" ; then
@@ -658,6 +675,8 @@ NetworkManager.pc
 examples/Makefile
 examples/python/Makefile
 examples/C/Makefile
+examples/C/glib/Makefile
+examples/C/qt/Makefile
 ])
 AC_OUTPUT
 
