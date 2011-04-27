@@ -47,6 +47,7 @@ enum {
 	PROP_0 = 0x1000,
 	PROP_SERVICE_NAME,
 	PROP_CONNECTION,
+	PROP_UUID,
 	PROP_SPECIFIC_OBJECT,
 	PROP_DEVICES,
 	PROP_STATE,
@@ -241,6 +242,7 @@ nm_compat_active_connection_class_init (NMCompatActiveConnectionClass *compat_cl
 
     nm_active_connection_install_properties (object_class,
                                              PROP_CONNECTION,
+                                             PROP_UUID,
                                              PROP_SPECIFIC_OBJECT,
                                              PROP_DEVICES,
                                              PROP_STATE,
