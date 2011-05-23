@@ -34,7 +34,6 @@
 #include "nm-dbus-manager.h"
 #include "nm-settings-error.h"
 #include "nm-dbus-glib-types.h"
-#include "nm-polkit-helpers.h"
 #include "nm-logging.h"
 #include "nm-manager-auth.h"
 #include "nm-marshal.h"
@@ -83,7 +82,6 @@ typedef struct {
 	NMDBusManager *dbus_mgr;
 	NMAgentManager *agent_mgr;
 
-	PolkitAuthority *authority;
 	GSList *pending_auths; /* List of pending authentication requests */
 	NMConnection *secrets;
 	gboolean visible; /* Is this connection is visible by some session? */
@@ -180,10 +178,10 @@ only_system_secrets_cb (NMSetting *setting,
 
 			g_hash_table_iter_init (&iter, (GHashTable *) g_value_get_boxed (value));
 			while (g_hash_table_iter_next (&iter, (gpointer *) &secret_name, NULL)) {
-				if (nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL)) {
-					if (secret_flags != NM_SETTING_SECRET_FLAG_NONE)
-						nm_setting_vpn_remove_secret (NM_SETTING_VPN (setting), secret_name);
-				}
+				secret_flags = NM_SETTING_SECRET_FLAG_NONE;
+				nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL);
+				if (secret_flags != NM_SETTING_SECRET_FLAG_NONE)
+					nm_setting_vpn_remove_secret (NM_SETTING_VPN (setting), secret_name);
 			}
 		} else {
 			nm_setting_get_secret_flags (setting, key, &secret_flags, NULL);
@@ -432,7 +430,7 @@ has_system_owned_secrets (GHashTableIter *iter,
 {
 	gboolean *has_system_owned = user_data;
 
-	if (!(flags & NM_SETTING_SECRET_FLAG_AGENT_OWNED)) {
+	if (flags == NM_SETTING_SECRET_FLAG_NONE) {
 		*has_system_owned = TRUE;
 		return FALSE;
 	}
@@ -449,24 +447,60 @@ for_each_secret (NMConnection *connection,
 	const char *setting_name;
 	GHashTable *setting_hash;
 
+	/* This function, given a hash of hashes representing new secrets of
+	 * an NMConnection, walks through each toplevel hash (which represents a
+	 * NMSetting), and for each setting, walks through that setting hash's
+	 * properties.  For each property that's a secret, it will check that
+	 * secret's flags in the backing NMConnection object, and call a supplied
+	 * callback.
+	 *
+	 * The one complexity is that the VPN setting's 'secrets' property is
+	 * *also* a hash table (since the key/value pairs are arbitrary and known
+	 * only to the VPN plugin itself).  That means we have three levels of
+	 * GHashTables that we potentially have to traverse here.  When we hit the
+	 * VPN setting's 'secrets' property, we special-case that and iterate over
+	 * each item in that 'secrets' hash table, calling the supplied callback
+	 * each time.
+	 */
+
 	/* Walk through the list of setting hashes */
 	g_hash_table_iter_init (&iter, secrets);
-	while (g_hash_table_iter_next (&iter,
-	                               (gpointer *) &setting_name,
-	                               (gpointer *) &setting_hash)) {
-		GHashTableIter setting_iter;
+	while (g_hash_table_iter_next (&iter, (gpointer) &setting_name, (gpointer) &setting_hash)) {
+		NMSetting *setting;
+		GHashTableIter secret_iter;
 		const char *secret_name;
+		GValue *val;
+
+		/* Get the actual NMSetting from the connection so we can get secret flags
+		 * from the connection data, since flags aren't secrets.  What we're
+		 * iterating here is just the secrets, not a whole connection.
+		 */
+		setting = nm_connection_get_setting_by_name (connection, setting_name);
+		if (setting == NULL)
+			continue;
 
 		/* Walk through the list of keys in each setting hash */
-		g_hash_table_iter_init (&setting_iter, setting_hash);
-		while (g_hash_table_iter_next (&setting_iter, (gpointer *) &secret_name, NULL)) {
-			NMSetting *setting;
-			NMSettingSecretFlags flags = NM_SETTING_SECRET_FLAG_NONE;
+		g_hash_table_iter_init (&secret_iter, setting_hash);
+		while (g_hash_table_iter_next (&secret_iter, (gpointer) &secret_name, (gpointer) &val)) {
+			NMSettingSecretFlags secret_flags = NM_SETTING_SECRET_FLAG_NONE;
 
-			/* Get the actual NMSetting from the connection so we can get secret flags */
-			setting = nm_connection_get_setting_by_name (connection, setting_name);
-			if (setting && nm_setting_get_secret_flags (setting, secret_name, &flags, NULL)) {
-				if (callback (&setting_iter, flags, callback_data) == FALSE)
+			/* VPN secrets need slightly different treatment here since the
+			 * "secrets" property is actually a hash table of secrets.
+			 */
+			if (NM_IS_SETTING_VPN (setting) && (g_strcmp0 (secret_name, NM_SETTING_VPN_SECRETS) == 0)) {
+				GHashTableIter vpn_secrets_iter;
+
+				/* Iterate through each secret from the VPN hash in the overall secrets hash */
+				g_hash_table_iter_init (&vpn_secrets_iter, g_value_get_boxed (val));
+				while (g_hash_table_iter_next (&vpn_secrets_iter, (gpointer) &secret_name, NULL)) {
+					secret_flags = NM_SETTING_SECRET_FLAG_NONE;
+					nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL);
+					if (callback (&vpn_secrets_iter, secret_flags, callback_data) == FALSE)
+						return;
+				}
+			} else {
+				nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL);
+				if (callback (&secret_iter, secret_flags, callback_data) == FALSE)
 					return;
 			}
 		}
@@ -852,7 +886,7 @@ auth_start (NMSettingsConnection *self,
 	}
 
 	if (check_permission) {
-		chain = nm_auth_chain_new (priv->authority, context, NULL, pk_auth_cb, self);
+		chain = nm_auth_chain_new (context, NULL, pk_auth_cb, self);
 		g_assert (chain);
 		nm_auth_chain_set_data (chain, "perm", (gpointer) check_permission, NULL);
 		nm_auth_chain_set_data (chain, "callback", callback, NULL);
@@ -982,10 +1016,10 @@ only_agent_secrets_cb (NMSetting *setting,
 			/* VPNs are special; need to handle each secret separately */
 			g_hash_table_iter_init (&iter, (GHashTable *) g_value_get_boxed (value));
 			while (g_hash_table_iter_next (&iter, (gpointer *) &secret_name, NULL)) {
-				if (nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL)) {
-					if (secret_flags != NM_SETTING_SECRET_FLAG_AGENT_OWNED)
-						nm_setting_vpn_remove_secret (NM_SETTING_VPN (setting), secret_name);
-				}
+				secret_flags = NM_SETTING_SECRET_FLAG_NONE;
+				nm_setting_get_secret_flags (setting, secret_name, &secret_flags, NULL);
+				if (secret_flags != NM_SETTING_SECRET_FLAG_AGENT_OWNED)
+					nm_setting_vpn_remove_secret (NM_SETTING_VPN (setting), secret_name);
 			}
 		} else {
 			nm_setting_get_secret_flags (setting, key, &secret_flags, NULL);
@@ -1371,17 +1405,8 @@ nm_settings_connection_init (NMSettingsConnection *self)
 	NMSettingsConnectionPrivate *priv = NM_SETTINGS_CONNECTION_GET_PRIVATE (self);
 	static guint32 dbus_counter = 0;
 	char *dbus_path;
-	GError *error = NULL;
 
 	priv->dbus_mgr = nm_dbus_manager_get ();
-
-	priv->authority = polkit_authority_get_sync (NULL, &error);
-	if (!priv->authority) {
-		nm_log_warn (LOGD_SETTINGS, "failed to create PolicyKit authority: (%d) %s",
-		             error ? error->code : -1,
-		             error && error->message ? error->message : "(unknown)");
-		g_clear_error (&error);
-	}
 
 	dbus_path = g_strdup_printf ("%s/%u", NM_DBUS_PATH_SETTINGS, dbus_counter++);
 	nm_connection_set_path (NM_CONNECTION (self), dbus_path);
@@ -1429,7 +1454,6 @@ dispose (GObject *object)
 	g_object_unref (priv->session_monitor);
 	g_object_unref (priv->agent_mgr);
 	g_object_unref (priv->dbus_mgr);
-	g_object_unref (priv->authority);
 
 out:
 	G_OBJECT_CLASS (nm_settings_connection_parent_class)->dispose (object);
