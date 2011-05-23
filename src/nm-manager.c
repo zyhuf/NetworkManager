@@ -1430,8 +1430,7 @@ user_proxy_init (NMManager *self)
 	/* Kick off some PolicyKit authorization requests to figure out what
 	 * permissions this user settings service has.
 	 */
-	chain = nm_auth_chain_new (priv->authority,
-	                           NULL,
+	chain = nm_auth_chain_new (NULL,
 	                           priv->user_proxy,
 	                           user_proxy_auth_done,
 	                           self);
@@ -2719,7 +2718,6 @@ nm_manager_compat_activate_connection (NMManager *self,
 	 * activate the connection.
 	 */
 	pending = pending_activation_new (self,
-	                                  priv->authority,
 	                                  context,
 	                                  real_dev_path,
 	                                  connection_path,
