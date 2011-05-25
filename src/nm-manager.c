@@ -2382,6 +2382,7 @@ nm_manager_get_act_request_by_path (NMManager *manager,
 	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
 		NMActRequest *req;
 		const char *ac_path;
+		NMCompatActiveConnection *compat_req;
 
 		req = nm_device_get_act_request (NM_DEVICE (iter->data));
 		if (!req)
@@ -2391,6 +2392,16 @@ nm_manager_get_act_request_by_path (NMManager *manager,
 		if (!strcmp (path, ac_path)) {
 			*device = NM_DEVICE (iter->data);
 			return req;
+		}
+
+		/* It might be the object path of the compat ActiveConnection */
+		compat_req = nm_act_request_get_compat (req);
+		if (compat_req) {
+			ac_path = nm_compat_active_connection_get_path (compat_req);
+			if (g_strcmp0 (path, ac_path) == 0) {
+				*device = NM_DEVICE (iter->data);
+				return req;
+			}
 		}
 	}
 

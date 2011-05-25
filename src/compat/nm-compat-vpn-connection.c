@@ -30,10 +30,15 @@
 
 G_DEFINE_TYPE (NMCompatVpnConnection, nm_compat_vpn_connection, NM_TYPE_COMPAT_ACTIVE_CONNECTION)
 
+#define NM_COMPAT_VPN_CONNECTION_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), \
+                                                 NM_TYPE_COMPAT_VPN_CONNECTION, \
+                                                 NMCompatVpnConnectionPrivate))
+
 enum {
-	PROP_0,
+	PROP_0 = 0x9000,
 	PROP_VPN_STATE,
 	PROP_BANNER,
+	PROP_SPECIFIC_OBJECT,
 	LAST_PROP
 };
 
@@ -45,6 +50,10 @@ enum {
 static guint signals[LAST_SIGNAL] = { 0 };
 
 #include "nm-compat-vpn-connection-glue.h"
+
+typedef struct {
+	char *specific_object;
+} NMCompatVpnConnectionPrivate;
 
 /*************************************************************************/
 
@@ -69,14 +78,30 @@ NMCompatVpnConnection *
 nm_compat_vpn_connection_new (NMVPNConnection *parent, DBusGConnection *bus)
 {
 	NMCompatVpnConnection *self;
+	NMCompatVpnConnectionPrivate *priv;
+	NMDevice *device;
+	NMActRequest *req;
+	NMCompatActiveConnection *compat_req;
 
 	self = (NMCompatVpnConnection *) g_object_new (NM_TYPE_COMPAT_VPN_CONNECTION,
 	                                               "parent", parent,
 	                                               NULL);
 	if (self) {
+		priv = NM_COMPAT_VPN_CONNECTION_GET_PRIVATE (self);
+
 		g_signal_connect (parent, "notify::" NM_VPN_CONNECTION_VPN_STATE, G_CALLBACK (prop_reemit_cb), self);
 		g_signal_connect (parent, "notify::" NM_VPN_CONNECTION_BANNER, G_CALLBACK (prop_reemit_cb), self);
 		g_signal_connect (parent, "vpn-state-changed", G_CALLBACK (vpn_state_changed_cb), self);
+
+		device = nm_vpn_connection_get_parent_device (NM_VPN_CONNECTION (parent));
+		g_assert (device);
+		req = nm_device_get_act_request (device);
+		g_assert (req);
+		compat_req = nm_act_request_get_compat (req);
+		g_assert (compat_req);
+		priv->specific_object = g_strdup (nm_compat_active_connection_get_path (compat_req));
+		g_assert (priv->specific_object);
+
 		nm_compat_active_connection_export (NM_COMPAT_ACTIVE_CONNECTION (self), bus);
 	}
 
@@ -94,8 +119,15 @@ get_property (GObject *object, guint prop_id,
 {
 	GObject *parent = nm_compat_active_connection_get_parent (NM_COMPAT_ACTIVE_CONNECTION (object));
 
-	if (parent)
-		g_object_get_property (parent, pspec->name, value);
+	switch (prop_id) {
+	case PROP_SPECIFIC_OBJECT:
+		g_value_set_boxed (value, NM_COMPAT_VPN_CONNECTION_GET_PRIVATE (object)->specific_object);
+		break;
+	default:
+		if (parent)
+			g_object_get_property (parent, pspec->name, value);
+		break;
+	}
 }
 
 static NMConnection *
@@ -118,6 +150,8 @@ nm_compat_vpn_connection_class_init (NMCompatVpnConnectionClass *compat_class)
 	GObjectClass *object_class = G_OBJECT_CLASS (compat_class);
 	NMCompatActiveConnectionClass *ac_class = NM_COMPAT_ACTIVE_CONNECTION_CLASS (compat_class);
 
+	g_type_class_add_private (compat_class, sizeof (NMCompatVpnConnectionPrivate));
+
 	ac_class->get_connection = get_connection;
 	ac_class->get_device = get_device;
 	object_class->get_property = get_property;
@@ -138,6 +172,14 @@ nm_compat_vpn_connection_class_init (NMCompatVpnConnectionClass *compat_class)
 		                     "Login Banner",
 		                     NULL,
 		                     G_PARAM_READABLE));
+
+	/* Need to override the specific object because for VPN connections
+	 * it will point to the non-compat path of the base NMActRequest and we
+	 * need to redirect it to the NMCompatActiveConnection.
+	 */
+	g_object_class_override_property (object_class,
+	                                  PROP_SPECIFIC_OBJECT,
+	                                  NM_ACTIVE_CONNECTION_SPECIFIC_OBJECT);
 
 	/* signals */
 	signals[VPN_STATE_CHANGED] =
