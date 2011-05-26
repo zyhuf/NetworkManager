@@ -241,10 +241,17 @@ nm_vpn_manager_deactivate_connection (NMVPNManager *self,
 		active = nm_vpn_service_get_active_connections (NM_VPN_SERVICE (data));
 		for (aiter = active; aiter; aiter = g_slist_next (aiter)) {
 			NMVPNConnection *vpn = NM_VPN_CONNECTION (aiter->data);
-			const char *vpn_path;
+			const char *vpn_path, *compat_path = NULL;
+			NMCompatActiveConnection *compat;
 
 			vpn_path = nm_vpn_connection_get_active_connection_path (vpn);
-			if (!strcmp (path, vpn_path)) {
+			/* We might have been passed a compat path too */
+			compat = nm_vpn_connection_get_compat (vpn);
+			if (compat)
+				compat_path = nm_compat_active_connection_get_path (compat);
+
+			if (   g_strcmp0 (path, vpn_path) == 0
+			    || g_strcmp0 (path, compat_path) == 0) {
 				nm_vpn_connection_disconnect (vpn, reason);
 				success = TRUE;
 				break;
