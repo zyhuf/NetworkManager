@@ -3469,6 +3469,7 @@ get_property (GObject *object, guint prop_id,
 	NMDevice *self = NM_DEVICE (object);
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMDeviceState state;
+	const char *ac_path = NULL;
 
 	state = nm_device_get_state (self);
 
@@ -3523,6 +3524,11 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case NM_DEVICE_INTERFACE_PROP_STATE:
 		g_value_set_uint (value, priv->state);
+		break;
+	case NM_DEVICE_INTERFACE_PROP_ACTIVE_CONNECTION:
+		if (priv->act_request)
+			ac_path = nm_act_request_get_active_connection_path (priv->act_request);
+		g_value_set_boxed (value, ac_path ? ac_path : "/");
 		break;
 	case NM_DEVICE_INTERFACE_PROP_DEVICE_TYPE:
 		g_value_set_uint (value, priv->type);
@@ -3620,6 +3626,10 @@ nm_device_class_init (NMDeviceClass *klass)
 	g_object_class_override_property (object_class,
 									  NM_DEVICE_INTERFACE_PROP_STATE,
 									  NM_DEVICE_INTERFACE_STATE);
+
+	g_object_class_override_property (object_class,
+	                                  NM_DEVICE_INTERFACE_PROP_ACTIVE_CONNECTION,
+	                                  NM_DEVICE_INTERFACE_ACTIVE_CONNECTION);
 
 	g_object_class_override_property (object_class,
 									  NM_DEVICE_INTERFACE_PROP_DEVICE_TYPE,
