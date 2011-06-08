@@ -2224,12 +2224,11 @@ bluez_manager_bdaddr_removed_cb (NMBluezManager *bluez_mgr,
 	g_return_if_fail (bdaddr != NULL);
 	g_return_if_fail (object_path != NULL);
 
-	nm_log_info (LOGD_HW, "BT device %s removed", bdaddr);
-
 	for (iter = priv->devices; iter; iter = iter->next) {
 		NMDevice *device = NM_DEVICE (iter->data);
 
 		if (!strcmp (nm_device_get_udi (device), object_path)) {
+			nm_log_info (LOGD_HW, "BT device %s removed", bdaddr);
 			priv->devices = remove_one_device (self, priv->devices, device, FALSE);
 			break;
 		}
@@ -2434,6 +2433,8 @@ internal_activate_device (NMManager *manager,
 
 	/* Tear down any existing connection */
 	if (nm_device_get_act_request (device)) {
+		nm_log_info (LOGD_DEVICE, "(%s): disconnecting for new activation request.",
+		             nm_device_get_iface (device));
 		nm_device_state_changed (device,
 		                         NM_DEVICE_STATE_DISCONNECTED,
 		                         NM_DEVICE_STATE_REASON_NONE);
