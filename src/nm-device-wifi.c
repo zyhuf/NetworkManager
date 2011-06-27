@@ -982,8 +982,10 @@ update_seen_bssids_cache (NMDeviceWifi *self, NMAccessPoint *ap)
 		req = nm_device_get_act_request (NM_DEVICE (self));
 		if (req) {
 			connection = nm_act_request_get_connection (req);
-			nm_settings_connection_add_seen_bssid (NM_SETTINGS_CONNECTION (connection),
-			                                       nm_ap_get_address (ap));
+			/* connection can be plain NMConnection for compat interface (user connections) */
+			if (NM_IS_SETTINGS_CONNECTION (connection))
+				nm_settings_connection_add_seen_bssid (NM_SETTINGS_CONNECTION (connection),
+				                                       nm_ap_get_address (ap));
 		}
 	}
 }
