@@ -187,6 +187,8 @@ static void addrconf6_cleanup (NMDevice *self);
 static void dhcp6_cleanup (NMDevice *self, gboolean stop);
 static void dhcp4_cleanup (NMDevice *self, gboolean stop);
 
+static const char *reason_to_string (NMDeviceStateReason reason);
+
 
 static void
 device_interface_init (NMDeviceInterface *device_interface_class)
@@ -2812,8 +2814,8 @@ nm_device_deactivate (NMDeviceInterface *device, NMDeviceStateReason reason)
 
 	g_return_if_fail (self != NULL);
 
-	nm_log_info (LOGD_DEVICE, "(%s): deactivating device (reason: %d).",
-	             nm_device_get_iface (self), reason);
+	nm_log_info (LOGD_DEVICE, "(%s): deactivating device (reason '%s') [%d]",
+	             nm_device_get_iface (self), reason_to_string (reason), reason);
 
 	/* Check this before deactivate_quickly is run */
 	if (priv->ip6_manager || priv->ip6_config)
@@ -3725,14 +3727,8 @@ state_to_string (NMDeviceState state)
 		return "need-auth";
 	case NM_DEVICE_STATE_IP_CONFIG:
 		return "ip-config";
-	case NM_DEVICE_STATE_IP_CHECK:
-		return "ip-check";
-	case NM_DEVICE_STATE_SECONDARIES:
-		return "secondaries";
 	case NM_DEVICE_STATE_ACTIVATED:
 		return "activated";
-	case NM_DEVICE_STATE_DEACTIVATING:
-		return "deactivating";
 	case NM_DEVICE_STATE_FAILED:
 		return "failed";
 	default:
