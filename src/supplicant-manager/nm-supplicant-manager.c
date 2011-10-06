@@ -38,6 +38,8 @@ typedef struct {
 	GSList *        ifaces;
 	gboolean        dispose_has_run;
 	guint			poke_id;
+	DBusGProxy *    props_proxy;
+	gboolean        fast_supported;
 } NMSupplicantManagerPrivate;
 
 #define NM_SUPPLICANT_MANAGER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), \
@@ -115,9 +117,60 @@ out:
 }
 
 static void
+get_eap_methods_reply (DBusGProxy *proxy,
+                       DBusGProxyCall *call,
+                       gpointer user_data)
+{
+	NMSupplicantManager *self = NM_SUPPLICANT_MANAGER (user_data);
+	NMSupplicantManagerPrivate *priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
+	GError *error = NULL;
+	GValue value = { 0 };
+	const char **iter;
+
+	if (dbus_g_proxy_end_call (proxy, call, &error,
+	                           G_TYPE_VALUE, &value,
+	                           G_TYPE_INVALID)) {
+		if (G_VALUE_HOLDS (&value, G_TYPE_STRV)) {
+			iter = g_value_get_boxed (&value);
+			while (iter) {
+				if (strcasecmp (*iter++, "FAST") == 0) {
+					priv->fast_supported = TRUE;
+					break;
+				}
+			}
+		} else {
+			nm_log_warn (LOGD_SUPPLICANT, "Unexpected EapMethods property type %s",
+			             G_VALUE_TYPE_NAME (&value));
+		}
+		g_value_unset (&value);
+	} else {
+		nm_log_warn (LOGD_SUPPLICANT, "Unexpected error requesting EapMethods: (%d) %s",
+		             error ? error->code : -1,
+		             error && error->message ? error->message : "(unknown)");
+		g_clear_error (&error);
+	}
+
+	nm_log_dbg (LOGD_SUPPLICANT, "EAP-FAST is %ssupported",
+	            priv->fast_supported ? "" : "not ");
+}
+
+static void
+check_supported_eap_methods (NMSupplicantManager *self)
+{
+	NMSupplicantManagerPrivate *priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
+
+	dbus_g_proxy_begin_call (priv->props_proxy, "Get",
+	                         get_eap_methods_reply, self, NULL,
+	                         G_TYPE_STRING, WPAS_DBUS_INTERFACE,
+	                         G_TYPE_STRING, "EapMethods",
+	                         G_TYPE_INVALID);
+}
+
+static void
 nm_supplicant_manager_init (NMSupplicantManager * self)
 {
 	NMSupplicantManagerPrivate *priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
+	DBusGConnection *bus;
 	gboolean running;
 
 	priv->dispose_has_run = FALSE;
@@ -132,7 +185,16 @@ nm_supplicant_manager_init (NMSupplicantManager * self)
 	                  G_CALLBACK (nm_supplicant_manager_name_owner_changed),
 	                  self);
 
-	if (!running) {
+	bus = nm_dbus_manager_get_connection (priv->dbus_mgr);
+	priv->props_proxy = dbus_g_proxy_new_for_name (bus,
+	                                               WPAS_DBUS_SERVICE,
+	                                               WPAS_DBUS_PATH,
+	                                               DBUS_INTERFACE_PROPERTIES);
+
+	if (running) {
+		/* Grab list of supported EAP methods */
+		check_supported_eap_methods (self);
+	} else {
 		/* Try to activate the supplicant */
 		priv->poke_id = g_idle_add (poke_supplicant_cb, (gpointer) self);
 	}
@@ -159,6 +221,9 @@ nm_supplicant_manager_dispose (GObject *object)
 		g_object_unref (G_OBJECT (priv->dbus_mgr));
 		priv->dbus_mgr = NULL;
 	}
+
+	if (priv->props_proxy)
+		g_object_unref (priv->props_proxy);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS (nm_supplicant_manager_parent_class)->dispose (object);
@@ -203,13 +268,21 @@ nm_supplicant_manager_name_owner_changed (NMDBusManager *dbus_mgr,
 	if (!old_owner_good && new_owner_good) {
 		gboolean running;
 
+		nm_log_info (LOGD_SUPPLICANT, "wpa_supplicant started");
+
 		running = nm_supplicant_manager_startup (self);
 
 		if (running && priv->poke_id) {
 			g_source_remove (priv->poke_id);
 			priv->poke_id = 0;
 		}
+
+		check_supported_eap_methods (self);
 	} else if (old_owner_good && !new_owner_good) {
+		nm_log_info (LOGD_SUPPLICANT, "wpa_supplicant stopped");
+
+		priv->fast_supported = FALSE;
+
 		nm_supplicant_manager_set_state (self, NM_SUPPLICANT_MANAGER_STATE_DOWN);
 
 		if (priv->poke_id)
