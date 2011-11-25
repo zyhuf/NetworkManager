@@ -49,7 +49,7 @@ typedef struct {
 	NM80211Mode mode;
 	guint32 rate;
 	NMAccessPoint *active_ap;
-	gboolean null_active_ap;
+	gboolean got_active_ap;
 	guint32 wireless_caps;
 	GPtrArray *aps;
 
@@ -278,10 +278,8 @@ nm_device_wifi_get_active_access_point (NMDeviceWifi *device)
 	}
 
 	priv = NM_DEVICE_WIFI_GET_PRIVATE (device);
-	if (priv->active_ap)
+	if (priv->got_active_ap == TRUE)
 		return priv->active_ap;
-	if (priv->null_active_ap)
-		return NULL;
 
 	path = _nm_object_get_object_path_property (NM_OBJECT (device),
 	                                           NM_DBUS_INTERFACE_DEVICE_WIRELESS,
@@ -412,9 +410,9 @@ access_point_removed_proxy (DBusGProxy *proxy, char *path, gpointer user_data)
 		if (ap == priv->active_ap) {
 			g_object_unref (priv->active_ap);
 			priv->active_ap = NULL;
-			priv->null_active_ap = FALSE;
 
 			_nm_object_queue_notify (NM_OBJECT (self), NM_DEVICE_WIFI_ACTIVE_ACCESS_POINT);
+
 			priv->rate = 0;
 			_nm_object_queue_notify (NM_OBJECT (self), NM_DEVICE_WIFI_BITRATE);
 		}
@@ -530,7 +528,6 @@ state_changed_cb (NMDevice *device, GParamSpec *pspec, gpointer user_data)
 		if (priv->active_ap) {
 			g_object_unref (priv->active_ap);
 			priv->active_ap = NULL;
-			priv->null_active_ap = FALSE;
 		}
 		_nm_object_queue_notify (NM_OBJECT (device), NM_DEVICE_WIFI_ACTIVE_ACCESS_POINT);
 		priv->rate = 0;
@@ -549,16 +546,12 @@ demarshal_active_ap (NMObject *object, GParamSpec *pspec, GValue *value, gpointe
 	NMAccessPoint *ap = NULL;
 	DBusGConnection *connection;
 
-	if (!G_VALUE_HOLDS (value, DBUS_TYPE_G_OBJECT_PATH))
-		return FALSE;
+	if (value) {
+		if (!G_VALUE_HOLDS (value, DBUS_TYPE_G_OBJECT_PATH))
+			return FALSE;
 
-	priv->null_active_ap = FALSE;
-
-	path = g_value_get_boxed (value);
-	if (path) {
-		if (!strcmp (path, "/"))
-			priv->null_active_ap = TRUE;
-		else {
+		path = g_value_get_boxed (value);
+		if (path) {
 			ap = NM_ACCESS_POINT (_nm_object_cache_get (path));
 			if (ap)
 				ap = g_object_ref (ap);
@@ -568,6 +561,8 @@ demarshal_active_ap (NMObject *object, GParamSpec *pspec, GValue *value, gpointe
 			}
 		}
 	}
+
+	priv->got_active_ap = TRUE;
 
 	if (priv->active_ap) {
 		g_object_unref (priv->active_ap);
