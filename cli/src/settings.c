@@ -14,7 +14,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * (C) Copyright 2010 Red Hat, Inc.
+ * (C) Copyright 2010 - 2012 Red Hat, Inc.
  */
 
 #include <glib.h>
@@ -76,31 +76,33 @@ static NmcOutputField nmc_fields_setting_8021X[] = {
 	SETTING_FIELD (NM_SETTING_802_1X_EAP, 10),                          /* 1 */
 	SETTING_FIELD (NM_SETTING_802_1X_IDENTITY, 15),                     /* 2 */
 	SETTING_FIELD (NM_SETTING_802_1X_ANONYMOUS_IDENTITY, 15),           /* 3 */
-	SETTING_FIELD (NM_SETTING_802_1X_CA_CERT, 10),                      /* 4 */
-	SETTING_FIELD (NM_SETTING_802_1X_CA_PATH, 10),                      /* 5 */
-	SETTING_FIELD (NM_SETTING_802_1X_CLIENT_CERT, 10),                  /* 6 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_PEAPVER, 10),               /* 7 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_PEAPLABEL, 10),             /* 8 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_FAST_PROVISIONING, 10),     /* 9 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_AUTH, 10),                  /* 10 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_AUTHEAP, 10),               /* 11 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CA_CERT, 20),               /* 12 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CA_PATH, 20),               /* 13 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CLIENT_CERT, 20),           /* 14 */
-	SETTING_FIELD (NM_SETTING_802_1X_PASSWORD, 10),                     /* 15 */
-	SETTING_FIELD (NM_SETTING_802_1X_PRIVATE_KEY, 15),                  /* 16 */
-	SETTING_FIELD (NM_SETTING_802_1X_PRIVATE_KEY_PASSWORD, 20),         /* 17 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_PRIVATE_KEY, 20),           /* 18 */
-	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_PRIVATE_KEY_PASSWORD, 20),  /* 19 */
-	SETTING_FIELD (NM_SETTING_802_1X_PIN, 8),                           /* 20 */
-	SETTING_FIELD (NM_SETTING_802_1X_PSK, 8),                           /* 21 */
-	SETTING_FIELD (NM_SETTING_802_1X_SYSTEM_CA_CERTS, 17),              /* 22 */
+	SETTING_FIELD (NM_SETTING_802_1X_PAC_FILE, 15),                     /* 4 */
+	SETTING_FIELD (NM_SETTING_802_1X_CA_CERT, 10),                      /* 5 */
+	SETTING_FIELD (NM_SETTING_802_1X_CA_PATH, 10),                      /* 6 */
+	SETTING_FIELD (NM_SETTING_802_1X_CLIENT_CERT, 10),                  /* 7 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_PEAPVER, 10),               /* 8 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_PEAPLABEL, 10),             /* 9 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE1_FAST_PROVISIONING, 10),     /* 10 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_AUTH, 10),                  /* 11 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_AUTHEAP, 10),               /* 12 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CA_CERT, 20),               /* 13 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CA_PATH, 20),               /* 14 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_CLIENT_CERT, 20),           /* 15 */
+	SETTING_FIELD (NM_SETTING_802_1X_PASSWORD, 10),                     /* 16 */
+	SETTING_FIELD (NM_SETTING_802_1X_PRIVATE_KEY, 15),                  /* 17 */
+	SETTING_FIELD (NM_SETTING_802_1X_PRIVATE_KEY_PASSWORD, 20),         /* 18 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_PRIVATE_KEY, 20),           /* 19 */
+	SETTING_FIELD (NM_SETTING_802_1X_PHASE2_PRIVATE_KEY_PASSWORD, 20),  /* 20 */
+	SETTING_FIELD (NM_SETTING_802_1X_PIN, 8),                           /* 21 */
+	SETTING_FIELD (NM_SETTING_802_1X_PSK, 8),                           /* 22 */
+	SETTING_FIELD (NM_SETTING_802_1X_SYSTEM_CA_CERTS, 17),              /* 23 */
 	{NULL, NULL, 0, NULL, 0}
 };
 #define NMC_FIELDS_SETTING_802_1X_ALL     "name"","\
                                           NM_SETTING_802_1X_EAP","\
                                           NM_SETTING_802_1X_IDENTITY","\
                                           NM_SETTING_802_1X_ANONYMOUS_IDENTITY","\
+                                          NM_SETTING_802_1X_PAC_FILE","\
                                           NM_SETTING_802_1X_CA_CERT","\
                                           NM_SETTING_802_1X_CA_PATH","\
                                           NM_SETTING_802_1X_CLIENT_CERT","\
@@ -631,25 +633,26 @@ setting_802_1X_details (NMSetting *setting, NmCli *nmc)
 	nmc->allowed_fields[1].value = eap_str->str;
 	nmc->allowed_fields[2].value = nm_setting_802_1x_get_identity (s_8021X);
 	nmc->allowed_fields[3].value = nm_setting_802_1x_get_anonymous_identity (s_8021X);
-	nmc->allowed_fields[4].value = ca_cert_str;
-	nmc->allowed_fields[5].value = nm_setting_802_1x_get_ca_path (s_8021X);
-	nmc->allowed_fields[6].value = client_cert_str;
-	nmc->allowed_fields[7].value = nm_setting_802_1x_get_phase1_peapver (s_8021X);
-	nmc->allowed_fields[8].value = nm_setting_802_1x_get_phase1_peaplabel (s_8021X);
-	nmc->allowed_fields[9].value = nm_setting_802_1x_get_phase1_fast_provisioning (s_8021X);
-	nmc->allowed_fields[10].value = nm_setting_802_1x_get_phase2_auth (s_8021X);
-	nmc->allowed_fields[11].value = nm_setting_802_1x_get_phase2_autheap (s_8021X);
-	nmc->allowed_fields[12].value = phase2_ca_cert_str;
-	nmc->allowed_fields[13].value = nm_setting_802_1x_get_phase2_ca_path (s_8021X);
-	nmc->allowed_fields[14].value = phase2_client_cert_str;
-	nmc->allowed_fields[15].value = nm_setting_802_1x_get_password (s_8021X);
-	nmc->allowed_fields[16].value = private_key_str;
-	nmc->allowed_fields[17].value = nm_setting_802_1x_get_private_key_password (s_8021X);
-	nmc->allowed_fields[18].value = phase2_private_key_str;
-	nmc->allowed_fields[19].value = nm_setting_802_1x_get_phase2_private_key_password (s_8021X);
-	nmc->allowed_fields[20].value = nm_setting_802_1x_get_pin (s_8021X);
-	nmc->allowed_fields[21].value = nm_setting_802_1x_get_psk (s_8021X);
-	nmc->allowed_fields[22].value = nm_setting_802_1x_get_system_ca_certs (s_8021X) ? _("yes") : _("no");
+	nmc->allowed_fields[4].value = nm_setting_802_1x_get_pac_file (s_8021X);
+	nmc->allowed_fields[5].value = ca_cert_str;
+	nmc->allowed_fields[6].value = nm_setting_802_1x_get_ca_path (s_8021X);
+	nmc->allowed_fields[7].value = client_cert_str;
+	nmc->allowed_fields[8].value = nm_setting_802_1x_get_phase1_peapver (s_8021X);
+	nmc->allowed_fields[9].value = nm_setting_802_1x_get_phase1_peaplabel (s_8021X);
+	nmc->allowed_fields[10].value = nm_setting_802_1x_get_phase1_fast_provisioning (s_8021X);
+	nmc->allowed_fields[11].value = nm_setting_802_1x_get_phase2_auth (s_8021X);
+	nmc->allowed_fields[12].value = nm_setting_802_1x_get_phase2_autheap (s_8021X);
+	nmc->allowed_fields[13].value = phase2_ca_cert_str;
+	nmc->allowed_fields[14].value = nm_setting_802_1x_get_phase2_ca_path (s_8021X);
+	nmc->allowed_fields[15].value = phase2_client_cert_str;
+	nmc->allowed_fields[16].value = nm_setting_802_1x_get_password (s_8021X);
+	nmc->allowed_fields[17].value = private_key_str;
+	nmc->allowed_fields[18].value = nm_setting_802_1x_get_private_key_password (s_8021X);
+	nmc->allowed_fields[19].value = phase2_private_key_str;
+	nmc->allowed_fields[20].value = nm_setting_802_1x_get_phase2_private_key_password (s_8021X);
+	nmc->allowed_fields[21].value = nm_setting_802_1x_get_pin (s_8021X);
+	nmc->allowed_fields[22].value = nm_setting_802_1x_get_psk (s_8021X);
+	nmc->allowed_fields[23].value = nm_setting_802_1x_get_system_ca_certs (s_8021X) ? _("yes") : _("no");
 
 	nmc->print_fields.flags = multiline_flag | mode_flag | escape_flag | NMC_PF_FLAG_SECTION_PREFIX;
 	print_fields (nmc->print_fields, nmc->allowed_fields); /* Print values */
