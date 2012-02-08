@@ -362,7 +362,7 @@ nm_supplicant_manager_get_iface (NMSupplicantManager * self,
 
 	if (!iface) {
 		nm_log_dbg (LOGD_SUPPLICANT, "(%s): creating new supplicant interface", ifname);
-		iface = nm_supplicant_interface_new (self, ifname, is_wireless);
+		iface = nm_supplicant_interface_new (self, ifname, is_wireless, priv->fast_supported);
 		if (iface)
 			priv->ifaces = g_slist_append (priv->ifaces, iface);
 	} else {

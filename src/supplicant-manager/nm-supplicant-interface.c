@@ -104,6 +104,7 @@ typedef struct
 	NMDBusManager *       dbus_mgr;
 	char *                dev;
 	gboolean              is_wireless;
+	gboolean              fast_supported;
 
 	char *                object_path;
 	guint32               state;
@@ -205,7 +206,10 @@ nm_supplicant_info_destroy (gpointer user_data)
 
 
 NMSupplicantInterface *
-nm_supplicant_interface_new (NMSupplicantManager * smgr, const char *ifname, gboolean is_wireless)
+nm_supplicant_interface_new (NMSupplicantManager * smgr,
+                             const char *ifname,
+                             gboolean is_wireless,
+                             gboolean fast_supported)
 {
 	NMSupplicantInterface * iface;
 
@@ -218,6 +222,7 @@ nm_supplicant_interface_new (NMSupplicantManager * smgr, const char *ifname, gbo
 	                      NULL);
 	if (iface) {
 		NM_SUPPLICANT_INTERFACE_GET_PRIVATE (iface)->is_wireless = is_wireless;
+		NM_SUPPLICANT_INTERFACE_GET_PRIVATE (iface)->fast_supported = fast_supported;
 		nm_supplicant_interface_start (iface);
 	}
 
@@ -1293,7 +1298,15 @@ nm_supplicant_interface_set_config (NMSupplicantInterface * self,
 	priv = NM_SUPPLICANT_INTERFACE_GET_PRIVATE (self);
 
 	nm_supplicant_interface_disconnect (self);
-	
+
+	/* Make sure the supplicant supports EAP-FAST before trying to send
+	 * it an EAP-FAST configuration.
+	 */
+	if (nm_supplicant_config_fast_required (cfg) && !priv->fast_supported) {
+		nm_log_warn (LOGD_SUPPLICANT, "EAP-FAST is not supported by the supplicant");
+		return FALSE;
+	}
+
 	if (priv->cfg)
 		g_object_unref (priv->cfg);
 	priv->cfg = cfg;
