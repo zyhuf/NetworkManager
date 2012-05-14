@@ -169,3 +169,22 @@ nm_session_monitor_uid_active (NMSessionMonitor *monitor,
 	return TRUE;
 }
 
+/**
+ * nm_session_monitor_uid_local:
+ * @monitor: A #NMSessionMonitor.
+ * @uid: A user ID.
+ * @error: Return location for error.
+ *
+ * Checks whether the given @uid is logged into a local session or not.
+ *
+ * Returns: %FALSE if @error is set otherwise %TRUE if the given @uid is
+ * logged into a local session.
+ */
+gboolean
+nm_session_monitor_uid_local (NMSessionMonitor *monitor,
+                              uid_t uid,
+                              GError **error)
+{
+	return TRUE;
+}
+

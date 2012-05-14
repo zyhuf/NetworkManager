@@ -507,3 +507,37 @@ nm_session_monitor_uid_active (NMSessionMonitor *monitor,
 	return s->active;
 }
 
+/**
+ * nm_session_monitor_uid_local:
+ * @monitor: A #NMSessionMonitor.
+ * @uid: A user ID.
+ * @error: Return location for error.
+ *
+ * Checks whether the given @uid is logged into a local session or not.
+ *
+ * Returns: %FALSE if @error is set otherwise %TRUE if the given @uid is
+ * logged into a local session.
+ */
+gboolean
+nm_session_monitor_uid_local (NMSessionMonitor *monitor,
+                              uid_t uid,
+                              GError **error)
+{
+	Session *s;
+
+	if (!ensure_database (monitor, error))
+		return FALSE;
+
+	s = g_hash_table_lookup (monitor->sessions_by_uid, GUINT_TO_POINTER (uid));
+	if (!s) {
+		g_set_error (error,
+		             NM_SESSION_MONITOR_ERROR,
+		             NM_SESSION_MONITOR_ERROR_UNKNOWN_USER,
+		             "No session found for uid '%d'",
+		             uid);
+		return FALSE;
+	}
+
+	return s->local;
+}
+

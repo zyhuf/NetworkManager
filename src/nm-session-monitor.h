@@ -58,6 +58,10 @@ gboolean          nm_session_monitor_uid_active       (NMSessionMonitor *monitor
                                                        uid_t uid,
                                                        GError **error);
 
+gboolean          nm_session_monitor_uid_local        (NMSessionMonitor *monitor,
+                                                       uid_t uid,
+                                                       GError **error);
+
 G_END_DECLS
 
 #endif /* NM_SESSION_MONITOR_H */

@@ -249,3 +249,46 @@ nm_session_monitor_uid_active (NMSessionMonitor *monitor,
 {
 	return sd_uid_get_sessions (uid, TRUE, NULL) > 0;
 }
+
+/**
+ * nm_session_monitor_uid_local:
+ * @monitor: A #NMSessionMonitor.
+ * @uid: A user ID.
+ * @error: Return location for error.
+ *
+ * Checks whether the given @uid is logged into a local session or not.
+ *
+ * Returns: %FALSE if @error is set otherwise %TRUE if the given @uid is
+ * logged into a local session.
+ */
+gboolean
+nm_session_monitor_uid_local (NMSessionMonitor *monitor,
+                               uid_t uid,
+                               GError **error)
+{
+	char **seats = NULL, **iter;
+	gboolean is_local = FALSE;
+	int num;
+
+	num = sd_uid_get_seats (uid, FALSE, &seats);
+	if (num < 0) {
+		g_set_error (error,
+		             NM_SESSION_MONITOR_ERROR,
+		             NM_SESSION_MONITOR_ERROR_UNKNOWN_USER,
+		             "No session found for uid '%d'",
+		             uid);
+		return FALSE;
+	}
+
+	/* If the uid has any seat at all, it has a local session */
+	for (iter = seats; iter && *iter; iter++) {
+		if (!is_local && *iter && (*iter)[0])
+			is_local = TRUE;
+		free (*iter);
+	}
+	if (seats)
+		free (seats);
+
+	return is_local;
+}
+

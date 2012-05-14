@@ -273,6 +273,13 @@ impl_agent_manager_register (NMAgentManager *self,
 		goto done;
 	}
 
+	if (!nm_session_monitor_uid_local (priv->session_monitor, sender_uid, &local)) {
+		error = g_error_new_literal (NM_AGENT_MANAGER_ERROR,
+		                             NM_AGENT_MANAGER_ERROR_SESSION_NOT_LOCAL,
+		                             local && local->message ? local->message : "Session not local");
+		goto done;
+	}
+
 	sender = dbus_g_method_get_sender (context);
 	if (!sender) {
 		error = g_error_new_literal (NM_AGENT_MANAGER_ERROR,

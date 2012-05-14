@@ -38,6 +38,7 @@ typedef enum {
 	NM_AGENT_MANAGER_ERROR_SENDER_UNKNOWN = 0, /*< nick=SenderUnknown >*/
 	NM_AGENT_MANAGER_ERROR_PERMISSION_DENIED,  /*< nick=PermissionDenied >*/
 	NM_AGENT_MANAGER_ERROR_SESSION_NOT_FOUND,  /*< nick=SessionNotFound >*/
+	NM_AGENT_MANAGER_ERROR_SESSION_NOT_LOCAL,  /*< nick=SessionNotLocal >*/
 	NM_AGENT_MANAGER_ERROR_INVALID_IDENTIFIER, /*< nick=InvalidIdentifier >*/
 	NM_AGENT_MANAGER_ERROR_NOT_REGISTERED,     /*< nick=NotRegistered >*/
 	NM_AGENT_MANAGER_ERROR_INTERNAL_ERROR,     /*< nick=InternalError >*/
