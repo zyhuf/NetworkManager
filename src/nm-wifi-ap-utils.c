@@ -521,6 +521,9 @@ nm_ap_utils_complete_connection (const GByteArray *ap_ssid,
 			if (ap_mode == NM_802_11_MODE_ADHOC)
 				valid = TRUE;
 			adhoc = TRUE;
+		} else if (!strcmp (mode, NM_SETTING_WIRELESS_MODE_AP)) {
+			if (ap_mode == NM_802_11_MODE_AP)
+				valid = TRUE;
 		}
 
 		if (valid == FALSE) {
@@ -535,6 +538,8 @@ nm_ap_utils_complete_connection (const GByteArray *ap_ssid,
 		if (ap_mode == NM_802_11_MODE_ADHOC) {
 			mode = NM_SETTING_WIRELESS_MODE_ADHOC;
 			adhoc = TRUE;
+		} else if (ap_mode == NM_802_11_MODE_AP) {
+			mode = NM_SETTING_WIRELESS_MODE_AP;
 		}
 		g_object_set (G_OBJECT (s_wifi), NM_SETTING_WIRELESS_MODE, mode, NULL);
 	}

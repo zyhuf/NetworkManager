@@ -492,6 +492,8 @@ foreach_property_cb (gpointer key, gpointer value, gpointer user_data)
 				nm_ap_set_mode (ap, NM_802_11_MODE_INFRA);
 			else if (strcmp (val, "ad-hoc") == 0)
 				nm_ap_set_mode (ap, NM_802_11_MODE_ADHOC);
+			else if (strcmp (val, "ap") == 0)
+				nm_ap_set_mode (ap, NM_802_11_MODE_AP);
 		}
 	} else if (G_VALUE_HOLDS_BOOLEAN (variant)) {
 		gboolean val = g_value_get_boolean (variant);
@@ -650,6 +652,8 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 			nm_ap_set_mode (ap, NM_802_11_MODE_INFRA);
 		else if (!strcmp (mode, "adhoc"))
 			nm_ap_set_mode (ap, NM_802_11_MODE_ADHOC);
+		else if (!strcmp (mode, "ap"))
+			nm_ap_set_mode (ap, NM_802_11_MODE_AP);
 		else
 			goto error;
 	} else {
@@ -965,6 +969,7 @@ void nm_ap_set_mode (NMAccessPoint *ap, const NM80211Mode mode)
 
 	g_return_if_fail (NM_IS_AP (ap));
 	g_return_if_fail (   mode == NM_802_11_MODE_ADHOC
+	                  || mode == NM_802_11_MODE_AP
 	                  || mode == NM_802_11_MODE_INFRA);
 
 	priv = NM_AP_GET_PRIVATE (ap);
@@ -1159,6 +1164,8 @@ nm_ap_check_compatible (NMAccessPoint *self,
 		if (!strcmp (mode, "infrastructure") && (priv->mode != NM_802_11_MODE_INFRA))
 			return FALSE;
 		if (!strcmp (mode, "adhoc") && (priv->mode != NM_802_11_MODE_ADHOC))
+			return FALSE;
+		if (!strcmp (mode, "ap") && (priv->mode != NM_802_11_MODE_AP))
 			return FALSE;
 	}
 

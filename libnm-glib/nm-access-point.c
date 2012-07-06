@@ -347,6 +347,8 @@ nm_access_point_connection_valid (NMAccessPoint *ap, NMConnection *connection)
 			return FALSE;
 		if (!strcmp (setting_mode, "adhoc") && (ap_mode != NM_802_11_MODE_ADHOC))
 			return FALSE;
+		if (!strcmp (setting_mode, "ap") && (ap_mode != NM_802_11_MODE_AP))
+			return FALSE;
 	}
 
 	/* Band and Channel/Frequency */
@@ -665,7 +667,7 @@ nm_access_point_class_init (NMAccessPointClass *ap_class)
 		 g_param_spec_uint (NM_ACCESS_POINT_MODE,
 					    "Mode",
 					    "Mode",
-					    NM_802_11_MODE_ADHOC, NM_802_11_MODE_INFRA, NM_802_11_MODE_INFRA,
+					    NM_802_11_MODE_ADHOC, NM_802_11_MODE_AP, NM_802_11_MODE_INFRA,
 					    G_PARAM_READABLE));
 
 	/**

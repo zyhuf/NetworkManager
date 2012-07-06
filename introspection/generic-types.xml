@@ -31,5 +31,8 @@
     <tp:enumvalue suffix="INFRA" value="2">
       <tp:docstring>Coordinated network with one or more central controllers.</tp:docstring>
     </tp:enumvalue>
+    <tp:enumvalue suffix="AP" value="3">
+      <tp:docstring>Central controller of a coordinated network.</tp:docstring>
+    </tp:enumvalue>
   </tp:enum>
 </tp:generic-types>
