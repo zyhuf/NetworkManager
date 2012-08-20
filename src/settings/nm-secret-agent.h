@@ -88,6 +88,12 @@ gconstpointer nm_secret_agent_get_secrets  (NMSecretAgent *agent,
                                             NMSecretAgentCallback callback,
                                             gpointer callback_data);
 
+gconstpointer nm_secret_agent_get_device_secrets  (NMSecretAgent *agent,
+                                                   GHashTable *hints,
+                                                   NMSettingsGetSecretsFlags flags,
+                                                   NMSecretAgentCallback callback,
+                                                   gpointer callback_data);
+
 void        nm_secret_agent_cancel_secrets (NMSecretAgent *agent,
                                             gconstpointer call_id);
 

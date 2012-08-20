@@ -85,6 +85,28 @@ guint32 nm_agent_manager_save_secrets (NMAgentManager *manager,
 guint32 nm_agent_manager_delete_secrets (NMAgentManager *manager,
                                          NMConnection *connection);
 
+/* If no agent fulfilled the secrets request, agent_dbus_owner will be NULL */
+typedef void (*NMAgentDeviceSecretsResultFunc) (NMAgentManager *manager,
+                                                guint32 call_id,
+                                                const char *agent_dbus_owner,
+                                                const char *agent_uname,
+                                                gboolean agent_has_modify,
+                                                NMSettingsGetSecretsFlags flags,
+                                                GHashTable *secrets,
+                                                GError *error,
+                                                gpointer user_data);
+
+guint32 nm_agent_manager_get_device_secrets (NMAgentManager *manager,
+                                             gboolean filter_by_uid,
+                                             gulong uid,
+                                             GHashTable *hints,
+                                             NMSettingsGetSecretsFlags flags,
+                                             NMAgentSecretsResultFunc callback,
+                                             gpointer callback_data);
+
+void nm_agent_manager_device_cancel_secrets (NMAgentManager *manager,
+                                             guint32 request_id);
+
 NMSecretAgent *nm_agent_manager_get_agent_by_user (NMAgentManager *manager,
                                                    const char *username);
 
