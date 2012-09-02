@@ -2748,6 +2748,7 @@ static gboolean
 is_compatible_with_slave (NMConnection *master, NMConnection *slave)
 {
 	NMSettingConnection *s_con;
+	const char *slave_type;
 
 	g_return_val_if_fail (master, FALSE);
 	g_return_val_if_fail (slave, FALSE);
@@ -2755,7 +2756,12 @@ is_compatible_with_slave (NMConnection *master, NMConnection *slave)
 	s_con = nm_connection_get_setting_connection (slave);
 	g_assert (s_con);
 
-	return nm_connection_is_type (master, nm_setting_connection_get_slave_type (s_con));
+	slave_type = nm_setting_connection_get_slave_type (s_con);
+
+	if (slave_type == NULL)
+		return TRUE;
+
+	return nm_connection_is_type (master, slave_type);
 }
 
 /**
