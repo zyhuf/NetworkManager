@@ -1067,13 +1067,22 @@ real_check_connection_compatible (NMDevice *device,
 		return FALSE;
 	}
 
-	if (    (g_strcmp0 (nm_setting_wireless_get_mode (s_wireless), NM_SETTING_WIRELESS_MODE_AP) == 0)
-	     && !(priv->capabilities & NM_WIFI_DEVICE_CAP_AP)) {
-		g_set_error_literal (error,
-		                     NM_WIFI_ERROR,
-		                     NM_WIFI_ERROR_CONNECTION_INCOMPATIBLE,
-		                     "Access Point (AP) mode is not supported by this device.");
-		return FALSE;
+	if (g_strcmp0 (nm_setting_wireless_get_mode (s_wireless), NM_SETTING_WIRELESS_MODE_AP) == 0) {
+		if (!(priv->capabilities & NM_WIFI_DEVICE_CAP_AP)) {
+			g_set_error_literal (error,
+				                 NM_WIFI_ERROR,
+				                 NM_WIFI_ERROR_CONNECTION_INCOMPATIBLE,
+				                 "Access Point (AP) mode is not supported by this device.");
+			return FALSE;
+		}
+
+		if (priv->supplicant.iface && !nm_supplicant_interface_get_has_ap_mode (priv->supplicant.iface)) {
+			g_set_error_literal (error,
+				                 NM_WIFI_ERROR,
+				                 NM_WIFI_ERROR_CONNECTION_INCOMPATIBLE,
+				                 "Access Point (AP) mode is not supported by the supplicant.");
+			return FALSE;
+		}
 	}
 
 	// FIXME: check channel/freq/band against bands the hardware supports

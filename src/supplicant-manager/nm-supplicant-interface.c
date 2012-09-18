@@ -86,6 +86,7 @@ typedef struct {
 	char *                dev;
 	gboolean              is_wireless;
 	gboolean              has_credreq;  /* Whether querying 802.1x credentials is supported */
+	gboolean              has_apmode;   /* Whether lightweight AP mode is supported */
 	gboolean              fast_supported;
 	guint32               max_scan_ssids;
 	guint32               ready_count;
@@ -746,6 +747,59 @@ wpas_iface_check_network_reply (NMSupplicantInterface *self)
 	nm_supplicant_info_set_call (info, call);
 }
 
+gboolean
+nm_supplicant_interface_get_has_ap_mode (NMSupplicantInterface *self)
+{
+	return NM_SUPPLICANT_INTERFACE_GET_PRIVATE (self)->has_apmode;
+}
+
+static void
+iface_check_ap_mode_cb (DBusGProxy *proxy, DBusGProxyCall *call_id, gpointer user_data)
+{
+	NMSupplicantInfo *info = (NMSupplicantInfo *) user_data;
+	NMSupplicantInterfacePrivate *priv = NM_SUPPLICANT_INTERFACE_GET_PRIVATE (info->interface);
+	char *data;
+
+	if (dbus_g_proxy_end_call (proxy, call_id, NULL,
+	                           G_TYPE_STRING,
+	                           &data,
+	                           G_TYPE_INVALID)) {
+		priv->has_apmode = (data && strstr (data, "ProbeRequest"));
+		g_free (data);
+	}
+
+	iface_check_ready (info->interface);
+}
+
+static void
+wpas_iface_check_ap_mode (NMSupplicantInterface *self)
+{
+	NMSupplicantInterfacePrivate *priv = NM_SUPPLICANT_INTERFACE_GET_PRIVATE (self);
+	NMSupplicantInfo *info;
+	DBusGProxyCall *call;
+	DBusGProxy *proxy;
+
+	proxy = dbus_g_proxy_new_for_name (nm_dbus_manager_get_connection (priv->dbus_mgr),
+	                                   WPAS_DBUS_SERVICE,
+	                                   priv->object_path,
+	                                   DBUS_INTERFACE_INTROSPECTABLE);
+
+	info = nm_supplicant_info_new (self, proxy, priv->other_pcalls);
+	g_object_unref (proxy);
+
+	/* The only way we know AP mode is enabled or not is by introspecting the
+	 * supplicant and looking for a specific method.  The supplicant does not
+	 * yet advertise AP mode support in the /fi/w1/wpa_supplicant1 object
+	 * properties.
+	 */
+	call = dbus_g_proxy_begin_call (proxy, "Introspect",
+	                                iface_check_ap_mode_cb,
+	                                info,
+	                                nm_supplicant_info_destroy,
+	                                G_TYPE_INVALID);
+	nm_supplicant_info_set_call (info, call);
+}
+
 static void
 interface_add_done (NMSupplicantInterface *self, char *path)
 {
@@ -820,7 +874,8 @@ interface_add_done (NMSupplicantInterface *self, char *path)
 	/* Get initial properties and check whether NetworkReply is supported */
 	wpas_iface_get_props (self);
 	wpas_iface_check_network_reply (self);
-	priv->ready_count = 2;
+	wpas_iface_check_ap_mode (self);
+	priv->ready_count = 3;
 }
 
 static void

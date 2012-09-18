@@ -149,4 +149,6 @@ gboolean nm_supplicant_interface_credentials_reply (NMSupplicantInterface *self,
                                                     const char *value,
                                                     GError **error);
 
+gboolean nm_supplicant_interface_get_has_ap_mode (NMSupplicantInterface *self);
+
 #endif	/* NM_SUPPLICANT_INTERFACE_H */
