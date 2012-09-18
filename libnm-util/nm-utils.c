@@ -1203,19 +1203,47 @@ device_supports_ap_ciphers (guint32 dev_caps,
 	return (have_pair && have_group);
 }
 
+static gboolean
+hotspot_security_valid (NMUtilsSecurityType type, NMDeviceWifiCapabilities wifi_caps)
+{
+	if (!(wifi_caps & NM_WIFI_DEVICE_CAP_AP))
+		return FALSE;
+
+	/* Return TRUE for any security that wpa_supplicant's lightweight AP
+	 * mode can handle: which is open, WEP, and WPA/WPA2 PSK.
+	 */
+	switch (type) {
+	case NMU_SEC_NONE:
+	case NMU_SEC_STATIC_WEP:
+	case NMU_SEC_WPA_PSK:
+	case NMU_SEC_WPA2_PSK:
+		return TRUE;
+	default:
+		break;
+	}
+	return FALSE;
+}
+
 /**
- * nm_utils_security_valid:
+ * nm_utils_wifi_security_valid:
  * @type: the security type to check AP flags and device capabilties against,
  * e.g. #NMU_SEC_STATIC_WEP
  * @wifi_caps: bitfield of the capabilities of the specific WiFi device, e.g.
  * #NM_WIFI_DEVICE_CAP_CIPHER_WEP40
- * @have_ap: whether the @ap_flags, @ap_wpa, and @ap_rsn arguments are valid
- * @adhoc: whether the capabilities being tested are from an Ad-Hoc AP (IBSS)
- * @ap_flags: bitfield of AP capabilities, e.g. #NM_802_11_AP_FLAGS_PRIVACY
+ * @mode: network mode of the capabilities being tested; %NM_802_11_MODE_ADHOC
+ * for Ad-Hoc networks, %NM_802_11_MODE_AP when the local machine is acting as
+ * a hotspot, or %NM_802_11_MODE_INFRASTRUCTURE for connection to infrastructure
+ * networks
+ * @flags_valid: whether the @ap_flags, @ap_wpa, and @ap_rsn arguments are valid;
+ * ignored for NM_802_11_MODE_AP
+ * @ap_flags: bitfield of AP capabilities, e.g. #NM_802_11_AP_FLAGS_PRIVACY;
+ * ignored for NM_802_11_MODE_AP
  * @ap_wpa: bitfield of AP capabilties derived from the AP's WPA beacon,
- * e.g. (#NM_802_11_AP_SEC_PAIR_TKIP | #NM_802_11_AP_SEC_KEY_MGMT_PSK)
+ * e.g. (#NM_802_11_AP_SEC_PAIR_TKIP | #NM_802_11_AP_SEC_KEY_MGMT_PSK); ignored
+ * for NM_802_11_MODE_AP
  * @ap_rsn: bitfield of AP capabilties derived from the AP's RSN/WPA2 beacon,
- * e.g. (#NM_802_11_AP_SEC_PAIR_CCMP | #NM_802_11_AP_SEC_PAIR_TKIP)
+ * e.g. (#NM_802_11_AP_SEC_PAIR_CCMP | #NM_802_11_AP_SEC_PAIR_TKIP);
+ * ignored for NM_802_11_MODE_AP
  *
  * Given a set of device capabilities, and a desired security type to check
  * against, determines whether the combination of device, desired security
@@ -1225,17 +1253,21 @@ device_supports_ap_ciphers (guint32 dev_caps,
  * compatible with the desired @type, FALSE if they are not
  **/
 gboolean
-nm_utils_security_valid (NMUtilsSecurityType type,
-                         NMDeviceWifiCapabilities wifi_caps,
-                         gboolean have_ap,
-                         gboolean adhoc,
-                         NM80211ApFlags ap_flags,
-                         NM80211ApSecurityFlags ap_wpa,
-                         NM80211ApSecurityFlags ap_rsn)
+nm_utils_wifi_security_valid (NMUtilsSecurityType type,
+                              NMDeviceWifiCapabilities wifi_caps,
+                              NM80211Mode mode,
+                              gboolean flags_valid,
+                              NM80211ApFlags ap_flags,
+                              NM80211ApSecurityFlags ap_wpa,
+                              NM80211ApSecurityFlags ap_rsn)
 {
 	gboolean good = TRUE;
+	gboolean adhoc = (mode == NM_802_11_MODE_ADHOC);
 
-	if (!have_ap) {
+	if (mode == NM_802_11_MODE_AP)
+		return hotspot_security_valid (type, wifi_caps);
+
+	if (!flags_valid) {
 		if (type == NMU_SEC_NONE)
 			return TRUE;
 		if (   (type == NMU_SEC_STATIC_WEP)
@@ -1250,7 +1282,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 
 	switch (type) {
 	case NMU_SEC_NONE:
-		g_assert (have_ap);
+		g_assert (flags_valid);
 		if (ap_flags & NM_802_11_AP_FLAGS_PRIVACY)
 			return FALSE;
 		if (ap_wpa || ap_rsn)
@@ -1261,7 +1293,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 			return FALSE;
 		/* Fall through */
 	case NMU_SEC_STATIC_WEP:
-		g_assert (have_ap);
+		g_assert (flags_valid);
 		if (!(ap_flags & NM_802_11_AP_FLAGS_PRIVACY))
 			return FALSE;
 		if (ap_wpa || ap_rsn) {
@@ -1273,7 +1305,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 	case NMU_SEC_DYNAMIC_WEP:
 		if (adhoc)
 			return FALSE;
-		g_assert (have_ap);
+		g_assert (flags_valid);
 		if (ap_rsn || !(ap_flags & NM_802_11_AP_FLAGS_PRIVACY))
 			return FALSE;
 		/* Some APs broadcast minimal WPA-enabled beacons that must be handled */
@@ -1289,7 +1321,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 			return FALSE;  /* FIXME: Kernel WPA Ad-Hoc support is buggy */
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_WPA))
 			return FALSE;
-		if (have_ap) {
+		if (flags_valid) {
 			/* Ad-Hoc WPA APs won't necessarily have the PSK flag set, and
 			 * they don't have any pairwise ciphers. */
 			if (adhoc) {
@@ -1317,7 +1349,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 			return FALSE;  /* FIXME: Kernel WPA Ad-Hoc support is buggy */
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_RSN))
 			return FALSE;
-		if (have_ap) {
+		if (flags_valid) {
 			/* Ad-Hoc WPA APs won't necessarily have the PSK flag set, and
 			 * they don't have any pairwise ciphers, nor any RSA flags yet. */
 			if (adhoc) {
@@ -1343,7 +1375,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 			return FALSE;
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_WPA))
 			return FALSE;
-		if (have_ap) {
+		if (flags_valid) {
 			if (!(ap_wpa & NM_802_11_AP_SEC_KEY_MGMT_802_1X))
 				return FALSE;
 			/* Ensure at least one WPA cipher is supported */
@@ -1356,7 +1388,7 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 			return FALSE;
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_RSN))
 			return FALSE;
-		if (have_ap) {
+		if (flags_valid) {
 			if (!(ap_rsn & NM_802_11_AP_SEC_KEY_MGMT_802_1X))
 				return FALSE;
 			/* Ensure at least one WPA cipher is supported */
@@ -1370,6 +1402,46 @@ nm_utils_security_valid (NMUtilsSecurityType type,
 	}
 
 	return good;
+}
+
+/**
+ * nm_utils_security_valid:
+ * @type: the security type to check AP flags and device capabilties against,
+ * e.g. #NMU_SEC_STATIC_WEP
+ * @wifi_caps: bitfield of the capabilities of the specific WiFi device, e.g.
+ * #NM_WIFI_DEVICE_CAP_CIPHER_WEP40
+ * @have_ap: whether the @ap_flags, @ap_wpa, and @ap_rsn arguments are valid
+ * @adhoc: whether the capabilities being tested are from an Ad-Hoc AP (IBSS)
+ * @ap_flags: bitfield of AP capabilities, e.g. #NM_802_11_AP_FLAGS_PRIVACY
+ * @ap_wpa: bitfield of AP capabilties derived from the AP's WPA beacon,
+ * e.g. (#NM_802_11_AP_SEC_PAIR_TKIP | #NM_802_11_AP_SEC_KEY_MGMT_PSK)
+ * @ap_rsn: bitfield of AP capabilties derived from the AP's RSN/WPA2 beacon,
+ * e.g. (#NM_802_11_AP_SEC_PAIR_CCMP | #NM_802_11_AP_SEC_PAIR_TKIP)
+ *
+ * DEPRECATED: use nm_utils_wifi_security_valid() instead.  Given a set of
+ * device capabilities, and a desired security type to check against, determines
+ * whether the combination of device, desired security type, and AP capabilities
+ * intersect.
+ *
+ * Returns: TRUE if the device capabilities and AP capabilties intersect and are
+ * compatible with the desired @type, FALSE if they are not
+ **/
+gboolean
+nm_utils_security_valid (NMUtilsSecurityType type,
+                         NMDeviceWifiCapabilities wifi_caps,
+                         gboolean have_ap,
+                         gboolean adhoc,
+                         NM80211ApFlags ap_flags,
+                         NM80211ApSecurityFlags ap_wpa,
+                         NM80211ApSecurityFlags ap_rsn)
+{
+	return nm_utils_wifi_security_valid (type,
+	                                     wifi_caps,
+	                                     have_ap,
+	                                     adhoc ? NM_802_11_MODE_ADHOC : NM_802_11_MODE_INFRA,
+	                                     ap_flags,
+	                                     ap_wpa,
+	                                     ap_rsn);
 }
 
 /**

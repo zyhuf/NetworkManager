@@ -79,6 +79,15 @@ typedef enum {
 	NMU_SEC_WPA2_ENTERPRISE
 } NMUtilsSecurityType;
 
+gboolean nm_utils_wifi_security_valid (NMUtilsSecurityType type,
+                                       NMDeviceWifiCapabilities wifi_caps,
+                                       NM80211Mode mode,
+                                       gboolean flags_valid,
+                                       NM80211ApFlags ap_flags,
+                                       NM80211ApSecurityFlags ap_wpa,
+                                       NM80211ApSecurityFlags ap_rsn);
+
+/* Deprecated */
 gboolean nm_utils_security_valid (NMUtilsSecurityType type,
                                   NMDeviceWifiCapabilities wifi_caps,
                                   gboolean have_ap,

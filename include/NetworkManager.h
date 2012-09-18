@@ -227,7 +227,8 @@ typedef enum {
  * @NM_802_11_MODE_UNKNOWN: the device or access point mode is unknown
  * @NM_802_11_MODE_ADHOC: the device or access point is in Ad-Hoc mode
  * @NM_802_11_MODE_INFRA: the device or access point is in infrastructure mode
- * @NM_802_11_MODE_AP: the device or access point is in access point mode
+ * @NM_802_11_MODE_AP: the device is in access point mode; used only for
+ * hotspot mode on the local machine
  *
  * Indicates the 802.11 mode an access point or device is currently in.
  **/

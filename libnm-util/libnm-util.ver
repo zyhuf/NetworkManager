@@ -528,6 +528,7 @@ global:
 	nm_utils_wifi_find_next_channel;
 	nm_utils_wifi_freq_to_channel;
 	nm_utils_wifi_is_channel_valid;
+	nm_utils_wifi_security_valid;
 	nm_vlan_flags_get_type;
 	nm_vlan_priority_map_get_type;
 	nm_wep_key_type_get_type;
