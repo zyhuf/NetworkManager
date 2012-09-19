@@ -31,6 +31,7 @@
 #include "nm-logging.h"
 #include "nm-glib-compat.h"
 #include "nm-posix-signals.h"
+#include "nm-utils.h"
 
 typedef struct {
 	char *iface;
@@ -53,6 +54,7 @@ static guint signals[LAST_SIGNAL] = { 0 };
 
 typedef enum {
 	NM_DNSMASQ_MANAGER_ERROR_NOT_FOUND,
+	NM_DNSMASQ_MANAGER_ERROR_INVALID_IP_RANGE,
 } NMDnsMasqManagerError;
 
 GQuark
@@ -242,6 +244,72 @@ dm_watch_cb (GPid pid, gint status, gpointer user_data)
 	g_signal_emit (manager, signals[STATE_CHANGED], 0, NM_DNSMASQ_STATUS_DEAD);
 }
 
+static gboolean
+get_address_range (NMIP4Address *addr,
+                   char *out_first,
+                   const gsize out_first_len,
+                   char *out_last,
+                   const gsize out_last_len,
+                   GError **error)
+{
+	guint32 host = nm_ip4_address_get_address (addr);
+	guint32 prefix = nm_ip4_address_get_prefix (addr);
+	guint32 netmask = nm_utils_ip4_prefix_to_netmask (prefix);
+	guint32 first, last, reserved;
+
+	g_return_val_if_fail (out_first != NULL, FALSE);
+	g_return_val_if_fail (out_first_len >= INET_ADDRSTRLEN, FALSE);
+	g_return_val_if_fail (out_last != NULL, FALSE);
+	g_return_val_if_fail (out_last_len >= INET_ADDRSTRLEN, FALSE);
+
+	if (prefix > 30) {
+		g_set_error (error,
+		             NM_DNSMASQ_MANAGER_ERROR, NM_DNSMASQ_MANAGER_ERROR_INVALID_IP_RANGE,
+		             "Address prefix %d is too small for DHCP.",
+		             prefix);
+		return FALSE;
+	}
+
+	first = (host & netmask) + htonl (1);
+
+	/* Shortcut: allow a max of 253 addresses */
+	if (prefix < 24)
+		last = (host | ~htonl (0xFFFFFF00)) - htonl (1);
+	else
+		last = (host | ~netmask) - htonl(1);
+
+	/* Figure out which range (either above the host address or below it)
+	 * has more addresses.  Reserve some addresses for static IPs.
+	 */
+	if (ntohl (host) - ntohl (first) > ntohl (last) - ntohl (host)) {
+		/* Range below the host's IP address */
+		reserved = (guint32) ((ntohl (host) - ntohl (first)) / 10);
+		last = host - htonl (CLAMP (reserved, 0, 8)) - htonl (1);
+	} else {
+		/* Range above hosts IP address */
+		reserved = (guint32) ((ntohl (last) - ntohl (host)) / 10);
+		first = host + htonl (CLAMP (reserved, 0, 8)) + htonl (1);
+	}
+
+	if (!inet_ntop (AF_INET, (void *) &first, out_first, out_first_len)) {
+		g_set_error (error,
+		             NM_DNSMASQ_MANAGER_ERROR, NM_DNSMASQ_MANAGER_ERROR_INVALID_IP_RANGE,
+		             "Failed to convert first DHCP range address 0x%04x.",
+		             first);
+		return FALSE;
+	}
+
+	if (!inet_ntop (AF_INET, (void *) &last, out_last, out_last_len)) {
+		g_set_error (error,
+		             NM_DNSMASQ_MANAGER_ERROR, NM_DNSMASQ_MANAGER_ERROR_INVALID_IP_RANGE,
+		             "Failed to convert last DHCP range address 0x%04x.",
+		             first);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static NMCmdLine *
 create_dm_cmd_line (const char *iface,
                     NMIP4Config *ip4_config,
@@ -253,7 +321,8 @@ create_dm_cmd_line (const char *iface,
 	GString *s;
 	NMIP4Address *tmp;
 	struct in_addr addr;
-	char buf[INET_ADDRSTRLEN + 15];
+	char first[INET_ADDRSTRLEN + 1];
+	char last[INET_ADDRSTRLEN + 1];
 	char localaddr[INET_ADDRSTRLEN + 1];
 
 	dm_binary = nm_find_dnsmasq ();
@@ -306,29 +375,13 @@ create_dm_cmd_line (const char *iface,
 	nm_cmd_line_add_string (cmd, s->str);
 	g_string_free (s, TRUE);
 
+	if (!get_address_range (tmp, first, sizeof (first), last, sizeof (last), error)) {
+		nm_log_warn (LOGD_SHARING, "Failed to find DHCP address ranges.");
+		goto error;
+	}
+
 	s = g_string_new ("--dhcp-range=");
-
-	/* Add start of address range */
-	addr.s_addr = nm_ip4_address_get_address (tmp) + htonl (9);
-	if (!inet_ntop (AF_INET, &addr, &buf[0], INET_ADDRSTRLEN)) {
-		nm_log_warn (LOGD_SHARING, "error converting IP4 address 0x%X",
-		             ntohl (addr.s_addr));
-		goto error;
-	}
-	g_string_append (s, buf);
-
-	g_string_append_c (s, ',');
-
-	/* Add end of address range */
-	addr.s_addr = nm_ip4_address_get_address (tmp) + htonl (99);
-	if (!inet_ntop (AF_INET, &addr, &buf[0], INET_ADDRSTRLEN)) {
-		nm_log_warn (LOGD_SHARING, "error converting IP4 address 0x%X",
-		             ntohl (addr.s_addr));
-		goto error;
-	}
-	g_string_append (s, buf);
-
-	g_string_append (s, ",60m");
+	g_string_append_printf (s, "%s,%s,60m", first, last);
 	nm_cmd_line_add_string (cmd, s->str);
 	g_string_free (s, TRUE);
 
