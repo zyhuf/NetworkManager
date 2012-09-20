@@ -1317,8 +1317,6 @@ nm_utils_wifi_security_valid (NMUtilsSecurityType type,
 		}
 		break;
 	case NMU_SEC_WPA_PSK:
-		if (adhoc)
-			return FALSE;  /* FIXME: Kernel WPA Ad-Hoc support is buggy */
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_WPA))
 			return FALSE;
 		if (flags_valid) {
@@ -1345,8 +1343,6 @@ nm_utils_wifi_security_valid (NMUtilsSecurityType type,
 		}
 		break;
 	case NMU_SEC_WPA2_PSK:
-		if (adhoc)
-			return FALSE;  /* FIXME: Kernel WPA Ad-Hoc support is buggy */
 		if (!(wifi_caps & NM_WIFI_DEVICE_CAP_RSN))
 			return FALSE;
 		if (flags_valid) {
