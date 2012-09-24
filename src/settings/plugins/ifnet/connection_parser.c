@@ -1333,23 +1333,6 @@ fill_wpa_ciphers (const char *ssid,
 
 	list = g_strsplit_set (value, " ", 0);
 	for (iter = list; iter && *iter; iter++, i++) {
-		/* Ad-Hoc configurations cannot have pairwise ciphers, and can only
-		 * have one group cipher.  Ignore any additional group ciphers and
-		 * any pairwise ciphers specified.
-		 */
-		if (adhoc) {
-			if (group && (i > 0)) {
-				PLUGIN_WARN (IFNET_PLUGIN_NAME,
-					     "    warning: ignoring group cipher '%s' (only one group cipher allowed in Ad-Hoc mode)",
-					     *iter);
-				continue;
-			} else if (!group) {
-				PLUGIN_WARN (IFNET_PLUGIN_NAME,
-					     "    warning: ignoring pairwise cipher '%s' (pairwise not used in Ad-Hoc mode)",
-					     *iter);
-				continue;
-			}
-		}
 
 		if (!strcmp (*iter, "CCMP")) {
 			if (group)
@@ -1358,6 +1341,19 @@ fill_wpa_ciphers (const char *ssid,
 			else
 				nm_setting_wireless_security_add_pairwise (wsec,
 									   "ccmp");
+		} else if (adhoc) {
+			/* Ad-Hoc configurations only support CCMP cipher for
+			 * pairwise and group.
+			 * Ignore any other group or pairwise ciphers specified.
+			 */
+			if (group)
+				PLUGIN_WARN (IFNET_PLUGIN_NAME,
+					     "    warning: ignoring group cipher '%s' (only ccmp cipher allowed in Ad-Hoc mode)",
+					     eiter);
+			else if (!group)
+				PLUGIN_WARN (IFNET_PLUGIN_NAME,
+					     "    warning: ignoring pairwise cipher '%s' (only ccmp cipher allowed in Ad-Hoc mode)",
+					     *iter);
 		} else if (!strcmp (*iter, "TKIP")) {
 			if (group)
 				nm_setting_wireless_security_add_group (wsec,
@@ -1498,8 +1494,8 @@ make_wpa_setting (const char *ssid,
 
 	/* WPA and/or RSN */
 	if (adhoc) {
-		/* Ad-Hoc mode only supports WPA proto for now */
-		nm_setting_wireless_security_add_proto (wsec, "wpa");
+		/* Ad-Hoc mode only supports RSN proto */
+		nm_setting_wireless_security_add_proto (wsec, "rsn");
 	} else {
 		nm_setting_wireless_security_add_proto (wsec, "wpa");
 		nm_setting_wireless_security_add_proto (wsec, "rsn");
@@ -1515,14 +1511,9 @@ make_wpa_setting (const char *ssid,
 			      NULL);
 		g_free (psk);
 
-		if (adhoc)
-			g_object_set (wsec,
-				      NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
-				      "wpa-none", NULL);
-		else
-			g_object_set (wsec,
-				      NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
-				      "wpa-psk", NULL);
+		g_object_set (wsec,
+			      NM_SETTING_WIRELESS_SECURITY_KEY_MGMT,
+			      "wpa-psk", NULL);
 	} else if (!strcmp (value, "WPA-EAP") || !strcmp (value, "IEEE8021X")) {
 		if (adhoc) {
 			g_set_error (error, ifnet_plugin_error_quark (), 0,
@@ -2115,8 +2106,7 @@ write_wireless_security_setting (NMConnection * connection,
 		wpa_set_data (conn_name, "key_mgmt", "NONE");
 		wep = TRUE;
 		*no_8021x = TRUE;
-	} else if (!strcmp (key_mgmt, "wpa-none")
-		   || !strcmp (key_mgmt, "wpa-psk")) {
+	} else if (!strcmp (key_mgmt, "wpa-psk")) {
 		wpa_set_data (conn_name, "key_mgmt", "WPA-PSK");
 		wpa = TRUE;
 		*no_8021x = TRUE;

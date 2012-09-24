@@ -1920,8 +1920,8 @@ fill_wpa_ciphers (shvarFile *ifcfg,
 				PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: ignoring group cipher '%s' (only one group cipher allowed in Ad-Hoc mode)",
 				             *iter);
 				continue;
-			} else if (!group) {
-				PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: ignoring pairwise cipher '%s' (pairwise not used in Ad-Hoc mode)",
+			} else if (!group && (i > 0)) {
+				PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: ignoring pairwise cipher '%s' (only one pairwise cipher allowed in Ad-Hoc mode)",
 				             *iter);
 				continue;
 			}
@@ -2707,8 +2707,8 @@ make_wpa_setting (shvarFile *ifcfg,
 
 	/* WPA and/or RSN */
 	if (adhoc) {
-		/* Ad-Hoc mode only supports WPA proto for now */
-		nm_setting_wireless_security_add_proto (wsec, "wpa");
+		/* Ad-Hoc mode only supports RSN proto */
+		nm_setting_wireless_security_add_proto (wsec, "rsn");
 	} else {
 		char *allow_wpa, *allow_rsn;
 
@@ -2747,10 +2747,7 @@ make_wpa_setting (shvarFile *ifcfg,
 			}
 		}
 
-		if (adhoc)
-			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-none", NULL);
-		else
-			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
+		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
 	} else if (!strcmp (value, "WPA-EAP") || !strcmp (value, "IEEE8021X")) {
 		/* Adhoc mode is mutually exclusive with any 802.1x-based authentication */
 		if (adhoc) {

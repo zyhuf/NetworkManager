@@ -630,6 +630,7 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 	guint32 channel;
 	NM80211ApSecurityFlags flags;
 	gboolean psk = FALSE, eap = FALSE;
+	gboolean adhoc = FALSE;
 
 	g_return_val_if_fail (connection != NULL, NULL);
 
@@ -650,9 +651,10 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 	if (mode) {
 		if (!strcmp (mode, "infrastructure"))
 			nm_ap_set_mode (ap, NM_802_11_MODE_INFRA);
-		else if (!strcmp (mode, "adhoc"))
+		else if (!strcmp (mode, "adhoc")) {
 			nm_ap_set_mode (ap, NM_802_11_MODE_ADHOC);
-		else if (!strcmp (mode, "ap"))
+			adhoc = TRUE;
+		} else if (!strcmp (mode, "ap"))
 			nm_ap_set_mode (ap, NM_802_11_MODE_AP);
 		else
 			goto error;
@@ -680,7 +682,7 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 	key_mgmt = nm_setting_wireless_security_get_key_mgmt (s_wireless_sec);
 
 	/* Everything below here uses encryption */
-	nm_ap_set_flags (ap, nm_ap_get_flags (ap) | NM_802_11_AP_FLAGS_PRIVACY);
+	nm_ap_set_flags (ap, NM_802_11_AP_FLAGS_PRIVACY);
 
 	/* Static & Dynamic WEP */
 	if (!strcmp (key_mgmt, "none") || !strcmp (key_mgmt, "ieee8021x"))
@@ -688,7 +690,7 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 
 	psk = !strcmp (key_mgmt, "wpa-psk");
 	eap = !strcmp (key_mgmt, "wpa-eap");
-	if (psk || eap) {
+	if (!adhoc && (psk || eap)) {
 		if (has_proto (s_wireless_sec, PROTO_WPA)) {
 			flags = nm_ap_get_wpa_flags (ap);
 			flags |= eap ? NM_802_11_AP_SEC_KEY_MGMT_802_1X : NM_802_11_AP_SEC_KEY_MGMT_PSK;
@@ -702,42 +704,16 @@ nm_ap_new_fake_from_connection (NMConnection *connection)
 
 		add_pair_ciphers (ap, s_wireless_sec);
 		add_group_ciphers (ap, s_wireless_sec);
-	} else if (!strcmp (key_mgmt, "wpa-none")) {
-		guint32 i;
-
-		/* Ad-Hoc has special requirements: proto=WPA, pairwise=(none), and
-		 * group=TKIP/CCMP (but not both).
+	} else if (adhoc && psk) {
+		/* Ad-Hoc has special requirements: proto=RSN, pairwise=CCMP, and
+		 * group=CCMP.  So we can pretty much ignore what's in the
+		 * NMSettingWirelessSecurity setting.
 		 */
-
-		flags = nm_ap_get_wpa_flags (ap);
-		flags |= NM_802_11_AP_SEC_KEY_MGMT_PSK;
-
-		/* Clear ciphers; pairwise must be unset anyway, and group gets set below */
-		flags &= ~(  NM_802_11_AP_SEC_PAIR_WEP40
-		           | NM_802_11_AP_SEC_PAIR_WEP104
-		           | NM_802_11_AP_SEC_PAIR_TKIP
-		           | NM_802_11_AP_SEC_PAIR_CCMP
-		           | NM_802_11_AP_SEC_GROUP_WEP40
-		           | NM_802_11_AP_SEC_GROUP_WEP104
-		           | NM_802_11_AP_SEC_GROUP_TKIP
-		           | NM_802_11_AP_SEC_GROUP_CCMP);
-
-		for (i = 0; i < nm_setting_wireless_security_get_num_groups (s_wireless_sec); i++) {
-			if (!strcmp (nm_setting_wireless_security_get_group (s_wireless_sec, i), "ccmp")) {
-				flags |= NM_802_11_AP_SEC_GROUP_CCMP;
-				break;
-			}
-		}
-
-		/* Default to TKIP since not all WPA-capable cards can do CCMP */
-		if (!(flags & NM_802_11_AP_SEC_GROUP_CCMP))
-			flags |= NM_802_11_AP_SEC_GROUP_TKIP;
-
-		nm_ap_set_wpa_flags (ap, flags);
-
-		/* Don't use Ad-Hoc RSN yet */
-		nm_ap_set_rsn_flags (ap, NM_802_11_AP_SEC_NONE);
-	}
+		nm_ap_set_rsn_flags (ap,   NM_802_11_AP_SEC_KEY_MGMT_PSK
+		                         | NM_802_11_AP_SEC_GROUP_CCMP
+		                         | NM_802_11_AP_SEC_PAIR_CCMP);
+	} else
+		goto error;
 
 done:
 	return ap;
