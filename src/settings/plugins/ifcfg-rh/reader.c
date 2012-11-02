@@ -3302,6 +3302,7 @@ wireless_connection_from_ifcfg (const char *file,
 		g_object_unref (connection);
 		return NULL;
 	}
+	check_if_bond_slave (ifcfg, NM_SETTING_CONNECTION (con_setting));
 	nm_connection_add_setting (connection, con_setting);
 
 	/* Don't verify if unmanaged since we may not have an SSID or whatever */

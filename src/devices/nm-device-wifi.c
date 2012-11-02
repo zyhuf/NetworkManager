@@ -2925,7 +2925,8 @@ act_stage1_prepare (NMDevice *dev, NMDeviceStateReason *reason)
 
 done:
 	set_active_ap (self, ap);
-	return NM_ACT_STAGE_RETURN_SUCCESS;
+
+	return NM_DEVICE_CLASS (nm_device_wifi_parent_class)->act_stage1_prepare (dev, reason);
 }
 
 static void
