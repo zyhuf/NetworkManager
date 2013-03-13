@@ -29,6 +29,8 @@
 #include "nm-ip4-config.h"
 #include "nm-ip6-config.h"
 
+G_BEGIN_DECLS
+
 typedef enum {
 	NM_DNS_MANAGER_ERROR_SYSTEM,
 	NM_DNS_MANAGER_ERROR_INVALID_NAMESERVER,
@@ -45,14 +47,20 @@ typedef enum {
 #define NM_DNS_MANAGER_ERROR nm_dns_manager_error_quark ()
 GQuark nm_dns_manager_error_quark (void);
 
-G_BEGIN_DECLS
-
 #define NM_TYPE_DNS_MANAGER (nm_dns_manager_get_type ())
 #define NM_DNS_MANAGER(o) (G_TYPE_CHECK_INSTANCE_CAST ((o), NM_TYPE_DNS_MANAGER, NMDnsManager))
 #define NM_DNS_MANAGER_CLASS(k) (G_TYPE_CHECK_CLASS_CAST((k), NM_TYPE_DNS_MANAGER, NMDnsManagerClass))
 #define NM_IS_DNS_MANAGER(o) (G_TYPE_CHECK_INSTANCE_TYPE ((o), NM_TYPE_DNS_MANAGER))
 #define NM_IS_DNS_MANAGER_CLASS(k) (G_TYPE_CHECK_CLASS_TYPE ((k), NM_TYPE_DNS_MANAGER))
 #define NM_DNS_MANAGER_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), NM_TYPE_DNS_MANAGER, NMDnsManagerClass)) 
+
+#define NM_DNS_MANAGER_NAMESERVERS  "nameservers"
+#define NM_DNS_MANAGER_DOMAIN       "domain"
+#define NM_DNS_MANAGER_SEARCHES     "searches"
+#define NM_DNS_MANAGER_NIS_DOMAIN   "nis-domain"
+#define NM_DNS_MANAGER_NIS_SERVERS  "nis-servers"
+#define NM_DNS_MANAGER_WINS_SERVERS "wins-servers"
+#define NM_DNS_MANAGER_SPLIT_DNS    "split-dns"
 
 typedef struct {
 	GObject parent;
@@ -62,7 +70,7 @@ typedef struct {
 	GObjectClass parent;
 
 	/* Signals */
-	void (*config_changed) (NMDnsManager *mgr);
+	void (*properties_changed) (NMDnsManager *mgr, GHashTable *properties);
 } NMDnsManagerClass;
 
 GType nm_dns_manager_get_type (void);
@@ -89,6 +97,13 @@ gboolean nm_dns_manager_remove_ip6_config (NMDnsManager *mgr, NMIP6Config *confi
 
 void nm_dns_manager_set_hostname (NMDnsManager *mgr,
                                   const char *hostname);
+
+const char **nm_dns_manager_get_nameservers    (NMDnsManager *mgr);
+const char  *nm_dns_manager_get_domain         (NMDnsManager *mgr);
+const char **nm_dns_manager_get_searches       (NMDnsManager *mgr);
+const char **nm_dns_manager_get_nis_servers    (NMDnsManager *mgr);
+const char  *nm_dns_manager_get_nis_domain     (NMDnsManager *mgr);
+const char **nm_dns_manager_get_wins_servers   (NMDnsManager *mgr);
 
 G_END_DECLS
 

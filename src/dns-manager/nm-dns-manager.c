@@ -37,9 +37,13 @@
 #include "NetworkManagerUtils.h"
 #include "nm-posix-signals.h"
 #include "nm-config.h"
+#include "nm-glib-compat.h"
+#include "nm-dbus-manager.h"
+#include "nm-dbus-glib-types.h"
 
 #include "nm-dns-plugin.h"
 #include "nm-dns-dnsmasq.h"
+#include "nm-dns-manager-glue.h"
 
 G_DEFINE_TYPE (NMDnsManager, nm_dns_manager, G_TYPE_OBJECT)
 
@@ -50,13 +54,24 @@ G_DEFINE_TYPE (NMDnsManager, nm_dns_manager, G_TYPE_OBJECT)
 #define HASH_LEN 20
 
 typedef struct {
+
+	char *hostname;
+	guint updates_queue;
+
+	/* Raw config data */
 	NMIP4Config *ip4_vpn_config;
 	NMIP4Config *ip4_device_config;
 	NMIP6Config *ip6_vpn_config;
 	NMIP6Config *ip6_device_config;
 	GSList *configs;
-	char *hostname;
-	guint updates_queue;
+
+	/* Parsed config data */
+	GPtrArray *nameservers;
+	const char *domain;
+	GPtrArray *searches;
+	const char *nis_domain;
+	GPtrArray *nis_servers;
+	GPtrArray *wins_servers;
 
 	guint8 hash[HASH_LEN];  /* SHA1 hash of current DNS config */
 	guint8 prev_hash[HASH_LEN];  /* Hash when begin_updates() was called */
@@ -68,21 +83,21 @@ typedef struct {
 } NMDnsManagerPrivate;
 
 enum {
-	CONFIG_CHANGED,
+	PROPERTIES_CHANGED,
 
 	LAST_SIGNAL
 };
 
-static guint signals[LAST_SIGNAL] = { 0 };
-
-
-typedef struct {
-	GPtrArray *nameservers;
-	const char *domain;
-	GPtrArray *searches;
-	const char *nis_domain;
-	GPtrArray *nis_servers;
-} NMResolvConfData;
+enum {
+	PROP_0,
+	PROP_NAMESERVERS,
+	PROP_DOMAIN,
+	PROP_SEARCHES,
+	PROP_NIS_DOMAIN,
+	PROP_NIS_SERVERS,
+	PROP_WINS_SERVERS,
+	PROP_SPLIT_DNS
+};
 
 static void
 add_string_item (GPtrArray *array, const char *str)
@@ -105,8 +120,9 @@ add_string_item (GPtrArray *array, const char *str)
 }
 
 static void
-merge_one_ip4_config (NMResolvConfData *rc, NMIP4Config *src)
+merge_one_ip4_config (NMDnsManager *self, NMIP4Config *src)
 {
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
 	guint32 num, i;
 
 	num = nm_ip4_config_get_num_nameservers (src);
@@ -116,7 +132,7 @@ merge_one_ip4_config (NMResolvConfData *rc, NMIP4Config *src)
 
 		addr = nm_ip4_config_get_nameserver (src, i);
 		if (inet_ntop (AF_INET, &addr, buf, INET_ADDRSTRLEN) > 0)
-			add_string_item (rc->nameservers, buf);
+			add_string_item (priv->nameservers, buf);
 	}
 
 	num = nm_ip4_config_get_num_domains (src);
@@ -124,14 +140,14 @@ merge_one_ip4_config (NMResolvConfData *rc, NMIP4Config *src)
 		const char *domain;
 
 		domain = nm_ip4_config_get_domain (src, i);
-		if (!rc->domain)
-			rc->domain = domain;
-		add_string_item (rc->searches, domain);
+		if (!priv->domain)
+			priv->domain = domain;
+		add_string_item (priv->searches, domain);
 	}
 
 	num = nm_ip4_config_get_num_searches (src);
 	for (i = 0; i < num; i++)
-		add_string_item (rc->searches, nm_ip4_config_get_search (src, i));
+		add_string_item (priv->searches, nm_ip4_config_get_search (src, i));
 
 	/* NIS stuff */
 	num = nm_ip4_config_get_num_nis_servers (src);
@@ -141,19 +157,31 @@ merge_one_ip4_config (NMResolvConfData *rc, NMIP4Config *src)
 
 		addr = nm_ip4_config_get_nis_server (src, i);
 		if (inet_ntop (AF_INET, &addr, buf, INET_ADDRSTRLEN) > 0)
-			add_string_item (rc->nis_servers, buf);
+			add_string_item (priv->nis_servers, buf);
 	}
 
 	if (nm_ip4_config_get_nis_domain (src)) {
 		/* FIXME: handle multiple domains */
-		if (!rc->nis_domain)
-			rc->nis_domain = nm_ip4_config_get_nis_domain (src);
+		if (!priv->nis_domain)
+			priv->nis_domain = nm_ip4_config_get_nis_domain (src);
+	}
+
+	/* WINS stuff */
+	num = nm_ip4_config_get_num_wins (src);
+	for (i = 0; i < num; i++) {
+		struct in_addr addr;
+		char buf[INET_ADDRSTRLEN];
+
+		addr.s_addr = nm_ip4_config_get_wins (src, i);
+		if (inet_ntop (AF_INET, &addr, buf, INET_ADDRSTRLEN) > 0)
+			add_string_item (priv->wins_servers, buf);
 	}
 }
 
 static void
-merge_one_ip6_config (NMResolvConfData *rc, NMIP6Config *src)
+merge_one_ip6_config (NMDnsManager *self, NMIP6Config *src)
 {
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
 	guint32 num, i;
 	const char *iface;
 
@@ -171,15 +199,15 @@ merge_one_ip6_config (NMResolvConfData *rc, NMIP6Config *src)
 		/* inet_ntop is probably supposed to do this for us, but it doesn't */
 		if (IN6_IS_ADDR_V4MAPPED (addr)) {
 			if (inet_ntop (AF_INET, &(addr->s6_addr32[3]), buf, INET_ADDRSTRLEN) > 0)
-				add_string_item (rc->nameservers, buf);
+				add_string_item (priv->nameservers, buf);
 		} else {
 			if (inet_ntop (AF_INET6, addr, buf, INET6_ADDRSTRLEN) > 0) {
 				if (IN6_IS_ADDR_LINKLOCAL (addr)) {
 					tmp = g_strdup_printf ("%s%%%s", buf, iface);
-					add_string_item (rc->nameservers, tmp);
+					add_string_item (priv->nameservers, tmp);
 					g_free (tmp);
 				} else
-					add_string_item (rc->nameservers, buf);
+					add_string_item (priv->nameservers, buf);
 			}
 		}
 	}
@@ -189,16 +217,15 @@ merge_one_ip6_config (NMResolvConfData *rc, NMIP6Config *src)
 		const char *domain;
 
 		domain = nm_ip6_config_get_domain (src, i);
-		if (!rc->domain)
-			rc->domain = domain;
-		add_string_item (rc->searches, domain);
+		if (!priv->domain)
+			priv->domain = domain;
+		add_string_item (priv->searches, domain);
 	}
 
 	num = nm_ip6_config_get_num_searches (src);
 	for (i = 0; i < num; i++)
-		add_string_item (rc->searches, nm_ip6_config_get_search (src, i));
+		add_string_item (priv->searches, nm_ip6_config_get_search (src, i));
 }
-
 
 #if defined(NETCONFIG_PATH)
 /**********************************/
@@ -433,8 +460,8 @@ dispatch_resolvconf (const char *domain,
 
 static gboolean
 update_resolv_conf (const char *domain,
-                    char **searches,
-                    char **nameservers,
+                    const char **searches,
+                    const char **nameservers,
                     GError **error)
 {
 	char *tmp_resolv_conf;
@@ -481,7 +508,7 @@ update_resolv_conf (const char *domain,
 		strcpy (tmp_resolv_conf_realpath, _PATH_RESCONF);
 	}
 
-	write_resolv_conf (f, domain, searches, nameservers, error);
+	write_resolv_conf (f, domain, (char **) searches, (char **) nameservers, error);
 
 	if (fclose (f) < 0) {
 		if (*error == NULL) {
@@ -561,15 +588,11 @@ update_dns (NMDnsManager *self,
             GError **error)
 {
 	NMDnsManagerPrivate *priv;
-	NMResolvConfData rc;
 	GSList *iter, *vpn_configs = NULL, *dev_configs = NULL, *other_configs = NULL;
-	const char *domain = NULL;
-	const char *nis_domain = NULL;
-	char **searches = NULL;
-	char **nameservers = NULL;
-	char **nis_servers = NULL;
 	int num, i, len;
 	gboolean success = FALSE, caching = FALSE;
+	GError *my_error = NULL;
+	GObject *object;
 
 	g_return_val_if_fail (error != NULL, FALSE);
 	g_return_val_if_fail (*error == NULL, FALSE);
@@ -586,21 +609,23 @@ update_dns (NMDnsManager *self,
 	/* Update hash with config we're applying */
 	compute_hash (self, priv->hash);
 
-	rc.nameservers = g_ptr_array_new ();
-	rc.domain = NULL;
-	rc.searches = g_ptr_array_new ();
-	rc.nis_domain = NULL;
-	rc.nis_servers = g_ptr_array_new ();
+	/* Now process the new data */
+	g_ptr_array_set_size (priv->nameservers, 0);
+	g_ptr_array_set_size (priv->searches, 0);
+	g_ptr_array_set_size (priv->nis_servers, 0);
+	g_ptr_array_set_size (priv->wins_servers, 0);
+	priv->domain = NULL;
+	priv->nis_domain = NULL;
 
 	if (priv->ip4_vpn_config)
-		merge_one_ip4_config (&rc, priv->ip4_vpn_config);
+		merge_one_ip4_config (self, priv->ip4_vpn_config);
 	if (priv->ip4_device_config)
-		merge_one_ip4_config (&rc, priv->ip4_device_config);
+		merge_one_ip4_config (self, priv->ip4_device_config);
 
 	if (priv->ip6_vpn_config)
-		merge_one_ip6_config (&rc, priv->ip6_vpn_config);
+		merge_one_ip6_config (self, priv->ip6_vpn_config);
 	if (priv->ip6_device_config)
-		merge_one_ip6_config (&rc, priv->ip6_device_config);
+		merge_one_ip6_config (self, priv->ip6_device_config);
 
 	for (iter = priv->configs; iter; iter = g_slist_next (iter)) {
 		if (   (iter->data == priv->ip4_vpn_config)
@@ -612,11 +637,11 @@ update_dns (NMDnsManager *self,
 		if (NM_IS_IP4_CONFIG (iter->data)) {
 			NMIP4Config *config = NM_IP4_CONFIG (iter->data);
 
-			merge_one_ip4_config (&rc, config);
+			merge_one_ip4_config (self, config);
 		} else if (NM_IS_IP6_CONFIG (iter->data)) {
 			NMIP6Config *config = NM_IP6_CONFIG (iter->data);
 
-			merge_one_ip6_config (&rc, config);
+			merge_one_ip6_config (self, config);
 		} else
 			g_assert_not_reached ();
 	}
@@ -632,40 +657,24 @@ update_dns (NMDnsManager *self,
 
 		/* +1 to get rid of the dot */
 		if (hostsearch && strlen (hostsearch + 1))
-			add_string_item (rc.searches, hostsearch + 1);
+			add_string_item (priv->searches, hostsearch + 1);
 	}
-
-	domain = rc.domain;
 
 	/* Per 'man resolv.conf', the search list is limited to 6 domains
 	 * totalling 256 characters.
 	 */
-	num = MIN (rc.searches->len, 6);
+	num = MIN (priv->searches->len, 6);
 	for (i = 0, len = 0; i < num; i++) {
-		len += strlen (rc.searches->pdata[i]) + 1; /* +1 for spaces */
+		len += strlen (priv->searches->pdata[i]) + 1; /* +1 for spaces */
 		if (len > 256)
 			break;
 	}
-	g_ptr_array_set_size (rc.searches, i);
-	if (rc.searches->len) {
-		g_ptr_array_add (rc.searches, NULL);
-		searches = (char **) g_ptr_array_free (rc.searches, FALSE);
-	} else
-		g_ptr_array_free (rc.searches, TRUE);
+	g_ptr_array_set_size (priv->searches, i);
 
-	if (rc.nameservers->len) {
-		g_ptr_array_add (rc.nameservers, NULL);
-		nameservers = (char **) g_ptr_array_free (rc.nameservers, FALSE);
-	} else
-		g_ptr_array_free (rc.nameservers, TRUE);
-
-	if (rc.nis_servers->len) {
-		g_ptr_array_add (rc.nis_servers, NULL);
-		nis_servers = (char **) g_ptr_array_free (rc.nis_servers, FALSE);
-	} else
-		g_ptr_array_free (rc.nis_servers, TRUE);
-
-	nis_domain = rc.nis_domain;
+	g_ptr_array_add (priv->nameservers, NULL);
+	g_ptr_array_add (priv->searches, NULL);
+	g_ptr_array_add (priv->nis_servers, NULL);
+	g_ptr_array_add (priv->wins_servers, NULL);
 
 	/* Build up config lists for plugins; we use the raw configs here, not the
 	 * merged information that we write to resolv.conf so that the plugins can
@@ -680,7 +689,6 @@ update_dns (NMDnsManager *self,
 		dev_configs = g_slist_append (dev_configs, priv->ip4_device_config);
 	if (priv->ip6_device_config)
 		dev_configs = g_slist_append (dev_configs, priv->ip6_device_config);
-
 	for (iter = priv->configs; iter; iter = g_slist_next (iter)) {
 		if (   (iter->data != priv->ip4_vpn_config)
 		    && (iter->data != priv->ip4_device_config)
@@ -730,36 +738,58 @@ update_dns (NMDnsManager *self,
 	 * but only uses the local caching nameserver.
 	 */
 	if (caching) {
-		if (nameservers)
-			g_strfreev (nameservers);
-		nameservers = g_new0 (char*, 2);
-		nameservers[0] = g_strdup ("127.0.0.1");
+		g_ptr_array_set_size (priv->nameservers, 0);
+		add_string_item (priv->nameservers, "127.0.0.1");
 	}
 
 #ifdef RESOLVCONF_PATH
-	success = dispatch_resolvconf (domain, searches, nameservers, error);
+	success = dispatch_resolvconf (nm_dns_manager_get_domain (self),
+	                               nm_dns_manager_get_searches (self),
+	                               nm_dns_manager_get_nameservers (self),
+	                               &my_error);
+	if (my_error) {
+		nm_log_warn (LOGD_DNS, "DNS: resolvconf failed: %s", my_error->message);
+		g_clear_error (&my_error);
+	}
 #endif
 
 #ifdef NETCONFIG_PATH
 	if (success == FALSE) {
-		success = dispatch_netconfig (domain, searches, nameservers,
-		                              nis_domain, nis_servers, error);
+		success = dispatch_netconfig (nm_dns_manager_get_domain (self),
+		                              nm_dns_manager_get_searches (self),
+		                              nm_dns_manager_get_nameservers (self),
+		                              nm_dns_manager_get_nis_domain (self),
+		                              nm_dns_manager_get_nis_servers (self),
+		                              &my_error);
+		if (my_error) {
+			nm_log_warn (LOGD_DNS, "DNS: netconfig failed: %s", my_error->message);
+			g_clear_error (&my_error);
+		}
 	}
 #endif
 
-	if (success == FALSE)
-		success = update_resolv_conf (domain, searches, nameservers, error);
+	if (success == FALSE) {
+		success = update_resolv_conf (nm_dns_manager_get_domain (self),
+		                              nm_dns_manager_get_searches (self),
+		                              nm_dns_manager_get_nameservers (self),
+		                              &my_error);
+		if (my_error) {
+			nm_log_warn (LOGD_DNS, "DNS: resolv.conf update failed: %s", my_error->message);
+			g_propagate_error (error, my_error);
+		}
+	}
 
 	/* signal that resolv.conf was changed */
-	if (success)
-		g_signal_emit (self, signals[CONFIG_CHANGED], 0);
-
-	if (searches)
-		g_strfreev (searches);
-	if (nameservers)
-		g_strfreev (nameservers);
-	if (nis_servers)
-		g_strfreev (nis_servers);
+	object = G_OBJECT (self);
+	g_object_freeze_notify (object);
+	g_object_notify (object, NM_DNS_MANAGER_NAMESERVERS);
+	g_object_notify (object, NM_DNS_MANAGER_DOMAIN);
+	g_object_notify (object, NM_DNS_MANAGER_SEARCHES);
+	g_object_notify (object, NM_DNS_MANAGER_NIS_DOMAIN);
+	g_object_notify (object, NM_DNS_MANAGER_NIS_SERVERS);
+	g_object_notify (object, NM_DNS_MANAGER_WINS_SERVERS);
+	g_object_notify (object, NM_DNS_MANAGER_SPLIT_DNS);
+	g_object_thaw_notify (object);
 
 	return success;
 }
@@ -1023,6 +1053,306 @@ nm_dns_manager_end_updates (NMDnsManager *mgr, const char *func)
 	memset (priv->prev_hash, 0, sizeof (priv->prev_hash));
 }
 
+const char **
+nm_dns_manager_get_nameservers (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return (const char **)priv->nameservers->pdata;
+}
+
+const char *
+nm_dns_manager_get_domain (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return priv->domain;
+}
+
+const char **
+nm_dns_manager_get_searches (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return (const char **)priv->searches->pdata;
+}
+
+const char **
+nm_dns_manager_get_nis_servers (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return (const char **)priv->nis_servers->pdata;
+}
+
+const char *
+nm_dns_manager_get_nis_domain (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return priv->nis_domain;
+}
+
+const char **
+nm_dns_manager_get_wins_servers (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	return (const char **)priv->wins_servers->pdata;
+}
+
+/******************************************************************/
+
+static void
+add_ip4_config_to_split_dns (NMIP4Config *ip4, GPtrArray *networks, GPtrArray *fallback)
+{
+	gboolean do_fallback = !nm_ip4_config_get_never_default (ip4);
+	GValueArray *network;
+	GValue value = G_VALUE_INIT;
+	GPtrArray *strings;
+	char buf[INET_ADDRSTRLEN + 1];
+	struct in_addr addr;
+	int n, i;
+	const char *iface;
+
+	n = nm_ip4_config_get_num_nameservers (ip4);
+	if (n == 0)
+		return;
+
+	iface = g_object_get_data (G_OBJECT (ip4), IP_CONFIG_IFACE_TAG);
+	g_assert (iface);
+
+	if (do_fallback)
+		strings = fallback;
+	else
+		strings = g_ptr_array_new ();
+
+	/* nameservers */
+	for (i = 0; i < n; i++) {
+		addr.s_addr = nm_ip4_config_get_nameserver (ip4, i);
+		inet_ntop (AF_INET, &addr, buf, sizeof (buf));
+		g_ptr_array_add (strings, g_strdup (buf));
+	}
+	if (do_fallback)
+		return;
+
+	g_ptr_array_add (strings, NULL);
+
+	network = g_value_array_new (4);
+
+	g_value_init (&value, G_TYPE_STRING);
+	g_value_set_string (&value, iface);
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	/* domains */
+	strings = g_ptr_array_new ();
+	n = nm_ip4_config_get_num_domains (ip4);
+	for (i = 0; i < n; i++)
+		g_ptr_array_add (strings, g_strdup (nm_ip4_config_get_domain (ip4, i)));
+	n = nm_ip4_config_get_num_searches (ip4);
+	for (i = 0; i < n; i++)
+		g_ptr_array_add (strings, g_strdup (nm_ip4_config_get_search (ip4, i)));
+	g_ptr_array_add (strings, NULL);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	/* IP ranges */
+	strings = g_ptr_array_new ();
+	n = nm_ip4_config_get_num_routes (ip4);
+	for (i = 0; i < n; i++) {
+		NMPlatformIP4Route *route = nm_ip4_config_get_route (ip4, i);
+
+		inet_ntop (AF_INET, &route->network, buf, sizeof (buf));
+		g_ptr_array_add (strings, g_strdup_printf ("%s/%d", buf, route->plen));
+	}
+
+	g_ptr_array_add (strings, NULL);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	g_ptr_array_add (networks, network);
+}
+
+#define IP6_ADDR_BUFLEN (INET6_ADDRSTRLEN + 50)
+
+static char *
+ip6_addr_to_string (const struct in6_addr *addr, const char *iface)
+{
+	char *buf;
+
+	/* allocate enough space for the address + interface name */
+	buf = g_malloc0 (IP6_ADDR_BUFLEN + 1);
+
+	/* inet_ntop is probably supposed to do this for us, but it doesn't */
+	if (IN6_IS_ADDR_V4MAPPED (addr)) {
+		if (!inet_ntop (AF_INET, &(addr->s6_addr32[3]), buf, IP6_ADDR_BUFLEN))
+			goto error;
+		return buf;
+	}
+
+	if (!inet_ntop (AF_INET6, addr, buf, INET6_ADDRSTRLEN + 1))
+		goto error;
+
+	if (IN6_IS_ADDR_LINKLOCAL (addr)) {
+		/* Append the interface name. */
+		strncat (buf, "%", IP6_ADDR_BUFLEN - strlen (buf));
+		strncat (buf, iface, IP6_ADDR_BUFLEN - strlen (buf));
+	}
+
+	return buf;
+
+ error:
+	g_free (buf);
+	return NULL;
+}
+
+static void
+add_ip6_config_to_split_dns (NMIP6Config *ip6, GPtrArray *networks, GPtrArray *fallback)
+{
+	gboolean do_fallback = !nm_ip6_config_get_never_default (ip6);
+	GValueArray *network;
+	GValue value = G_VALUE_INIT;
+	GPtrArray *strings;
+	const struct in6_addr *addr;
+	char *buf;
+	int n, i;
+	const char *iface;
+
+	n = nm_ip6_config_get_num_nameservers (ip6);
+	if (n == 0)
+		return;
+
+	iface = g_object_get_data (G_OBJECT (ip6), IP_CONFIG_IFACE_TAG);
+	g_assert (iface);
+
+	if (do_fallback)
+		strings = fallback;
+	else
+		strings = g_ptr_array_new ();
+
+	/* nameservers */
+	for (i = 0; i < n; i++) {
+		addr = nm_ip6_config_get_nameserver (ip6, 0);
+		buf = ip6_addr_to_string (addr, iface);
+		g_ptr_array_add (strings, buf);
+	}
+
+	if (do_fallback)
+		return;
+
+	g_ptr_array_add (strings, NULL);
+
+	network = g_value_array_new (4);
+
+	g_value_init (&value, G_TYPE_STRING);
+	g_value_set_string (&value, iface);
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	/* domains */
+	strings = g_ptr_array_new ();
+	n = nm_ip6_config_get_num_domains (ip6);
+	for (i = 0; i < n; i++)
+		g_ptr_array_add (strings, g_strdup (nm_ip6_config_get_domain (ip6, i)));
+	n = nm_ip6_config_get_num_searches (ip6);
+	for (i = 0; i < n; i++)
+		g_ptr_array_add (strings, g_strdup (nm_ip6_config_get_search (ip6, i)));
+	g_ptr_array_add (strings, NULL);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	/* IP ranges */
+	n = nm_ip6_config_get_num_routes (ip6);
+	for (i = 0; i < n; i++) {
+		NMPlatformIP6Route *route = nm_ip6_config_get_route (ip6, i);
+
+		buf = ip6_addr_to_string (&route->network, iface);		
+		g_ptr_array_add (strings, g_strdup_printf ("%s/%d", buf, route->plen));
+		g_free (buf);
+	}
+
+	g_ptr_array_add (strings, NULL);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (strings, FALSE));
+	g_value_array_append (network, &value);
+	g_value_unset (&value);
+
+	g_ptr_array_add (networks, network);
+}
+
+static GValueArray *
+build_split_dns_config (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+	GValueArray *config;
+	GValue value = G_VALUE_INIT;
+	GPtrArray *networks;
+	GPtrArray *fallback_ns;
+	GSList *iter;
+
+	networks = g_ptr_array_new ();
+	fallback_ns = g_ptr_array_new ();
+
+	if (priv->ip4_vpn_config)
+		add_ip4_config_to_split_dns (priv->ip4_vpn_config, networks, fallback_ns);
+	if (priv->ip6_vpn_config)
+		add_ip6_config_to_split_dns (priv->ip6_vpn_config, networks, fallback_ns);
+	if (priv->ip4_device_config)
+		add_ip4_config_to_split_dns (priv->ip4_device_config, networks, fallback_ns);
+	if (priv->ip6_device_config)
+		add_ip6_config_to_split_dns (priv->ip6_device_config, networks, fallback_ns);
+
+	for (iter = priv->configs; iter; iter = iter->next) {
+		if (   (iter->data == priv->ip4_vpn_config)
+		    || (iter->data == priv->ip4_device_config)
+		    || (iter->data == priv->ip6_vpn_config)
+		    || (iter->data == priv->ip6_device_config))
+			continue;
+
+		if (NM_IS_IP4_CONFIG (iter->data))
+			add_ip4_config_to_split_dns (iter->data, networks, fallback_ns);
+		else if (NM_IS_IP6_CONFIG (iter->data))
+			add_ip6_config_to_split_dns (iter->data, networks, fallback_ns);
+	}
+
+	g_ptr_array_add (fallback_ns, NULL);
+
+	config = g_value_array_new (2);
+
+	g_value_init (&value, DBUS_TYPE_NM_SPLIT_DNS_NETWORKS);
+	g_value_take_boxed (&value, networks);
+	g_value_array_append (config, &value);
+	g_value_unset (&value);
+
+	g_value_init (&value, G_TYPE_STRV);
+	g_value_take_boxed (&value, g_ptr_array_free (fallback_ns, FALSE));
+	g_value_array_append (config, &value);
+	g_value_unset (&value);
+
+	return config;
+}
+
 /******************************************************************/
 
 NMDnsManager *
@@ -1053,6 +1383,8 @@ static void
 nm_dns_manager_init (NMDnsManager *self)
 {
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+	NMDBusManager *dbus_mgr;
+	DBusGConnection *connection;
 	const char *mode;
 
 	/* Set the initial hash */
@@ -1073,6 +1405,52 @@ nm_dns_manager_init (NMDnsManager *self)
 	if (priv->plugin) {
 		nm_log_info (LOGD_DNS, "DNS: loaded plugin %s", nm_dns_plugin_get_name (priv->plugin));
 		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_FAILED, G_CALLBACK (plugin_failed), self);
+	}
+
+	priv->nameservers = g_ptr_array_new_with_free_func (g_free);
+	priv->searches = g_ptr_array_new_with_free_func (g_free);
+	priv->nis_servers = g_ptr_array_new_with_free_func (g_free);
+	priv->wins_servers = g_ptr_array_new_with_free_func (g_free);
+
+	dbus_mgr = nm_dbus_manager_get ();
+	connection = nm_dbus_manager_get_connection (dbus_mgr);
+	dbus_g_connection_register_g_object (connection,
+	                                     NM_DBUS_PATH_DNS_MANAGER,
+	                                     G_OBJECT (self));
+	g_object_unref (dbus_mgr);
+}
+
+static void
+get_property (GObject *object, guint prop_id,
+              GValue *value, GParamSpec *pspec)
+{
+	NMDnsManager *self = NM_DNS_MANAGER (object);
+
+	switch (prop_id) {
+	case PROP_NAMESERVERS:
+		g_value_set_boxed (value, nm_dns_manager_get_nameservers (self));
+		break;
+	case PROP_DOMAIN:
+		g_value_set_string (value, nm_dns_manager_get_domain (self));
+		break;
+	case PROP_SEARCHES:
+		g_value_set_boxed (value, nm_dns_manager_get_searches (self));
+		break;
+	case PROP_NIS_DOMAIN:
+		g_value_set_string (value, nm_dns_manager_get_nis_domain (self));
+		break;
+	case PROP_NIS_SERVERS:
+		g_value_set_boxed (value, nm_dns_manager_get_nis_servers (self));
+		break;
+	case PROP_WINS_SERVERS:
+		g_value_set_boxed (value, nm_dns_manager_get_wins_servers (self));
+		break;
+	case PROP_SPLIT_DNS:
+		g_value_take_boxed (value, build_split_dns_config (self));
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
 	}
 }
 
@@ -1101,6 +1479,11 @@ dispose (GObject *object)
 	g_slist_free_full (priv->configs, g_object_unref);
 	priv->configs = NULL;
 
+	g_clear_pointer (&priv->nameservers, g_ptr_array_unref);
+	g_clear_pointer (&priv->searches, g_ptr_array_unref);
+	g_clear_pointer (&priv->nis_servers, g_ptr_array_unref);
+	g_clear_pointer (&priv->wins_servers, g_ptr_array_unref);
+
 	G_OBJECT_CLASS (nm_dns_manager_parent_class)->dispose (object);
 }
 
@@ -1122,17 +1505,63 @@ nm_dns_manager_class_init (NMDnsManagerClass *klass)
 	g_type_class_add_private (object_class, sizeof (NMDnsManagerPrivate));
 
 	/* virtual methods */
+	object_class->get_property = get_property;
 	object_class->dispose = dispose;
 	object_class->finalize = finalize;
 
-	/* signals */
-	signals[CONFIG_CHANGED] =
-		g_signal_new ("config-changed",
-		              G_OBJECT_CLASS_TYPE (object_class),
-		              G_SIGNAL_RUN_FIRST,
-		              G_STRUCT_OFFSET (NMDnsManagerClass, config_changed),
-		              NULL, NULL,
-		              g_cclosure_marshal_VOID__VOID,
-		              G_TYPE_NONE, 0);
+	/* properties */
+	g_object_class_install_property
+		(object_class, PROP_NAMESERVERS,
+		 g_param_spec_boxed (NM_DNS_MANAGER_NAMESERVERS,
+		                     "Nameservers",
+		                     "resolv.conf nameservers",
+		                     G_TYPE_STRV,
+		                     G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_DOMAIN,
+		 g_param_spec_string (NM_DNS_MANAGER_DOMAIN,
+		                      "Domain",
+		                      "resolv.conf domain",
+		                      NULL,
+		                      G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_SEARCHES,
+		 g_param_spec_boxed (NM_DNS_MANAGER_SEARCHES,
+		                     "Searches",
+		                     "resolv.conf searches",
+		                     G_TYPE_STRV,
+		                     G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_NIS_DOMAIN,
+		 g_param_spec_string (NM_DNS_MANAGER_NIS_DOMAIN,
+		                      "NIS Domain",
+		                      "NIS Domain",
+		                      NULL,
+		                      G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_NIS_SERVERS,
+		 g_param_spec_boxed (NM_DNS_MANAGER_NIS_SERVERS,
+		                     "NIS Servers",
+		                     "NIS Servers",
+		                     G_TYPE_STRV,
+		                     G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_WINS_SERVERS,
+		 g_param_spec_boxed (NM_DNS_MANAGER_WINS_SERVERS,
+		                     "WINS Servers",
+		                     "WINS Servers",
+		                     G_TYPE_STRV,
+		                     G_PARAM_READABLE));
+	g_object_class_install_property
+		(object_class, PROP_SPLIT_DNS,
+		 g_param_spec_boxed (NM_DNS_MANAGER_SPLIT_DNS,
+		                     "Split DNS",
+		                     "Split DNS configuration info",
+		                     DBUS_TYPE_NM_SPLIT_DNS_CONFIG,
+		                     G_PARAM_READABLE));
+
+	nm_dbus_manager_register_exported_type (nm_dbus_manager_get (),
+	                                        G_TYPE_FROM_CLASS (klass),
+	                                        &dbus_glib_nm_dns_manager_object_info);
 }
 

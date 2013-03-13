@@ -39,5 +39,9 @@
 #define DBUS_TYPE_G_IP6_ROUTE               (dbus_g_type_get_struct ("GValueArray", DBUS_TYPE_G_UCHAR_ARRAY, G_TYPE_UINT, DBUS_TYPE_G_UCHAR_ARRAY, G_TYPE_UINT, G_TYPE_INVALID))
 #define DBUS_TYPE_G_ARRAY_OF_IP6_ROUTE      (dbus_g_type_get_collection ("GPtrArray", DBUS_TYPE_G_IP6_ROUTE))
 
+#define DBUS_TYPE_NM_SPLIT_DNS_NETWORK      (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_STRV, G_TYPE_STRV, G_TYPE_STRV, G_TYPE_INVALID))
+#define DBUS_TYPE_NM_SPLIT_DNS_NETWORKS     (dbus_g_type_get_collection ("GPtrArray", DBUS_TYPE_NM_SPLIT_DNS_NETWORK))
+#define DBUS_TYPE_NM_SPLIT_DNS_CONFIG       (dbus_g_type_get_struct ("GValueArray", DBUS_TYPE_NM_SPLIT_DNS_NETWORKS, G_TYPE_STRV, G_TYPE_INVALID))
+
 #endif /* DBUS_GLIB_TYPES_H */
 

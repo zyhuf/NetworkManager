@@ -1928,7 +1928,7 @@ firewall_started (NMFirewallManager *manager,
 }
 
 static void
-dns_config_changed (NMDnsManager *dns_manager, gpointer user_data)
+dns_config_changed (NMDnsManager *dns_manager, GHashTable *properties, gpointer user_data)
 {
 	NMPolicy *policy = (NMPolicy *) user_data;
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (policy);
@@ -2097,8 +2097,8 @@ nm_policy_new (NMManager *manager, NMSettings *settings)
 	priv->fw_started_id = id;
 
 	priv->dns_manager = nm_dns_manager_get ();
-	priv->config_changed_id = g_signal_connect (priv->dns_manager, "config-changed",
-	                                              G_CALLBACK (dns_config_changed), policy);
+	priv->config_changed_id = g_signal_connect (priv->dns_manager, "properties-changed",
+	                                            G_CALLBACK (dns_config_changed), policy);
 
 	priv->resolver = g_resolver_get_default ();
 

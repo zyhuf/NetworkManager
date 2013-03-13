@@ -336,6 +336,7 @@ glue_sources = \
 	nm-device-wifi-glue.h \
 	nm-dhcp4-config-glue.h \
 	nm-dhcp6-config-glue.h \
+	nm-dns-manager-glue.h \
 	nm-ip4-config-glue.h \
 	nm-ip6-config-glue.h \
 	nm-manager-glue.h \

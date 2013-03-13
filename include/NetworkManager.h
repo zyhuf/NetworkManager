@@ -74,6 +74,9 @@
 #define NM_DBUS_INTERFACE_SECRET_AGENT    NM_DBUS_INTERFACE ".SecretAgent"
 #define NM_DBUS_PATH_SECRET_AGENT         "/org/freedesktop/NetworkManager/SecretAgent"
 
+#define NM_DBUS_INTERFACE_DNS_MANAGER     NM_DBUS_INTERFACE ".DnsManager"
+#define NM_DBUS_PATH_DNS_MANAGER          "/org/freedesktop/NetworkManager/DnsManager"
+
 /**
  * NMState:
  * @NM_STATE_UNKNOWN: networking state is unknown

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/freedesktop/NetworkManager/DnsManager" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.freedesktop.NetworkManager.DnsManager">
+
+    <property name="Nameservers" type="as" access="read">
+      <tp:docstring>
+	The current list of DNS nameservers, as IP address strings.
+      </tp:docstring>
+    </property>
+
+    <property name="Domain" type="s" access="read">
+      <tp:docstring>
+	The current local domain name.
+      </tp:docstring>
+    </property>
+
+    <property name="Searches" type="as" access="read">
+      <tp:docstring>
+	The current search list for hostname lookup.
+      </tp:docstring>
+    </property>
+
+    <property name="NisDomain" type="s" access="read">
+      <tp:docstring>
+	The current NIS domain.
+      </tp:docstring>
+    </property>
+
+    <property name="NisServers" type="as" access="read">
+      <tp:docstring>
+	The current NIS servers, as IP address strings.
+      </tp:docstring>
+    </property>
+
+    <property name="WinsServers" type="as" access="read">
+      <tp:docstring>
+	The current WINS servers, as IP address strings.
+      </tp:docstring>
+    </property>
+
+    <property name="SplitDns" type="(a(sasasas)as)" access="read">
+      <tp:docstring>
+	Information for configuring "split DNS". Each element of the
+	first array defines a different network, defined as: the name
+	of the interface the configuration applies to, an array of
+	nameservers (as IP address strings), an array of domains
+	served by those nameservers, and an array of IP address ranges
+	served by those nameservers. The second array lists the
+	remaining "fallback" DNS servers.
+      </tp:docstring>
+    </property>
+
+    <signal name="PropertiesChanged">
+      <arg name="properties" type="a{sv}" tp:type="String_Variant_Map">
+        <tp:docstring>
+          A dictionary mapping property names to variant boxed values
+        </tp:docstring>
+      </arg>
+    </signal>
+
+  </interface>
+</node>
