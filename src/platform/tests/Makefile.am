@@ -33,7 +33,12 @@ noinst_PROGRAMS = \
 	test-route-fake \
 	test-route-linux \
 	test-cleanup-fake \
-	test-cleanup-linux
+	test-cleanup-linux \
+	libnl/test-link-identity \
+	libnl/test-address-identity \
+	libnl/test-route-identity \
+	libnl/test-route-add \
+	libnl/test-nl-cache
 
 EXTRA_DIST = test-common.h
 
