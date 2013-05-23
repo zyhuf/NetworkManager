@@ -67,6 +67,7 @@
 #include "nm-settings-utils.h"
 #include "nm-connection-provider.h"
 #include "nm-config.h"
+#include "nm-device-manager.h"
 #include "NetworkManagerUtils.h"
 
 /* LINKER CRACKROCK */
@@ -128,7 +129,6 @@ G_DEFINE_TYPE_EXTENDED (NMSettings, nm_settings, G_TYPE_OBJECT, 0,
 
 typedef struct {
 	NMDBusManager *dbus_mgr;
-
 	NMAgentManager *agent_mgr;
 
 	NMConfig *config;
@@ -1585,8 +1585,8 @@ default_wired_clear_tag (NMSettings *self,
 		nm_config_set_ethernet_no_auto_default (NM_SETTINGS_GET_PRIVATE (self)->config, NM_CONFIG_DEVICE (device));
 }
 
-void
-nm_settings_device_added (NMSettings *self, NMDevice *device)
+static void
+device_added (NMDeviceManager *device_mgr, NMDevice *device, NMSettings *self)
 {
 	NMSettingsPrivate *priv = NM_SETTINGS_GET_PRIVATE (self);
 	NMConnection *connection;
@@ -1666,8 +1666,8 @@ nm_settings_device_added (NMSettings *self, NMDevice *device)
 	             nm_connection_get_id (NM_CONNECTION (added)));
 }
 
-void
-nm_settings_device_removed (NMSettings *self, NMDevice *device, gboolean quitting)
+static void
+device_removed (NMDeviceManager *device_mgr, NMDevice *device, gboolean quitting, NMSettings *self)
 {
 	NMSettingsConnection *connection;
 
@@ -1802,6 +1802,11 @@ nm_settings_new (GError **error)
 	priv->config = nm_config_get ();
 	priv->dbus_mgr = nm_dbus_manager_get ();
 
+	g_signal_connect (nm_device_manager_get (), NM_DM_SIGNAL_DEVICE_ADDED,
+	                  G_CALLBACK (device_added), self);
+	g_signal_connect (nm_device_manager_get (), NM_DM_SIGNAL_DEVICE_REMOVED,
+	                  G_CALLBACK (device_removed), self);
+
 	/* Load the plugins; fail if a plugin is not found. */
 	if (!load_plugins (self, nm_config_get_plugins (priv->config), error)) {
 		g_object_unref (self);
@@ -1850,6 +1855,11 @@ dispose (GObject *object)
 	priv->auths = NULL;
 
 	priv->dbus_mgr = NULL;
+
+	g_signal_handlers_disconnect_by_func (nm_device_manager_get (),
+	                                      G_CALLBACK (device_added), self);
+	g_signal_handlers_disconnect_by_func (nm_device_manager_get (),
+	                                      G_CALLBACK (device_removed), self);
 
 	g_object_unref (priv->agent_mgr);
 

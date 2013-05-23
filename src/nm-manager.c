@@ -40,6 +40,7 @@
 #include "nm-dbus-manager.h"
 #include "nm-vpn-manager.h"
 #include "nm-device.h"
+#include "nm-device-manager.h"
 #include "nm-device-ethernet.h"
 #include "nm-device-wifi.h"
 #include "nm-device-olpc-mesh.h"
@@ -134,6 +135,7 @@ static void add_device (NMManager *self, NMDevice *device, gboolean generate_con
 static void remove_device (NMManager *self, NMDevice *device, gboolean quitting);
 
 static void hostname_provider_init (NMHostnameProviderInterface *provider_iface);
+static void device_manager_init (NMDeviceManagerInterface *manager_iface);
 
 static NMActiveConnection *_new_active_connection (NMManager *self,
                                                    NMConnection *connection,
@@ -229,12 +231,12 @@ typedef struct {
 #define NM_MANAGER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_MANAGER, NMManagerPrivate))
 
 G_DEFINE_TYPE_EXTENDED (NMManager, nm_manager, G_TYPE_OBJECT, 0,
-						G_IMPLEMENT_INTERFACE (NM_TYPE_HOSTNAME_PROVIDER,
-											   hostname_provider_init))
+                        G_IMPLEMENT_INTERFACE (NM_TYPE_HOSTNAME_PROVIDER,
+                                               hostname_provider_init)
+                        G_IMPLEMENT_INTERFACE (NM_TYPE_DEVICE_MANAGER,
+                                               device_manager_init))
 
 enum {
-	DEVICE_ADDED,
-	DEVICE_REMOVED,
 	STATE_CHANGED,
 	CHECK_PERMISSIONS,
 	USER_PERMISSIONS_CHANGED,
@@ -487,24 +489,6 @@ nm_manager_get_device_by_path (NMManager *manager, const char *path)
 		if (!strcmp (nm_device_get_path (NM_DEVICE (iter->data)), path))
 			return NM_DEVICE (iter->data);
 	}
-	return NULL;
-}
-
-NMDevice *
-nm_manager_get_device_by_master (NMManager *manager, const char *master, const char *driver)
-{
-	GSList *iter;
-
-	g_return_val_if_fail (master != NULL, NULL);
-
-	for (iter = NM_MANAGER_GET_PRIVATE (manager)->devices; iter; iter = iter->next) {
-		NMDevice *device = NM_DEVICE (iter->data);
-
-		if (!strcmp (nm_device_get_iface (device), master) &&
-		    (!driver || !strcmp (nm_device_get_driver (device), driver)))
-			return device;
-	}
-
 	return NULL;
 }
 
@@ -764,8 +748,7 @@ remove_device (NMManager *manager, NMDevice *device, gboolean quitting)
 
 	g_signal_handlers_disconnect_matched (device, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, manager);
 
-	nm_settings_device_removed (priv->settings, device, quitting);
-	g_signal_emit (manager, signals[DEVICE_REMOVED], 0, device);
+	g_signal_emit_by_name (manager, NM_DM_SIGNAL_DEVICE_REMOVED, 0, device, quitting);
 	g_object_notify (G_OBJECT (manager), NM_MANAGER_DEVICES);
 	g_object_unref (device);
 
@@ -830,6 +813,18 @@ static void
 hostname_provider_init (NMHostnameProviderInterface *provider_iface)
 {
 	provider_iface->get_hostname = hostname_provider_get_hostname;
+}
+
+static const GSList *
+device_manager_get_devices (NMDeviceManager *device_manager)
+{
+	return NM_MANAGER_GET_PRIVATE (device_manager)->devices;
+}
+
+static void
+device_manager_init (NMDeviceManagerInterface *manager_iface)
+{
+	manager_iface->get_devices = device_manager_get_devices;
 }
 
 NMState
@@ -1862,8 +1857,7 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 		                                          NM_DEVICE_STATE_REASON_NOW_MANAGED);
 	}
 
-	nm_settings_device_added (priv->settings, device);
-	g_signal_emit (self, signals[DEVICE_ADDED], 0, device);
+	g_signal_emit_by_name (self, NM_DM_SIGNAL_DEVICE_ADDED, 0, device);
 	g_object_notify (G_OBJECT (self), NM_MANAGER_DEVICES);
 
 	/* New devices might be master interfaces for virtual interfaces; so we may
@@ -4590,6 +4584,13 @@ nm_connection_provider_get (void)
 	return NM_CONNECTION_PROVIDER (NM_MANAGER_GET_PRIVATE (singleton)->settings);
 }
 
+NMDeviceManager *
+nm_device_manager_get (void)
+{
+	g_assert (singleton);
+	return NM_DEVICE_MANAGER (singleton);
+}
+
 NMManager *
 nm_manager_new (NMSettings *settings,
                 const char *state_file,
@@ -5158,22 +5159,6 @@ nm_manager_class_init (NMManagerClass *manager_class)
 		                     G_PARAM_READABLE));
 
 	/* signals */
-	signals[DEVICE_ADDED] =
-		g_signal_new ("device-added",
-		              G_OBJECT_CLASS_TYPE (object_class),
-		              G_SIGNAL_RUN_FIRST,
-		              G_STRUCT_OFFSET (NMManagerClass, device_added),
-		              NULL, NULL, NULL,
-		              G_TYPE_NONE, 1, G_TYPE_OBJECT);
-
-	signals[DEVICE_REMOVED] =
-		g_signal_new ("device-removed",
-		              G_OBJECT_CLASS_TYPE (object_class),
-		              G_SIGNAL_RUN_FIRST,
-		              G_STRUCT_OFFSET (NMManagerClass, device_removed),
-		              NULL, NULL, NULL,
-		              G_TYPE_NONE, 1, G_TYPE_OBJECT);
-
 	signals[STATE_CHANGED] =
 		g_signal_new ("state-changed",
 		              G_OBJECT_CLASS_TYPE (object_class),

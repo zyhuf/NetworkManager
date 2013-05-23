@@ -50,7 +50,7 @@
 #include "nm-activation-request.h"
 #include "nm-setting-connection.h"
 #include "nm-setting-olpc-mesh.h"
-#include "nm-manager.h"
+#include "nm-device-manager.h"
 #include "nm-enum-types.h"
 #include "nm-dbus-manager.h"
 #include "wifi-utils.h"
@@ -375,9 +375,9 @@ dispose (GObject *object)
 	companion_cleanup (self);
 
 	if (priv->device_added_id)
-		g_signal_handler_disconnect (nm_manager_get (), priv->device_added_id);
+		g_signal_handler_disconnect (nm_device_manager_get (), priv->device_added_id);
 	if (priv->device_removed_id)
-		g_signal_handler_disconnect (nm_manager_get (), priv->device_removed_id);
+		g_signal_handler_disconnect (nm_device_manager_get (), priv->device_removed_id);
 
 	G_OBJECT_CLASS (nm_device_olpc_mesh_parent_class)->dispose (object);
 }
@@ -547,7 +547,7 @@ is_companion (NMDeviceOlpcMesh *self, NMDevice *other)
 
 	/* When we've found the companion, stop listening for other devices */
 	if (priv->device_added_id) {
-		g_signal_handler_disconnect (nm_manager_get (), priv->device_added_id);
+		g_signal_handler_disconnect (nm_device_manager_get (), priv->device_added_id);
 		priv->device_added_id = 0;
 	}
 
@@ -577,7 +577,7 @@ is_companion (NMDeviceOlpcMesh *self, NMDevice *other)
 }
 
 static void
-device_added_cb (NMManager *manager, NMDevice *other, gpointer user_data)
+device_added_cb (NMDeviceManager *device_manager, NMDevice *other, gpointer user_data)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 
@@ -585,7 +585,7 @@ device_added_cb (NMManager *manager, NMDevice *other, gpointer user_data)
 }
 
 static void
-device_removed_cb (NMManager *manager, NMDevice *other, gpointer user_data)
+device_removed_cb (NMDeviceManager *device_manager, NMDevice *other, gpointer user_data)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 
@@ -598,8 +598,8 @@ check_companion_cb (gpointer user_data)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
-	NMManager *manager;
-	GSList *list;
+	NMDeviceManager *device_manager;
+	const GSList *list;
 
 	if (priv->companion != NULL) {
 		nm_device_state_changed (NM_DEVICE (user_data),
@@ -611,17 +611,17 @@ check_companion_cb (gpointer user_data)
 	if (priv->device_added_id != 0)
 		goto done;
 
-	manager = nm_manager_get ();
+	device_manager = nm_device_manager_get ();
 
-	priv->device_added_id = g_signal_connect (manager, "device-added",
+	priv->device_added_id = g_signal_connect (device_manager, NM_DM_SIGNAL_DEVICE_ADDED,
 	                                          G_CALLBACK (device_added_cb), self);
 	if (!priv->device_removed_id) {
-		priv->device_removed_id = g_signal_connect (manager, "device-removed",
+		priv->device_removed_id = g_signal_connect (device_manager, NM_DM_SIGNAL_DEVICE_REMOVED,
 	                                                G_CALLBACK (device_removed_cb), self);
 	}
 
-	/* Try to find the companion if it's already known to the NMManager */
-	for (list = nm_manager_get_devices (manager); list ; list = g_slist_next (list)) {
+	/* Try to find the companion if it's already known to the NMDeviceManager */
+	for (list = nm_device_manager_get_devices (device_manager); list ; list = g_slist_next (list)) {
 		if (is_companion (self, NM_DEVICE (list->data)))
 			break;
 	}

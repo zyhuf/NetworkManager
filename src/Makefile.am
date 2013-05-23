@@ -208,6 +208,8 @@ nm_sources = \
 	nm-connection-provider.h \
 	nm-connectivity.c \
 	nm-connectivity.h \
+	nm-device-manager.c \
+	nm-device-manager.h \
 	nm-dbus-manager.c \
 	nm-dbus-manager.h \
 	nm-dcb.c \

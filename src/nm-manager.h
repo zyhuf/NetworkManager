@@ -85,8 +85,6 @@ typedef struct {
 	GObjectClass parent;
 
 	/* Signals */
-	void (*device_added) (NMManager *manager, NMDevice *device);
-	void (*device_removed) (NMManager *manager, NMDevice *device);
 	void (*state_changed) (NMManager *manager, guint state);
 } NMManagerClass;
 
@@ -112,9 +110,6 @@ GSList *nm_manager_get_activatable_connections (NMManager *manager);
 
 GSList *nm_manager_get_devices (NMManager *manager);
 
-NMDevice *nm_manager_get_device_by_master (NMManager *manager,
-                                           const char *master,
-                                           const char *driver);
 NMDevice *nm_manager_get_device_by_ifindex (NMManager *manager,
                                             int ifindex);
 
