@@ -16,9 +16,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Copyright (C) 2009 Novell, Inc.
+ * Copyright (C) 2013 Red Hat, Inc.
  */
 
 #include "nm-hostname-provider.h"
+
+G_DEFINE_INTERFACE (NMHostnameProvider, nm_hostname_provider, G_TYPE_OBJECT)
 
 const char *
 nm_hostname_provider_get_hostname (NMHostnameProvider *self)
@@ -28,27 +31,7 @@ nm_hostname_provider_get_hostname (NMHostnameProvider *self)
 	return NM_HOSTNAME_PROVIDER_GET_INTERFACE (self)->get_hostname (self);
 }
 
-GType
-nm_hostname_provider_get_type (void)
+static void
+nm_hostname_provider_default_init (NMHostnameProviderInterface *iface)
 {
-    static GType type = 0;
-
-    if (!G_UNLIKELY (type)) {
-        const GTypeInfo type_info = {
-            sizeof (NMHostnameProvider), /* class_size */
-            NULL,   /* base_init */
-            NULL,       /* base_finalize */
-            NULL,
-            NULL,       /* class_finalize */
-            NULL,       /* class_data */
-            0,
-            0,              /* n_preallocs */
-            NULL
-        };
-
-        type = g_type_register_static (G_TYPE_INTERFACE, "NMHostnameProvider", &type_info, 0);
-        g_type_interface_add_prerequisite (type, G_TYPE_OBJECT);
-    }
-
-    return type;
 }

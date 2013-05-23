@@ -22,9 +22,10 @@
 #define NM_TYPE_CONNECTION_PROVIDER      (nm_connection_provider_get_type ())
 #define NM_CONNECTION_PROVIDER(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_CONNECTION_PROVIDER, NMConnectionProvider))
 #define NM_IS_CONNECTION_PROVIDER(obj)   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NM_TYPE_CONNECTION_PROVIDER))
-#define NM_CONNECTION_PROVIDER_GET_INTERFACE(obj) (G_TYPE_INSTANCE_GET_INTERFACE ((obj), NM_TYPE_CONNECTION_PROVIDER, NMConnectionProvider))
+#define NM_CONNECTION_PROVIDER_GET_INTERFACE(obj) (G_TYPE_INSTANCE_GET_INTERFACE ((obj), NM_TYPE_CONNECTION_PROVIDER, NMConnectionProviderInterface))
 
 typedef struct _NMConnectionProvider NMConnectionProvider;
+typedef struct _NMConnectionProviderInterface NMConnectionProviderInterface;
 
 #define NM_CP_SIGNAL_CONNECTION_ADDED        "cp-connection-added"
 #define NM_CP_SIGNAL_CONNECTION_UPDATED      "cp-connection-updated"
@@ -44,7 +45,7 @@ typedef gboolean (*NMConnectionFilterFunc) (NMConnectionProvider *provider,
                                             gpointer func_data);
 
 
-struct _NMConnectionProvider {
+struct _NMConnectionProviderInterface {
 	GTypeInterface g_iface;
 
 	/* Methods */
@@ -106,25 +107,8 @@ GSList *nm_connection_provider_get_best_connections (NMConnectionProvider *self,
                                                      NMConnectionFilterFunc func,
                                                      gpointer func_data);
 
-/**
- * nm_connection_provider_get_connections:
- * @self: the #NMConnectionProvider
- *
- * Returns: a #GSList of #NMConnection objects representing all known
- *   connections.  Returned list is owned by the connection provider and must
- *   not be freed.
- */
 const GSList *nm_connection_provider_get_connections (NMConnectionProvider *self);
 
-/**
- * nm_connection_provider_add_connection:
- * @self: the #NMConnectionProvider
- * @connection: the connection to be added
- * @save_to_disk: whether to store the connection on disk
- * @error: returns any error if adding fails
- *
- * returns: a newly added #NMConnection.
- */
 NMConnection *nm_connection_provider_add_connection (NMConnectionProvider *self,
                                                      NMConnection *connection,
                                                      gboolean save_to_disk,

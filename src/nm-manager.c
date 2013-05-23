@@ -133,7 +133,7 @@ static void impl_manager_check_connectivity (NMManager *manager,
 static void add_device (NMManager *self, NMDevice *device, gboolean generate_con);
 static void remove_device (NMManager *self, NMDevice *device, gboolean quitting);
 
-static void hostname_provider_init (NMHostnameProvider *provider_class);
+static void hostname_provider_init (NMHostnameProviderInterface *provider_iface);
 
 static NMActiveConnection *_new_active_connection (NMManager *self,
                                                    NMConnection *connection,
@@ -827,9 +827,9 @@ hostname_provider_get_hostname (NMHostnameProvider *provider)
 }
 
 static void
-hostname_provider_init (NMHostnameProvider *provider_class)
+hostname_provider_init (NMHostnameProviderInterface *provider_iface)
 {
-	provider_class->get_hostname = hostname_provider_get_hostname;
+	provider_iface->get_hostname = hostname_provider_get_hostname;
 }
 
 NMState

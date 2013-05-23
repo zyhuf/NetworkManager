@@ -16,6 +16,24 @@
 #include "nm-connection-provider.h"
 #include "nm-utils.h"
 
+G_DEFINE_INTERFACE (NMConnectionProvider, nm_connection_provider, G_TYPE_OBJECT)
+
+/**
+ * nm_connection_provider_get_best_connections:
+ * @self: the #NMConnectionProvider
+ * @max_requested: if non-zero, the maximum number of connections to return
+ * @ctype1: an #NMSetting base type (eg NM_SETTING_WIRELESS_SETTING_NAME) to
+ *   filter connections against
+ * @ctype2: a second #NMSetting base type (eg NM_SETTING_WIRELESS_SETTING_NAME)
+ *   to filter connections against
+ * @func: caller-supplied function for filtering connections
+ * @func_data: caller-supplied data passed to @func
+ *
+ * Returns: a #GSList of #NMConnection objects in sorted order representing the
+ *   "best" or highest-priority connections filtered by @ctype1 and/or @ctype2,
+ *   and/or @func.  Caller is responsible for freeing the returned #GSList, but
+ *   the contained values do not need to be unreffed.
+ */
 GSList *
 nm_connection_provider_get_best_connections (NMConnectionProvider *self,
                                              guint max_requested,
@@ -31,6 +49,14 @@ nm_connection_provider_get_best_connections (NMConnectionProvider *self,
 	return NULL;
 }
 
+/**
+ * nm_connection_provider_get_connections:
+ * @self: the #NMConnectionProvider
+ *
+ * Returns: a #GSList of #NMConnection objects representing all known
+ *   connections.  Returned list is owned by the connection provider and must
+ *   not be freed.
+ */
 const GSList *
 nm_connection_provider_get_connections (NMConnectionProvider *self)
 {
@@ -89,20 +115,15 @@ nm_connection_provider_get_connection_by_uuid (NMConnectionProvider *self,
 /*****************************************************************************/
 
 static void
-nm_connection_provider_init (gpointer g_iface)
+nm_connection_provider_default_init (NMConnectionProviderInterface *iface)
 {
-	GType iface_type = G_TYPE_FROM_INTERFACE (g_iface);
-	static gboolean initialized = FALSE;
-
-	if (initialized)
-		return;
-	initialized = TRUE;
+	GType iface_type = G_TYPE_FROM_INTERFACE (iface);
 
 	/* Signals */
 	g_signal_new (NM_CP_SIGNAL_CONNECTION_ADDED,
 	              iface_type,
 	              G_SIGNAL_RUN_FIRST,
-	              G_STRUCT_OFFSET (NMConnectionProvider, connection_added),
+	              G_STRUCT_OFFSET (NMConnectionProviderInterface, connection_added),
 	              NULL, NULL,
 	              g_cclosure_marshal_VOID__OBJECT,
 	              G_TYPE_NONE, 1, G_TYPE_OBJECT);
@@ -110,7 +131,7 @@ nm_connection_provider_init (gpointer g_iface)
 	g_signal_new (NM_CP_SIGNAL_CONNECTION_UPDATED,
 	              iface_type,
 	              G_SIGNAL_RUN_FIRST,
-	              G_STRUCT_OFFSET (NMConnectionProvider, connection_updated),
+	              G_STRUCT_OFFSET (NMConnectionProviderInterface, connection_updated),
 	              NULL, NULL,
 	              g_cclosure_marshal_VOID__OBJECT,
 	              G_TYPE_NONE, 1, G_TYPE_OBJECT);
@@ -118,33 +139,8 @@ nm_connection_provider_init (gpointer g_iface)
 	g_signal_new (NM_CP_SIGNAL_CONNECTION_REMOVED,
 	              iface_type,
 	              G_SIGNAL_RUN_FIRST,
-	              G_STRUCT_OFFSET (NMConnectionProvider, connection_removed),
+	              G_STRUCT_OFFSET (NMConnectionProviderInterface, connection_removed),
 	              NULL, NULL,
 	              g_cclosure_marshal_VOID__OBJECT,
 	              G_TYPE_NONE, 1, G_TYPE_OBJECT);
-}
-
-GType
-nm_connection_provider_get_type (void)
-{
-	static GType cp_type = 0;
-
-	if (!G_UNLIKELY (cp_type)) {
-		const GTypeInfo cp_info = {
-			sizeof (NMConnectionProvider), /* class_size */
-			nm_connection_provider_init,   /* base_init */
-			NULL,       /* base_finalize */
-			NULL,
-			NULL,       /* class_finalize */
-			NULL,       /* class_data */
-			0,
-			0,          /* n_preallocs */
-			NULL
-		};
-
-		cp_type = g_type_register_static (G_TYPE_INTERFACE, "NMConnectionProvider", &cp_info, 0);
-		g_type_interface_add_prerequisite (cp_type, G_TYPE_OBJECT);
-	}
-
-	return cp_type;
 }

@@ -26,11 +26,12 @@
 #define NM_TYPE_HOSTNAME_PROVIDER (nm_hostname_provider_get_type ())
 #define NM_HOSTNAME_PROVIDER(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_HOSTNAME_PROVIDER, NMHostnameProvider))
 #define NM_IS_HOSTNAME_PROVIDER(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NM_TYPE_HOSTNAME_PROVIDER))
-#define NM_HOSTNAME_PROVIDER_GET_INTERFACE(obj) (G_TYPE_INSTANCE_GET_INTERFACE ((obj), NM_TYPE_HOSTNAME_PROVIDER, NMHostnameProvider))
+#define NM_HOSTNAME_PROVIDER_GET_INTERFACE(obj) (G_TYPE_INSTANCE_GET_INTERFACE ((obj), NM_TYPE_HOSTNAME_PROVIDER, NMHostnameProviderInterface))
 
 typedef struct _NMHostnameProvider NMHostnameProvider;
+typedef struct _NMHostnameProviderInterface NMHostnameProviderInterface;
 
-struct _NMHostnameProvider {
+struct _NMHostnameProviderInterface {
 	GTypeInterface g_iface;
 
 	/* Methods */
