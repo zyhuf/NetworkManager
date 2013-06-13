@@ -264,6 +264,33 @@ typedef struct {
 	                        NMSecretAgentDeleteSecretsFunc callback,
 	                        gpointer user_data);
 
+	/* Device Secrets
+	 *
+	 * These are secrets not specific to a connection, but specific to a device,
+	 * like WWAN PIN codes.
+	 */
+
+	/* Called when the subclass should request device-specific secrets
+	 * from the user or from backing storage.  If the request is canceled, the
+	 * callback should still be called, but with the
+	 * NM_SECRET_AGENT_ERROR_AGENT_CANCELED error.
+	 */
+	void (*get_device_secrets) (NMSecretAgent *self,
+	                            const char *device_path,
+	                            GHashTable *hints,
+	                            NMSecretAgentGetSecretsFlags flags,
+	                            NMSecretAgentGetSecretsFunc callback,
+	                            gpointer user_data);
+
+	/* Called when the subclass should cancel an outstanding request to
+	 * get secrets for a given device.  Canceling the request MUST
+	 * call the callback that was passed along with the initial get_secrets
+	 * call, sending the NM_SECRET_AGENT_ERROR/NM_SECRET_AGENT_ERROR_AGENT_CANCELED
+	 * error to that callback.
+	 */
+	void (*cancel_get_device_secrets) (NMSecretAgent *self,
+	                                   const char *device_path);
+
 	/* Signals */
 	void (*registration_result) (NMSecretAgent *agent, GError *error);
 

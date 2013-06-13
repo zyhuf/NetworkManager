@@ -52,6 +52,16 @@ static void impl_secret_agent_delete_secrets (NMSecretAgent *self,
                                               const char *connection_path,
                                               DBusGMethodInvocation *context);
 
+static void impl_secret_agent_get_device_secrets (NMSecretAgent *self,
+                                                  const char *device_path,
+                                                  GHashTable *hints,
+                                                  guint32 flags,
+                                                  DBusGMethodInvocation *context);
+
+static void impl_secret_agent_cancel_get_device_secrets (NMSecretAgent *self,
+                                                         const char *device_path,
+                                                         DBusGMethodInvocation *context);
+
 #include "nm-secret-agent-glue.h"
 
 G_DEFINE_ABSTRACT_TYPE (NMSecretAgent, nm_secret_agent, G_TYPE_OBJECT)
@@ -70,8 +80,7 @@ typedef struct {
 	DBusGProxy *manager_proxy;
 	DBusGProxyCall *reg_call;
 
-	/* GetSecretsInfo structs of in-flight GetSecrets requests */
-	GSList *pending_gets;
+	GSList *requests;
 
 	char *nm_owner;
 
@@ -150,24 +159,18 @@ _internal_unregister (NMSecretAgent *self)
 }
 
 typedef struct {
-	char *path;
-	char *setting_name;
+	char *path;  /* connection or device */
+	char *setting_name;  /* NULL for device secrets */
 	DBusGMethodInvocation *context;
-} GetSecretsInfo;
+} Request;
 
 static void
-get_secrets_info_finalize (NMSecretAgent *self, GetSecretsInfo *info)
+request_free (Request *req)
 {
-	NMSecretAgentPrivate *priv = NM_SECRET_AGENT_GET_PRIVATE (self);
-
-	g_return_if_fail (info != NULL);
-
-	priv->pending_gets = g_slist_remove (priv->pending_gets, info);
-
-	g_free (info->path);
-	g_free (info->setting_name);
-	memset (info, 0, sizeof (*info));
-	g_free (info);
+	g_free (req->path);
+	g_free (req->setting_name);
+	memset (req, 0, sizeof (*req));
+	g_free (req);
 }
 
 static void
@@ -192,15 +195,15 @@ name_owner_changed (DBusGProxy *proxy,
 			auto_register_cb (self);
 		} else if (old_owner_good && !new_owner_good) {
 			/* Cancel any pending secrets requests */
-			for (iter = priv->pending_gets; iter; iter = g_slist_next (iter)) {
-				GetSecretsInfo *info = iter->data;
+			for (iter = priv->requests; iter; iter = iter->next) {
+				Request *req = iter->data;
 
 				NM_SECRET_AGENT_GET_CLASS (self)->cancel_get_secrets (self,
-				                                                      info->path,
-				                                                      info->setting_name);
+				                                                      req->path,
+				                                                      req->setting_name);
 			}
-			g_slist_free (priv->pending_gets);
-			priv->pending_gets = NULL;
+			g_slist_free (priv->requests);
+			priv->requests = NULL;
 
 			/* NM disappeared */
 			_internal_unregister (self);
@@ -354,15 +357,17 @@ get_secrets_cb (NMSecretAgent *self,
                 GError *error,
                 gpointer user_data)
 {
-	GetSecretsInfo *info = user_data;
+	NMSecretAgentPrivate *priv = NM_SECRET_AGENT_GET_PRIVATE (self);
+	Request *req = user_data;
 
 	if (error)
-		dbus_g_method_return_error (info->context, error);
+		dbus_g_method_return_error (req->context, error);
 	else
-		dbus_g_method_return (info->context, secrets);
+		dbus_g_method_return (req->context, secrets);
 
 	/* Remove the request from internal tracking */
-	get_secrets_info_finalize (self, info);
+	priv->pending_requests = g_slist_remove (priv->pending_requests, req);
+	request_free (requ);
 }
 
 static void
@@ -811,6 +816,25 @@ nm_secret_agent_delete_secrets (NMSecretAgent *self,
 	                                                  nm_connection_get_path (connection),
 	                                                  callback,
 	                                                  user_data);
+}
+
+/**************************************************************/
+
+static void
+impl_secret_agent_get_device_secrets (NMSecretAgent *self,
+                                      const char *device_path,
+                                      GHashTable *hints,
+                                      guint32 flags,
+                                      DBusGMethodInvocation *context)
+{
+}
+
+static void
+impl_secret_agent_cancel_get_device_secrets (NMSecretAgent *self,
+                                             const char *device_path,
+                                             GHashTable *hints,
+                                             DBusGMethodInvocation *context)
+{
 }
 
 /**************************************************************/
