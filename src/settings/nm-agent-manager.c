@@ -228,6 +228,10 @@ agent_register_permissions_done (NMAuthChain *chain,
 		if (result == NM_AUTH_CALL_RESULT_YES)
 			nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, TRUE);
 
+		result = nm_auth_chain_get_result (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL);
+		if (result == NM_AUTH_CALL_RESULT_YES)
+			nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_NETWORK_CONTROL, TRUE);
+
 		sender = nm_secret_agent_get_dbus_owner (agent);
 		g_hash_table_insert (priv->agents, g_strdup (sender), agent);
 		nm_log_dbg (LOGD_AGENTS, "(%s) agent registered",
@@ -327,6 +331,7 @@ impl_agent_manager_register_with_capabilities (NMAgentManager *self,
 		nm_auth_chain_set_data (chain, "agent", agent, g_object_unref);
 		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, FALSE);
 		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, FALSE);
+		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL, FALSE);
 
 		priv->chains = g_slist_append (priv->chains, chain);
 	} else {
@@ -1416,6 +1421,122 @@ nm_agent_manager_delete_secrets (NMAgentManager *self,
 
 /*************************************************************/
 
+/* Request subclass for device secrets */
+typedef struct {
+	Request parent;
+
+	NMSettingsGetSecretsFlags flags;
+	const char *device_path;
+	GHashTable *hints;
+
+	NMAgentDeviceSecretsResultFunc callback;
+	gpointer callback_data;
+
+	NMAuthChain *chain;
+
+	/* Whether the agent currently being asked for secrets
+	 * has the network.control privilege.
+	 */
+	gboolean current_has_control;
+} DeviceRequest;
+
+static void
+connection_request_free (gpointer data)
+{
+	ConnectionRequest *req = data;
+
+	g_object_unref (req->connection);
+	g_free (req->setting_name);
+	g_strfreev (req->hints);
+	if (req->existing_secrets)
+		g_hash_table_unref (req->existing_secrets);
+	if (req->chain)
+		nm_auth_chain_unref (req->chain);
+}
+
+static DeviceRequest *
+device_request_new_get (const char *device_path,
+                        const char *iface,
+                        const char *verb,
+                        NMSettingsGetSecretsFlags flags,
+                        GHashTable *hints,
+                        NMAgentDeviceSecretsResultFunc callback,
+                        gpointer callback_data,
+                        RequestCompleteFunc complete_callback,
+                        gpointer complete_callback_data,
+                        RequestNextFunc next_callback,
+                        RequestCancelFunc cancel_callback)
+{
+	DeviceRequest *req;
+
+	req = (DeviceRequest *) request_new (sizeof (DeviceRequest),
+	                                     device_path,
+	                                     getting,
+	                                     FALSE,
+	                                     0,
+	                                     complete_callback,
+	                                     complete_callback_data,
+	                                     NULL,
+	                                     next_callback,
+	                                     cancel_callback,
+	                                     connection_request_free);
+	g_assert (req);
+
+	req->hints = g_strdupv ((char **) hints);
+	req->flags = flags;
+	req->callback = callback;
+	req->callback_data = callback_data;
+	return req;
+}
+
+guint32
+nm_agent_manager_get_device_secrets (NMAgentManager *manager,
+                                     const char *device_path,
+                                     const char *iface,
+                                     GHashTable *hints,
+                                     NMSettingsGetSecretsFlags flags,
+                                     NMAgentSecretsResultFunc callback,
+                                     gpointer callback_data)
+{
+	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
+	Request *parent;
+	ConnectionRequest *req;
+
+	g_return_val_if_fail (self != NULL, 0);
+	g_return_val_if_fail (device_path != NULL, 0);
+	g_return_val_if_fail (callback != NULL, 0);
+
+	nm_log_dbg (LOGD_SETTINGS, "(%s) device secrets requested for %s", iface, device_path);
+
+	req = request_new (sizeof (Request),
+	                   device_path,
+	                   "getting",
+	                   FALSE,
+	                   0,
+	                   RequestCompleteFunc complete_callback,
+	                   gpointer complete_callback_data,
+	                   RequestAddAgentFunc add_agent_callback,
+	                   RequestNextFunc next_callback,
+	                   RequestCancelFunc cancel_callback,
+	                   NULL);
+
+	g_hash_table_insert (priv->requests, GUINT_TO_POINTER (req->reqid), req);
+
+	/* Kick off the request */
+	if (!(req->flags & NM_SETTINGS_GET_SECRETS_FLAG_ONLY_SYSTEM))
+		request_add_agents (self, parent);
+	req->idle_id = g_idle_add (get_start, req);
+	return req->reqid;
+}
+
+void
+nm_agent_manager_device_cancel_secrets (NMAgentManager *manager,
+                                        guint32 request_id)
+{
+}
+
+/*************************************************************/
+
 NMSecretAgent *
 nm_agent_manager_get_agent_by_user (NMAgentManager *self, const char *username)
 {
@@ -1482,7 +1603,7 @@ agent_permissions_changed_done (NMAuthChain *chain,
 	NMAgentManager *self = NM_AGENT_MANAGER (user_data);
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
 	NMSecretAgent *agent;
-	gboolean share_protected = FALSE, share_open = FALSE;
+	gboolean share_protected = FALSE, share_open = FALSE, control = FALSE;
 
 	priv->chains = g_slist_remove (priv->chains, chain);
 
@@ -1500,10 +1621,13 @@ agent_permissions_changed_done (NMAuthChain *chain,
 			share_protected = TRUE;
 		if (nm_auth_chain_get_result (chain, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN) == NM_AUTH_CALL_RESULT_YES)
 			share_open = TRUE;
+		if (nm_auth_chain_get_result (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL) == NM_AUTH_CALL_RESULT_YES)
+			control = TRUE;
 	}
 
 	nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, share_protected);
 	nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, share_open);
+	nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_NETWORK_CONTROL, share_open);
 
 	nm_auth_chain_unref (chain);
 }
@@ -1534,6 +1658,7 @@ authority_changed_cb (NMAuthManager *auth_manager, NMAgentManager *self)
 		nm_auth_chain_set_data (chain, "agent", g_object_ref (agent), g_object_unref);
 		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, FALSE);
 		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, FALSE);
+		nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL, FALSE);
 	}
 }
 
