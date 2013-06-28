@@ -177,23 +177,9 @@ typedef struct {
 
 	gboolean        (* spec_match_list)     (NMDevice *self, const GSList *specs);
 
-	/* FIXME: We currently support match_l2_config() virtual function for
-	 * compatibility. When match_l2_config() is not present, we use the
-	 * new update_connection() virtual function which should first call
-	 * NMDevice's implementation and then perform type-specific adjustments.
-	 * 
-	 * Therefore subclasses that implement the new API *must* leave
-	 * match_l2_config set to NULL and implement update_connection, while
-	 * subclasses that implement the old API *must* set match_l2_config
-	 * (update_connection is ignored).
-	 *
-	 * Subclasses which don't implement any of the APIs for connection assumption
-	 * *should* leave generate_connection NULL.
-	 *
-	 * The update_connection() virtual function is also used for live
-	 * reconfiguration of the connection according to link level changes.
+	/* The update_connection() virtual function is used for connection generation
+	 * and device live reconfiguration.
 	 */
-	gboolean        (* match_l2_config) (NMDevice *self, NMConnection *connection);
 	void            (* update_connection) (NMDevice *device, NMConnection *connection);
 
 	const GByteArray * (* get_connection_hw_address) (NMDevice *self,
@@ -283,9 +269,6 @@ gboolean nm_device_check_connection_compatible (NMDevice *device,
                                                 GError **error);
 
 gboolean nm_device_can_assume_connections (NMDevice *device);
-
-NMConnection * nm_device_find_assumable_connection (NMDevice *device,
-                                                    const GSList *connections);
 
 gboolean nm_device_hwaddr_matches (NMDevice *device,
                                    NMConnection *connection,

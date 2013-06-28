@@ -1927,9 +1927,9 @@ local_slist_free (void *loc)
  *
  * 2) A generated connection to be assumed.
  *
- * 3) %NULL when none of the above is available.
- *
- * Supports both nm-device's match_l2_config() and update_connection().
+ * 3) %NULL when a connection wasn't be generated. That happens when
+ * the device is detected as unconfigured, when update_connection() is
+ * missing or when update_connection() fails.
  */
 static NMConnection *
 get_connection (NMManager *manager, NMDevice *device, gboolean *existing)
@@ -1942,27 +1942,6 @@ get_connection (NMManager *manager, NMDevice *device, gboolean *existing)
 
 	if (existing)
 		*existing = FALSE;
-
-	/* We still support the older API to match a NMDevice object to an
-	 * existing connection using nm_device_find_assumable_connection().
-	 *
-	 * When the older API is still available for a particular device
-	 * type, we use it. To opt for the newer interface, the NMDevice
-	 * subclass must omit the match_l2_config virtual function
-	 * implementation.
-	 */
-	if (NM_DEVICE_GET_CLASS (device)->match_l2_config) {
-		NMConnection *candidate = nm_device_find_assumable_connection (device, connections);
-
-		if (candidate) {
-			nm_log_info (LOGD_DEVICE, "(%s): Found matching connection '%s' (legacy API)",
-			            nm_device_get_iface (device),
-			            nm_connection_get_id (candidate));
-			if (existing)
-				*existing = TRUE;
-			return candidate;
-		}
-	}
 
 	/* The core of the API is nm_device_generate_connection() function and
 	 * update_connection() virtual method and the convenient connection_type

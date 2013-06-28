@@ -280,13 +280,6 @@ complete_connection (NMDevice *device,
 	return TRUE;
 }
 
-static gboolean
-match_l2_config (NMDevice *self, NMConnection *connection)
-{
-	/* FIXME */
-	return TRUE;
-}
-
 static const GByteArray *
 get_connection_hw_address (NMDevice *device,
                            NMConnection *connection)
@@ -338,7 +331,6 @@ nm_device_infiniband_class_init (NMDeviceInfinibandClass *klass)
 
 	parent_class->act_stage1_prepare = act_stage1_prepare;
 	parent_class->ip4_config_pre_commit = ip4_config_pre_commit;
-	parent_class->match_l2_config = match_l2_config;
 	parent_class->get_connection_hw_address = get_connection_hw_address;
 
 	/* properties */

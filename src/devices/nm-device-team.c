@@ -185,13 +185,6 @@ complete_connection (NMDevice *device,
 	return TRUE;
 }
 
-static gboolean
-match_l2_config (NMDevice *self, NMConnection *connection)
-{
-	/* FIXME */
-	return TRUE;
-}
-
 /******************************************************************/
 
 static gboolean
@@ -676,8 +669,6 @@ nm_device_team_class_init (NMDeviceTeamClass *klass)
 	parent_class->is_available = is_available;
 	parent_class->check_connection_compatible = check_connection_compatible;
 	parent_class->complete_connection = complete_connection;
-
-	parent_class->match_l2_config = match_l2_config;
 
 	parent_class->act_stage1_prepare = act_stage1_prepare;
 	parent_class->deactivate = deactivate;
