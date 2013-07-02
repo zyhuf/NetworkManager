@@ -1031,16 +1031,16 @@ nmc_property_bond_get_options (NMSetting *setting)
 {
 	NMSettingBond *s_bond = NM_SETTING_BOND (setting);
 	GString *bond_options_s;
-	int i;
+	const char *const* kernel_names;
 
 	bond_options_s = g_string_new (NULL);
-	for (i = 0; i < nm_setting_bond_get_num_options (s_bond); i++) {
-		const char *key, *value;
-
-		nm_setting_bond_get_option (s_bond, i, &key, &value);
-		g_string_append_printf (bond_options_s, "%s=%s,", key, value);
+	kernel_names = nm_setting_bond_get_kernel_names ();
+	for (; *kernel_names; kernel_names++) {
+		g_string_append_printf (bond_options_s, "%s=%s,", *kernel_names,
+		                        nm_setting_bond_get_string (s_bond, *kernel_names));
 	}
-	g_string_truncate (bond_options_s, bond_options_s->len-1);  /* chop off trailing ',' */
+	if (bond_options_s->len > 0)
+		g_string_truncate (bond_options_s, bond_options_s->len-1);  /* chop off trailing ',' */
 
 	return g_string_free (bond_options_s, FALSE);
 }
@@ -2629,15 +2629,16 @@ static gboolean
 _validate_and_remove_bond_option (NMSettingBond *setting, const char *option)
 {
 	const char *opt;
-	const char **valid_options;
+	const char *const*valid_options;
 
-	valid_options = nm_setting_bond_get_valid_options (setting);
-	opt = nmc_string_is_valid (option, valid_options, NULL);
+	valid_options = nm_setting_bond_get_kernel_names ();
+	opt = nmc_string_is_valid (option, (const char **) valid_options, NULL);
 
-	if (opt)
-		return nm_setting_bond_remove_option (setting, opt);
-	else
+	if (!opt)
 		return FALSE;
+
+	nm_setting_bond_set_default (setting, opt);
+	return TRUE;
 }
 
 /* Validate bonding 'options' values */
@@ -2650,11 +2651,17 @@ _validate_bond_option_value (const char *option, const char *value, GError **err
 	return value;
 }
 
+static const char **
+_nm_setting_bond_get_kernel_names (NMSettingBond *bond)
+{
+	return (const char **) nm_setting_bond_get_kernel_names ();
+}
+
 DEFINE_SETTER_OPTIONS (nmc_property_bond_set_options,
                        NM_SETTING_BOND,
                        NMSettingBond,
-                       nm_setting_bond_add_option,
-                       nm_setting_bond_get_valid_options,
+                       nm_setting_bond_set_string,
+                       _nm_setting_bond_get_kernel_names,
                        _validate_bond_option_value)
 DEFINE_REMOVER_OPTION (nmc_property_bond_remove_option_options,
                        NM_SETTING_BOND,
@@ -2664,11 +2671,11 @@ static const char *
 nmc_property_bond_describe_options (NMSetting *setting, const char *prop)
 {
 	static char *desc = NULL;
-	const char **valid_options;
+	const char *const*valid_options;
 	char *options_str;
 
 	if (G_UNLIKELY (desc == NULL)) {
-		valid_options = nm_setting_bond_get_valid_options (NM_SETTING_BOND (setting));
+		valid_options = nm_setting_bond_get_kernel_names ();
 		options_str = g_strjoinv (", ", (char **) valid_options);
 
 		desc = g_strdup_printf (_("Enter a list of bonding options formatted as:\n"
@@ -2691,11 +2698,11 @@ nmc_property_bond_describe_options (NMSetting *setting, const char *prop)
 static const char *
 nmc_property_bond_allowed_options (NMSetting *setting, const char *prop)
 {
-	const char **valid_options;
+	const char *const*valid_options;
 	static char *allowed_vals = NULL;
 
 	if (G_UNLIKELY (allowed_vals == NULL)) {
-		valid_options = nm_setting_bond_get_valid_options (NM_SETTING_BOND (setting));
+		valid_options = nm_setting_bond_get_kernel_names ();
 		allowed_vals = g_strjoinv (", ", (char **) valid_options);
 	}
 	return allowed_vals;

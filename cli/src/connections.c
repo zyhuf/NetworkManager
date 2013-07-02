@@ -3739,14 +3739,15 @@ cleanup_vlan:
 		char *bond_arpinterval = NULL;
 		const char *bond_arpiptarget_c = NULL;
 		char *bond_arpiptarget = NULL;
-		nmc_arg_t exp_args[] = { {"mode",          TRUE, &bond_mode_c,        FALSE},
-		                         {"primary",       TRUE, &bond_primary_c,     FALSE},
-		                         {"miimon",        TRUE, &bond_miimon_c,      FALSE},
-		                         {"downdelay",     TRUE, &bond_downdelay_c,   FALSE},
-		                         {"updelay",       TRUE, &bond_updelay_c,     FALSE},
-		                         {"arp-interval",  TRUE, &bond_arpinterval_c, FALSE},
-		                         {"arp-ip-target", TRUE, &bond_arpiptarget_c, FALSE},
+		nmc_arg_t exp_args[] = { {NM_SETTING_BOND_MODE,          TRUE, &bond_mode_c,        FALSE, FALSE, &bond_mode},
+		                         {NM_SETTING_BOND_PRIMARY,       TRUE, &bond_primary_c,     FALSE, FALSE, &bond_primary},
+		                         {NM_SETTING_BOND_MIIMON,        TRUE, &bond_miimon_c,      FALSE, FALSE, &bond_miimon},
+		                         {NM_SETTING_BOND_DOWNDELAY,     TRUE, &bond_downdelay_c,   FALSE, FALSE, &bond_downdelay},
+		                         {NM_SETTING_BOND_UPDELAY,       TRUE, &bond_updelay_c,     FALSE, FALSE, &bond_updelay},
+		                         {NM_SETTING_BOND_ARP_INTERVAL,  TRUE, &bond_arpinterval_c, FALSE, FALSE, &bond_arpinterval},
+		                         {NM_SETTING_BOND_ARP_IP_TARGET, TRUE, &bond_arpiptarget_c, FALSE, FALSE, &bond_arpiptarget},
 		                         {NULL} };
+		nmc_arg_t *option;
 
 		if (!nmc_parse_args (exp_args, FALSE, &argc, &argv, error))
 			return FALSE;
@@ -3780,7 +3781,9 @@ cleanup_vlan:
 
 		/* Set bond options */
 		g_object_set (s_bond, NM_SETTING_BOND_INTERFACE_NAME, bond_ifname, NULL);
+
 		if (bond_mode) {
+			/* resolve the bond option. */
 			GError *err = NULL;
 			const char *bm;
 			if (!(bm = nmc_bond_validate_mode (bond_mode, &err))) {
@@ -3789,27 +3792,25 @@ cleanup_vlan:
 				g_clear_error (&err);
 				goto cleanup_bond;
 			}
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, bm);
+			g_free (bond_mode);
+			bond_mode = g_strdup (bm);
 		}
-		if (bond_primary) {
-			if (!nm_utils_iface_valid_name (bond_primary)) {
+		for(option = exp_args; option->name; option++) {
+			GError *err = NULL;
+			const char *value = *((const char **) option->value);
+			if (value && !nm_setting_bond_validate_string (option->name, value, &err)) {
 				g_set_error (error, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
-				             _("Error: 'primary': '%s' is not a valid interface name."),
-				             bond_primary);
+				             _("Error: '%s': %s."), option->name, err->message);
+				g_clear_error (&err);
 				goto cleanup_bond;
 			}
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, bond_primary);
 		}
-		if (bond_miimon)
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, bond_miimon);
-		if (bond_downdelay && strcmp (bond_downdelay, "0") != 0)
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, bond_downdelay);
-		if (bond_updelay && strcmp (bond_updelay, "0") != 0)
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, bond_updelay);
-		if (bond_arpinterval && strcmp (bond_arpinterval, "0") != 0)
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_INTERVAL, bond_arpinterval);
-		if (bond_arpiptarget)
-			nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_IP_TARGET, bond_arpiptarget);
+		for(option = exp_args; option->name; option++) {
+			const char *value = *((const char **) option->value);
+
+			if (value)
+				nm_setting_bond_set_string (s_bond, option->name, *((char **) option->value));
+		}
 
 		success = TRUE;
 cleanup_bond:

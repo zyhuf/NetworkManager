@@ -55,10 +55,27 @@ typedef enum {
 #define NM_SETTING_BOND_ERROR nm_setting_bond_error_quark ()
 GQuark nm_setting_bond_error_quark (void);
 
-#define NM_SETTING_BOND_INTERFACE_NAME "interface-name"
-#define NM_SETTING_BOND_OPTIONS "options"
+#define NM_SETTING_BOND_INTERFACE_NAME   "interface-name"
+#define NM_SETTING_BOND_MODE             "mode"
+#define NM_SETTING_BOND_PRIMARY          "primary"
+#define NM_SETTING_BOND_MIIMON           "miimon"
+#define NM_SETTING_BOND_DOWNDELAY        "downdelay"
+#define NM_SETTING_BOND_UPDELAY          "updelay"
+#define NM_SETTING_BOND_ARP_INTERVAL     "arp-interval"
+#define NM_SETTING_BOND_ARP_IP_TARGET    "arp-ip-target"
+#define NM_SETTING_BOND_ARP_VALIDATE     "arp-validate"
+#define NM_SETTING_BOND_PRIMARY          "primary"
+#define NM_SETTING_BOND_PRIMARY_RESELECT "primary-reselect"
+#define NM_SETTING_BOND_FAIL_OVER_MAC    "fail-over-mac"
+#define NM_SETTING_BOND_USE_CARRIER      "use-carrier"
+#define NM_SETTING_BOND_AD_SELECT        "ad-select"
+#define NM_SETTING_BOND_XMIT_HASH_POLICY "xmit-hash-policy"
+#define NM_SETTING_BOND_RESEND_IGMP      "resend-igmp"
 
-/* Valid options for the 'options' property */
+/* Deprecated */
+#define NM_SETTING_BOND_OPTIONS          "options"
+
+/* Valid options as named by the kernal */
 #define NM_SETTING_BOND_OPTION_MODE             "mode"
 #define NM_SETTING_BOND_OPTION_MIIMON           "miimon"
 #define NM_SETTING_BOND_OPTION_DOWNDELAY        "downdelay"
@@ -73,6 +90,14 @@ GQuark nm_setting_bond_error_quark (void);
 #define NM_SETTING_BOND_OPTION_AD_SELECT        "ad_select"
 #define NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY "xmit_hash_policy"
 #define NM_SETTING_BOND_OPTION_RESEND_IGMP      "resend_igmp"
+
+#define __NM_SETTING_BOND_MODE_IS_balance_rr(mode)      ((mode) && (!strcmp ((mode), "0") || !strcmp ((mode), "balance-rr")))
+#define __NM_SETTING_BOND_MODE_IS_active_backup(mode)   ((mode) && (!strcmp ((mode), "1") || !strcmp ((mode), "active-backup")))
+#define __NM_SETTING_BOND_MODE_IS_balance_xor(mode)     ((mode) && (!strcmp ((mode), "2") || !strcmp ((mode), "balance-xor")))
+#define __NM_SETTING_BOND_MODE_IS_broadcast(mode)       ((mode) && (!strcmp ((mode), "3") || !strcmp ((mode), "broadcast")))
+#define __NM_SETTING_BOND_MODE_IS_802_3ad(mode)         ((mode) && (!strcmp ((mode), "4") || !strcmp ((mode), "802.3ad")))
+#define __NM_SETTING_BOND_MODE_IS_balance_tlb(mode)     ((mode) && (!strcmp ((mode), "5") || !strcmp ((mode), "balance-tlb")))
+#define __NM_SETTING_BOND_MODE_IS_balance_alb(mode)     ((mode) && (!strcmp ((mode), "6") || !strcmp ((mode), "balance-alb")))
 
 typedef struct {
 	NMSetting parent;
@@ -90,28 +115,54 @@ typedef struct {
 
 GType nm_setting_bond_get_type (void);
 
-NMSetting *  nm_setting_bond_new                (void);
-const char * nm_setting_bond_get_interface_name (NMSettingBond *setting);
-guint32      nm_setting_bond_get_num_options    (NMSettingBond *setting);
-gboolean     nm_setting_bond_get_option         (NMSettingBond *setting,
-                                                 guint32 idx,
-                                                 const char **out_name,
-                                                 const char **out_value);
-const char * nm_setting_bond_get_option_by_name (NMSettingBond *setting,
-                                                 const char *name);
-gboolean     nm_setting_bond_add_option         (NMSettingBond *setting,
-                                                 const char *name,
-                                                 const char *value);
-gboolean     nm_setting_bond_remove_option      (NMSettingBond *setting,
-                                                 const char *name);
+NMSetting *  nm_setting_bond_new                  (void);
 
-gboolean     nm_setting_bond_validate_option    (const char *name,
-                                                 const char *value);
+const char * nm_setting_bond_get_interface_name   (const NMSettingBond *setting);
 
-const char **nm_setting_bond_get_valid_options  (NMSettingBond *setting);
+const char * nm_setting_bond_get_mode             (const NMSettingBond *setting);
+const char * nm_setting_bond_get_primary          (const NMSettingBond *setting);
+guint        nm_setting_bond_get_miimon           (const NMSettingBond *setting);
+guint        nm_setting_bond_get_downdelay        (const NMSettingBond *setting);
+guint        nm_setting_bond_get_updelay          (const NMSettingBond *setting);
+guint        nm_setting_bond_get_arp_interval     (const NMSettingBond *setting);
+const char *const* nm_setting_bond_get_arp_ip_target (const NMSettingBond *setting);
+const char * nm_setting_bond_get_arp_validate     (const NMSettingBond *setting);
+const char * nm_setting_bond_get_primary_reselect (const NMSettingBond *setting);
+const char * nm_setting_bond_get_fail_over_mac    (const NMSettingBond *setting);
+gboolean     nm_setting_bond_get_use_carrier      (const NMSettingBond *setting);
+const char * nm_setting_bond_get_ad_select        (const NMSettingBond *setting);
+const char * nm_setting_bond_get_xmit_hash_policy (const NMSettingBond *setting);
+guint        nm_setting_bond_get_resend_igmp      (const NMSettingBond *setting);
 
-const char * nm_setting_bond_get_option_default (NMSettingBond *setting,
-                                                 const char *name);
+const char * nm_setting_bond_get_property_name    (const char *name);
+const char * nm_setting_bond_get_kernel_name      (const char *name);
+const char *const* nm_setting_bond_get_kernel_names (void);
+
+const char * nm_setting_bond_get_string           (const NMSettingBond *setting, const char *name);
+gboolean     nm_setting_bond_is_default           (const NMSettingBond *setting, const char *name, GValue *default_value);
+gboolean     nm_setting_bond_validate_string      (const char *name, const char *value, GError **error);
+gboolean     nm_setting_bond_set_string           (NMSettingBond *setting, const char *name, const char *value);
+void         nm_setting_bond_set_default          (NMSettingBond *setting, const char *name);
+
+
+/* Deprecated */
+G_GNUC_DEPRECATED guint32      nm_setting_bond_get_num_options    (NMSettingBond *setting);
+G_GNUC_DEPRECATED gboolean     nm_setting_bond_get_option         (NMSettingBond *setting,
+                                                                   guint32 idx,
+                                                                   const char **out_name,
+                                                                   const char **out_value);
+G_GNUC_DEPRECATED const char * nm_setting_bond_get_option_by_name (NMSettingBond *setting,
+                                                                   const char *name);
+G_GNUC_DEPRECATED gboolean     nm_setting_bond_add_option         (NMSettingBond *setting,
+                                                                   const char *name,
+                                                                   const char *value);
+G_GNUC_DEPRECATED gboolean     nm_setting_bond_remove_option      (NMSettingBond *setting,
+                                                                   const char *name);
+
+G_GNUC_DEPRECATED const char **nm_setting_bond_get_valid_options  (NMSettingBond *setting);
+
+G_GNUC_DEPRECATED const char * nm_setting_bond_get_option_default (NMSettingBond *setting,
+                                                                   const char *name);
 
 G_END_DECLS
 

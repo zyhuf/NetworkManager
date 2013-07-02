@@ -1250,7 +1250,8 @@ write_bonding_setting (NMConnection *connection, shvarFile *ifcfg, GError **erro
 {
 	NMSettingBond *s_bond;
 	const char *iface;
-	guint32 i, num_opts;
+	const char *const* kernel_names;
+	GString *str;
 
 	s_bond = nm_connection_get_setting_bond (connection);
 	if (!s_bond) {
@@ -1268,25 +1269,21 @@ write_bonding_setting (NMConnection *connection, shvarFile *ifcfg, GError **erro
 	svSetValue (ifcfg, "DEVICE", iface, FALSE);
 	svSetValue (ifcfg, "BONDING_OPTS", NULL, FALSE);
 
-	num_opts = nm_setting_bond_get_num_options (s_bond);
-	if (num_opts > 0) {
-		GString *str = g_string_sized_new (64);
+	str = g_string_sized_new (64);
 
-		for (i = 0; i < nm_setting_bond_get_num_options (s_bond); i++) {
-			const char *key, *value;
+	kernel_names = nm_setting_bond_get_kernel_names();
+	for (; *kernel_names; kernel_names++) {
+		if (nm_setting_bond_is_default (s_bond, *kernel_names, NULL)) {
+			const char *strval  = nm_setting_bond_get_string (s_bond, *kernel_names);
 
-			if (!nm_setting_bond_get_option (s_bond, i, &key, &value))
-				continue;
-
-			if (str->len)
-				g_string_append_c (str, ' ');
-
-			g_string_append_printf (str, "%s=%s", key, value);
+			/* FIXME: how to represent NULL values that are not default values? */
+			g_string_append_printf (str, "%s=%s ", *kernel_names, strval ? strval : "");
 		}
+	}
+	if (str->len > 0) {
+		g_string_truncate (str, str->len-1);
 
-		if (str->len)
-			svSetValue (ifcfg, "BONDING_OPTS", str->str, FALSE);
-
+		svSetValue (ifcfg, "BONDING_OPTS", str->str, FALSE);
 		g_string_free (str, TRUE);
 	}
 

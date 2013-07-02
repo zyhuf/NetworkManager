@@ -581,7 +581,7 @@ read_hash_of_string (GKeyFile *file, NMSetting *setting, const char *key)
 		}
 		if (NM_IS_SETTING_BOND (setting)) {
 			if (strcmp (*iter, NM_SETTING_BOND_INTERFACE_NAME))
-				nm_setting_bond_add_option (NM_SETTING_BOND (setting), *iter, value);
+				nm_setting_bond_set_string (NM_SETTING_BOND (setting), *iter, value);
 		}
 		g_free (value);
 	}

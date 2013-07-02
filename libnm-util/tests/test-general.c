@@ -1756,9 +1756,11 @@ test_setting_bond_changed_signal (void)
 	s_bond = (NMSettingBond *) nm_setting_bond_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_bond));
 
-	ASSERT_CHANGED (nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "10"));
-	ASSERT_CHANGED (nm_setting_bond_remove_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY));
-	ASSERT_UNCHANGED (nm_setting_bond_remove_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY));
+	ASSERT_CHANGED (nm_setting_bond_set_string (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "10"));
+	ASSERT_CHANGED (nm_setting_bond_set_string (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "10"));
+	ASSERT_UNCHANGED (nm_setting_bond_set_string (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "10x"));
+	ASSERT_CHANGED (nm_setting_bond_set_default (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY));
+	ASSERT_CHANGED (g_object_set (G_OBJECT (s_bond), NM_SETTING_BOND_DOWNDELAY, 20, NULL));
 
 	g_object_unref (connection);
 }

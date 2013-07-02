@@ -63,10 +63,10 @@
 #include "reader.h"
 
 #define PLUGIN_PRINT(pname, fmt, args...) \
-	{ g_message ("   " pname ": " fmt, ##args); }
+    G_STMT_START { g_message ("   " pname ": " fmt, ##args); } G_STMT_END
 
 #define PLUGIN_WARN(pname, fmt, args...) \
-	{ g_warning ("   " pname ": " fmt, ##args); }
+    G_STMT_START { g_warning ("   " pname ": " fmt, ##args); } G_STMT_END
 
 static gboolean
 get_int (const char *str, int *value)
@@ -4059,29 +4059,93 @@ infiniband_connection_from_ifcfg (const char *file,
 	return connection;
 }
 
-static void
-handle_bond_option (NMSettingBond *s_bond,
-                    const char *key,
-                    const char *value)
-{
-	char *sanitized = NULL, *j;
-	const char *p = value;
+typedef void (*IfcfgRhOptFunc) (NMSetting *setting,
+                                const char *key,
+                                const char *value,
+                                gpointer data);
 
-	/* Remove any quotes or +/- from arp_ip_target */
-	if (!g_strcmp0 (key, NM_SETTING_BOND_OPTION_ARP_IP_TARGET) && value && value[0]) {
-		if (*p == '\'' || *p == '"')
-			p++;
-		j = sanitized = g_malloc0 (strlen (p) + 1);
-		while (*p) {
-			if (*p != '+' && *p != '-' && *p != '\'' && *p != '"')
-				*j++ = *p;
-			p++;
+static void
+handle_ifcfg_rh_opts (NMSetting *setting,
+                      const char *value,
+                      IfcfgRhOptFunc func,
+                      gpointer data)
+{
+	char **items, **iter;
+
+	g_return_if_fail (value);
+	if (!value || !*value)
+		return;
+
+	items = g_strsplit_set (value, " ", -1);
+	for (iter = items; *iter; iter++) {
+		if (**iter) {
+			char **keys, *key, *val;
+
+			keys = g_strsplit_set (*iter, "=", 2);
+			if (*keys) {
+				key = keys[0];
+				val = keys[1];
+				if (val && *key && *val)
+					func (setting, key, val, data);
+			}
+
+			g_strfreev (keys);
 		}
 	}
+	g_strfreev (items);
+}
 
-	if (!nm_setting_bond_add_option (s_bond, key, sanitized ? sanitized : value))
-		PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: invalid bonding option '%s'", key);
-	g_free (sanitized);
+static void
+handle_bond_option (NMSetting *setting,
+                    const char *key,
+                    const char *value,
+                    gpointer data)
+{
+	NMSettingBond *s_bond = NM_SETTING_BOND (setting);
+	const char *value0 = value;
+	char *value_cleanup = NULL;
+
+	g_return_if_fail (key);
+
+	if (!strcmp (key, NM_SETTING_BOND_OPTION_ARP_IP_TARGET)) {
+		char **arp_ip_target = NULL;
+		char *sanitized = NULL, *j;
+		const char *p = value;
+
+		/* Remove any quotes or +/- from arp_ip_target */
+		if (value[0]) {
+			if (*p == '\'' || *p == '"')
+				p++;
+			j = sanitized = g_malloc0 (strlen (p) + 1);
+			while (*p) {
+				if (*p != '+' && *p != '-' && *p != '\'' && *p != '"')
+					*j++ = *p;
+				p++;
+			}
+			value = sanitized;
+		}
+
+		if (value && value[0]) {
+			arp_ip_target = g_strsplit (value, ",", -1);
+			/* don't set the GObject property to arp_ip_target, because we want to reuse the
+			 * validation from nm_setting_bond_set_string. */
+			value_cleanup = g_strjoinv (",", arp_ip_target);
+			value = value_cleanup;
+			g_strfreev (arp_ip_target);
+		} else
+			value = NULL;
+		g_free (sanitized);
+	}
+
+	if (!nm_setting_bond_set_string (s_bond, key, value)) {
+		if (!nm_setting_bond_get_property_name (key))
+			PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: unrecognized bond property '%s'", key);
+		else
+			PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: invalid bond property '%s'='%s'", key, value0);
+		return;
+	}
+
+	g_free (value_cleanup);
 }
 
 static NMSetting *
@@ -4105,26 +4169,8 @@ make_bond_setting (shvarFile *ifcfg,
 
 	value = svGetValue (ifcfg, "BONDING_OPTS", FALSE);
 	if (value) {
-		char **items, **iter;
-
-		items = g_strsplit_set (value, " ", -1);
-		for (iter = items; iter && *iter; iter++) {
-			if (strlen (*iter)) {
-				char **keys, *key, *val;
-
-				keys = g_strsplit_set (*iter, "=", 2);
-				if (keys && *keys) {
-					key = *keys;
-					val = *(keys + 1);
-					if (val && strlen(key) && strlen(val))
-						handle_bond_option (s_bond, key, val);
-				}
-
-				g_strfreev (keys);
-			}
-		}
+		handle_ifcfg_rh_opts (NM_SETTING (s_bond), value, handle_bond_option, NULL);
 		g_free (value);
-		g_strfreev (items);
 	}
 
 	return (NMSetting *) s_bond;
@@ -4266,17 +4312,13 @@ team_connection_from_ifcfg (const char *file,
 	return connection;
 }
 
-typedef void (*BridgeOptFunc) (NMSetting *setting,
-                               gboolean stp,
-                               const char *key,
-                               const char *value);
-
 static void
 handle_bridge_option (NMSetting *setting,
-                      gboolean stp,
                       const char *key,
-                      const char *value)
+                      const char *value,
+                      gpointer data)
 {
+	gboolean stp = GPOINTER_TO_INT (data);
 	guint32 u = 0;
 
 	if (!strcmp (key, "priority")) {
@@ -4307,33 +4349,6 @@ handle_bridge_option (NMSetting *setting,
 			PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: invalid ageing_time value '%s'", value);
 	} else
 			PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: unhandled bridge option '%s'", key);
-}
-
-static void
-handle_bridging_opts (NMSetting *setting,
-                      gboolean stp,
-                      const char *value,
-                      BridgeOptFunc func)
-{
-	char **items, **iter;
-
-	items = g_strsplit_set (value, " ", -1);
-	for (iter = items; iter && *iter; iter++) {
-		if (strlen (*iter)) {
-			char **keys, *key, *val;
-
-			keys = g_strsplit_set (*iter, "=", 2);
-			if (keys && *keys) {
-				key = *keys;
-				val = *(keys + 1);
-				if (val && strlen(key) && strlen(val))
-					func (setting, stp, key, val);
-			}
-
-			g_strfreev (keys);
-		}
-	}
-	g_strfreev (items);
 }
 
 static NMSetting *
@@ -4391,7 +4406,8 @@ make_bridge_setting (shvarFile *ifcfg,
 
 	value = svGetValue (ifcfg, "BRIDGING_OPTS", FALSE);
 	if (value) {
-		handle_bridging_opts (NM_SETTING (s_bridge), stp, value, handle_bridge_option);
+		handle_ifcfg_rh_opts (NM_SETTING (s_bridge), value, handle_bridge_option,
+		                      GINT_TO_POINTER (stp));
 		g_free (value);
 	}
 
@@ -4430,7 +4446,7 @@ bridge_connection_from_ifcfg (const char *file,
 		g_object_unref (connection);
 		return NULL;
 	}
-	nm_connection_add_setting (connection, bridge_setting);	
+	nm_connection_add_setting (connection, bridge_setting);
 
 	if (!nm_connection_verify (connection, error)) {
 		g_object_unref (connection);
@@ -4442,9 +4458,9 @@ bridge_connection_from_ifcfg (const char *file,
 
 static void
 handle_bridge_port_option (NMSetting *setting,
-                           gboolean stp,
                            const char *key,
-                           const char *value)
+                           const char *value,
+                           gpointer data)
 {
 	guint32 u = 0;
 
@@ -4484,7 +4500,8 @@ make_bridge_port_setting (shvarFile *ifcfg)
 		s_port = nm_setting_bridge_port_new ();
 		value = svGetValue (ifcfg, "BRIDGING_OPTS", FALSE);
 		if (value)
-			handle_bridging_opts (s_port, FALSE, value, handle_bridge_port_option);
+			handle_ifcfg_rh_opts (NM_SETTING (s_port), value, handle_bridge_port_option, NULL);
+
 		g_free (value);
 	}
 
@@ -4515,7 +4532,7 @@ is_bond_device (const char *name, shvarFile *parsed)
 
 	if (svTrueValue (parsed, "BONDING_MASTER", FALSE))
 		return TRUE;
-	
+
 	/* XXX: Check for "bond[\d]+"? */
 
 	return FALSE;

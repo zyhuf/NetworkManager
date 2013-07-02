@@ -32,6 +32,7 @@ typedef struct {
 	const char **value;
 	gboolean mandatory;
 	gboolean found;
+	void *user_data;
 } nmc_arg_t;
 
 /* === Functions === */
