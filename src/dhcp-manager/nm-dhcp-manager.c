@@ -71,7 +71,6 @@ typedef GSList * (*GetLeaseConfigFunc) (const char *iface, const char *uuid, gbo
 
 typedef struct {
 	GType               client_type;
-	GetLeaseConfigFunc  get_lease_config_func;
 
 	NMDBusManager *     dbus_mgr;
 	guint               new_conn_id;
@@ -362,15 +361,6 @@ nm_dhcp_manager_get (void)
 	/* Client-specific setup */
 	client = nm_config_get_dhcp_client (nm_config_get ());
 	priv->client_type = get_client_type (client, &error);
-	if (priv->client_type == NM_TYPE_DHCP_DHCLIENT)
-		priv->get_lease_config_func = nm_dhcp_dhclient_get_lease_config;
-	else if (priv->client_type == NM_TYPE_DHCP_DHCPCD)
-		priv->get_lease_config_func = nm_dhcp_dhcpcd_get_lease_config;
-	else {
-		nm_log_warn (LOGD_DHCP, "No usable DHCP client found (%s)! DHCP configurations will fail.",
-		             error->message);
-		g_error_free (error);
-	}
 
 	priv->clients = g_hash_table_new_full (g_direct_hash, g_direct_equal,
 	                                       NULL,
@@ -614,19 +604,6 @@ nm_dhcp_manager_set_hostname_provider (NMDHCPManager *manager,
 		priv->hostname_provider = provider;
 		g_object_weak_ref (G_OBJECT (provider), hostname_provider_destroyed, manager);
 	}
-}
-
-GSList *
-nm_dhcp_manager_get_lease_config (NMDHCPManager *self,
-                                  const char *iface,
-                                  const char *uuid,
-                                  gboolean ipv6)
-{
-	g_return_val_if_fail (NM_IS_DHCP_MANAGER (self), NULL);
-	g_return_val_if_fail (iface != NULL, NULL);
-	g_return_val_if_fail (uuid != NULL, NULL);
-
-	return NM_DHCP_MANAGER_GET_PRIVATE (self)->get_lease_config_func (iface, uuid, ipv6);
 }
 
 NMIP4Config *
