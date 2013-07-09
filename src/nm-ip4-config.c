@@ -46,7 +46,6 @@ typedef struct {
 	GPtrArray *domains;
 	GPtrArray *searches;
 	guint32 mss;
-	guint32 ptp_address;
 	GArray *nis;
 	char *nis_domain;
 	GArray *wins;
@@ -336,10 +335,6 @@ nm_ip4_config_merge (NMIP4Config *dst, NMIP4Config *src)
 	for (i = 0; i < nm_ip4_config_get_num_addresses (src); i++)
 		nm_ip4_config_add_address (dst, nm_ip4_config_get_address (src, i));
 
-	/* ptp address; only replace if src doesn't have one */
-	if (!nm_ip4_config_get_ptp_address (dst))
-		nm_ip4_config_set_ptp_address (dst, nm_ip4_config_get_ptp_address (src));
-
 	/* nameservers */
 	for (i = 0; i < nm_ip4_config_get_num_nameservers (src); i++)
 		nm_ip4_config_add_nameserver (dst, nm_ip4_config_get_nameserver (src, i));
@@ -405,10 +400,6 @@ nm_ip4_config_subtract (NMIP4Config *dst, NMIP4Config *src)
 			}
 		}
 	}
-
-	/* ptp address */
-	if (nm_ip4_config_get_ptp_address (src) == nm_ip4_config_get_ptp_address (dst))
-		nm_ip4_config_set_ptp_address (dst, 0);
 
 	/* nameservers */
 	for (i = 0; i < nm_ip4_config_get_num_nameservers (src); i++) {
@@ -525,11 +516,6 @@ nm_ip4_config_dump (NMIP4Config *config, const char *detail)
 			           buf, addr->plen, addr->timestamp, addr->lifetime, addr->preferred);
 		}
 	}
-
-	/* ptp address */
-	tmp = nm_ip4_config_get_ptp_address (config);
-	if (inet_ntop (AF_INET, (void *) &tmp, buf, sizeof (buf)))
-		g_message ("    ptp: %s", buf);
 
 	/* default gateway */
 	tmp = nm_ip4_config_get_gateway (config);
@@ -933,24 +919,6 @@ nm_ip4_config_get_mss (NMIP4Config *config)
 /******************************************************************/
 
 void
-nm_ip4_config_set_ptp_address (NMIP4Config *config, guint32 ptp_addr)
-{
-	NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (config);
-
-	priv->ptp_address = ptp_addr;
-}
-
-guint32
-nm_ip4_config_get_ptp_address (NMIP4Config *config)
-{
-	NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (config);
-
-	return priv->ptp_address;
-}
-
-/******************************************************************/
-
-void
 nm_ip4_config_reset_nis_servers (NMIP4Config *config)
 {
 	NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (config);
@@ -1094,7 +1062,7 @@ hash_u32 (GChecksum *sum, guint32 n)
 void
 nm_ip4_config_hash (NMIP4Config *config, GChecksum *sum, gboolean dns_only)
 {
-	guint32 i, n;
+	guint32 i;
 	const char *s;
 
 	g_return_if_fail (config);
@@ -1117,10 +1085,6 @@ nm_ip4_config_hash (NMIP4Config *config, GChecksum *sum, gboolean dns_only)
 			hash_u32 (sum, route->gateway);
 			hash_u32 (sum, route->metric);
 		}
-
-		n = nm_ip4_config_get_ptp_address (config);
-		if (n)
-			hash_u32 (sum, n);
 
 		for (i = 0; i < nm_ip4_config_get_num_nis_servers (config); i++)
 			hash_u32 (sum, nm_ip4_config_get_nis_server (config, i));

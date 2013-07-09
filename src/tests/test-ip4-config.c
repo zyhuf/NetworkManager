@@ -86,8 +86,6 @@ build_test_config (void)
 	nm_ip4_config_add_search (config, "blahblah.com");
 	nm_ip4_config_add_search (config, "beatbox.com");
 
-	nm_ip4_config_set_ptp_address (config, addr_to_num ("1.2.3.4"));
-
 	nm_ip4_config_add_nis_server (config, addr_to_num ("1.2.3.9"));
 	nm_ip4_config_add_nis_server (config, addr_to_num ("1.2.3.10"));
 
@@ -143,7 +141,6 @@ test_subtract (void)
 	g_assert_cmpuint (test_addr->address, ==, addr_to_num (expected_addr));
 	g_assert_cmpuint (test_addr->plen, ==, expected_addr_plen);
 
-	g_assert_cmpuint (nm_ip4_config_get_ptp_address (dst), ==, 0);
 	g_assert_cmpuint (nm_ip4_config_get_gateway (dst), ==, 0);
 
 	g_assert_cmpuint (nm_ip4_config_get_num_routes (dst), ==, 1);

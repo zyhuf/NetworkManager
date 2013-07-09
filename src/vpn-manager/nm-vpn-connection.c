@@ -571,8 +571,6 @@ print_vpn_config (NMVPNConnection *connection)
 			nm_log_info (LOGD_VPN, "  Internal Gateway: %s", ip_address_to_string (priv->ip4_internal_gw));
 		nm_log_info (LOGD_VPN, "  Internal Address: %s", ip_address_to_string (address4->address));
 		nm_log_info (LOGD_VPN, "  Internal Prefix: %d", address4->plen);
-		nm_log_info (LOGD_VPN, "  Internal Point-to-Point Address: %s",
-					 ip_address_to_string (nm_ip4_config_get_ptp_address (priv->ip4_config)));
 		nm_log_info (LOGD_VPN, "  Maximum Segment Size (MSS): %d", nm_ip4_config_get_mss (priv->ip4_config));
 
 		num = nm_ip4_config_get_num_routes (priv->ip4_config);
@@ -610,8 +608,6 @@ print_vpn_config (NMVPNConnection *connection)
 			nm_log_info (LOGD_VPN, "  Internal Gateway: %s", ip6_address_to_string (priv->ip6_internal_gw));
 		nm_log_info (LOGD_VPN, "  Internal Address: %s", ip6_address_to_string (&address6->address));
 		nm_log_info (LOGD_VPN, "  Internal Prefix: %d", address6->plen);
-		nm_log_info (LOGD_VPN, "  Internal Point-to-Point Address: %s",
-					 ip6_address_to_string (nm_ip6_config_get_ptp_address (priv->ip6_config)));
 		nm_log_info (LOGD_VPN, "  Maximum Segment Size (MSS): %d", nm_ip6_config_get_mss (priv->ip6_config));
 
 		num = nm_ip6_config_get_num_routes (priv->ip6_config);
@@ -871,10 +867,6 @@ nm_vpn_connection_ip4_config_get (DBusGProxy *proxy,
 	if (val)
 		address.address = g_value_get_uint (val);
 
-	val = (GValue *) g_hash_table_lookup (config_hash, NM_VPN_PLUGIN_IP4_CONFIG_PTP);
-	if (val)
-		nm_ip4_config_set_ptp_address (config, g_value_get_uint (val));
-
 	val = (GValue *) g_hash_table_lookup (config_hash, NM_VPN_PLUGIN_IP4_CONFIG_PREFIX);
 	if (val)
 		address.plen = g_value_get_uint (val);
@@ -1014,14 +1006,6 @@ nm_vpn_connection_ip6_config_get (DBusGProxy *proxy,
 
 		if (ba->len == sizeof (struct in6_addr))
 			address.address = *(struct in6_addr *) ba->data;
-	}
-
-	val = (GValue *) g_hash_table_lookup (config_hash, NM_VPN_PLUGIN_IP6_CONFIG_PTP);
-	if (val) {
-		GByteArray *ba = g_value_get_boxed (val);
-
-		if (ba->len == sizeof (struct in6_addr))
-			nm_ip6_config_set_ptp_address (config, (struct in6_addr *)ba->data);
 	}
 
 	val = (GValue *) g_hash_table_lookup (config_hash, NM_VPN_PLUGIN_IP6_CONFIG_PREFIX);

@@ -46,7 +46,6 @@ typedef struct {
 	GPtrArray *domains;
 	GPtrArray *searches;
 	guint32 mss;
-	struct in6_addr ptp_address;
 } NMIP6ConfigPrivate;
 
 
@@ -341,10 +340,6 @@ nm_ip6_config_merge (NMIP6Config *dst, NMIP6Config *src)
 	/* addresses */
 	for (i = 0; i < nm_ip6_config_get_num_addresses (src); i++)
 		nm_ip6_config_add_address (dst, nm_ip6_config_get_address (src, i));
-
-	/* ptp address; only replace if src doesn't have one */
-	if (!nm_ip6_config_get_ptp_address (dst))
-		nm_ip6_config_set_ptp_address (dst, nm_ip6_config_get_ptp_address (src));
 
 	/* nameservers */
 	for (i = 0; i < nm_ip6_config_get_num_nameservers (src); i++)
@@ -672,24 +667,6 @@ nm_ip6_config_get_mss (NMIP6Config *config)
 
 /******************************************************************/
 
-void
-nm_ip6_config_set_ptp_address (NMIP6Config *config, const struct in6_addr *ptp_address)
-{
-	NMIP6ConfigPrivate *priv = NM_IP6_CONFIG_GET_PRIVATE (config);
-
-	priv->ptp_address = *ptp_address;
-}
-
-const struct in6_addr *
-nm_ip6_config_get_ptp_address (NMIP6Config *config)
-{
-	NMIP6ConfigPrivate *priv = NM_IP6_CONFIG_GET_PRIVATE (config);
-
-	return &priv->ptp_address;
-}
-
-/******************************************************************/
-
 static inline void
 hash_u32 (GChecksum *sum, guint32 n)
 {
@@ -709,7 +686,6 @@ void
 nm_ip6_config_hash (NMIP6Config *config, GChecksum *sum, gboolean dns_only)
 {
 	guint32 i;
-	const struct in6_addr *in6a;
 	const char *s;
 
 	g_return_if_fail (config);
@@ -733,10 +709,6 @@ nm_ip6_config_hash (NMIP6Config *config, GChecksum *sum, gboolean dns_only)
 			hash_in6addr (sum, &route->gateway);
 			hash_u32 (sum, route->metric);
 		}
-
-		in6a = nm_ip6_config_get_ptp_address (config);
-		if (in6a)
-			hash_in6addr (sum, in6a);
 	}
 
 	for (i = 0; i < nm_ip6_config_get_num_nameservers (config); i++)
