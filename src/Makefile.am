@@ -16,6 +16,7 @@ if ENABLE_TESTS
 SUBDIRS += \
 	config/tests \
 	dhcp-manager/tests \
+	devices\
 	platform \
 	rdisc \
 	settings/tests \

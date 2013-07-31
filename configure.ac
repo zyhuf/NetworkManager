@@ -700,11 +700,13 @@ src/settings/plugins/keyfile/tests/Makefile
 src/settings/plugins/keyfile/tests/keyfiles/Makefile
 src/settings/plugins/example/Makefile
 src/settings/tests/Makefile
+src/devices/Makefile
+src/devices/wimax/Makefile
+src/devices/tests/Makefile
 src/platform/Makefile
 src/platform/tests/Makefile
 src/rdisc/Makefile
 src/rdisc/tests/Makefile
-src/devices/wimax/Makefile
 libnm-util/libnm-util.pc
 libnm-util/Makefile
 libnm-util/tests/Makefile
