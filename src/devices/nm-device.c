@@ -1209,10 +1209,17 @@ link_changed_cb (NMPlatform *platform, int ifindex, NMPlatformLink *info, NMPlat
 static void
 link_changed (NMDevice *device, NMPlatformLink *info)
 {
+	NMDeviceClass *klass = NM_DEVICE_GET_CLASS (device);
+	NMConnection *connection = nm_device_get_connection (device);
+
 	/* Update carrier from link event if applicable. */
 	if (   device_has_capability (device, NM_DEVICE_CAP_CARRIER_DETECT)
 	    && !device_has_capability (device, NM_DEVICE_CAP_NONSTANDARD_CARRIER))
 		nm_device_set_carrier (device, info->connected);
+
+	/* Update the runtime connection according to the current link status. */
+	if (connection && klass->update_connection)
+		klass->update_connection (device, connection);
 }
 
 static void
@@ -6086,7 +6093,9 @@ update_ip_config (NMDevice *self)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMDeviceStateReason ignored = NM_DEVICE_STATE_REASON_NONE;
-	NMIP6Config *ip6_config = NULL;
+	gs_unref_object NMIP4Config *ip4_config = NULL;
+	gs_unref_object NMIP6Config *ip6_config = NULL;
+	NMConnection *connection = nm_device_get_connection (self);
 	int ifindex;
 
 	ifindex = nm_device_get_ip_ifindex (self);
@@ -6105,6 +6114,16 @@ update_ip_config (NMDevice *self)
 	ip6_config = nm_ip6_config_capture (ifindex);
 	nm_device_set_ip6_config (self, ip6_config, FALSE, &ignored);
 	g_clear_object (&ip6_config);
+
+	if (connection) {
+		NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
+		NMSettingIP6Config *s_ip6 = nm_connection_get_setting_ip6_config (connection);
+
+		g_assert (s_ip4 && s_ip6);
+
+		nm_ip4_config_update_setting (ip4_config, s_ip4);
+		nm_ip6_config_update_setting (ip6_config, s_ip6);
+	}
 }
 
 static gboolean
