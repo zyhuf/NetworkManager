@@ -440,11 +440,7 @@ nm_config_new (GError **error)
 	priv = NM_CONFIG_GET_PRIVATE (singleton);
 
 	/* First read the base config file */
-	if (!find_base_config (singleton, error)) {
-		g_object_unref (singleton);
-		singleton = NULL;
-		return NULL;
-	}
+	find_base_config (singleton, error);
 
 	/* Now read the overrides in the config dir */
 	if (cli_config_dir)
