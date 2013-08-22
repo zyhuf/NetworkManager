@@ -2117,6 +2117,7 @@ add_device (NMManager *self, NMDevice *device)
 	static guint32 devcount = 0;
 	const GSList *unmanaged_specs;
 	NMConnection *connection;
+	gboolean existing;
 	gboolean enabled = FALSE;
 	RfKillType rtype;
 	NMDeviceType devtype;
@@ -2202,11 +2203,20 @@ add_device (NMManager *self, NMDevice *device)
 	nm_log_info (LOGD_CORE, "(%s): exported as %s", iface, path);
 	g_free (path);
 
-	connection = get_connection (self, device, NULL);
+	connection = get_connection (self, device, &existing);
 
-	/* Start the device if it's supposed to be managed */
+	/* Set the device managed if the following conditions are met:
+	 *
+	 * 1) Device configuration matches an existing NMConnection or
+	 *    no configuration was detected for a non-software device.
+	 *
+	 * 2) NetworkManager is not sleeping.
+	 *
+	 * 3) Local configuration allows the device to be managed.
+	 */
 	unmanaged_specs = nm_settings_get_unmanaged_specs (priv->settings);
-	if (   !manager_sleeping (self)
+	if (   (existing || (!nm_device_is_software (device) && !connection))
+	    && !manager_sleeping (self)
 	    && !nm_device_spec_match_list (device, unmanaged_specs)) {
 		nm_device_set_manager_managed (device,
 		                               TRUE,
