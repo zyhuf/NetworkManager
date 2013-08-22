@@ -260,8 +260,6 @@ typedef struct {
 
 	guint timestamp_update_id;
 
-	GHashTable *nm_bridges;
-
 	gboolean startup;
 	gboolean disposed;
 } NMManagerPrivate;
@@ -1289,90 +1287,6 @@ connection_needs_virtual_device (NMConnection *connection)
 
 /***************************/
 
-/* FIXME: remove when we handle bridges non-destructively */
-
-#define NM_BRIDGE_FILE  NMRUNDIR "/nm-bridges"
-
-static void
-read_nm_created_bridges (NMManager *self)
-{
-	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	char *contents;
-	char **lines, **iter;
-	GTimeVal tv;
-	glong ts;
-
-	if (!g_file_get_contents (NM_BRIDGE_FILE, &contents, NULL, NULL))
-		return;
-
-	g_get_current_time (&tv);
-
-	lines = g_strsplit_set (contents, "\n", 0);
-	g_free (contents);
-
-	for (iter = lines; iter && *iter; iter++) {
-		if (g_str_has_prefix (*iter, "ts=")) {
-			errno = 0;
-			ts = strtol (*iter + 3, NULL, 10);
-			/* allow 30 minutes time difference before we ignore the file */
-			if (errno || ABS (tv.tv_sec - ts) > 1800)
-				goto out;
-		} else if (g_str_has_prefix (*iter, "iface="))
-			g_hash_table_insert (priv->nm_bridges, g_strdup (*iter + 6), GUINT_TO_POINTER (1));
-	}
-
-out:
-	g_strfreev (lines);
-	unlink (NM_BRIDGE_FILE);
-}
-
-static void
-write_nm_created_bridges (NMManager *self)
-{
-	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	GString *br_list;
-	GSList *iter;
-	GError *error = NULL;
-	GTimeVal tv;
-	gboolean found = FALSE;
-
-	/* write out nm-created bridges list */
-	br_list = g_string_sized_new (50);
-
-	/* Timestamp is first line */
-	g_get_current_time (&tv);
-	g_string_append_printf (br_list, "ts=%ld\n", tv.tv_sec);
-
-	for (iter = priv->devices; iter; iter = g_slist_next (iter)) {
-		NMDevice *device = iter->data;
-
-		if (nm_device_get_device_type (device) == NM_DEVICE_TYPE_BRIDGE) {
-			g_string_append_printf (br_list, "iface=%s\n", nm_device_get_iface (device));
-			found = TRUE;
-		}
-	}
-
-	if (found) {
-		if (!g_file_set_contents (NM_BRIDGE_FILE, br_list->str, -1, &error)) {
-			nm_log_warn (LOGD_BRIDGE, "Failed to write NetworkManager-created bridge list; "
-			             "on restart bridges may not be recognized. (%s)",
-			             error ? error->message : "unknown");
-			g_clear_error (&error);
-		}
-	}
-	g_string_free (br_list, TRUE);
-}
-
-static gboolean
-bridge_created_by_nm (NMManager *self, const char *iface)
-{
-	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-
-	return (priv->nm_bridges && g_hash_table_lookup (priv->nm_bridges, iface));
-}
-
-/***************************/
-
 /**
  * system_create_virtual_device:
  * @self: the #NMManager
@@ -1442,13 +1356,6 @@ system_create_virtual_device (NMManager *self, NMConnection *connection)
 		result = nm_platform_bridge_add (iface);
 		if (!result && nm_platform_get_error () != NM_PLATFORM_ERROR_EXISTS) {
 			nm_log_warn (LOGD_DEVICE, "(%s): failed to add bridging interface for '%s'",
-			             iface, nm_connection_get_id (connection));
-			goto unblock;
-		}
-
-		/* FIXME: remove when we handle bridges non-destructively */
-		if (!result && !bridge_created_by_nm (self, iface)) {
-			nm_log_warn (LOGD_DEVICE, "(%s): cannot use existing bridge for '%s'",
 			             iface, nm_connection_get_id (connection));
 			goto unblock;
 		}
@@ -2529,11 +2436,7 @@ platform_link_added_cb (NMPlatform *platform,
 			device = nm_device_team_new (link->name);
 			break;
 		case NM_LINK_TYPE_BRIDGE:
-			/* FIXME: always create device when we handle bridges non-destructively */
-			if (bridge_created_by_nm (self, link->name))
-				device = nm_device_bridge_new (link->name);
-			else
-				nm_log_info (LOGD_BRIDGE, "(%s): ignoring bridge not created by NetworkManager", link->name);
+			device = nm_device_bridge_new (link->name);
 			break;
 		case NM_LINK_TYPE_VLAN:
 			/* Have to find the parent device */
@@ -4104,13 +4007,6 @@ nm_manager_start (NMManager *self)
 	system_unmanaged_devices_changed_cb (priv->settings, NULL, self);
 	system_hostname_changed_cb (priv->settings, NULL, self);
 
-	/* FIXME: remove when we handle bridges non-destructively */
-	/* Read a list of bridges NM managed when it last quit, and only
-	 * manage those bridges to avoid conflicts with external tools.
-	 */
-	priv->nm_bridges = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-	read_nm_created_bridges (self);
-
 	nm_platform_query_devices ();
 	nm_atm_manager_query_devices (priv->atm_mgr);
 	nm_bluez_manager_query_devices (priv->bluez_mgr);
@@ -4120,10 +4016,6 @@ nm_manager_start (NMManager *self)
 	 * connection-added signals thus devices have to be created manually.
 	 */
 	system_create_virtual_devices (self);
-
-	/* FIXME: remove when we handle bridges non-destructively */
-	g_hash_table_unref (priv->nm_bridges);
-	priv->nm_bridges = NULL;
 
 	check_if_startup_complete (self);
 }
@@ -4567,9 +4459,6 @@ dispose (GObject *object)
 	g_slist_free (priv->auth_chains);
 
 	nm_auth_changed_func_unregister (authority_changed_cb, manager);
-
-	/* FIXME: remove when we handle bridges non-destructively */
-	write_nm_created_bridges (manager);
 
 	/* Remove all devices */
 	while (priv->devices)
