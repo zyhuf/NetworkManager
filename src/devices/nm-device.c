@@ -1693,6 +1693,12 @@ nm_device_generate_connection (NMDevice *device)
 	              NULL);
 	if (klass->connection_type)
 		g_object_set (s_con, NM_SETTING_CONNECTION_TYPE, klass->connection_type, NULL);
+	if (priv->master) {
+		g_object_set (s_con,
+		              NM_SETTING_CONNECTION_MASTER, nm_device_get_iface (priv->master),
+		              NM_SETTING_CONNECTION_SLAVE_TYPE, NM_DEVICE_GET_CLASS (priv->master)->connection_type,
+		              NULL);
+	}
 	nm_ip4_config_update_setting (priv->ip4_config, (NMSettingIP4Config *) s_ip4);
 	nm_ip6_config_update_setting (priv->ip6_config, (NMSettingIP6Config *) s_ip6);
 
