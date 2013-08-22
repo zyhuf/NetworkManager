@@ -4360,6 +4360,15 @@ nm_device_activate (NMDevice *self, NMActRequest *req)
 	             nm_device_get_iface (self),
 	             nm_connection_get_id (connection));
 
+	/* Bypass most of the activation procedure for assumed connections. */
+	if (priv->state_reason == NM_DEVICE_STATE_REASON_CONNECTION_ASSUMED) {
+		priv->act_request = g_object_ref (req);
+		g_object_notify (G_OBJECT (self), NM_DEVICE_ACTIVE_CONNECTION);
+		nm_device_state_changed (self, NM_DEVICE_STATE_IP_CONFIG, NM_DEVICE_STATE_REASON_CONNECTION_ASSUMED);
+		nm_device_activate_schedule_stage3_ip_config_start (self);
+		return;
+	}
+
 	if (priv->state < NM_DEVICE_STATE_DISCONNECTED) {
 		g_return_if_fail (nm_device_can_activate (self, connection));
 
@@ -4380,14 +4389,7 @@ nm_device_activate (NMDevice *self, NMActRequest *req)
 	priv->act_request = g_object_ref (req);
 	g_object_notify (G_OBJECT (self), NM_DEVICE_ACTIVE_CONNECTION);
 
-	if (priv->state_reason == NM_DEVICE_STATE_REASON_CONNECTION_ASSUMED) {
-		/* If it's an assumed connection, let the device subclass short-circuit
-		 * the normal connection process and just copy its IP configs from the
-		 * interface.
-		 */
-		nm_device_state_changed (self, NM_DEVICE_STATE_IP_CONFIG, NM_DEVICE_STATE_REASON_CONNECTION_ASSUMED);
-		nm_device_activate_schedule_stage3_ip_config_start (self);
-	} else {
+	{
 		NMDevice *master;
 
 		/* HACK: update the state a bit early to avoid a race between the 
