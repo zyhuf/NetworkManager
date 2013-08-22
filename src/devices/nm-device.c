@@ -4303,15 +4303,9 @@ impl_device_disconnect (NMDevice *device, DBusGMethodInvocation *context)
 void
 nm_device_activate (NMDevice *self, NMActRequest *req)
 {
-	NMDevicePrivate *priv;
-	NMConnection *connection;
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+	NMConnection *connection = nm_act_request_get_connection (req);
 
-	g_return_if_fail (NM_IS_DEVICE (self));
-	g_return_if_fail (NM_IS_ACT_REQUEST (req));
-
-	priv = NM_DEVICE_GET_PRIVATE (self);
-
-	connection = nm_act_request_get_connection (req);
 	g_assert (connection);
 
 	nm_log_info (LOGD_DEVICE, "Activation (%s) starting connection '%s'",
