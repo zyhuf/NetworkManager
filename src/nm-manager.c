@@ -2188,6 +2188,24 @@ add_device (NMManager *self, NMDevice *device)
 
 	connection = get_connection (self, device);
 
+	/* Handle a generated connection. */
+	if (connection && !NM_IS_SETTINGS_CONNECTION (connection)) {
+		GError *error = NULL;
+		NMSettingsConnection *new = nm_settings_add_connection (priv->settings, connection, FALSE, &error);
+
+		if (new) {
+			g_object_unref (connection);
+			connection = NM_CONNECTION (new);
+		} else {
+			nm_log_warn (LOGD_SETTINGS, "(%s) Plugin didn't accept generated connection '%s': %s",
+			             nm_device_get_iface (device),
+			             nm_connection_get_id (connection),
+			             (error && error->message) ? error->message : "(unknown)");
+			g_clear_error (&error);
+			g_clear_object (&connection);
+		}
+	}
+
 	/* Start the device if it's supposed to be managed */
 	unmanaged_specs = nm_settings_get_unmanaged_specs (priv->settings);
 	if (   !manager_sleeping (self)
