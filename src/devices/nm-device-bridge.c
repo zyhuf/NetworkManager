@@ -24,8 +24,9 @@
 #include <glib/gi18n.h>
 
 #include <netinet/ether.h>
+#include <stdlib.h>
 
-#include "gsystem-local-alloc.h"
+#include "libgsystem.h"
 #include "nm-device-bridge.h"
 #include "nm-logging.h"
 #include "nm-utils.h"
@@ -169,13 +170,6 @@ complete_connection (NMDevice *device,
 	return TRUE;
 }
 
-static gboolean
-match_l2_config (NMDevice *self, NMConnection *connection)
-{
-	/* FIXME */
-	return TRUE;
-}
-
 /******************************************************************/
 
 typedef struct {
@@ -270,6 +264,38 @@ commit_slave_options (NMDevice *device, GObject *setting)
 
 	for (option = slave_options; option->name; option++)
 		commit_option (device, setting, option, TRUE);
+}
+
+static void
+update_connection (NMDevice *device, NMConnection *connection)
+{
+	NMSettingBridge *s_bridge = nm_connection_get_setting_bridge (connection);
+	const char *ifname = nm_device_get_iface (device);
+	int ifindex = nm_device_get_ifindex (device);
+	const Option *option;
+
+	if (!s_bridge) {
+		s_bridge = NM_SETTING_BRIDGE (nm_setting_bridge_new ());
+		nm_connection_add_setting (connection, NM_SETTING (s_bridge));
+	}
+
+	/* FIXME: This is a one-time setting and doesn't need to be updated. */
+	g_object_set (s_bridge, NM_SETTING_BRIDGE_INTERFACE_NAME, ifname, NULL);
+
+	for (option = master_options; option->name; option++) {
+		gs_free char *str = nm_platform_master_get_option (ifindex, option->sysname);
+		int value = 0;
+
+		if (str) {
+			value = strtol (str, NULL, 10);
+
+			/* See comments in set_sysfs_uint() about centiseconds. */
+			if (option->user_hz_compensate)
+				value /= 100;
+		}
+
+		g_object_set (s_bridge, option->name, value, NULL);
+	}
 }
 
 static NMActStageReturn
@@ -394,6 +420,8 @@ nm_device_bridge_class_init (NMDeviceBridgeClass *klass)
 
 	g_type_class_add_private (object_class, sizeof (NMDeviceBridgePrivate));
 
+	parent_class->connection_type = NM_SETTING_BRIDGE_SETTING_NAME;
+
 	/* virtual methods */
 	object_class->constructed = constructed;
 	object_class->get_property = get_property;
@@ -404,7 +432,7 @@ nm_device_bridge_class_init (NMDeviceBridgeClass *klass)
 	parent_class->check_connection_compatible = check_connection_compatible;
 	parent_class->complete_connection = complete_connection;
 
-	parent_class->match_l2_config = match_l2_config;
+	parent_class->update_connection = update_connection;
 
 	parent_class->act_stage1_prepare = act_stage1_prepare;
 	parent_class->enslave_slave = enslave_slave;
