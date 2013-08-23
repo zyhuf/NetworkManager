@@ -2031,6 +2031,7 @@ get_connection (NMManager *manager, NMDevice *device, gboolean *existing)
 	free_slist GSList *connections = nm_settings_get_connections (priv->settings);
 	NMConnection *connection = NULL;
 	GSList *iter;
+	GError *error = NULL;
 
 	if (existing)
 		*existing = FALSE;
@@ -2095,6 +2096,15 @@ get_connection (NMManager *manager, NMDevice *device, gboolean *existing)
 	nm_log_info (LOGD_DEVICE, "(%s): Using generated connection: '%s'",
 				 nm_device_get_iface (device),
 				 nm_connection_get_id (connection));
+
+	if (!nm_settings_add_connection (priv->settings, connection, FALSE, &error)) {
+		nm_log_warn (LOGD_SETTINGS, "(%s) Couldn't save generated connection '%s': %s",
+		             nm_device_get_iface (device),
+		             nm_connection_get_id (connection),
+		             (error && error->message) ? error->message : "(unknown)");
+		g_clear_error (&error);
+	}
+
 	return connection;
 }
 
