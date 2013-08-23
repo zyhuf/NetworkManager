@@ -963,7 +963,8 @@ refresh_object (NMPlatform *platform, struct nl_object *object, gboolean removed
 			announce_object (platform, cached_object, REMOVED, reason);
 		}
 	} else {
-		g_return_val_if_fail (kernel_object, FALSE);
+		if (!kernel_object)
+			return FALSE;
 
 		hack_empty_master_iff_lower_up (platform, kernel_object);
 
