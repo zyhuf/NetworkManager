@@ -1928,29 +1928,16 @@ activation_source_schedule (NMDevice *self, GSourceFunc func, int family)
 }
 
 gboolean
-nm_device_ip_config_should_fail (NMDevice *self, gboolean ip6)
+nm_device_ip_config_should_fail (NMDevice *device, gboolean ip6)
 {
-	NMConnection *connection;
-	NMSettingIP4Config *s_ip4;
-	NMSettingIP6Config *s_ip6;
+	NMConnection *connection = nm_device_get_connection (device);
+	NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	NMSettingIP6Config *s_ip6 = nm_connection_get_setting_ip6_config (connection);
 
-	g_return_val_if_fail (self != NULL, TRUE);
-
-	connection = nm_device_get_connection (self);
-	g_assert (connection);
+	g_assert (s_ip4 && s_ip6);
 
 	/* Fail the connection if the failed IP method is required to complete */
-	if (ip6) {
-		s_ip6 = nm_connection_get_setting_ip6_config (connection);
-		if (s_ip6 && !nm_setting_ip6_config_get_may_fail (s_ip6))
-			return TRUE;
-	} else {
-		s_ip4 = nm_connection_get_setting_ip4_config (connection);
-		if (s_ip4 && !nm_setting_ip4_config_get_may_fail (s_ip4))
-			return TRUE;
-	}
-
-	return FALSE;
+	return ip6 ? !nm_setting_ip6_config_get_may_fail (s_ip6) : !nm_setting_ip4_config_get_may_fail (s_ip4);
 }
 
 static NMActStageReturn
@@ -2184,23 +2171,19 @@ nm_device_handle_autoip4_event (NMDevice *self,
                                 const char *address)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
-	NMConnection *connection = NULL;
-	NMSettingIP4Config *s_ip4 = NULL;
-	const char *iface, *method = NULL;
+	NMConnection *connection = nm_act_request_get_connection (priv->act_request);
+	NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	const char *iface, *method;
 	NMDeviceStateReason reason = NM_DEVICE_STATE_REASON_NONE;
+
+	g_assert (s_ip4);
 
 	g_return_if_fail (event != NULL);
 
 	if (priv->act_request == NULL)
 		return;
 
-	connection = nm_act_request_get_connection (priv->act_request);
-	g_assert (connection);
-
-	/* Ignore if the connection isn't an AutoIP connection */
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	if (s_ip4)
-		method = nm_setting_ip4_config_get_method (s_ip4);
+	method = nm_setting_ip4_config_get_method (s_ip4);
 
 	if (g_strcmp0 (method, NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL) != 0)
 		return;
@@ -2712,14 +2695,11 @@ have_any_ready_slaves (NMDevice *device, const GSList *slaves)
 static gboolean
 ip4_requires_slaves (NMConnection *connection)
 {
-	NMSettingIP4Config *s_ip4;
-	const char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
+	NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
 
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	if (s_ip4)
-		method = nm_setting_ip4_config_get_method (s_ip4);
+	g_assert (s_ip4);
 
-	return g_strcmp0 (method, NM_SETTING_IP4_CONFIG_METHOD_AUTO) == 0;
+	return !g_strcmp0 (nm_setting_ip4_config_get_method (s_ip4), NM_SETTING_IP4_CONFIG_METHOD_AUTO);
 }
 
 static NMActStageReturn
@@ -2728,30 +2708,18 @@ act_stage3_ip4_config_start (NMDevice *self,
                              NMDeviceStateReason *reason)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
-	NMConnection *connection;
-	NMSettingIP4Config *s_ip4;
+	NMConnection *connection = nm_device_get_connection (self);
+	NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
 	NMActStageReturn ret = NM_ACT_STAGE_RETURN_FAILURE;
-	const char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
+	const char *method;
 	GSList *slaves;
 	gboolean ready_slaves;
 
+	g_assert (s_ip4);
+
 	g_return_val_if_fail (reason != NULL, NM_ACT_STAGE_RETURN_FAILURE);
 
-	connection = nm_device_get_connection (self);
-	g_assert (connection);
-
-	/* If we did not receive IP4 configuration information, default to DHCP.
-	 * Slaves, on the other hand, never have any IP configuration themselves,
-	 * since the master handles all of that.
-	 */
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	if (priv->master) /* eg, device is a slave */
-		method = NM_SETTING_IP4_CONFIG_METHOD_DISABLED;
-	else if (s_ip4)
-		method = nm_setting_ip4_config_get_method (s_ip4);
-	else
-		method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
-
+	method = nm_setting_ip4_config_get_method (s_ip4);
 	if (   g_strcmp0 (method, NM_SETTING_IP4_CONFIG_METHOD_MANUAL) != 0
 	    && nm_device_is_master (self)
 	    && nm_device_is_unavailable_because_of_carrier (self)) {
@@ -3254,16 +3222,20 @@ done:
 static gboolean
 ip6_requires_slaves (NMConnection *connection)
 {
-	NMSettingIP6Config *s_ip6;
-	const char *method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
+	NMSettingIP6Config *s_ip6 = nm_connection_get_setting_ip6_config (connection);
+	const char *method;
 
-	s_ip6 = nm_connection_get_setting_ip6_config (connection);
-	if (s_ip6)
-		method = nm_setting_ip6_config_get_method (s_ip6);
+	g_assert (s_ip6);
+
+	method = nm_setting_ip6_config_get_method (s_ip6);
 
 	/* SLAAC, DHCP, and Link-Local depend on connectivity (and thus slaves)
 	 * to complete addressing.  SLAAC and DHCP obviously need a peer to
 	 * provide a prefix, while Link-Local must perform DAD on the local link.
+	 *
+	 * FIXME: We're most probably going to rename "link-local" to "disabled" and we
+	 * don't currently check the link-local address status at all in NetworkManager,
+	 * so waiting for slaves to get doesn't currently make much sense.
 	 */
 	return    g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO) == 0
 	       || g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_DHCP) == 0
@@ -3276,36 +3248,22 @@ act_stage3_ip6_config_start (NMDevice *self,
                              NMDeviceStateReason *reason)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
-	const char *ip_iface;
+	const char *ip_iface = nm_device_get_ip_iface (self);
 	NMActStageReturn ret = NM_ACT_STAGE_RETURN_FAILURE;
-	NMConnection *connection;
-	NMSettingIP6Config *s_ip6;
-	const char *method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
+	NMConnection *connection = nm_device_get_connection (self);
+	NMSettingIP6Config *s_ip6 = nm_connection_get_setting_ip6_config (connection);
+	const char *method;
 	int conf_use_tempaddr;
 	NMSettingIP6ConfigPrivacy ip6_privacy = NM_SETTING_IP6_CONFIG_PRIVACY_UNKNOWN;
 	const char *ip6_privacy_str = "0\n";
 	GSList *slaves;
 	gboolean ready_slaves;
 
+	g_assert (s_ip6);
+
 	g_return_val_if_fail (reason != NULL, NM_ACT_STAGE_RETURN_FAILURE);
 
-	ip_iface = nm_device_get_ip_iface (self);
-
-	connection = nm_device_get_connection (self);
-	g_assert (connection);
-
-	/* If we did not receive IP6 configuration information, default to AUTO.
-	 * Slaves, on the other hand, never have any IP configuration themselves,
-	 * since the master handles all of that.
-	 */
-	s_ip6 = nm_connection_get_setting_ip6_config (connection);
-	if (priv->master) /* eg, device is a slave */
-		method = NM_SETTING_IP6_CONFIG_METHOD_IGNORE;
-	else if (s_ip6)
-		method = nm_setting_ip6_config_get_method (s_ip6);
-	else
-		method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
-
+	method = nm_setting_ip6_config_get_method (s_ip6);
 	if (   g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL) != 0
 	    && nm_device_is_master (self)
 	    && nm_device_is_unavailable_because_of_carrier (self)) {
@@ -3379,7 +3337,7 @@ act_stage3_ip6_config_start (NMDevice *self,
 	conf_use_tempaddr = ip6_use_tempaddr ();
 	if (conf_use_tempaddr >= 0)
 		ip6_privacy = conf_use_tempaddr;
-	else if (s_ip6)
+	else
 		ip6_privacy = nm_setting_ip6_config_get_ip6_privacy (s_ip6);
 	ip6_privacy = CLAMP (ip6_privacy, NM_SETTING_IP6_CONFIG_PRIVACY_UNKNOWN, NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_TEMP_ADDR);
 
@@ -3892,7 +3850,7 @@ nm_device_activate_ip4_config_commit (gpointer user_data)
 	NMDevice *self = NM_DEVICE (user_data);
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMActRequest *req;
-	const char *iface, *method = NULL;
+	const char *iface;
 	NMConnection *connection;
 	NMSettingIP4Config *s_ip4;
 	NMDeviceStateReason reason = NM_DEVICE_STATE_REASON_NONE;
@@ -3926,10 +3884,9 @@ nm_device_activate_ip4_config_commit (gpointer user_data)
 
 	/* Start IPv4 sharing if we need it */
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	if (s_ip4)
-		method = nm_setting_ip4_config_get_method (s_ip4);
+	g_assert (s_ip4);
 
-	if (g_strcmp0 (method, NM_SETTING_IP4_CONFIG_METHOD_SHARED) == 0) {
+	if (!g_strcmp0 (nm_setting_ip4_config_get_method (s_ip4), NM_SETTING_IP4_CONFIG_METHOD_SHARED)) {
 		if (!start_sharing (self, priv->ip4_config)) {
 			nm_log_warn (LOGD_SHARING, "Activation (%s) Stage 5 of 5 (IPv4 Commit) start sharing failed.", iface);
 			nm_device_state_changed (self, NM_DEVICE_STATE_FAILED, NM_DEVICE_STATE_REASON_SHARED_START_FAILED);
@@ -4927,24 +4884,17 @@ dispose (GObject *object)
 	 * a connection that can be assumed.
 	 */
 	if (nm_device_can_assume_connections (self) && (priv->state == NM_DEVICE_STATE_ACTIVATED)) {
-		NMConnection *connection;
-	    NMSettingIP4Config *s_ip4 = NULL;
-		const char *method = NULL;
+		NMConnection *connection = nm_device_get_connection (self);
+		NMSettingIP4Config *s_ip4 = connection ? nm_connection_get_setting_ip4_config (connection) : NULL;
+		const char *ip4_method = s_ip4 ? nm_setting_ip4_config_get_method (s_ip4) : NULL;
 
-		connection = nm_device_get_connection (self);
-		if (connection) {
-			/* Only static or DHCP IPv4 connections can be left up.
-			 * All IPv6 connections can be left up, so we don't have
-			 * to check that.
+		if (ip4_method) {
+			/* Only deconfigure shared connections and link-local connections, keep
+			 * all other. We don't check IPv6 method here as we currently consider
+			 * all IPv6 methods assumable.
 			 */
-			s_ip4 = nm_connection_get_setting_ip4_config (connection);
-			if (s_ip4)
-				method = nm_setting_ip4_config_get_method (s_ip4);
-			if (   !method
-			    || !strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_AUTO)
-			    || !strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_MANUAL)
-			    || !strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_DISABLED))
-				deconfigure = FALSE;
+			deconfigure =    !strcmp (ip4_method, NM_SETTING_IP4_CONFIG_METHOD_SHARED)
+			              || !strcmp (ip4_method, NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL);
 		}
 	}
 
@@ -6302,13 +6252,13 @@ spec_match_list (NMDevice *device, const GSList *specs)
 static gboolean
 ip4_match_config (NMDevice *self, NMConnection *connection)
 {
-	NMSettingIP4Config *s_ip4;
+	NMSettingIP4Config *s_ip4 = nm_connection_get_setting_ip4_config (connection);
 	int i, num;
 	GSList *leases, *iter;
 	NMDHCPManager *dhcp_mgr;
 	const char *method;
 
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	g_assert (s_ip4);
 
 	/* Get any saved leases that apply to this connection */
 	dhcp_mgr = nm_dhcp_manager_get ();
@@ -6359,16 +6309,14 @@ ip4_match_config (NMDevice *self, NMConnection *connection)
 	/* Everything below for static addressing */
 
 	/* Find all IP4 addresses of this connection on the device */
-	if (s_ip4) {
-		num = nm_setting_ip4_config_get_num_addresses (s_ip4);
-		for (i = 0; i < num; i++) {
-			NMIP4Address *addr = nm_setting_ip4_config_get_address (s_ip4, i);
+	num = nm_setting_ip4_config_get_num_addresses (s_ip4);
+	for (i = 0; i < num; i++) {
+		NMIP4Address *addr = nm_setting_ip4_config_get_address (s_ip4, i);
 
-			if (!nm_platform_ip4_address_exists (nm_device_get_ip_ifindex (self),
-					nm_ip4_address_get_address (addr),
-					nm_ip4_address_get_prefix (addr)))
-				return FALSE;
-		}
+		if (!nm_platform_ip4_address_exists (nm_device_get_ip_ifindex (self),
+				nm_ip4_address_get_address (addr),
+				nm_ip4_address_get_prefix (addr)))
+			return FALSE;
 	}
 
 	/* Success; all the connection's static IP addresses are assigned to the device */
