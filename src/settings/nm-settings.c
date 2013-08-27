@@ -778,6 +778,41 @@ openconnect_migrate_hack (NMConnection *connection)
 }
 
 static void
+normalize_connection (NMConnection *connection)
+{
+	NMSettingConnection *s_conn = nm_connection_get_setting_connection (connection);
+	const char *default_ip4_method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
+	const char *default_ip6_method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
+
+	/* Slave connections don't have IP configuration. */
+	if (nm_setting_connection_get_master (s_conn)) {
+		default_ip4_method = NM_SETTING_IP4_CONFIG_METHOD_DISABLED;
+		/* FIXME: I'm using IGNORE here on dcbw's request temporarily as we don't have
+		 * DISABLED method for IPv6. My intention is to simply rename LINK_LOCAL
+		 * to DISABLED and update the behavior according to:
+		 *
+		 * https://bugzilla.gnome.org/show_bug.cgi?id=682932
+		 */
+		default_ip6_method = NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL;
+	}
+
+	if (!nm_connection_get_setting_ip4_config (connection)) {
+		NMSetting *s_ip4 = nm_setting_ip4_config_new ();
+
+		nm_connection_add_setting (connection, s_ip4);
+
+		g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_METHOD, default_ip4_method, NULL);
+	}
+	if (!nm_connection_get_setting_ip6_config (connection)) {
+		NMSetting *s_ip6 = nm_setting_ip6_config_new ();
+
+		nm_connection_add_setting (connection, s_ip6);
+
+		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_METHOD, default_ip6_method, NULL);
+	}
+}
+
+static void
 claim_connection (NMSettings *self,
                   NMSettingsConnection *connection,
                   gboolean do_export)
@@ -799,6 +834,8 @@ claim_connection (NMSettings *self,
 		if (data == connection)
 			return;
 	}
+
+	normalize_connection ((NMConnection *) connection);
 
 	if (!nm_connection_verify (NM_CONNECTION (connection), &error)) {
 		nm_log_warn (LOGD_SETTINGS, "plugin provided invalid connection: '%s' / '%s' invalid: %d",
