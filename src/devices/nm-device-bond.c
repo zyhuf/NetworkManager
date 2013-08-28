@@ -25,7 +25,7 @@
 
 #include <netinet/ether.h>
 
-#include "gsystem-local-alloc.h"
+#include "libgsystem.h"
 #include "nm-device-bond.h"
 #include "nm-logging.h"
 #include "nm-utils.h"
@@ -171,28 +171,28 @@ complete_connection (NMDevice *device,
 	return TRUE;
 }
 
-static gboolean
-match_l2_config (NMDevice *self, NMConnection *connection)
-{
-	/* FIXME */
-	return TRUE;
-}
-
 /******************************************************************/
 
 typedef struct {
 	const char *name;
 	const char *default_value;
+	gboolean (* check) (const char *value);
 } Option;
+
+static gboolean
+check_nonzero (const char *value)
+{
+	return g_strcmp0 (value, "0");
+}
 
 static const Option master_options[] = {
 	{ "mode", "balance-rr" },
-	{ "arp_interval", "0" },
-	{ "miimon", "0" },
+	{ "arp_interval", "0", check_nonzero },
+	{ "miimon", "0", check_nonzero},
 
 	{ "ad_select", "stable" },
 	{ "arp_validate", "none" },
-	{ "downdelay", "0" },
+	{ "downdelay", "0", check_nonzero },
 	{ "fail_over_mac", "none" },
 	{ "lacp_rate", "slow" },
 	{ "min_links", "0" },
@@ -201,7 +201,7 @@ static const Option master_options[] = {
 	{ "primary", "" },
 	{ "primary_reselect", "always" },
 	{ "resend_igmp", "1" },
-	{ "updelay", "0" },
+	{ "updelay", "0" , check_nonzero },
 	{ "use_carrier", "1" },
 	{ "xmit_hash_policy", "layer2" },
 	{ NULL, NULL }
@@ -217,6 +217,43 @@ option_valid_for_nm_setting (NMSettingBond *s_bond, const Option *option)
 			return TRUE;
 
 	return FALSE;
+}
+
+static void
+update_connection (NMDevice *device, NMConnection *connection)
+{
+	NMSettingBond *s_bond = nm_connection_get_setting_bond (connection);
+	const char *ifname = nm_device_get_iface (device);
+	int ifindex = nm_device_get_ifindex (device);
+	const Option *option;
+
+	if (!s_bond) {
+		s_bond = NM_SETTING_BOND (nm_setting_bond_new ());
+		nm_connection_add_setting (connection, NM_SETTING (s_bond));
+	}
+
+	/* FIXME: This is a one-time setting and doesn't need to be updated. */
+	g_object_set (s_bond, NM_SETTING_BOND_INTERFACE_NAME, ifname, NULL);
+
+	for (option = master_options; option->name; option++) {
+		if (option_valid_for_nm_setting (s_bond, option)) {
+			gs_free char *value = nm_platform_master_get_option (ifindex, option->name);
+			char *space;
+
+			if (value) {
+				/* FIXME: This could be handled in nm-platform. */
+				space = strchr (value, ' ');
+				if (space)
+					*space = '\0';
+
+				if (!option->check || option->check (value)) {
+					nm_setting_bond_add_option (s_bond, option->name, value);
+					continue;
+				}
+			}
+			nm_setting_bond_remove_option (s_bond, option->name);
+		}
+	}
 }
 
 static void
@@ -448,6 +485,8 @@ nm_device_bond_class_init (NMDeviceBondClass *klass)
 
 	g_type_class_add_private (object_class, sizeof (NMDeviceBondPrivate));
 
+	parent_class->connection_type = NM_SETTING_BOND_SETTING_NAME;
+
 	/* virtual methods */
 	object_class->constructed = constructed;
 	object_class->get_property = get_property;
@@ -458,7 +497,7 @@ nm_device_bond_class_init (NMDeviceBondClass *klass)
 	parent_class->check_connection_compatible = check_connection_compatible;
 	parent_class->complete_connection = complete_connection;
 
-	parent_class->match_l2_config = match_l2_config;
+	parent_class->update_connection = update_connection;
 
 	parent_class->act_stage1_prepare = act_stage1_prepare;
 	parent_class->enslave_slave = enslave_slave;
