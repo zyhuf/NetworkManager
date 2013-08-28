@@ -27,6 +27,7 @@
 #include <nm-connection.h>
 
 gboolean nm_keyfile_plugin_write_connection (NMConnection *connection,
+                                             const char *keyfile_dir,
                                              const char *existing_path,
                                              char **out_path,
                                              GError **error);

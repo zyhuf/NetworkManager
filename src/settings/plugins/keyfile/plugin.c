@@ -64,6 +64,8 @@ typedef struct {
 	GFileMonitor *conf_file_monitor;
 	guint conf_file_monitor_id;
 
+	const char *keyfile_dir;
+
 	char *hostname;
 
 	gboolean disposed;
@@ -299,7 +301,7 @@ setup_monitoring (NMSystemConfigInterface *config)
 	GFileMonitor *monitor;
 
 	if (nm_config_get_monitor_connection_files (nm_config_get ())) {
-		file = g_file_new_for_path (KEYFILE_DIR);
+		file = g_file_new_for_path (priv->keyfile_dir);
 		monitor = g_file_monitor_directory (file, G_FILE_MONITOR_NONE, NULL, NULL);
 		g_object_unref (file);
 
@@ -333,10 +335,10 @@ read_connections (NMSystemConfigInterface *config)
 	GHashTableIter iter;
 	gpointer data;
 
-	dir = g_dir_open (KEYFILE_DIR, 0, &error);
+	dir = g_dir_open (priv->keyfile_dir, 0, &error);
 	if (!dir) {
 		PLUGIN_WARN (KEYFILE_PLUGIN_NAME, "Cannot read directory '%s': (%d) %s",
-		             KEYFILE_DIR,
+		             priv->keyfile_dir,
 		             error ? error->code : -1,
 		             error && error->message ? error->message : "(unknown)");
 		g_clear_error (&error);
@@ -355,7 +357,7 @@ read_connections (NMSystemConfigInterface *config)
 		if (nm_keyfile_plugin_utils_should_ignore_file (item))
 			continue;
 
-		full_path = g_build_filename (KEYFILE_DIR, item, NULL);
+		full_path = g_build_filename (priv->keyfile_dir, item, NULL);
 
 		connection = g_hash_table_lookup (oldconns, full_path);
 		if (connection) {
@@ -416,11 +418,12 @@ add_connection (NMSystemConfigInterface *config,
                 GError **error)
 {
 	SCPluginKeyfile *self = SC_PLUGIN_KEYFILE (config);
+	SCPluginKeyfilePrivate *priv = SC_PLUGIN_KEYFILE_GET_PRIVATE (self);
 	NMSettingsConnection *added = NULL;
 	char *path = NULL;
 
 	if (save_to_disk) {
-		if (!nm_keyfile_plugin_write_connection (connection, NULL, &path, error))
+		if (!nm_keyfile_plugin_write_connection (connection, priv->keyfile_dir, NULL, &path, error))
 			return NULL;
 	}
 		
@@ -717,6 +720,9 @@ nm_settings_keyfile_plugin_new (void)
 		priv = SC_PLUGIN_KEYFILE_GET_PRIVATE (singleton);
 
 		priv->conf_file = nm_config_get_path (nm_config_get ());
+		priv->keyfile_dir = NMCONFDIR "/connections";
+		if (!g_file_test (priv->keyfile_dir, G_FILE_TEST_EXISTS))
+			priv->keyfile_dir = NMCONFDIR "/system-connections";
 
 		/* plugin_set_hostname() has to be called *after* priv->conf_file is set */
 		priv->hostname = plugin_get_hostname (singleton);

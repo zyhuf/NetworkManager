@@ -1127,12 +1127,13 @@ out:
 
 gboolean
 nm_keyfile_plugin_write_connection (NMConnection *connection,
+                                    const char *keyfile_dir,
                                     const char *existing_path,
                                     char **out_path,
                                     GError **error)
 {
 	return _internal_write_connection (connection,
-	                                   KEYFILE_DIR,
+	                                   keyfile_dir,
 	                                   0, 0,
 	                                   existing_path,
 	                                   out_path,

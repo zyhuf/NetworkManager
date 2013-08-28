@@ -122,6 +122,7 @@ commit_changes (NMSettingsConnection *connection,
 	GError *error = NULL;
 
 	if (!nm_keyfile_plugin_write_connection (NM_CONNECTION (connection),
+	                                         NULL,
 	                                         priv->path,
 	                                         &path,
 	                                         &error)) {
