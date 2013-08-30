@@ -2225,7 +2225,7 @@ add_device (NMManager *self, NMDevice *device)
 	system_create_virtual_devices (self);
 
 	/* If the device has a connection it can assume, do that now */
-	if (connection && nm_device_can_activate (device, connection)) {
+	if (connection && nm_device_get_state (device) == NM_DEVICE_STATE_UNAVAILABLE) {
 		NMActiveConnection *ac;
 		GError *error = NULL;
 
