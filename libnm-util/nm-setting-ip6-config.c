@@ -755,6 +755,53 @@ verify (NMSetting *setting, GSList *all_settings, GError **error)
 	return TRUE;
 }
 
+static gboolean
+compare_property (NMSetting *setting,
+                  NMSetting *other,
+                  const GParamSpec *prop_spec,
+                  NMSettingCompareFlags flags)
+{
+	/* Handle CANDIDATE flag. */
+	if (flags & NM_SETTING_COMPARE_FLAG_IGNORE_ID) {
+		if (!g_strcmp0 (prop_spec->name, NM_SETTING_IP6_CONFIG_METHOD)) {
+			const char *generated = nm_setting_ip6_config_get_method (NM_SETTING_IP6_CONFIG (setting));
+			const char *candidate = nm_setting_ip6_config_get_method (NM_SETTING_IP6_CONFIG (other));
+
+			/* Match generated and (configured) candidate method carefully:
+			 *
+			 * [configured -> symptoms -> generated]
+			 * IGNORE -> dynamic address(es) -> AUTO
+			 * AUTO -> dynamic address(es) -> AUTO
+			 * DHCP -> dynamic address(es) -> AUTO
+			 * LINK_LOCAL -> no address -> LINK_LOCAL
+			 * MANUAL -> static address(es) -> MANUAL
+			 * SHARED -> static address(es) -> MANUAL
+			 *
+			 * [generated -> configured]
+			 * LINK_LOCAL -> LINK_LOCAL
+			 * MANUAL -> MANUAL, SHARED
+			 * AUTO -> IGNORE, AUTO, DHCP
+			 *
+			 * Note: Link-local addresses are not taken into account. Dynamic addresses
+			 * are considered stronger than static addresses (i.e. a dynamic connection
+			 * can have static addresses but not vice versa).
+			 */
+			if (   !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_IGNORE)
+			    || !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_AUTO)
+			    || !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_DHCP))
+				return !g_strcmp0 (generated, NM_SETTING_IP6_CONFIG_METHOD_AUTO);
+			if (   !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL))
+				return !g_strcmp0 (generated, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL);
+			if (   !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_MANUAL)
+			    || !g_strcmp0 (candidate, NM_SETTING_IP6_CONFIG_METHOD_SHARED))
+				return !g_strcmp0 (generated, NM_SETTING_IP6_CONFIG_METHOD_MANUAL);
+		}
+	}
+
+	/* Otherwise chain up to parent to handle generic compare */
+	return NM_SETTING_CLASS (nm_setting_ip6_config_parent_class)->compare_property (setting, other, prop_spec, flags);
+}
+
 
 static void
 nm_setting_ip6_config_init (NMSettingIP6Config *setting)
@@ -890,6 +937,7 @@ nm_setting_ip6_config_class_init (NMSettingIP6ConfigClass *setting_class)
 	object_class->get_property = get_property;
 	object_class->finalize     = finalize;
 	parent_class->verify       = verify;
+	parent_class->compare_property = compare_property;
 
 	/* Properties */
 	/**
