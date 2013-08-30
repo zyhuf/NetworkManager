@@ -1008,6 +1008,14 @@ nm_device_release_one_slave (NMDevice *dev, NMDevice *slave, gboolean failed)
 }
 
 static gboolean
+ip6_method_is_static (const char *method)
+{
+	return    !g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL)
+	       || !g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL)
+	       || !g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_SHARED);
+}
+
+static gboolean
 connection_is_static (NMConnection *connection)
 {
 	NMSettingIP4Config *ip4;
@@ -1024,9 +1032,7 @@ connection_is_static (NMConnection *connection)
 
 	ip6 = nm_connection_get_setting_ip6_config (connection);
 	if (ip6) {
-		method = nm_setting_ip6_config_get_method (ip6);
-		if (   g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL) != 0
-		    && g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_IGNORE) != 0)
+		if (!ip6_method_is_static (nm_setting_ip6_config_get_method (ip6)))
 			return FALSE;
 	}
 
@@ -3253,8 +3259,7 @@ ip6_requires_slaves (NMConnection *connection)
 	 * provide a prefix, while Link-Local must perform DAD on the local link.
 	 */
 	return    g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO) == 0
-	       || g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_DHCP) == 0
-	       || g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL) == 0;
+	       || g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_DHCP) == 0;
 }
 
 static NMActStageReturn
@@ -3293,7 +3298,7 @@ act_stage3_ip6_config_start (NMDevice *self,
 	else
 		method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
 
-	if (   g_strcmp0 (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL) != 0
+	if (   !ip6_method_is_static (method)
 	    && nm_device_is_master (self)
 	    && nm_device_is_unavailable_because_of_carrier (self)) {
 		nm_log_info (LOGD_IP6 | LOGD_DEVICE,
@@ -3322,8 +3327,7 @@ act_stage3_ip6_config_start (NMDevice *self,
 
 	priv->dhcp6_mode = NM_RDISC_DHCP_LEVEL_NONE;
 
-	if (   strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO) == 0
-	    || strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL) == 0) {
+	if (   strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO) == 0) {
 		if (!addrconf6_start (self)) {
 			*reason = NM_DEVICE_STATE_REASON_IP_CONFIG_UNAVAILABLE;
 			ret = NM_ACT_STAGE_RETURN_FAILURE;
@@ -3343,7 +3347,8 @@ act_stage3_ip6_config_start (NMDevice *self,
 			                    priv->ip6_accept_ra_save ? "1" : "0");
 		}
 		ret = NM_ACT_STAGE_RETURN_STOP;
-	} else if (strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL) == 0) {
+	} else if (   strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL) == 0
+	           || strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_MANUAL) == 0) {
 		/* New blank config */
 		*out_config = nm_ip6_config_new ();
 		g_assert (*out_config);
