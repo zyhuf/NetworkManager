@@ -3287,7 +3287,7 @@ act_stage3_ip6_config_start (NMDevice *self,
 	 */
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
 	if (priv->master) /* eg, device is a slave */
-		method = NM_SETTING_IP6_CONFIG_METHOD_IGNORE;
+		method = NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL;
 	else if (s_ip6)
 		method = nm_setting_ip6_config_get_method (s_ip6);
 	else
