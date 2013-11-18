@@ -239,6 +239,20 @@ typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 CLEANFILES += $(gir_DATA) $(typelib_DATA)
 endif
 
+giomoduledir = $(libdir)/gio/modules
+giomodule_LTLIBRARIES = libnm-networkmonitor.la
+
+libnm_networkmonitor_la_SOURCES =	\
+	nm-network-monitor.c		\
+	nm-network-monitor.h
+
+libnm_networkmonitor_la_LDFLAGS =	\
+	-export_dynamic -avoid-version -module -no-undefined \
+	-export-symbols-regex '^g_io_module_(load|unload|query)'
+
+libnm_networkmonitor_la_LIBADD =	\
+	libnm-glib.la
+
 if ENABLE_TESTS
 
 check-local:
