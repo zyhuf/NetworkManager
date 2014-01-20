@@ -573,6 +573,7 @@ wifi_wext_init (const char *iface, int ifindex, gboolean check_scan)
 	guint32 response_len = 0;
 	struct iw_range_with_scan_capa *scan_capa_range;
 	int i;
+	gboolean has_5ghz = FALSE, has_2ghz = FALSE;
 
 	wext = wifi_data_new (iface, ifindex, sizeof (*wext));
 	wext->parent.get_mode = wifi_wext_get_mode;
@@ -613,8 +614,13 @@ wifi_wext_init (const char *iface, int ifindex, gboolean check_scan)
 	wext->max_qual.updated = range.max_qual.updated;
 
 	wext->num_freqs = MIN (range.num_frequency, IW_MAX_FREQUENCIES);
-	for (i = 0; i < wext->num_freqs; i++)
+	for (i = 0; i < wext->num_freqs; i++) {
 		wext->freqs[i] = iw_freq_to_uint32 (&range.freq[i]);
+		if (wext->freqs[i] > 2400 && wext->freqs[i] < 2500)
+			has_2ghz = TRUE;
+		else if (wext->freqs[i] > 4900 && wext->freqs[i] < 6000)
+			has_5ghz = TRUE;
+	}
 
 	/* Check for scanning capability; cards that can't scan are not supported */
 	if (check_scan && (wext_can_scan (wext) == FALSE)) {
@@ -642,6 +648,10 @@ wifi_wext_init (const char *iface, int ifindex, gboolean check_scan)
 	}
 
 	wext->parent.caps = wext_get_caps (wext, &range);
+	if (has_2ghz)
+		wext->parent.caps |= NM_WIFI_DEVICE_CAP_FREQ_2GHZ;
+	if (has_5ghz)
+		wext->parent.caps |= NM_WIFI_DEVICE_CAP_FREQ_5GHZ;
 
 	nm_log_info (LOGD_HW | LOGD_WIFI,
 	             "(%s): using WEXT for WiFi device control",
