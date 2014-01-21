@@ -403,4 +403,7 @@ nmt_newt_get_screen_size (int *screen_width,
                           int *screen_height)
 {
 	newtGetScreenSize (screen_width, screen_height);
+
+	/* Allow room for the help line at the bottom */
+	*screen_height -= 2;
 }

@@ -110,6 +110,7 @@ void           nmt_newt_widget_set_exit_on_activate (NmtNewtWidget *widget,
                                                      gboolean       exit_on_activate);
 
 gboolean       nmt_newt_widget_get_valid      (NmtNewtWidget *widget);
+const char *   nmt_newt_widget_get_help_text  (NmtNewtWidget *widget);
 
 NmtNewtWidget *nmt_newt_widget_find_component (NmtNewtWidget *widget,
                                                newtComponent  co);
@@ -118,6 +119,8 @@ NmtNewtWidget *nmt_newt_widget_find_component (NmtNewtWidget *widget,
 void           nmt_newt_widget_needs_rebuild  (NmtNewtWidget *widget);
 void           nmt_newt_widget_set_valid      (NmtNewtWidget *widget,
                                                gboolean       valid);
+void           nmt_newt_widget_set_help_text  (NmtNewtWidget *widget,
+                                               const char    *help_text);
 
 G_END_DECLS
 

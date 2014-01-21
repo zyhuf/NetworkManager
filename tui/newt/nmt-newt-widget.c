@@ -47,6 +47,7 @@ typedef struct {
 	NmtNewtWidget *parent;
 	gboolean visible, realized, valid;
 	gboolean exit_on_activate;
+	char *help_text;
 
 	int pad_left, pad_top, pad_right, pad_bottom;
 } NmtNewtWidgetPrivate;
@@ -57,6 +58,7 @@ enum {
 	PROP_PARENT,
 	PROP_VISIBLE,
 	PROP_VALID,
+	PROP_HELP_TEXT,
 	PROP_EXIT_ON_ACTIVATE,
 
 	LAST_PROP
@@ -87,6 +89,7 @@ nmt_newt_widget_finalize (GObject *object)
 
 	nmt_newt_widget_unrealize (NMT_NEWT_WIDGET (object));
 	g_clear_object (&priv->parent);
+	g_free (priv->help_text);
 
 	G_OBJECT_CLASS (nmt_newt_widget_parent_class)->finalize (object);
 }
@@ -526,6 +529,46 @@ nmt_newt_widget_set_valid (NmtNewtWidget *widget,
 }
 
 /**
+ * nmt_newt_widget_get_help_text:
+ * @widget: an #NmtNewtWidget
+ *
+ * Gets @widget's #NmtNewtWidget:help-text, indicating text to display
+ * in its form's status line (or %NULL to not display anything).
+ *
+ * Returns: @widget's #NmtNewtWidget:help-text.
+ */
+const char *
+nmt_newt_widget_get_help_text (NmtNewtWidget *widget)
+{
+	NmtNewtWidgetPrivate *priv = NMT_NEWT_WIDGET_GET_PRIVATE (widget);
+
+	return priv->help_text;
+}
+
+/**
+ * nmt_newt_widget_set_help_text:
+ * @widget: an #NmtNewtWidget
+ * @help_text: help text to display when @widget is focused
+ *
+ * Sets @widget's #NmtNewtWidget:help-text, indicating text to display
+ * in its form's status line when the widget is focused.
+ */
+void
+nmt_newt_widget_set_help_text (NmtNewtWidget *widget,
+                               const char    *help_text)
+{
+	NmtNewtWidgetPrivate *priv = NMT_NEWT_WIDGET_GET_PRIVATE (widget);
+
+	if (!g_strcmp0 (priv->help_text, help_text))
+		return;
+
+	g_free (priv->help_text);
+	priv->help_text = g_strdup (help_text);
+
+	g_object_notify (G_OBJECT (widget), "help-text");
+}
+
+/**
  * nmt_newt_widget_needs_rebuilds:
  * @widget: an #NmtNewtWidget
  *
@@ -583,6 +626,9 @@ nmt_newt_widget_get_property (GObject    *object,
 		break;
 	case PROP_VALID:
 		g_value_set_boolean (value, priv->valid);
+		break;
+	case PROP_HELP_TEXT:
+		g_value_set_string (value, priv->help_text);
 		break;
 	case PROP_EXIT_ON_ACTIVATE:
 		g_value_set_boolean (value, priv->exit_on_activate);
@@ -677,6 +723,17 @@ nmt_newt_widget_class_init (NmtNewtWidgetClass *widget_class)
 	                                                       TRUE,
 	                                                       G_PARAM_READABLE |
 	                                                       G_PARAM_STATIC_STRINGS));
+	/**
+	 * NmtNewtWidget:help-text:
+	 *
+	 * Text to display in the widget's form's status line when the
+	 * widget is focused.
+	 */
+	g_object_class_install_property (object_class, PROP_HELP_TEXT,
+	                                 g_param_spec_string ("help-text", "", "",
+	                                                      NULL,
+	                                                      G_PARAM_READABLE |
+	                                                      G_PARAM_STATIC_STRINGS));
 	/**
 	 * NmtNewtWidget:exit-on-activate:
 	 *

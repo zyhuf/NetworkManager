@@ -53,6 +53,7 @@ typedef struct {
 
 	gboolean dirty, escape_exits;
 	NmtNewtWidget *focus;
+	char *help_line;
 #ifdef HAVE_NEWTFORMGETSCROLLPOSITION
 	int scroll_position = 0;
 #endif
@@ -191,6 +192,30 @@ nmt_newt_form_set_content (NmtNewtForm      *form,
 }
 
 static void
+nmt_newt_form_reset_help_line (NmtNewtForm *form)
+{
+	NmtNewtFormPrivate *priv = NMT_NEWT_FORM_GET_PRIVATE (form);
+	const char *help_text;
+
+	newtPopHelpLine ();
+	if (priv->focus) {
+		help_text = nmt_newt_widget_get_help_text (priv->focus);
+		if (help_text)
+			newtPushHelpLine (help_text);
+	}
+}
+
+static void
+focus_help_text_changed (GObject    *object,
+                         GParamSpec *pspec,
+                         gpointer    user_data)
+{
+	NmtNewtForm *form = user_data;
+
+	nmt_newt_form_reset_help_line (form);
+}
+
+static void
 nmt_newt_form_focus_changed (NmtNewtForm   *form,
                              NmtNewtWidget *focus,
                              newtComponent  co)
@@ -199,6 +224,7 @@ nmt_newt_form_focus_changed (NmtNewtForm   *form,
 
 	if (priv->focus != focus) {
 		if (priv->focus) {
+			g_signal_handlers_disconnect_by_func (priv->focus, G_CALLBACK (focus_help_text_changed), form);
 			nmt_newt_widget_focus_out (priv->focus);
 			g_object_unref (priv->focus);
 		}
@@ -208,8 +234,12 @@ nmt_newt_form_focus_changed (NmtNewtForm   *form,
 		if (priv->focus) {
 			g_object_ref (priv->focus);
 			nmt_newt_widget_focus_in (priv->focus);
+			g_signal_connect (priv->focus, "notify::help-text",
+			                  G_CALLBACK (focus_help_text_changed), form);
 		}
 	}
+
+	nmt_newt_form_reset_help_line (form);
 
 	if (priv->form && priv->focus) {
 		if (!co)

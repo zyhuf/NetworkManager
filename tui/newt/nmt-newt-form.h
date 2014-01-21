@@ -61,6 +61,10 @@ void           nmt_newt_form_quit             (NmtNewtForm         *form);
 void           nmt_newt_form_set_focus        (NmtNewtForm         *form,
                                                NmtNewtWidget       *widget);
 
+void           nmt_newt_form_set_help_line    (NmtNewtForm      *form,
+                                               NmtNewtWidget    *widget,
+                                               const char       *help_line);
+
 G_END_DECLS
 
 #endif /* NMT_NEWT_FORM_H */
