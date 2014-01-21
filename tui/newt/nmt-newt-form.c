@@ -191,6 +191,48 @@ nmt_newt_form_set_content (NmtNewtForm      *form,
 }
 
 static void
+nmt_newt_form_focus_changed (NmtNewtForm   *form,
+                             NmtNewtWidget *focus,
+                             newtComponent  co)
+{
+	NmtNewtFormPrivate *priv = NMT_NEWT_FORM_GET_PRIVATE (form);
+
+	if (priv->focus != focus) {
+		if (priv->focus) {
+			nmt_newt_widget_focus_out (priv->focus);
+			g_object_unref (priv->focus);
+		}
+
+		priv->focus = focus;
+
+		if (priv->focus) {
+			g_object_ref (priv->focus);
+			nmt_newt_widget_focus_in (priv->focus);
+		}
+	}
+
+	if (priv->form && priv->focus) {
+		if (!co)
+			co = nmt_newt_widget_get_focus_component (priv->focus);
+		if (newtFormGetCurrent (priv->form) != co)
+			newtFormSetCurrent (priv->form, co);
+	}
+}
+
+static void
+focus_changed_callback (newtComponent  form_co,
+                        void          *form)
+{
+	NmtNewtFormPrivate *priv = NMT_NEWT_FORM_GET_PRIVATE (form);
+	NmtNewtWidget *widget;
+	newtComponent co;
+
+	co = newtFormGetCurrent (form_co);
+	widget = nmt_newt_widget_find_component (priv->content, co);
+	nmt_newt_form_focus_changed (form, widget, co);
+}
+
+static void
 nmt_newt_form_build (NmtNewtForm *form)
 {
 	NmtNewtFormPrivate *priv = NMT_NEWT_FORM_GET_PRIVATE (form);
@@ -234,19 +276,16 @@ nmt_newt_form_build (NmtNewtForm *form)
 
 	if (priv->escape_exits)
 		newtFormAddHotKey (priv->form, NEWT_KEY_ESCAPE);
+	newtComponentAddCallback (priv->form, focus_changed_callback, form);
 
 	cos = nmt_newt_widget_get_components (priv->content);
 	for (i = 0; cos[i]; i++)
 		newtFormAddComponent (priv->form, cos[i]);
 	g_free (cos);
 
-	if (priv->focus) {
-		newtComponent fco;
+	if (priv->focus)
+		nmt_newt_form_focus_changed (form, priv->focus, NULL);
 
-		fco = nmt_newt_widget_get_focus_component (priv->focus);
-		if (fco)
-			newtFormSetCurrent (priv->form, fco);
-	}
 #ifdef HAVE_NEWTFORMGETSCROLLPOSITION
 	if (priv->scroll_position)
 		newtFormSetScrollPosition (priv->form, priv->scroll_position);
@@ -282,7 +321,6 @@ static void
 nmt_newt_form_iterate (NmtNewtForm *form)
 {
 	NmtNewtFormPrivate *priv = NMT_NEWT_FORM_GET_PRIVATE (form);
-	NmtNewtWidget *focus;
 	struct newtExitStruct es;
 
 	if (priv->dirty) {
@@ -301,22 +339,8 @@ nmt_newt_form_iterate (NmtNewtForm *form)
 		return;
 	}
 
-	if (es.reason == NEWT_EXIT_COMPONENT) {
-		/* The user hit Return/Space on a component; update the form focus
-		 * to point that that component, and activate it.
-		 */
-		focus = nmt_newt_widget_find_component (priv->content, es.u.co);
-		if (focus) {
-			nmt_newt_form_set_focus (form, focus);
-			nmt_newt_widget_activated (focus);
-		}
-	} else {
-		/* The 1ms timer ran out. Update focus but don't do anything else. */
-		focus = nmt_newt_widget_find_component (priv->content,
-		                                        newtFormGetCurrent (priv->form));
-		if (focus)
-			nmt_newt_form_set_focus (form, focus);
-	}
+	if (es.reason == NEWT_EXIT_COMPONENT && priv->focus)
+		nmt_newt_widget_activated (priv->focus);
 }
 
 /* @form_stack keeps track of all currently-displayed forms, from top to bottom.
@@ -456,14 +480,7 @@ nmt_newt_form_set_focus (NmtNewtForm   *form,
 
 	g_return_if_fail (priv->form != NULL);
 
-	if (priv->focus == widget)
-		return;
-
-	if (priv->focus)
-		g_object_unref (priv->focus);
-	priv->focus = widget;
-	if (priv->focus)
-		g_object_ref (priv->focus);
+	nmt_newt_form_focus_changed (form, widget, NULL);
 }
 
 static void

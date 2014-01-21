@@ -46,6 +46,9 @@ typedef struct {
 	void            (*realize)             (NmtNewtWidget *widget);
 	void            (*unrealize)           (NmtNewtWidget *widget);
 
+	void            (*focus_in)            (NmtNewtWidget *widget);
+	void            (*focus_out)           (NmtNewtWidget *widget);
+
 	newtComponent * (*get_components)      (NmtNewtWidget *widget);
 	NmtNewtWidget * (*find_component)      (NmtNewtWidget *widget,
 	                                        newtComponent  co);
@@ -68,6 +71,9 @@ GType nmt_newt_widget_get_type (void);
 void           nmt_newt_widget_realize        (NmtNewtWidget *widget);
 void           nmt_newt_widget_unrealize      (NmtNewtWidget *widget);
 gboolean       nmt_newt_widget_get_realized   (NmtNewtWidget *widget);
+
+void           nmt_newt_widget_focus_in       (NmtNewtWidget *widget);
+void           nmt_newt_widget_focus_out      (NmtNewtWidget *widget);
 
 newtComponent *nmt_newt_widget_get_components (NmtNewtWidget *widget);
 

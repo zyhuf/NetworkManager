@@ -132,6 +132,30 @@ nmt_newt_widget_unrealize (NmtNewtWidget *widget)
 	}
 }
 
+static void
+nmt_newt_widget_real_focus_in (NmtNewtWidget *widget)
+{
+}
+
+void
+nmt_newt_widget_focus_in (NmtNewtWidget *widget)
+{
+	if (NMT_NEWT_WIDGET_GET_CLASS (widget)->focus_in)
+		NMT_NEWT_WIDGET_GET_CLASS (widget)->focus_in (widget);
+}
+
+static void
+nmt_newt_widget_real_focus_out (NmtNewtWidget *widget)
+{
+}
+
+void
+nmt_newt_widget_focus_out (NmtNewtWidget *widget)
+{
+	if (NMT_NEWT_WIDGET_GET_CLASS (widget)->focus_out)
+		NMT_NEWT_WIDGET_GET_CLASS (widget)->focus_out (widget);
+}
+
 /**
  * nmt_newt_widget_get_realized:
  * @widget: an #NmtNewtWidget
@@ -582,6 +606,9 @@ nmt_newt_widget_class_init (NmtNewtWidgetClass *widget_class)
 	object_class->finalize     = nmt_newt_widget_finalize;
 
 	widget_class->activated = nmt_newt_widget_real_activated;
+
+	widget_class->focus_in  = nmt_newt_widget_real_focus_in;
+	widget_class->focus_out = nmt_newt_widget_real_focus_out;
 
 	/* signals */
 
