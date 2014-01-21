@@ -58,6 +58,7 @@ void           nmt_newt_entry_set_filter    (NmtNewtEntry          *entry,
                                              NmtNewtEntryFilter     filter,
                                              gpointer               user_data);
 void           nmt_newt_entry_set_validator (NmtNewtEntry          *entry,
+                                             const char            *help_text,
                                              NmtNewtEntryValidator  validator,
                                              gpointer               user_data);
 

@@ -30,6 +30,8 @@
 
 #include <stdlib.h>
 
+#include <glib/gi18n-lib.h>
+
 #include "nmt-newt-entry-numeric.h"
 
 G_DEFINE_TYPE (NmtNewtEntryNumeric, nmt_newt_entry_numeric, NMT_TYPE_NEWT_ENTRY)
@@ -113,20 +115,33 @@ newt_entry_numeric_validate (NmtNewtEntry *entry,
 static void
 nmt_newt_entry_numeric_init (NmtNewtEntryNumeric *entry)
 {
-	nmt_newt_entry_set_filter (NMT_NEWT_ENTRY (entry), newt_entry_numeric_filter, NULL);
-	nmt_newt_entry_set_validator (NMT_NEWT_ENTRY (entry), newt_entry_numeric_validate, NULL);
 }
 
 static void
 nmt_newt_entry_numeric_constructed (GObject *object)
 {
+	NmtNewtEntry *entry = NMT_NEWT_ENTRY (object);
 	NmtNewtEntryNumericPrivate *priv = NMT_NEWT_ENTRY_NUMERIC_GET_PRIVATE (object);
+	char *help_text;
 
-	if (!*nmt_newt_entry_get_text (NMT_NEWT_ENTRY (object))) {
+	nmt_newt_entry_set_filter (entry, newt_entry_numeric_filter, NULL);
+
+	if (priv->max == G_MAXINT && (priv->min == 0 || priv->min == G_MININT))
+		help_text = g_strdup (_("Value must be a number"));
+	else if (priv->max != G_MAXINT && (priv->min == 0 || priv->min == G_MININT))
+		help_text = g_strdup_printf (_("Value must be a number less than %d"), priv->max);
+	else if (priv->max == G_MAXINT && priv->min != 0 && priv->min != G_MININT)
+		help_text = g_strdup_printf (_("Value must be a number greater than %d"), priv->min);
+	else
+		help_text = g_strdup_printf (_("Value must be a number between %d and %d"), priv->min, priv->max);
+	nmt_newt_entry_set_validator (entry, help_text, newt_entry_numeric_validate, NULL);
+	g_free (help_text);
+
+	if (!*nmt_newt_entry_get_text (entry)) {
 		char buf[32];
 
 		g_snprintf (buf, sizeof (buf), "%d", priv->min);
-		nmt_newt_entry_set_text (NMT_NEWT_ENTRY (object), buf);
+		nmt_newt_entry_set_text (entry, buf);
 	}
 
 	G_OBJECT_CLASS (nmt_newt_entry_numeric_parent_class)->constructed (object);

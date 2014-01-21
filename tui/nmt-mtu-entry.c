@@ -123,7 +123,7 @@ nmt_mtu_entry_init (NmtMtuEntry *entry)
 	nmt_newt_grid_add (grid, label, 1, 0);
 	nmt_newt_widget_set_padding (label, 1, 0, 0, 0);
 
-	nmt_newt_entry_set_validator (priv->entry, mtu_validator, entry);
+	nmt_newt_entry_set_validator (priv->entry, NULL, mtu_validator, entry);
 	g_object_bind_property_full (entry, "mtu", real_entry, "text",
 	                             G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE,
 	                             mtu_transform_to_text,

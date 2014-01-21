@@ -30,6 +30,8 @@
 
 #include <string.h>
 
+#include <glib/gi18n-lib.h>
+
 #include "nmt-newt-entry.h"
 #include "nmt-newt-form.h"
 #include "nmt-newt-hacks.h"
@@ -51,6 +53,7 @@ typedef struct {
 
 	NmtNewtEntryValidator validator;
 	gpointer validator_data;
+	char *help_text;
 } NmtNewtEntryPrivate;
 
 enum {
@@ -136,17 +139,24 @@ static void
 nmt_newt_entry_check_valid (NmtNewtEntry *entry)
 {
 	NmtNewtEntryPrivate *priv = NMT_NEWT_ENTRY_GET_PRIVATE (entry);
+	const char *help_text;
 	gboolean valid;
 
 	if (   (priv->flags & NMT_NEWT_ENTRY_NONEMPTY)
-	    && *priv->text == '\0')
+	    && *priv->text == '\0') {
 		valid = FALSE;
-	else if (priv->validator)
+		help_text = _("A non-empty value is required");
+	} else if (priv->validator) {
 		valid = !!priv->validator (entry, priv->text, priv->validator_data);
-	else
+		help_text = priv->help_text;
+	} else
 		valid = TRUE;
 
 	nmt_newt_widget_set_valid (NMT_NEWT_WIDGET (entry), valid);
+	if (valid)
+		nmt_newt_widget_set_help_text (NMT_NEWT_WIDGET (entry), NULL);
+	else
+		nmt_newt_widget_set_help_text (NMT_NEWT_WIDGET (entry), help_text);
 }
 
 /**
@@ -163,20 +173,25 @@ nmt_newt_entry_check_valid (NmtNewtEntry *entry)
 /**
  * nmt_newt_entry_set_validator:
  * @entry: an #NmtNewtEntry
+ * @help_text: the help text to display when @entry is invalid
  * @validator: the function to use to validate the entry
  * @user_data: data for @validator
  *
  * Sets a #NmtNewtEntryValidator on @entry, to allow validation of
  * the entry contents. If @validator returns %FALSE, then the entry
- * will not be considered #NmtNewtWidget:valid.
+ * will not be considered #NmtNewtWidget:valid, and the entry's
+ * form will display @help_text in the status line.
  */
 void
 nmt_newt_entry_set_validator (NmtNewtEntry          *entry,
+                              const char            *help_text,
                               NmtNewtEntryValidator  validator,
                               gpointer               user_data)
 {
 	NmtNewtEntryPrivate *priv = NMT_NEWT_ENTRY_GET_PRIVATE (entry);
 
+	g_free (priv->help_text);
+	priv->help_text = g_strdup (help_text);
 	priv->validator = validator;
 	priv->validator_data = user_data;
 
@@ -310,6 +325,8 @@ nmt_newt_entry_finalize (GObject *object)
 	NmtNewtEntryPrivate *priv = NMT_NEWT_ENTRY_GET_PRIVATE (object);
 
 	g_free (priv->text);
+	g_free (priv->help_text);
+
 	if (priv->idle_update)
 		g_source_remove (priv->idle_update);
 

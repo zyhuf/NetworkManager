@@ -383,7 +383,6 @@ nmt_device_entry_init (NmtDeviceEntry *deventry)
 
 	entry = nmt_newt_entry_new (-1, 0);
 	priv->entry = NMT_NEWT_ENTRY (entry);
-	nmt_newt_entry_set_validator (priv->entry, device_entry_validate, deventry);
 	g_signal_connect (priv->entry, "notify::text",
 	                  G_CALLBACK (entry_text_changed), deventry);
 
@@ -395,10 +394,24 @@ nmt_device_entry_init (NmtDeviceEntry *deventry)
 }
 
 static void
+update_help_text (NmtDeviceEntry *deventry)
+{
+	NmtDeviceEntryPrivate *priv = NMT_DEVICE_ENTRY_GET_PRIVATE (deventry);
+	const char *help_text;
+
+	if (priv->hardware_type == G_TYPE_NONE && !priv->device_filter)
+		help_text = _("Value must be a valid interface name");
+	else
+		help_text = _("Value must be a valid interface name or hardware address");
+	nmt_newt_entry_set_validator (priv->entry, help_text, device_entry_validate, deventry);
+}
+
+static void
 nmt_device_entry_constructed (GObject *object)
 {
 	NmtDeviceEntryPrivate *priv = NMT_DEVICE_ENTRY_GET_PRIVATE (object);
 
+	update_help_text (NMT_DEVICE_ENTRY (object));
 	nmt_page_grid_append (NMT_PAGE_GRID (object), priv->label, NMT_NEWT_WIDGET (priv->entry), NULL);
 
 	G_OBJECT_CLASS (nmt_device_entry_parent_class)->constructed (object);
@@ -450,6 +463,7 @@ nmt_device_entry_set_device_filter (NmtDeviceEntry             *deventry,
 
 	priv->device_filter = filter;
 	priv->device_filter_data = user_data;
+	update_help_text (deventry);
 }
 
 static void
@@ -565,6 +579,7 @@ nmt_device_entry_class_init (NmtDeviceEntryClass *deventry_class)
 	                                 g_param_spec_gtype ("hardware-type", "", "",
 	                                                     G_TYPE_NONE,
 	                                                     G_PARAM_READWRITE |
+	                                                     G_PARAM_CONSTRUCT_ONLY |
 	                                                     G_PARAM_STATIC_STRINGS));
 	/**
 	 * NmtDeviceEntry:interface-name:

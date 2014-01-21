@@ -28,6 +28,7 @@
 
 #include "config.h"
 
+#include <glib/gi18n-lib.h>
 #include <dbus/dbus-glib.h>
 #include <nm-utils.h>
 
@@ -125,7 +126,9 @@ static void
 nmt_mac_entry_init (NmtMacEntry *entry)
 {
 	nmt_newt_entry_set_filter (NMT_NEWT_ENTRY (entry), mac_filter, NULL);
-	nmt_newt_entry_set_validator (NMT_NEWT_ENTRY (entry), mac_validator, NULL);
+	nmt_newt_entry_set_validator (NMT_NEWT_ENTRY (entry),
+	                              _("Value must be a valid hardware address"),
+	                              mac_validator, NULL);
 }
 
 static void

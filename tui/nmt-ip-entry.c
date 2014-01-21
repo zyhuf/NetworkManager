@@ -163,8 +163,38 @@ ip_entry_validate (NmtNewtEntry *entry,
 static void
 nmt_ip_entry_init (NmtIPEntry *entry)
 {
+}
+
+static void
+nmt_ip_entry_constructed (GObject *object)
+{
+	NmtNewtEntry *entry = NMT_NEWT_ENTRY (object);
+	NmtIPEntryPrivate *priv = NMT_IP_ENTRY_GET_PRIVATE (object);
+	const char *help_text;
+
 	nmt_newt_entry_set_filter (NMT_NEWT_ENTRY (entry), ip_entry_filter, NULL);
-	nmt_newt_entry_set_validator (NMT_NEWT_ENTRY (entry), ip_entry_validate, NULL);
+
+	if (priv->family == AF_INET) {
+		if (priv->prefix) {
+			/* Translators: this describes the format that the entry accepts,
+			   and the "/" must remain an ASCII "/" in the translation.
+			*/
+			help_text = _("Value must be <IPv4-address>/<prefix>");
+		} else
+			help_text = _("Value must be a valid IPv4 address");
+	} else if (priv->family == AF_INET6) {
+		if (priv->prefix) {
+			/* Translators: this describes the format that the entry accepts,
+			   and the "/" must remain an ASCII "/" in the translation.
+			*/
+			help_text = _("Value must be <IPv6-address>/<prefix>");
+		} else
+			help_text = _("Value must be a valid IPv6 address");
+	} else
+		help_text = NULL;
+	nmt_newt_entry_set_validator (NMT_NEWT_ENTRY (entry), help_text, ip_entry_validate, NULL);
+
+	G_OBJECT_CLASS (nmt_ip_entry_parent_class)->constructed (object);
 }
 
 static void
@@ -223,6 +253,7 @@ nmt_ip_entry_class_init (NmtIPEntryClass *entry_class)
 	g_type_class_add_private (entry_class, sizeof (NmtIPEntryPrivate));
 
 	/* virtual methods */
+	object_class->constructed  = nmt_ip_entry_constructed;
 	object_class->set_property = nmt_ip_entry_set_property;
 	object_class->get_property = nmt_ip_entry_get_property;
 
