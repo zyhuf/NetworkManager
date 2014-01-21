@@ -244,7 +244,7 @@ nmt_newt_form_build (NmtNewtForm *form)
 	nmt_newt_widget_realize (NMT_NEWT_WIDGET (form));
 
 	nmt_newt_widget_size_request (priv->content, &form_width, &form_height);
-	newtGetScreenSize (&screen_width, &screen_height);
+	nmt_newt_get_screen_size (&screen_width, &screen_height);
 
 	if (!priv->fixed_width)
 		priv->width = MIN (form_width + 2 * priv->padding, screen_width - 2);
@@ -501,7 +501,7 @@ nmt_newt_form_set_property (GObject      *object,
 		break;
 	case PROP_FULLSCREEN:
 		if (g_value_get_boolean (value)) {
-			newtGetScreenSize (&screen_width, &screen_height);
+			nmt_newt_get_screen_size (&screen_width, &screen_height);
 			priv->x = priv->y = 2;
 			priv->fixed_x = priv->fixed_y = TRUE;
 			priv->width = screen_width - 4;

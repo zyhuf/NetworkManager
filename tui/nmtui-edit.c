@@ -84,7 +84,7 @@ nmt_edit_main_connection_list (void)
 	NmtNewtForm *form;
 	NmtNewtWidget *quit, *list;
 
-	newtGetScreenSize (&screen_width, &screen_height);
+	nmt_newt_get_screen_size (&screen_width, &screen_height);
 
 	form = g_object_new (NMT_TYPE_NEWT_FORM,
 	                     "y", 2,

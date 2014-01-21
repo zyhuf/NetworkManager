@@ -48,6 +48,9 @@ int  nmt_newt_choice_dialog (const char *button1,
 
 char *nmt_newt_edit_string (const char *data);
 
+void nmt_newt_get_screen_size (int *screen_width,
+                               int *screen_height);
+
 G_END_DECLS
 
 #endif /* NMT_NEWT_UTILS_H */

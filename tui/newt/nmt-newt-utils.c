@@ -78,7 +78,7 @@ nmt_newt_dialog_g_log_handler (const char     *log_domain,
 	 * NmtNewt classes, to avoid possible error recursion.
 	 */
 
-	newtGetScreenSize (&screen_width, &screen_height);
+	nmt_newt_get_screen_size (&screen_width, &screen_height);
 	text = newtTextboxReflowed (-1, -1, full_message, MAX (70, screen_width - 10), 0, 0, 0);
 	g_free (full_message);
 
@@ -390,3 +390,17 @@ nmt_newt_edit_string (const char *data)
 	return new_data;
 }	
 
+/**
+ * nmt_newt_get_screen_size:
+ * @screen_width: (out): location in which to store the screen width
+ * @screen_height: (out): location in which to store the screen height
+ *
+ * Gets the width and height of the portion of the screen available
+ * for use.
+ */
+void
+nmt_newt_get_screen_size (int *screen_width,
+                          int *screen_height)
+{
+	newtGetScreenSize (screen_width, screen_height);
+}
