@@ -380,7 +380,6 @@ dispose (GObject *object)
 		g_signal_handler_disconnect (manager, priv->device_added_id);
 	if (priv->device_removed_id)
 		g_signal_handler_disconnect (manager, priv->device_removed_id);
-	g_object_unref (manager);
 
 	G_OBJECT_CLASS (nm_device_olpc_mesh_parent_class)->dispose (object);
 }
@@ -555,7 +554,6 @@ is_companion (NMDeviceOlpcMesh *self, NMDevice *other)
 		g_signal_handler_disconnect (manager, priv->device_added_id);
 		priv->device_added_id = 0;
 	}
-	g_object_unref (manager);
 
 	nm_device_state_changed (NM_DEVICE (self),
 	                         NM_DEVICE_STATE_DISCONNECTED,
@@ -631,8 +629,6 @@ check_companion_cb (gpointer user_data)
 		if (is_companion (self, NM_DEVICE (list->data)))
 			break;
 	}
-
-	g_object_unref (manager);
 
  done:
 	nm_device_remove_pending_action (NM_DEVICE (self), "waiting for companion");
