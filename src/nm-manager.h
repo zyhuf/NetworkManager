@@ -118,6 +118,20 @@ NMDevice *nm_manager_get_device_by_master (NMManager *manager,
 NMDevice *nm_manager_get_device_by_ifindex (NMManager *manager,
                                             int ifindex);
 
+typedef gboolean (*NMManagerDeviceMatchFunc) (NMManager *manager,
+                                              NMDevice *device,
+                                              gpointer user_data);
+typedef void (*NMManagerDeviceCallback) (NMManager *manager,
+                                         NMDevice *device,
+                                         gpointer user_data);
+gpointer nm_manager_track_device (NMManager *manager,
+                                  NMManagerDeviceMatchFunc match_func,
+                                  NMManagerDeviceCallback added_callback,
+                                  NMManagerDeviceCallback removed_callback,
+                                  gpointer user_data);
+void nm_manager_untrack_device (NMManager *manager,
+                                gpointer tag);
+
 NMActiveConnection *nm_manager_activate_connection (NMManager *manager,
                                                     NMConnection *connection,
                                                     const char *specific_object,

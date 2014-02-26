@@ -213,6 +213,7 @@ typedef struct {
 	NMActiveConnection *activating_connection;
 
 	GSList *devices;
+	GSList *device_trackers;
 	NMState state;
 	NMConnectivity *connectivity;
 
@@ -533,6 +534,93 @@ nm_manager_get_device_by_ifindex (NMManager *manager, int ifindex)
 	return NULL;
 }
 
+typedef struct {
+	NMManager *manager;
+	NMDevice *device;
+	NMManagerDeviceMatchFunc match_func;
+	NMManagerDeviceCallback added_callback;
+	NMManagerDeviceCallback removed_callback;
+	gpointer user_data;
+} NMManagerTrackDeviceData;
+
+/**
+ * nm_manager_track_device:
+ * @manager: the #NMManager
+ * @match_func: the match function used to find the device
+ * @added_callback: the callback function when a matching device is found
+ * @removed_callback: the callback function when a matching device is removed
+ * @user_data: data for the #NMManagerDeviceFuncs
+ *
+ * Helper function for tracking to presence of a device matching
+ * certain criteria.
+ *
+ * If a device matching @match_func is already present, then
+ * @added_callback will be called immediately (from within
+ * nm_manager_track_device()) with the matching device.
+ *
+ * After nm_manager_track_device() returns, @added_callback will be
+ * called any time a device matching @match_func is added (if one has
+ * not already been found), and @removed_callback will be called when
+ * the matched device has been removed.
+ *
+ * Returns: an opaque pointer, which can be passed to
+ *   nm_manager_untrack_device() to stop tracking.
+ */
+gpointer
+nm_manager_track_device (NMManager *manager,
+                         NMManagerDeviceMatchFunc match_func,
+                         NMManagerDeviceCallback added_callback,
+                         NMManagerDeviceCallback removed_callback,
+                         gpointer user_data)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+	NMManagerTrackDeviceData *track_data;
+	GSList *iter;
+
+	track_data = g_slice_new (NMManagerTrackDeviceData);
+	track_data->manager = manager;
+	track_data->device = NULL;
+	track_data->match_func = match_func;
+	track_data->added_callback = added_callback;
+	track_data->removed_callback = removed_callback;
+	track_data->user_data = user_data;
+
+	priv->device_trackers = g_slist_prepend (priv->device_trackers, track_data);
+
+	for (iter = priv->devices; iter; iter = iter->next) {
+		NMDevice *device = NM_DEVICE (iter->data);
+
+		if (match_func (manager, device, user_data)) {
+			track_data->device = device;
+			break;
+		}
+	}
+
+	if (track_data->device)
+		added_callback (manager, track_data->device, user_data);
+
+	return track_data;
+}
+
+/**
+ * nm_manager_untrack_device:
+ * @manager: the #NMManager
+ * @tag: a tag returned from nm_manager_track_device()
+ *
+ * Stops the device monitoring initiated by an nm_manager_track_device()
+ * call.
+ */
+void
+nm_manager_untrack_device (NMManager *manager,
+                           gpointer tag)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+	NMManagerTrackDeviceData *track_data = tag;
+
+	priv->device_trackers = g_slist_remove (priv->device_trackers, track_data);
+	g_slice_free (NMManagerTrackDeviceData, track_data);
+}
+
 static gboolean
 manager_sleeping (NMManager *self)
 {
@@ -806,6 +894,7 @@ static void
 remove_device (NMManager *manager, NMDevice *device, gboolean quitting)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
+	GSList *iter, *next;
 
 	if (nm_device_get_managed (device)) {
 		/* Leave configured interfaces up when quitting so they can be
@@ -829,8 +918,18 @@ remove_device (NMManager *manager, NMDevice *device, gboolean quitting)
 	nm_settings_device_removed (priv->settings, device, quitting);
 	g_signal_emit (manager, signals[DEVICE_REMOVED], 0, device);
 	g_object_notify (G_OBJECT (manager), NM_MANAGER_DEVICES);
-	g_object_unref (device);
 
+	for (iter = priv->device_trackers; iter; iter = next) {
+		NMManagerTrackDeviceData *track_data = iter->data;
+
+		next = iter->next;
+		if (track_data->device == device) {
+			track_data->device = NULL;
+			track_data->removed_callback (manager, device, track_data->user_data);
+		}
+	}
+
+	g_object_unref (device);
 	priv->devices = g_slist_remove (priv->devices, device);
 
 	if (priv->startup)
@@ -1824,6 +1923,7 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 	gboolean enabled = FALSE;
 	RfKillType rtype;
 	NMDeviceType devtype;
+	GSList *iter, *next;
 
 	iface = nm_device_get_ip_iface (device);
 	g_assert (iface);
@@ -1924,6 +2024,17 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 	nm_settings_device_added (priv->settings, device);
 	g_signal_emit (self, signals[DEVICE_ADDED], 0, device);
 	g_object_notify (G_OBJECT (self), NM_MANAGER_DEVICES);
+
+	for (iter = priv->device_trackers; iter; iter = next) {
+		NMManagerTrackDeviceData *track_data = iter->data;
+
+		next = iter->next;
+		if (   !track_data->device
+		    && track_data->match_func (self, device, track_data->user_data)) {
+			track_data->device = device;
+			track_data->added_callback (self, device, track_data->user_data);
+		}
+	}
 
 	/* New devices might be master interfaces for virtual interfaces; so we may
 	 * need to create new virtual interfaces now.
@@ -5070,6 +5181,9 @@ dispose (GObject *object)
 	/* Remove all devices */
 	while (priv->devices)
 		remove_device (manager, NM_DEVICE (priv->devices->data), TRUE);
+
+	while (priv->device_trackers)
+		nm_manager_untrack_device (manager, priv->device_trackers->data);
 
 	if (priv->ac_cleanup_id) {
 		g_source_remove (priv->ac_cleanup_id);

@@ -86,17 +86,27 @@ struct _NMDeviceOlpcMeshPrivate {
 	WifiData *        wifi_data;
 
 	NMDevice *        companion;
+	gpointer          companion_track_tag;
+	gboolean          waiting_for_companion;
+
 	gboolean          stage1_waiting;
-	guint             device_added_id;
-	guint             device_removed_id;
-	guint             cmp_state_changed_id;
-	guint             cmp_scanning_id;
-	guint             cmp_scanning_allowed_id;
-	guint             cmp_autoconnect_allowed_id;
 };
 
 static void state_changed (NMDevice *device, NMDeviceState new_state,
                            NMDeviceState old_state, NMDeviceStateReason reason);
+
+static void companion_state_changed_cb (NMDeviceWifi *companion,
+                                        NMDeviceState state,
+                                        NMDeviceState old_state,
+                                        NMDeviceStateReason reason,
+                                        gpointer user_data);
+static void companion_notify_cb (NMDeviceWifi *companion, GParamSpec *pspec, gpointer user_data);
+static gboolean companion_scan_allowed_cb (NMDeviceWifi *companion, gpointer user_data);
+static gboolean companion_autoconnect_allowed_cb (NMDeviceWifi *companion, gpointer user_data);
+
+static gboolean match_companion (NMManager *manager, NMDevice *other, gpointer user_data);
+static void got_companion (NMManager *manager, NMDevice *companion, gpointer user_data);
+static void lost_companion (NMManager *manager, NMDevice *companion, gpointer user_data);
 
 static GQuark
 nm_olpc_mesh_error_quark (void)
@@ -110,11 +120,6 @@ nm_olpc_mesh_error_quark (void)
 static void
 nm_device_olpc_mesh_init (NMDeviceOlpcMesh * self)
 {
-	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
-
-	priv->dispose_has_run = FALSE;
-	priv->companion = NULL;
-	priv->stage1_waiting = FALSE;
 }
 
 static GObject*
@@ -158,6 +163,14 @@ constructor (GType type,
 
 	/* shorter timeout for mesh connectivity */
 	nm_device_set_dhcp_timeout (NM_DEVICE (self), 20);
+
+	/* Find companion */
+	priv->companion_track_tag = nm_manager_track_device (nm_manager_get (),
+	                                                     match_companion,
+	                                                     got_companion,
+	                                                     lost_companion,
+	                                                     self);
+
 	return object;
 }
 
@@ -333,25 +346,10 @@ companion_cleanup (NMDeviceOlpcMesh *self)
 	if (priv->companion == NULL)
 		return;
 
-	if (priv->cmp_state_changed_id) {
-		g_signal_handler_disconnect (priv->companion, priv->cmp_state_changed_id);
-		priv->cmp_state_changed_id = 0;
-	}
-
-	if (priv->cmp_scanning_id) {
-		g_signal_handler_disconnect (priv->companion, priv->cmp_scanning_id);
-		priv->cmp_scanning_id = 0;
-	}
-
-	if (priv->cmp_scanning_allowed_id) {
-		g_signal_handler_disconnect (priv->companion, priv->cmp_scanning_allowed_id);
-		priv->cmp_scanning_allowed_id = 0;
-	}
-
-	if (priv->cmp_autoconnect_allowed_id) {
-		g_signal_handler_disconnect (priv->companion, priv->cmp_autoconnect_allowed_id);
-		priv->cmp_autoconnect_allowed_id = 0;
-	}
+	g_signal_handlers_disconnect_by_func (priv->companion, companion_state_changed_cb, self);
+	g_signal_handlers_disconnect_by_func (priv->companion, companion_notify_cb, self);
+	g_signal_handlers_disconnect_by_func (priv->companion, companion_scan_allowed_cb, self);
+	g_signal_handlers_disconnect_by_func (priv->companion, companion_autoconnect_allowed_cb, self);
 
 	priv->companion = NULL;
 	g_object_notify (G_OBJECT (self), NM_DEVICE_OLPC_MESH_COMPANION);
@@ -362,7 +360,6 @@ dispose (GObject *object)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (object);
 	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
-	NMManager *manager;
 
 	if (priv->dispose_has_run) {
 		G_OBJECT_CLASS (nm_device_olpc_mesh_parent_class)->dispose (object);
@@ -374,12 +371,7 @@ dispose (GObject *object)
 		wifi_utils_deinit (priv->wifi_data);
 
 	companion_cleanup (self);
-
-	manager = nm_manager_get ();
-	if (priv->device_added_id)
-		g_signal_handler_disconnect (manager, priv->device_added_id);
-	if (priv->device_removed_id)
-		g_signal_handler_disconnect (manager, priv->device_removed_id);
+	nm_manager_untrack_device (nm_manager_get (), priv->companion_track_tag);
 
 	G_OBJECT_CLASS (nm_device_olpc_mesh_parent_class)->dispose (object);
 }
@@ -530,12 +522,11 @@ companion_autoconnect_allowed_cb (NMDeviceWifi *companion, gpointer user_data)
 }
 
 static gboolean
-is_companion (NMDeviceOlpcMesh *self, NMDevice *other)
+match_companion (NMManager *manager, NMDevice *other, gpointer user_data)
 {
-	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
+	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 	const guint8 *my_addr, *their_addr;
 	guint their_addr_len;
-	NMManager *manager;
 
 	if (!NM_IS_DEVICE_WIFI (other))
 		return FALSE;
@@ -546,93 +537,47 @@ is_companion (NMDeviceOlpcMesh *self, NMDevice *other)
 	    || (memcmp (my_addr, their_addr, ETH_ALEN) != 0))
 		return FALSE;
 
-	priv->companion = other;
-
-	/* When we've found the companion, stop listening for other devices */
-	manager = nm_manager_get ();
-	if (priv->device_added_id) {
-		g_signal_handler_disconnect (manager, priv->device_added_id);
-		priv->device_added_id = 0;
-	}
-
-	nm_device_state_changed (NM_DEVICE (self),
-	                         NM_DEVICE_STATE_DISCONNECTED,
-	                         NM_DEVICE_STATE_REASON_NONE);
-
-	nm_log_info (LOGD_OLPC_MESH, "(%s): found companion WiFi device %s",
-	             nm_device_get_iface (NM_DEVICE (self)),
-	             nm_device_get_iface (other));
-
-	priv->cmp_state_changed_id = g_signal_connect (G_OBJECT (other), "state-changed",
-	                                               G_CALLBACK (companion_state_changed_cb), self);
-
-	priv->cmp_scanning_id = g_signal_connect (G_OBJECT (other), "notify::scanning",
-	                                          G_CALLBACK (companion_notify_cb), self);
-
-	priv->cmp_scanning_allowed_id = g_signal_connect (G_OBJECT (other), "scanning-allowed",
-	                                                  G_CALLBACK (companion_scan_allowed_cb), self);
-
-	priv->cmp_autoconnect_allowed_id = g_signal_connect (G_OBJECT (other), "autoconnect-allowed",
-	                                                     G_CALLBACK (companion_autoconnect_allowed_cb), self);
-
-	g_object_notify (G_OBJECT (self), NM_DEVICE_OLPC_MESH_COMPANION);
-
 	return TRUE;
 }
 
 static void
-device_added_cb (NMManager *manager, NMDevice *other, gpointer user_data)
-{
-	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
-
-	is_companion (self, other);
-}
-
-static void
-device_removed_cb (NMManager *manager, NMDevice *other, gpointer user_data)
-{
-	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
-
-	if (other == NM_DEVICE_OLPC_MESH_GET_PRIVATE (self)->companion)
-		companion_cleanup (self);
-}
-
-static gboolean
-check_companion_cb (gpointer user_data)
+got_companion (NMManager *manager, NMDevice *companion, gpointer user_data)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
-	NMManager *manager;
-	GSList *list;
 
-	if (priv->companion != NULL) {
-		nm_device_state_changed (NM_DEVICE (user_data),
-		                         NM_DEVICE_STATE_DISCONNECTED,
-		                         NM_DEVICE_STATE_REASON_NONE);
-		goto done;
+	priv->companion = companion;
+
+	nm_log_info (LOGD_OLPC_MESH, "(%s): found companion WiFi device %s",
+	             nm_device_get_iface (NM_DEVICE (self)),
+	             nm_device_get_iface (companion));
+
+	g_signal_connect (G_OBJECT (companion), "state-changed",
+	                  G_CALLBACK (companion_state_changed_cb), self);
+	g_signal_connect (G_OBJECT (companion), "notify::scanning",
+	                  G_CALLBACK (companion_notify_cb), self);
+	g_signal_connect (G_OBJECT (companion), "scanning-allowed",
+	                  G_CALLBACK (companion_scan_allowed_cb), self);
+	g_signal_connect (G_OBJECT (companion), "autoconnect-allowed",
+	                  G_CALLBACK (companion_autoconnect_allowed_cb), self);
+
+	g_object_notify (G_OBJECT (self), NM_DEVICE_OLPC_MESH_COMPANION);
+
+	if (priv->waiting_for_companion) {
+		priv->waiting_for_companion = FALSE;
+		nm_device_queue_state (NM_DEVICE (self),
+		                       NM_DEVICE_STATE_DISCONNECTED,
+		                       NM_DEVICE_STATE_REASON_NONE);
+		nm_device_remove_pending_action (NM_DEVICE (self), "waiting for companion");
 	}
+}
 
-	if (priv->device_added_id != 0)
-		goto done;
+static void
+lost_companion (NMManager *manager, NMDevice *companion, gpointer user_data)
+{
+	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (user_data);
 
-	manager = nm_manager_get ();
-
-	priv->device_added_id = g_signal_connect (manager, "device-added",
-	                                          G_CALLBACK (device_added_cb), self);
-	if (!priv->device_removed_id) {
-		priv->device_removed_id = g_signal_connect (manager, "device-removed",
-	                                                G_CALLBACK (device_removed_cb), self);
-	}
-
-	/* Try to find the companion if it's already known to the NMManager */
-	for (list = nm_manager_get_devices (manager); list ; list = g_slist_next (list)) {
-		if (is_companion (self, NM_DEVICE (list->data)))
-			break;
-	}
-
- done:
-	nm_device_remove_pending_action (NM_DEVICE (self), "waiting for companion");
-	return FALSE;
+	companion_cleanup (self);
 }
 
 static void
@@ -640,25 +585,17 @@ state_changed (NMDevice *device, NMDeviceState new_state,
                NMDeviceState old_state, NMDeviceStateReason reason)
 {
 	NMDeviceOlpcMesh *self = NM_DEVICE_OLPC_MESH (device);
+	NMDeviceOlpcMeshPrivate *priv = NM_DEVICE_OLPC_MESH_GET_PRIVATE (self);
 
-	switch (new_state) {
-	case NM_DEVICE_STATE_UNMANAGED:
-		break;
-	case NM_DEVICE_STATE_UNAVAILABLE:
-		/* If transitioning to UNAVAILABLE and the companion device is known then
-		 * transition to DISCONNECTED otherwise wait for our companion.
-		 */
-		g_idle_add (check_companion_cb, self);
-		nm_device_add_pending_action (device, "waiting for companion");
-		break;
-	case NM_DEVICE_STATE_ACTIVATED:
-		break;
-	case NM_DEVICE_STATE_FAILED:
-		break;
-	case NM_DEVICE_STATE_DISCONNECTED:
-		break;
-	default:
-		break;
+	if (new_state == NM_DEVICE_STATE_UNAVAILABLE) {
+		if (priv->companion) {
+			nm_device_queue_state (device,
+			                       NM_DEVICE_STATE_DISCONNECTED,
+			                       NM_DEVICE_STATE_REASON_NONE);
+		} else {
+			priv->waiting_for_companion = TRUE;
+			nm_device_add_pending_action (device, "waiting for companion");
+		}
 	}
 }
 
