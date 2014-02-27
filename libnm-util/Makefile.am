@@ -23,6 +23,7 @@ lib_LTLIBRARIES=libnm-util.la
 
 libnm_util_include_HEADERS = 		\
 	nm-connection.h			\
+	nm-setting-property-meta.h		\
 	nm-setting.h			\
 	nm-setting-8021x.h		\
 	nm-setting-adsl.h		\
@@ -62,6 +63,7 @@ libnm_util_la_private_headers = \
 libnm_util_la_csources = \
 	crypto.c			\
 	nm-connection.c			\
+	nm-setting-property-meta.c		\
 	nm-param-spec-specialized.c	\
 	nm-setting.c			\
 	nm-setting-8021x.c		\
