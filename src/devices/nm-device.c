@@ -6600,6 +6600,7 @@ nm_device_state_changed (NMDevice *device,
 	priv->in_state_changed = TRUE;
 
 	g_return_if_fail (NM_IS_DEVICE (device));
+	g_return_if_fail (priv->manager_managed);
 
 	/* Do nothing if state isn't changing, but as a special case allow
 	 * re-setting UNAVAILABLE if the device is missing firmware so that we
@@ -7160,6 +7161,10 @@ nm_device_set_manager_managed (NMDevice *device,
 	gboolean was_managed, now_managed;
 
 	g_return_if_fail (NM_IS_DEVICE (device));
+	g_return_if_fail (nm_device_get_iface(device));
+	g_return_if_fail (!!strncmp(nm_device_get_iface(device), "virbr", 5));
+	g_return_if_fail (!!strncmp(nm_device_get_iface(device), "veth", 4));
+	g_return_if_fail (!!strncmp(nm_device_get_iface(device), "vnet", 4));
 
 	priv = NM_DEVICE_GET_PRIVATE (device);
 
