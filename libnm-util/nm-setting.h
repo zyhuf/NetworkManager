@@ -59,7 +59,8 @@ typedef enum
 	NM_SETTING_ERROR_UNKNOWN = 0,           /*< nick=UnknownError >*/
 	NM_SETTING_ERROR_PROPERTY_NOT_FOUND,    /*< nick=PropertyNotFound >*/
 	NM_SETTING_ERROR_PROPERTY_NOT_SECRET,   /*< nick=PropertyNotSecret >*/
-	NM_SETTING_ERROR_PROPERTY_TYPE_MISMATCH /*< nick=PropertyTypeMismatch >*/
+	NM_SETTING_ERROR_PROPERTY_TYPE_MISMATCH,/*< nick=PropertyTypeMismatch >*/
+	NM_SETTING_ERROR_NOT_SUPPORTED,         /*< nick=NotSupported >*/
 } NMSettingError;
 
 #define NM_SETTING_ERROR nm_setting_error_quark ()
@@ -143,6 +144,13 @@ typedef enum {
 	/* 0x80000000 is used for a private flag */
 } NMSettingCompareFlags;
 
+typedef enum {
+	NM_SETTING_META_AS_STRING_DEFAULT = 0,
+	NM_SETTING_META_AS_STRING_DEBUG = 0,
+	NM_SETTING_META_AS_STRING_DEBUG_HIDE_SECRETS = 0,
+	NM_SETTING_META_AS_STRING_KEYFILE = 0,
+} NMSettingMetaAsStringType;
+
 
 /**
  * NMSetting:
@@ -212,6 +220,15 @@ typedef struct {
 	/* Padding for future expansion */
 	void (*_reserved1) (void);
 } NMSettingClass;
+
+typedef struct NMSettingClassExtension NMSettingClassExtension;
+typedef struct NMSettingClassExtension {
+	void *param_spec_index;
+
+	const char *const* (*meta_get_property_names) (NMSettingClassExtension *extension, NMSetting *setting, size_t *out_len);
+	GParamSpec *(*meta_get_param_spec) (NMSettingClassExtension *extension, NMSetting *setting, const char *property_name);
+	char *(*meta_get_property_as_string) (NMSettingClassExtension *extension, NMSetting *setting, const char *property_name, NMSettingMetaAsStringType type, GError **error);
+} NMSettingClassExtension;
 
 /**
  * NMSettingValueIterFn:
@@ -314,6 +331,24 @@ gboolean    nm_setting_set_secret_flags (NMSetting *setting,
                                          GError **error);
 
 const char *nm_setting_get_virtual_iface_name (NMSetting *setting);
+
+
+const char *const*nm_setting_meta_get_property_names (NMSetting *setting, size_t *out_len);
+GParamSpec *nm_setting_meta_get_param_spec (NMSetting *setting, const char *property_name);
+gboolean nm_setting_meta_property_is_valid (NMSetting *setting, const char *property_name);
+gboolean nm_setting_meta_property_is_static (NMSetting *setting, const char *property_name);
+GType nm_setting_meta_property_get_type (NMSetting *setting, const char *property_name);
+void nm_setting_meta_property_get_default (NMSetting *setting, const char *property_name, GValue *value);
+
+char *nm_setting_meta_property_is_default (NMSetting *setting, const char *property_name);
+char *nm_setting_meta_property_set_default (NMSetting *setting, const char *property_name);
+gboolean nm_setting_meta_property_get (NMSetting *setting, const char *property_name, GValue *value, GError *error);
+gboolean nm_setting_meta_property_set (NMSetting *setting, const char *property_name, GValue *value, GError *error);
+gboolean nm_setting_meta_property_remove (NMSetting *setting, const char *property_name, GError **error);
+char *nm_setting_meta_property_get_as_string (NMSetting *setting, const char *property_name, NMSettingMetaAsStringType type, GError **error);
+gboolean nm_setting_meta_property_set_from_string (NMSetting *setting, const char *property_name, NMSettingMetaAsStringType type, GError **error);
+
+int nm_setting_meta_property_cmp (NMSetting *setting1, NMSetting *setting2, const char *property_name);
 
 G_END_DECLS
 

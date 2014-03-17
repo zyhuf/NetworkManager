@@ -24,10 +24,12 @@
  */
 
 #include <string.h>
+#include <glib/gi18n.h>
 
 #include "nm-setting.h"
 #include "nm-setting-private.h"
 #include "nm-setting-connection.h"
+#include "nm-string-index.h"
 #include "nm-utils.h"
 #include "nm-utils-private.h"
 
@@ -61,9 +63,12 @@ nm_setting_error_quark (void)
 	return quark;
 }
 
-G_DEFINE_ABSTRACT_TYPE (NMSetting, nm_setting, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE (NMSetting, nm_setting, G_TYPE_OBJECT,
+                                    g_type_add_class_private (g_define_type_id, sizeof (NMSettingClassExtension));
+                                  );
 
 #define NM_SETTING_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_SETTING, NMSettingPrivate))
+#define NM_SETTING_GET_CLASS_PRIVATE(o) (G_TYPE_CLASS_GET_PRIVATE ((o), NM_TYPE_SETTING, NMSettingClassExtension))
 
 typedef struct {
 	const char *name;
@@ -1259,6 +1264,117 @@ nm_setting_get_virtual_iface_name (NMSetting *setting)
 
 /*****************************************************************************/
 
+#define _INVOKE_EXTENSION(return_statement, ret_error, name, setting, ...) \
+	G_STMT_START { \
+		NMSettingClassExtension *extension; \
+		\
+		g_return_val_if_fail (NM_IS_SETTING (setting), ret_error); \
+		\
+		extension = G_TYPE_CLASS_GET_PRIVATE (setting, NM_TYPE_SETTING, NMSettingClassExtension); \
+		\
+		return_statement (extension->name (extension, setting, __VA_ARGS__)); \
+	} G_STMT_END
+
+static NMStringIndex *
+_meta_get_param_spec_index(NMSettingClassExtension *extension, NMSetting *setting)
+{
+	NMStringIndex *param_spec_index = extension->param_spec_index;
+
+	if (G_UNLIKELY (param_spec_index == NULL)) {
+		GParamSpec **property_specs;
+		guint i, n_property_specs;
+		GArray *items;
+
+		property_specs = g_object_class_list_properties (G_OBJECT_GET_CLASS (setting), &n_property_specs);
+
+		items = g_array_sized_new (TRUE, FALSE, sizeof (NMStringIndexItem), n_property_specs);
+		for (i = 0; i < n_property_specs; i++) {
+			NMStringIndexItem item = {
+				.key = g_param_spec_get_name (property_specs[i]),
+				.data = property_specs[i],
+			};
+			g_array_append_val (items, item);
+		}
+		param_spec_index = nm_string_index_new (strcmp, n_property_specs, &g_array_index (items, NMStringIndexItem, 0));
+		g_array_free (items, TRUE);
+
+		extension->param_spec_index = param_spec_index;
+	}
+	return param_spec_index;
+}
+
+static const char *const*
+meta_get_property_names (NMSettingClassExtension *extension, NMSetting *setting, size_t *out_len)
+{
+	NMStringIndex *param_spec_index = _meta_get_param_spec_index (extension, setting);
+
+	if (out_len)
+		*out_len = nm_string_index_size (param_spec_index);
+	return nm_string_index_get_keys (param_spec_index);
+}
+
+/** meta_get_property_names:
+ *
+ * returns: zero terminated array of property names.
+ **/
+const char *const*
+nm_setting_meta_get_property_names (NMSetting *setting, size_t *out_len)
+{
+	_INVOKE_EXTENSION (return, NULL, meta_get_property_names, setting, out_len);
+}
+
+static GParamSpec *
+meta_get_param_spec (NMSettingClassExtension *extension, NMSetting *setting, const char *property_name)
+{
+	return nm_string_index_get_data_by_key (_meta_get_param_spec_index (extension, setting), property_name);
+}
+
+GParamSpec *
+nm_setting_meta_get_param_spec (NMSetting *setting, const char *property_name)
+{
+	GParamSpec *param_spec;
+
+	_INVOKE_EXTENSION (param_spec = , NULL, meta_get_param_spec, setting, property_name);
+
+	g_return_val_if_fail (param_spec, NULL);
+	return param_spec;
+}
+
+static char *
+meta_get_property_as_string (NMSettingClassExtension *extension, NMSetting *setting, const char *property_name, NMSettingMetaAsStringType type, GError **error)
+{
+	GParamSpec *param_spec = nm_string_index_get_data_by_key (_meta_get_param_spec_index (extension, setting), property_name);;
+
+	if (!param_spec) {
+		g_set_error (error,
+		             NM_SETTING_ERROR,
+		             NM_SETTING_ERROR_PROPERTY_NOT_FOUND,
+		             _("property '%s' is invalid"), property_name ? "(NULL)" : property_name);
+		return NULL;
+	}
+
+	switch (type) {
+	case NM_SETTING_META_AS_STRING_DEFAULT:
+	default:
+		g_set_error (error,
+		             NM_SETTING_ERROR,
+		             NM_SETTING_ERROR_NOT_SUPPORTED,
+		             _("Conversion to string type %d not supported"), (int) type);
+		return NULL;
+	}
+}
+
+char *
+nm_setting_meta_get_property_as_string (NMSetting *setting, const char *property_name, NMSettingMetaAsStringType type, GError **error)
+{
+	g_return_val_if_fail (!error || !*error, NULL);
+	g_return_val_if_fail (property_name, NULL);
+
+	_INVOKE_EXTENSION (return, NULL, meta_get_property_as_string, setting, property_name, type, error);
+}
+
+/*****************************************************************************/
+
 static void
 nm_setting_init (NMSetting *setting)
 {
@@ -1321,6 +1437,7 @@ static void
 nm_setting_class_init (NMSettingClass *setting_class)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (setting_class);
+	NMSettingClassExtension *extension;
 
 	g_type_class_add_private (setting_class, sizeof (NMSettingPrivate));
 
@@ -1334,6 +1451,13 @@ nm_setting_class_init (NMSettingClass *setting_class)
 	setting_class->set_secret_flags = set_secret_flags;
 	setting_class->compare_property = compare_property;
 	setting_class->clear_secrets_with_flags = clear_secrets_with_flags;
+
+	extension = G_TYPE_CLASS_GET_PRIVATE(object_class, NM_TYPE_SETTING, NMSettingClassExtension);
+	g_assert (extension);
+
+	extension->meta_get_property_names = meta_get_property_names;
+	extension->meta_get_param_spec = meta_get_param_spec;
+	extension->meta_get_property_as_string = meta_get_property_as_string;
 
 	/* Properties */
 
