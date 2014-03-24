@@ -593,42 +593,27 @@ parse_ip6_address (const char *value,
 	return TRUE;
 }
 
-static char *
-get_numbered_tag (char *tag_name, int which)
-{
-	if (which == -1)
-		return g_strdup (tag_name);
-	return g_strdup_printf ("%s%u", tag_name, which);
-}
-
 static gboolean
 is_any_ip4_address_defined (shvarFile *ifcfg)
 {
 	int i;
 
 	for (i = -1; i <= 2; i++) {
-		char *tag;
 		char *value;
 
-		tag = get_numbered_tag ("IPADDR", i);
-		value = svGetValue (ifcfg, tag, FALSE);
-		g_free (tag);
+		value = svGetValue (ifcfg, utils_get_indexed_key_IPADDR (i), FALSE);
 		if (value) {
 			g_free (value);
 			return TRUE;
 		}
 
-		tag = get_numbered_tag ("PREFIX", i);
-		value = svGetValue (ifcfg, tag, FALSE);
-		g_free(tag);
+		value = svGetValue (ifcfg, utils_get_indexed_key_PREFIX (i), FALSE);
 		if (value) {
 			g_free (value);
 			return TRUE;
 		}
 
-		tag = get_numbered_tag ("NETMASK", i);
-		value = svGetValue (ifcfg, tag, FALSE);
-		g_free(tag);
+		value = svGetValue (ifcfg, utils_get_indexed_key_NETMASK (i), FALSE);
 		if (value) {
 			g_free (value);
 			return TRUE;
@@ -645,9 +630,8 @@ read_full_ip4_address (shvarFile *ifcfg,
                        NMIP4Address *addr,
                        GError **error)
 {
-	char *ip_tag, *prefix_tag, *netmask_tag, *gw_tag;
+	const char *ip_tag, *prefix_tag, *netmask_tag, *gw_tag;
 	guint32 tmp;
-	gboolean success = FALSE;
 	shvarFile *network_ifcfg;
 	char *value;
 
@@ -658,24 +642,22 @@ read_full_ip4_address (shvarFile *ifcfg,
 	if (error)
 		g_return_val_if_fail (*error == NULL, FALSE);
 
-	ip_tag = get_numbered_tag ("IPADDR", which);
-	prefix_tag = get_numbered_tag ("PREFIX", which);
-	netmask_tag = get_numbered_tag ("NETMASK", which);
-	gw_tag = get_numbered_tag ("GATEWAY", which);
+	ip_tag = utils_get_indexed_key_IPADDR (which);
+	prefix_tag = utils_get_indexed_key_PREFIX (which);
+	netmask_tag = utils_get_indexed_key_NETMASK (which);
+	gw_tag = utils_get_indexed_key_GATEWAY (which);
 
 	/* IP address */
 	if (!read_ip4_address (ifcfg, ip_tag, &tmp, error))
-		goto done;
+		return FALSE;
 	if (tmp)
 		nm_ip4_address_set_address (addr, tmp);
-	else if (!nm_ip4_address_get_address (addr)) {
-		success = TRUE;
-		goto done;
-	}
+	else if (!nm_ip4_address_get_address (addr))
+		return TRUE;
 
 	/* Gateway */
 	if (!read_ip4_address (ifcfg, gw_tag, &tmp, error))
-		goto done;
+		return FALSE;
 	if (tmp)
 		nm_ip4_address_set_gateway (addr, tmp);
 	else {
@@ -687,7 +669,7 @@ read_full_ip4_address (shvarFile *ifcfg,
 			read_success = read_ip4_address (network_ifcfg, "GATEWAY", &tmp, error);
 			svCloseFile (network_ifcfg);
 			if (!read_success)
-				goto done;
+				return FALSE;
 			nm_ip4_address_set_gateway (addr, tmp);
 		}
 	}
@@ -703,7 +685,7 @@ read_full_ip4_address (shvarFile *ifcfg,
 			g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 			             "Invalid IP4 prefix '%s'", value);
 			g_free (value);
-			goto done;
+			return FALSE;
 		}
 		nm_ip4_address_set_prefix (addr, (guint32) prefix);
 		g_free (value);
@@ -712,7 +694,7 @@ read_full_ip4_address (shvarFile *ifcfg,
 	/* Fall back to NETMASK if no PREFIX was specified */
 	if (!nm_ip4_address_get_prefix (addr)) {
 		if (!read_ip4_address (ifcfg, netmask_tag, &tmp, error))
-			goto done;
+			return FALSE;
 		if (tmp)
 			nm_ip4_address_set_prefix (addr, nm_utils_ip4_netmask_to_prefix (tmp));
 	}
@@ -735,18 +717,10 @@ read_full_ip4_address (shvarFile *ifcfg,
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Missing or invalid IP4 prefix '%d'",
 		             nm_ip4_address_get_prefix (addr));
-		goto done;
+		return FALSE;
 	}
 
-	success = TRUE;
-
-done:
-	g_free (ip_tag);
-	g_free (prefix_tag);
-	g_free (netmask_tag);
-	g_free (gw_tag);
-
-	return success;
+	return TRUE;
 }
 
 /* Returns TRUE on missing route or valid route */
@@ -758,7 +732,8 @@ read_one_ip4_route (shvarFile *ifcfg,
                     GError **error)
 {
 	NMIP4Route *route;
-	char *ip_tag, *netmask_tag, *gw_tag, *metric_tag, *value;
+	const char *ip_tag, *netmask_tag, *gw_tag, *metric_tag;
+	char *value;
 	guint32 tmp;
 	gboolean success = FALSE;
 
@@ -771,10 +746,10 @@ read_one_ip4_route (shvarFile *ifcfg,
 
 	route = nm_ip4_route_new ();
 
-	ip_tag = g_strdup_printf ("ADDRESS%u", which);
-	netmask_tag = g_strdup_printf ("NETMASK%u", which);
-	gw_tag = g_strdup_printf ("GATEWAY%u", which);
-	metric_tag = g_strdup_printf ("METRIC%u", which);
+	ip_tag = utils_get_indexed_key_ADDRESS (which);
+	netmask_tag = utils_get_indexed_key_NETMASK (which);
+	gw_tag = utils_get_indexed_key_GATEWAY (which);
+	metric_tag = utils_get_indexed_key_METRIC (which);
 
 	/* Destination */
 	if (!read_ip4_address (ifcfg, ip_tag, &tmp, error))
@@ -838,10 +813,6 @@ out:
 	if (!success && route)
 		nm_ip4_route_unref (route);
 
-	g_free (ip_tag);
-	g_free (netmask_tag);
-	g_free (gw_tag);
-	g_free (metric_tag);
 	return success;
 }
 
@@ -1402,11 +1373,11 @@ make_ip4_setting (shvarFile *ifcfg,
 	 * Pick up just IPv4 addresses (IPv6 addresses are taken by make_ip6_setting())
 	 */
 	for (i = 1; i <= 10; i++) {
-		char *tag;
+		const char *tag;
 		guint32 dns;
 		struct in6_addr ip6_dns;
 
-		tag = g_strdup_printf ("DNS%u", i);
+		tag = utils_get_indexed_key_DNS (i);
 		if (!read_ip4_address (ifcfg, tag, &dns, error)) {
 			gboolean valid = TRUE;
 
@@ -1418,7 +1389,6 @@ make_ip4_setting (shvarFile *ifcfg,
 			g_free (value);
 
 			if (!valid) {
-				g_free (tag);
 				goto done;
 			}
 			g_clear_error (error);
@@ -1426,7 +1396,6 @@ make_ip4_setting (shvarFile *ifcfg,
 
 		if (dns && !nm_setting_ip4_config_add_dns (s_ip4, dns))
 			PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: duplicate DNS server %s", tag);
-		g_free (tag);
 	}
 
 	/* DNS searches */
@@ -1781,16 +1750,13 @@ make_ip6_setting (shvarFile *ifcfg,
 	 * Pick up just IPv6 addresses (IPv4 addresses are taken by make_ip4_setting())
 	 */
 	for (i = 1; i <= 10; i++) {
-		char *tag;
 		struct in6_addr ip6_dns;
 		guint32 ip4_addr;
+		const char *tag = utils_get_indexed_key_DNS (i);
 
-		tag = g_strdup_printf ("DNS%u", i);
 		value = svGetValue (ifcfg, tag, FALSE);
-		if (!value) {
-			g_free (tag);
+		if (!value)
 			break; /* all done */
-		}
 
 		ip6_dns = in6addr_any;
 		if (parse_ip6_address (value, &ip6_dns, NULL)) {
@@ -1799,14 +1765,12 @@ make_ip6_setting (shvarFile *ifcfg,
 		} else {
 			/* Maybe an IPv4 address? If so ignore it */
 			if (inet_pton (AF_INET, value, &ip4_addr) != 1) {
-				g_free (tag);
 				g_free (value);
 				PLUGIN_WARN (IFCFG_PLUGIN_NAME, "    warning: duplicate IP6 address");
 				goto error;
 			}
 		}
 
-		g_free (tag);
 		g_free (value);
 	}
 

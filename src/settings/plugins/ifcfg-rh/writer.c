@@ -663,13 +663,8 @@ write_wireless_security_setting (NMConnection *connection,
 
 	/* Clear existing keys */
 	for (i = 0; i < 4; i++) {
-		tmp = g_strdup_printf ("KEY_PASSPHRASE%d", i + 1);
-		set_secret (ifcfg, tmp, NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
-		g_free (tmp);
-
-		tmp = g_strdup_printf ("KEY%d", i + 1);
-		set_secret (ifcfg, tmp, NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
-		g_free (tmp);
+		set_secret (ifcfg, utils_get_indexed_key_KEY_PASSPHRASE (i + 1), NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
+		set_secret (ifcfg, utils_get_indexed_key_KEY (i + 1), NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
 	}
 
 	/* And write the new ones out */
@@ -685,6 +680,7 @@ write_wireless_security_setting (NMConnection *connection,
 			key = nm_setting_wireless_security_get_wep_key (s_wsec, i);
 			if (key) {
 				char *ascii_key = NULL;
+				const char *key_key;
 
 				/* Passphrase needs a different ifcfg key since with WEP, there
 				 * are some passphrases that are indistinguishable from WEP hex
@@ -692,9 +688,9 @@ write_wireless_security_setting (NMConnection *connection,
 				 */
 				key_type = nm_setting_wireless_security_get_wep_key_type (s_wsec);
 				if (key_type == NM_WEP_KEY_TYPE_PASSPHRASE)
-					tmp = g_strdup_printf ("KEY_PASSPHRASE%d", i + 1);
+					key_key = utils_get_indexed_key_KEY_PASSPHRASE (i + 1);
 				else {
-					tmp = g_strdup_printf ("KEY%d", i + 1);
+					key_key = utils_get_indexed_key_KEY (i + 1);
 
 					/* Add 's:' prefix for ASCII keys */
 					if (strlen (key) == 5 || strlen (key) == 13) {
@@ -704,12 +700,11 @@ write_wireless_security_setting (NMConnection *connection,
 				}
 
 				set_secret (ifcfg,
-				            tmp,
+				            key_key,
 				            key,
 				            "WEP_KEY_FLAGS",
 				            nm_setting_wireless_security_get_wep_key_flags (s_wsec),
 				            FALSE);
-				g_free (tmp);
 				g_free (ascii_key);
 			}
 		}
@@ -963,13 +958,8 @@ write_wireless_setting (NMConnection *connection,
 		/* Clear existing keys */
 		set_secret (ifcfg, "KEY", NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
 		for (i = 0; i < 4; i++) {
-			tmp = g_strdup_printf ("KEY_PASSPHRASE%d", i + 1);
-			set_secret (ifcfg, tmp, NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
-			g_free (tmp);
-	
-			tmp = g_strdup_printf ("KEY%d", i + 1);
-			set_secret (ifcfg, tmp, NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
-			g_free (tmp);
+			set_secret (ifcfg, utils_get_indexed_key_KEY_PASSPHRASE (i + 1), NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
+			set_secret (ifcfg, utils_get_indexed_key_KEY (i + 1), NULL, "WEP_KEY_FLAGS", NM_SETTING_SECRET_FLAG_NONE, FALSE);
 		}
 
 		svSetValue (ifcfg, "DEFAULTKEY", NULL, FALSE);
@@ -1843,7 +1833,7 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 {
 	NMSettingIP4Config *s_ip4;
 	const char *value;
-	char *addr_key, *prefix_key, *netmask_key, *gw_key, *metric_key, *tmp;
+	char *tmp;
 	char *route_path = NULL;
 	gint32 j;
 	guint32 i, n, num;
@@ -1866,27 +1856,10 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		/* IPv4 disabled, clear IPv4 related parameters */
 		svSetValue (ifcfg, "BOOTPROTO", NULL, FALSE);
 		for (j = -1; j < 256; j++) {
-			if (j == -1) {
-				addr_key = g_strdup ("IPADDR");
-				prefix_key = g_strdup ("PREFIX");
-				netmask_key = g_strdup ("NETMASK");
-				gw_key = g_strdup ("GATEWAY");
-			} else {
-				addr_key = g_strdup_printf ("IPADDR%d", j);
-				prefix_key = g_strdup_printf ("PREFIX%d", j);
-				netmask_key = g_strdup_printf ("NETMASK%d", j);
-				gw_key = g_strdup_printf ("GATEWAY%d", j);
-			}
-
-			svSetValue (ifcfg, addr_key, NULL, FALSE);
-			svSetValue (ifcfg, prefix_key, NULL, FALSE);
-			svSetValue (ifcfg, netmask_key, NULL, FALSE);
-			svSetValue (ifcfg, gw_key, NULL, FALSE);
-
-			g_free (addr_key);
-			g_free (prefix_key);
-			g_free (netmask_key);
-			g_free (gw_key);
+			svSetValue (ifcfg, utils_get_indexed_key_IPADDR (j), NULL, FALSE);
+			svSetValue (ifcfg, utils_get_indexed_key_PREFIX (j), NULL, FALSE);
+			svSetValue (ifcfg, utils_get_indexed_key_NETMASK (j), NULL, FALSE);
+			svSetValue (ifcfg, utils_get_indexed_key_GATEWAY (j), NULL, FALSE);
 		}
 
 		route_path = utils_get_route_path (ifcfg->fileName);
@@ -1924,28 +1897,25 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		char buf[INET_ADDRSTRLEN];
 		NMIP4Address *addr;
 		guint32 ip;
+		const char *gw_key;
 
 		if (i > 0 && NM_UTIL_PRIVATE_CALL (nm_setting_ip4_config_get_address_label (s_ip4, i)))
 			continue;
-
-		addr_key = g_strdup_printf ("IPADDR%d", n);
-		prefix_key = g_strdup_printf ("PREFIX%d", n);
-		netmask_key = g_strdup_printf ("NETMASK%d", n);
-		gw_key = g_strdup_printf ("GATEWAY%d", n);
 
 		addr = nm_setting_ip4_config_get_address (s_ip4, i);
 
 		memset (buf, 0, sizeof (buf));
 		ip = nm_ip4_address_get_address (addr);
 		inet_ntop (AF_INET, (const void *) &ip, &buf[0], sizeof (buf));
-		svSetValue (ifcfg, addr_key, &buf[0], FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_IPADDR (n), &buf[0], FALSE);
 
 		tmp = g_strdup_printf ("%u", nm_ip4_address_get_prefix (addr));
-		svSetValue (ifcfg, prefix_key, tmp, FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_PREFIX (n), tmp, FALSE);
 		g_free (tmp);
 
-		svSetValue (ifcfg, netmask_key, NULL, FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_NETMASK (n), NULL, FALSE);
 
+		gw_key = utils_get_indexed_key_GATEWAY (n);
 		if (nm_ip4_address_get_gateway (addr)) {
 			memset (buf, 0, sizeof (buf));
 			ip = nm_ip4_address_get_gateway (addr);
@@ -1953,49 +1923,32 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 			svSetValue (ifcfg, gw_key, &buf[0], FALSE);
 		} else
 			svSetValue (ifcfg, gw_key, NULL, FALSE);
-
-		g_free (addr_key);
-		g_free (prefix_key);
-		g_free (netmask_key);
-		g_free (gw_key);
 		n++;
 	}
 
 	/* Clear remaining IPADDR<n..255>, etc */
 	for (; n < 256; n++) {
-		addr_key = g_strdup_printf ("IPADDR%d", n);
-		prefix_key = g_strdup_printf ("PREFIX%d", n);
-		netmask_key = g_strdup_printf ("NETMASK%d", n);
-		gw_key = g_strdup_printf ("GATEWAY%d", n);
-
-		svSetValue (ifcfg, addr_key, NULL, FALSE);
-		svSetValue (ifcfg, prefix_key, NULL, FALSE);
-		svSetValue (ifcfg, netmask_key, NULL, FALSE);
-		svSetValue (ifcfg, gw_key, NULL, FALSE);
-
-		g_free (addr_key);
-		g_free (prefix_key);
-		g_free (netmask_key);
-		g_free (gw_key);
+		svSetValue (ifcfg, utils_get_indexed_key_IPADDR (n), NULL, FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_PREFIX (n), NULL, FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_NETMASK (n), NULL, FALSE);
+		svSetValue (ifcfg, utils_get_indexed_key_GATEWAY (n), NULL, FALSE);
 	}
 
 	num = nm_setting_ip4_config_get_num_dns (s_ip4);
 	for (i = 0; i < 254; i++) {
 		char buf[INET_ADDRSTRLEN + 1];
 		guint32 ip;
-
-		addr_key = g_strdup_printf ("DNS%d", i + 1);
+		const char *key = utils_get_indexed_key_DNS (i + 1);
 
 		if (i >= num)
-			svSetValue (ifcfg, addr_key, NULL, FALSE);
+			svSetValue (ifcfg, key, NULL, FALSE);
 		else {
 			ip = nm_setting_ip4_config_get_dns (s_ip4, i);
 
 			memset (buf, 0, sizeof (buf));
 			inet_ntop (AF_INET, (const void *) &ip, &buf[0], sizeof (buf));
-			svSetValue (ifcfg, addr_key, &buf[0], FALSE);
+			svSetValue (ifcfg, key, &buf[0], FALSE);
 		}
-		g_free (addr_key);
 	}
 
 	num = nm_setting_ip4_config_get_num_dns_searches (s_ip4);
@@ -2073,11 +2026,10 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 			char buf[INET_ADDRSTRLEN];
 			NMIP4Route *route;
 			guint32 ip, metric;
-
-			addr_key = g_strdup_printf ("ADDRESS%d", i);
-			netmask_key = g_strdup_printf ("NETMASK%d", i);
-			gw_key = g_strdup_printf ("GATEWAY%d", i);
-			metric_key = g_strdup_printf ("METRIC%d", i);
+			const char *addr_key = utils_get_indexed_key_ADDRESS (i);
+			const char *netmask_key = utils_get_indexed_key_NETMASK (i);
+			const char *metric_key = utils_get_indexed_key_METRIC (i);
+			const char *gw_key = utils_get_indexed_key_GATEWAY (i);
 
 			if (i >= num) {
 				svSetValue (routefile, addr_key, NULL, FALSE);
@@ -2112,11 +2064,6 @@ write_ip4_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 					g_free (tmp);
 				}
 			}
-
-			g_free (addr_key);
-			g_free (netmask_key);
-			g_free (gw_key);
-			g_free (metric_key);
 		}
 		if (svWriteFile (routefile, 0644)) {
 			g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
@@ -2302,7 +2249,7 @@ write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 	NMSettingIP6Config *s_ip6;
 	NMSettingIP4Config *s_ip4;
 	const char *value;
-	char *addr_key, *prefix;
+	char *prefix;
 	guint32 i, num, num4;
 	GString *searches;
 	char buf[INET6_ADDRSTRLEN];
@@ -2398,18 +2345,17 @@ write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 	num4 = s_ip4 ? nm_setting_ip4_config_get_num_dns (s_ip4) : 0; /* from where to start with IPv6 entries */
 	num = nm_setting_ip6_config_get_num_dns (s_ip6);
 	for (i = 0; i < 254; i++) {
-		addr_key = g_strdup_printf ("DNS%d", i + num4 + 1);
+		const char *key = utils_get_indexed_key_DNS (i + num4 + 1);
 
 		if (i >= num)
-			svSetValue (ifcfg, addr_key, NULL, FALSE);
+			svSetValue (ifcfg, key, NULL, FALSE);
 		else {
 			ip = nm_setting_ip6_config_get_dns (s_ip6, i);
 
 			memset (buf, 0, sizeof (buf));
 			inet_ntop (AF_INET6, (const void *) ip, buf, sizeof (buf));
-			svSetValue (ifcfg, addr_key, buf, FALSE);
+			svSetValue (ifcfg, key, buf, FALSE);
 		}
-		g_free (addr_key);
 	}
 
 	/* Write out DNS domains - 'DOMAIN' key is shared for both IPv4 and IPv6 domains */
