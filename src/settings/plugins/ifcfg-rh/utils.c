@@ -24,6 +24,8 @@
 #include "utils.h"
 #include "shvar.h"
 
+#include "NetworkManagerUtils.h"
+
 /*
  * utils_single_quote_string
  *
@@ -413,3 +415,33 @@ utils_get_ifcfg_from_alias (const char *alias)
 	g_free (base);
 	return ifcfg;
 }
+
+#define _STRLEN(NAME) (STRLEN (G_STRINGIFY (NAME)))
+#define DEFINE_UTILS_GET_INDEXED_KEY(NAME) \
+const char * \
+utils_get_indexed_key_##NAME (gint n) \
+{ \
+	static char buff[_STRLEN (NAME) + 4] = G_STRINGIFY (NAME); \
+	int chars; \
+\
+	g_assert (n >= -1 && n <= 999); \
+	if (n == -1) \
+		buff[_STRLEN (NAME)] = 0; \
+	else { \
+		chars = g_snprintf (&buff[_STRLEN (NAME)], sizeof (buff) - _STRLEN (NAME), "%d", n); \
+		g_assert (chars < sizeof (buff) - _STRLEN (NAME)); \
+	} \
+	return buff; \
+}
+DEFINE_UTILS_GET_INDEXED_KEY(ADDRESS)
+DEFINE_UTILS_GET_INDEXED_KEY(DNS)
+DEFINE_UTILS_GET_INDEXED_KEY(GATEWAY)
+DEFINE_UTILS_GET_INDEXED_KEY(IPADDR)
+DEFINE_UTILS_GET_INDEXED_KEY(KEY)
+DEFINE_UTILS_GET_INDEXED_KEY(KEY_PASSPHRASE)
+DEFINE_UTILS_GET_INDEXED_KEY(METRIC)
+DEFINE_UTILS_GET_INDEXED_KEY(NETMASK)
+DEFINE_UTILS_GET_INDEXED_KEY(PREFIX)
+#undef DEFINE_UTILS_GET_INDEXED_KEY
+#undef _STRLEN
+

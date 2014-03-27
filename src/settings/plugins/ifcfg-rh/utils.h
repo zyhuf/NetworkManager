@@ -53,5 +53,15 @@ gboolean utils_ignore_ip_config (NMConnection *connection);
 gboolean utils_is_ifcfg_alias_file (const char *alias, const char *ifcfg);
 char *utils_get_ifcfg_from_alias (const char *alias);
 
+const char *utils_get_indexed_key_ADDRESS        (gint n);
+const char *utils_get_indexed_key_DNS            (gint n);
+const char *utils_get_indexed_key_GATEWAY        (gint n);
+const char *utils_get_indexed_key_IPADDR         (gint n);
+const char *utils_get_indexed_key_KEY            (gint n);
+const char *utils_get_indexed_key_KEY_PASSPHRASE (gint n);
+const char *utils_get_indexed_key_METRIC         (gint n);
+const char *utils_get_indexed_key_NETMASK        (gint n);
+const char *utils_get_indexed_key_PREFIX         (gint n);
+
 #endif  /* _UTILS_H_ */
 
