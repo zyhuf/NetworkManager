@@ -219,18 +219,17 @@ make_connection_setting (const char *file,
 
 	value = svGetValue (ifcfg, "BRIDGE", FALSE);
 	if (value) {
-		const char *bridge;
+		const char *old_value;
 
-		if ((bridge = nm_setting_connection_get_master (s_con))) {
+		if ((old_value = nm_setting_connection_get_master (s_con))) {
 			PLUGIN_WARN (IFCFG_PLUGIN_NAME,
 			             "     warning: Already configured as slave of %s. "
-			             "Ignoring BRIDGE=\"%s\"", bridge, value);
-			g_free (value);
+			             "Ignoring BRIDGE=\"%s\"", old_value, value);
+		} else {
+			g_object_set (s_con, NM_SETTING_CONNECTION_MASTER, value, NULL);
+			g_object_set (s_con, NM_SETTING_CONNECTION_SLAVE_TYPE,
+			              NM_SETTING_BRIDGE_SETTING_NAME, NULL);
 		}
-
-		g_object_set (s_con, NM_SETTING_CONNECTION_MASTER, value, NULL);
-		g_object_set (s_con, NM_SETTING_CONNECTION_SLAVE_TYPE,
-		              NM_SETTING_BRIDGE_SETTING_NAME, NULL);
 		g_free (value);
 	}
 
