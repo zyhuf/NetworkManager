@@ -112,13 +112,5 @@ test_cleanup_linux_LDADD = $(PLATFORM_LDADD)
 # However, we can check whether the fake platform fakes platform behavior
 # correctly.
 
-@VALGRIND_RULES@
-USERTESTS = test-link-fake test-address-fake test-route-fake test-cleanup-fake
-ROOTTESTS = test-link-linux test-address-linux test-route-linux test-cleanup-linux
-
-# If explicitly enabled, we can run the root tests
-if RUN_ROOT_TESTS
-TESTS = $(USERTESTS) $(ROOTTESTS)
-else
-TESTS = $(USERTESTS)
-endif
+#@VALGRIND_RULES@
+TESTS = test-link-fake test-address-fake test-route-fake test-cleanup-fake test-link-linux test-address-linux test-route-linux test-cleanup-linux

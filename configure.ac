@@ -733,7 +733,7 @@ dnl -------------------------
 VAPIGEN_CHECK(0.17.1.24)
 
 # Tests, utilities and documentation
-AC_ARG_ENABLE(tests, AS_HELP_STRING([--enable-tests=root|yes|no], [Build NetworkManager tests (default: yes)]))
+AC_ARG_ENABLE(tests, AS_HELP_STRING([--enable-tests=yes|no], [Build NetworkManager tests (default: yes)]))
 AC_ARG_WITH(valgrind, AS_HELP_STRING([--with-valgrind=yes|no|path], [Use valgrind to memory-check the tests (default: yes)]))
 # Fallback to --with-tests
 AC_ARG_WITH(tests, AS_HELP_STRING([--with-tests], [Build NetworkManager tests (deprecated)]))
@@ -748,7 +748,6 @@ AS_IF([test "$with_valgrind" == "yes"],
 	[AC_PATH_PROGS(with_valgrind, valgrind, no)])
 # Add conditionals and substitutions
 AM_CONDITIONAL(ENABLE_TESTS, test "$enable_tests" != "no")
-AM_CONDITIONAL(RUN_ROOT_TESTS, test "$enable_tests" == "root")
 AS_IF([test "$with_valgrind" != "no"],
 	AC_SUBST(VALGRIND_RULES, 'TESTS_ENVIRONMENT = "$(top_srcdir)/tools/run-test-valgrind.sh" "$(LIBTOOL)" "$(with_valgrind)" "$(top_srcdir)/valgrind.suppressions"'),
 	AC_SUBST(VALGRIND_RULES, []))

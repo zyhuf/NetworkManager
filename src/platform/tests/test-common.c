@@ -113,6 +113,7 @@ int
 main (int argc, char **argv)
 {
 	int result;
+	const char *program = *argv;
 
 	openlog (G_LOG_DOMAIN, LOG_CONS | LOG_PERROR, LOG_DAEMON);
 	g_type_init ();
@@ -122,6 +123,11 @@ main (int argc, char **argv)
 		if (!g_strcmp0 (*argv, "--debug")) {
 			nm_logging_setup ("debug", NULL, NULL, NULL);
 		}
+	}
+
+	if (SETUP == nm_linux_platform_setup && getuid() != 0) {
+		g_message("Skipping test: requires root privileges (%s)", program);
+		return EXIT_SUCCESS;
 	}
 
 	SETUP ();
