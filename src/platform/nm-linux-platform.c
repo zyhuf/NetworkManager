@@ -1506,7 +1506,7 @@ event_notification (struct nl_msg *msg, gpointer user_data)
 			return NL_OK;
 
 		nl_cache_remove (cached_object);
-		/* Don't announced removed interfaces that are not recognized by
+		/* Don't announce removed interfaces that are not recognized by
 		 * udev. They were either not yet discovered or they have been
 		 * already removed and announced.
 		 */
@@ -3241,8 +3241,6 @@ udev_device_added (NMPlatform *platform,
 	}
 
 	is_changed = g_hash_table_lookup_extended (priv->udev_devices, GINT_TO_POINTER (ifindex), NULL, NULL);
-	g_hash_table_insert (priv->udev_devices, GINT_TO_POINTER (ifindex),
-	                     g_object_ref (udev_device));
 
 	/* Don't announce devices that have not yet been discovered via Netlink. */
 	rtnllink = rtnl_link_get (priv->link_cache, ifindex);
@@ -3251,8 +3249,16 @@ udev_device_added (NMPlatform *platform,
 		return;
 	}
 
+	if (link_is_software (rtnllink))
+		return;
+
+	g_hash_table_insert (priv->udev_devices, GINT_TO_POINTER (ifindex),
+	                     g_object_ref (udev_device));
+
 	announce_object (platform, (struct nl_object *) rtnllink, is_changed ? CHANGED : ADDED, NM_PLATFORM_REASON_EXTERNAL);
 }
+
+static gboolean link_is_software (struct rtnl_link *rtnllink);
 
 static void
 udev_device_removed (NMPlatform *platform,
@@ -3286,7 +3292,7 @@ udev_device_removed (NMPlatform *platform,
 	if (ifindex) {
 		auto_nl_object struct rtnl_link *device = rtnl_link_get (priv->link_cache, ifindex);
 
-		if (device)
+		if (device && !link_is_software (device))
 			announce_object (platform, (struct nl_object *) device, REMOVED, NM_PLATFORM_REASON_EXTERNAL);
 	}
 }
