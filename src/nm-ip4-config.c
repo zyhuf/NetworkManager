@@ -30,6 +30,7 @@
 #include "nm-utils.h"
 
 #include <netlink/route/addr.h>
+#include <netlink/route/rtnl.h>
 #include <netlink/utils.h>
 #include <netinet/in.h>
 
@@ -585,6 +586,16 @@ static int ip4_addr_to_rtnl_local (guint32 ip4_address, struct rtnl_addr *addr)
 	return err;
 }
 
+#define IPV4LL_NETWORK (htonl (0xA9FE0000L))
+#define IPV4LL_NETMASK (htonl (0xFFFF0000L))
+
+static gboolean
+ip4_is_link_local (guint32 ip4_address)
+{
+	return (ip4_address & IPV4LL_NETMASK) == IPV4LL_NETWORK;
+}
+
+
 static int ip4_addr_to_rtnl_peer (guint32 ip4_address, struct rtnl_addr *addr)
 {
 	struct nl_addr * peer = NULL;
@@ -630,8 +641,12 @@ nm_ip4_config_to_rtnl_addr (NMIP4Config *config, guint32 i, guint32 flags)
 	if (!(addr = rtnl_addr_alloc()))
 		return NULL;
 
-	if (flags & NM_RTNL_ADDR_ADDR)
+	if (flags & NM_RTNL_ADDR_ADDR) {
 		success = (ip4_addr_to_rtnl_local (nm_ip4_address_get_address (config_addr), addr) >= 0);
+
+		if (ip4_is_link_local (nm_ip4_address_get_address (config_addr)))
+			rtnl_addr_set_scope (addr, rtnl_str2scope ("link"));
+	}
 
 	if (flags & NM_RTNL_ADDR_PTP_ADDR)
 		success = (ip4_addr_to_rtnl_peer (priv->ptp_address, addr) >= 0);
