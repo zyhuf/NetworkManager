@@ -651,8 +651,16 @@ nm_ip4_config_to_rtnl_addr (NMIP4Config *config, guint32 i, guint32 flags)
 	if (flags & NM_RTNL_ADDR_PTP_ADDR)
 		success = (ip4_addr_to_rtnl_peer (priv->ptp_address, addr) >= 0);
 
-	if (flags & NM_RTNL_ADDR_PREFIX)
-		rtnl_addr_set_prefixlen (addr, nm_ip4_address_get_prefix (config_addr));
+	if (flags & NM_RTNL_ADDR_PREFIX) {
+		struct nl_addr *nladdr;
+		guint plen = nm_ip4_address_get_prefix (config_addr);
+
+		rtnl_addr_set_prefixlen (addr, plen);
+		/* rtnl_addr_set_prefixlen fails to update the nl_addr prefixlen */
+		nladdr = rtnl_addr_get_local (addr);
+		if (nladdr)
+			nl_addr_set_prefixlen (nladdr, plen);
+	}
 
 	if (flags & NM_RTNL_ADDR_BROADCAST) {
 		guint32 hostmask, network, bcast, netmask;
