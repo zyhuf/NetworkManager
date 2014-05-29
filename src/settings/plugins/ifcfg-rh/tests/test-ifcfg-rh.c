@@ -11238,6 +11238,107 @@ test_read_ibft_bad_address (gconstpointer user_data)
 }
 
 static void
+test_read_ibft_vlan (gconstpointer user_data)
+{
+	const char *iscsi_script = user_data;
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIP4Config *s_ip4;
+	NMSettingVlan *s_vlan;
+	const GByteArray *array;
+	const char expected_mac_address[ETH_ALEN] = { 0x00, 0x33, 0x21, 0x98, 0xb9, 0xf0 };
+	gboolean success;
+	GError *error = NULL;
+
+	connection = connection_from_file (TEST_IFCFG_DIR "/network-scripts/ifcfg-test-ibft-vlan-legacy",
+	                                   NULL, TYPE_ETHERNET, iscsi_script,
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert_no_error (error);
+	g_assert (connection);
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
+
+	s_con = nm_connection_get_setting_connection (connection);
+	g_assert (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_connection_type (s_con), ==, NM_SETTING_VLAN_SETTING_NAME);
+
+	/* ===== WIRED SETTING ===== */
+
+	s_wired = nm_connection_get_setting_wired (connection);
+	g_assert (s_wired);
+
+	/* MAC address */
+	array = nm_setting_wired_get_mac_address (s_wired);
+	g_assert (array);
+	g_assert_cmpint (array->len, ==, ETH_ALEN);
+	g_assert (memcmp (array->data, &expected_mac_address[0], sizeof (expected_mac_address)) == 0);
+
+	/* ===== IPv4 SETTING ===== */
+
+	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	g_assert (s_ip4);
+	g_assert_cmpstr (nm_setting_ip4_config_get_method (s_ip4), ==, NM_SETTING_IP4_CONFIG_METHOD_AUTO);
+
+	/* ===== VLAN SETTING ===== */
+
+	s_vlan = nm_connection_get_setting_vlan (connection);
+	g_assert (s_vlan);
+	g_assert_cmpint (nm_setting_vlan_get_id (s_vlan), ==, 6);
+	g_assert_cmpstr (nm_setting_vlan_get_parent (s_vlan), ==, "eth0");
+	g_assert_cmpstr (nm_setting_vlan_get_interface_name (s_vlan), ==, "eth0.6");
+
+	g_object_unref (connection);
+}
+
+static void
+test_read_ibft_vlan_minimal (void)
+{
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingVlan *s_vlan;
+	const GByteArray *array;
+	const char expected_mac_address[ETH_ALEN] = { 0x00, 0x33, 0x21, 0x98, 0xb9, 0xf0 };
+	gboolean success;
+	GError *error = NULL;
+
+	connection = connection_from_file (TEST_IFCFG_DIR "/network-scripts/ifcfg-test-ibft-vlan-minimal",
+	                                   NULL, TYPE_ETHERNET, TEST_IFCFG_DIR "/iscsiadm-test-vlan-minimal",
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert_no_error (error);
+	g_assert (connection);
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
+
+	s_con = nm_connection_get_setting_connection (connection);
+	g_assert (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_connection_type (s_con), ==, NM_SETTING_VLAN_SETTING_NAME);
+
+	/* ===== WIRED SETTING ===== */
+
+	s_wired = nm_connection_get_setting_wired (connection);
+	g_assert (s_wired);
+
+	/* MAC address */
+	array = nm_setting_wired_get_mac_address (s_wired);
+	g_assert (array);
+	g_assert_cmpint (array->len, ==, ETH_ALEN);
+	g_assert (memcmp (array->data, &expected_mac_address[0], sizeof (expected_mac_address)) == 0);
+
+	/* ===== VLAN SETTING ===== */
+	s_vlan = nm_connection_get_setting_vlan (connection);
+	g_assert (s_vlan);
+	g_assert_cmpint (nm_setting_vlan_get_id (s_vlan), ==, 6);
+	g_assert_cmpstr (nm_setting_vlan_get_parent (s_vlan), ==, NULL);
+	g_assert_cmpstr (nm_setting_vlan_get_interface_name (s_vlan), ==, NULL);
+
+	g_object_unref (connection);
+}
+
+static void
 test_write_wired_qeth_dhcp (void)
 {
 	NMConnection *connection;
@@ -14459,6 +14560,9 @@ int main (int argc, char **argv)
 	/* iSCSI / ibft */
 	test_read_ibft_dhcp ();
 	test_read_ibft_static ();
+	g_test_add_data_func (TPATH "ibft/vlan-legacy", TEST_IFCFG_DIR "/iscsiadm-test-vlan-legacy", test_read_ibft_vlan);
+	g_test_add_data_func (TPATH "ibft/vlan-parent", TEST_IFCFG_DIR "/iscsiadm-test-vlan-parent", test_read_ibft_vlan);
+	g_test_add_func (TPATH "ibft/vlan-minimal", test_read_ibft_vlan_minimal);
 	g_test_add_data_func (TPATH "ibft/bad-record-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-record", test_read_ibft_malformed);
 	g_test_add_data_func (TPATH "ibft/bad-entry-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-entry", test_read_ibft_malformed);
 	g_test_add_data_func (TPATH "ibft/bad-ipaddr-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-ipaddr", test_read_ibft_bad_address);

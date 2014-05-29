@@ -1,0 +1,8 @@
+# Intel Corporation 82540EP Gigabit Ethernet Controller (Mobile)
+DEVICE=eth0.6
+HWADDR=00:33:21:98:b9:f0
+BOOTPROTO=ibft
+TYPE=Vlan
+VLAN=yes
+PHYSDEV=eth0
+

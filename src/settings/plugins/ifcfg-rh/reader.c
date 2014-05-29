@@ -322,6 +322,7 @@ match_iscsiadm_tag (char *line, const char *tag)
 #define ISCSI_GATEWAY_TAG   "iface.gateway"
 #define ISCSI_DNS1_TAG      "iface.primary_dns"
 #define ISCSI_DNS2_TAG      "iface.secondary_dns"
+#define ISCSI_VLAN_ID_TAG   "iface.vlan_id"
 
 #define CLEAR_ARRAY(a) { if (a->len) g_ptr_array_remove_range (a, 0, a->len); }
 
@@ -4783,6 +4784,24 @@ is_bond_device (const char *name, shvarFile *parsed)
 }
 
 static gboolean
+is_ibft_vlan_device (const GPtrArray *ibft_data)
+{
+	char *s_vlan_id = NULL;
+
+	if (ibft_data) {
+		if (parse_ibft_config (ibft_data, NULL, ISCSI_VLAN_ID_TAG, &s_vlan_id, NULL)) {
+			g_assert (s_vlan_id);
+
+			/* VLAN 0 is normally a valid VLAN ID, but in the iBFT case it
+			 * means "no VLAN".
+			 */
+			return get_int_full (s_vlan_id, NULL, 1, 4095);
+		}
+	}
+	return FALSE;
+}
+
+static gboolean
 is_vlan_device (const char *name, shvarFile *parsed)
 {
 	g_return_val_if_fail (name != NULL, FALSE);
@@ -4835,6 +4854,35 @@ parse_prio_map_list (NMSettingVlan *s_vlan,
 	g_strfreev (list);
 }
 
+static void
+vlan_add_other_properties (shvarFile *ifcfg,
+                           NMSettingVlan *s_vlan,
+                           char **out_master)
+{
+	char *value;
+	guint32 vlan_flags = 0;
+
+	if (svTrueValue (ifcfg, "REORDER_HDR", FALSE))
+		vlan_flags |= NM_VLAN_FLAG_REORDER_HEADERS;
+
+	value = svGetValue (ifcfg, "VLAN_FLAGS", FALSE);
+	if (value) {
+		if (g_strstr_len (value, -1, "GVRP"))
+			vlan_flags |= NM_VLAN_FLAG_GVRP;
+		if (g_strstr_len (value, -1, "LOOSE_BINDING"))
+			vlan_flags |= NM_VLAN_FLAG_LOOSE_BINDING;
+	}
+	g_free (value);
+
+	g_object_set (s_vlan, NM_SETTING_VLAN_FLAGS, vlan_flags, NULL);
+
+	parse_prio_map_list (s_vlan, ifcfg, "VLAN_INGRESS_PRIORITY_MAP", NM_VLAN_INGRESS_MAP);
+	parse_prio_map_list (s_vlan, ifcfg, "VLAN_EGRESS_PRIORITY_MAP", NM_VLAN_EGRESS_MAP);
+
+	if (out_master)
+		*out_master = svGetValue (ifcfg, "MASTER", FALSE);
+}
+
 static NMSetting *
 make_vlan_setting (shvarFile *ifcfg,
                    const char *file,
@@ -4847,7 +4895,6 @@ make_vlan_setting (shvarFile *ifcfg,
 	char *parent = NULL;
 	const char *p = NULL;
 	gint vlan_id = -1;
-	guint32 vlan_flags = 0;
 
 	value = svGetValue (ifcfg, "VLAN_ID", FALSE);
 	if (value) {
@@ -4922,25 +4969,8 @@ make_vlan_setting (shvarFile *ifcfg,
 	}
 	g_object_set (s_vlan, NM_SETTING_VLAN_PARENT, parent, NULL);
 
-	if (svTrueValue (ifcfg, "REORDER_HDR", FALSE))
-		vlan_flags |= NM_VLAN_FLAG_REORDER_HEADERS;
+	vlan_add_other_properties (ifcfg, s_vlan, out_master);
 
-	value = svGetValue (ifcfg, "VLAN_FLAGS", FALSE);
-	if (value) {
-		if (g_strstr_len (value, -1, "GVRP"))
-			vlan_flags |= NM_VLAN_FLAG_GVRP;
-		if (g_strstr_len (value, -1, "LOOSE_BINDING"))
-			vlan_flags |= NM_VLAN_FLAG_LOOSE_BINDING;
-	}
-
-	g_object_set (s_vlan, NM_SETTING_VLAN_FLAGS, vlan_flags, NULL);
-	g_free (value);
-
-	parse_prio_map_list (s_vlan, ifcfg, "VLAN_INGRESS_PRIORITY_MAP", NM_VLAN_INGRESS_MAP);
-	parse_prio_map_list (s_vlan, ifcfg, "VLAN_EGRESS_PRIORITY_MAP", NM_VLAN_EGRESS_MAP);
-
-	if (out_master)
-		*out_master = svGetValue (ifcfg, "MASTER", FALSE);
 	return (NMSetting *) s_vlan;
 
 error:
@@ -4950,9 +4980,39 @@ error:
 	return NULL;
 }
 
+static NMSetting *
+make_ibft_vlan_setting (shvarFile *ifcfg,
+                        const GPtrArray *ibft_data,
+                        char **out_master,
+                        GError **error)
+{
+	NMSetting *s_vlan = NULL;
+	const char *vlan_id_str = NULL;
+	gint vlan_id = -1;
+
+	/* This won't fail since this function shouldn't be called unless the
+	 * iBFT VLAN ID exists and is > 0.
+	 */
+	g_assert (parse_ibft_config (ibft_data, NULL, ISCSI_VLAN_ID_TAG, &vlan_id_str, NULL));
+	g_assert (vlan_id_str);
+
+	/* VLAN 0 is normally a valid VLAN ID, but in the iBFT case it means "no VLAN" */
+	if (!get_int_full (vlan_id_str, &vlan_id, 1, 4095)) {
+		g_set_error (error, IFCFG_PLUGIN_ERROR, 0, "Invalid VLAN_ID '%s'", vlan_id_str);
+		return NULL;
+	}
+
+	s_vlan = nm_setting_vlan_new ();
+	g_object_set (s_vlan, NM_SETTING_VLAN_ID, vlan_id, NULL);
+	vlan_add_other_properties (ifcfg, NM_SETTING_VLAN (s_vlan), out_master);
+
+	return s_vlan;
+}
+
 static NMConnection *
 vlan_connection_from_ifcfg (const char *file,
                             shvarFile *ifcfg,
+                            const GPtrArray *ibft_data,
                             GError **error)
 {
 	NMConnection *connection = NULL;
@@ -4967,7 +5027,12 @@ vlan_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_VLAN_SETTING_NAME, NULL, "Vlan", TRUE);
+	con_setting = make_connection_setting (file,
+	                                       ifcfg,
+	                                       NM_SETTING_VLAN_SETTING_NAME,
+	                                       NULL,
+	                                       "Vlan",
+	                                       ibft_data ? FALSE : TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 			     "Failed to create connection setting.");
@@ -4976,7 +5041,10 @@ vlan_connection_from_ifcfg (const char *file,
 	}
 	nm_connection_add_setting (connection, con_setting);
 
-	vlan_setting = make_vlan_setting (ifcfg, file, &master, error);
+	if (ibft_data)
+		vlan_setting = make_ibft_vlan_setting (ifcfg, ibft_data, &master, error);
+	else
+		vlan_setting = make_vlan_setting (ifcfg, file, &master, error);
 	if (!vlan_setting) {
 		g_object_unref (connection);
 		return NULL;
@@ -5134,6 +5202,7 @@ connection_from_file (const char *filename,
 	NMSetting *s_ip4, *s_ip6, *s_port, *s_dcb = NULL;
 	const char *ifcfg_name = NULL;
 	GPtrArray *ibft_data = NULL;
+	gboolean is_ibft_vlan = FALSE;
 
 	g_return_val_if_fail (filename != NULL, NULL);
 	if (out_unhandled)
@@ -5190,6 +5259,10 @@ connection_from_file (const char *filename,
 			type = g_strdup (TYPE_ETHERNET);
 		g_free (devtype);
 	}
+
+	is_ibft_vlan = is_ibft_vlan_device (ibft_data);
+	if (!type && is_ibft_vlan)
+		type = g_strdup (TYPE_VLAN);
 
 	if (!type)
 		type = svGetValue (parsed, "TYPE", FALSE);
@@ -5257,9 +5330,12 @@ connection_from_file (const char *filename,
 		connection = bond_connection_from_ifcfg (filename, parsed, error);
 	else if (!strcasecmp (type, TYPE_TEAM))
 		connection = team_connection_from_ifcfg (filename, parsed, error);
-	else if (!strcasecmp (type, TYPE_VLAN))
-		connection = vlan_connection_from_ifcfg (filename, parsed, error);
-	else if (!strcasecmp (type, TYPE_BRIDGE))
+	else if (!strcasecmp (type, TYPE_VLAN)) {
+		connection = vlan_connection_from_ifcfg (filename,
+		                                         parsed,
+		                                         is_ibft_vlan ? ibft_data : NULL,
+		                                         error);
+	} else if (!strcasecmp (type, TYPE_BRIDGE))
 		connection = bridge_connection_from_ifcfg (filename, parsed, error);
 	else {
 		g_assert (out_unhandled != NULL);

@@ -63,6 +63,8 @@ EXTRA_DIST = \
 	test1_key_and_cert.pem \
 	ifcfg-test-ibft-dhcp \
 	ifcfg-test-ibft-static \
+	ifcfg-test-ibft-vlan-legacy \
+	ifcfg-test-ibft-vlan-minimal \
 	ifcfg-test-static-routes-legacy \
 	route-test-static-routes-legacy \
 	ifcfg-test-wired-static-routes \

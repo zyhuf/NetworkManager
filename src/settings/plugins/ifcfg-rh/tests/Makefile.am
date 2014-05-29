@@ -62,7 +62,9 @@ EXTRA_DIST = \
 	iscsiadm-test-bad-dns1 \
 	iscsiadm-test-bad-dns2 \
 	iscsiadm-test-bad-entry \
-	iscsiadm-test-bad-record
+	iscsiadm-test-bad-record \
+	iscsiadm-test-vlan \
+	iscsiadm-test-vlan-parent
 
 endif
 
