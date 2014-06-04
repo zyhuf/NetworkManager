@@ -1939,9 +1939,9 @@ add_device (NMManager *self, NMDevice *device)
 
 	priv->devices = g_slist_append (priv->devices, device);
 
-	g_signal_connect (device, "state-changed",
-					  G_CALLBACK (manager_device_state_changed),
-					  self);
+	g_signal_connect_after (device, "state-changed",
+	                        G_CALLBACK (manager_device_state_changed),
+	                        self);
 
 	g_signal_connect (device, NM_DEVICE_AUTH_REQUEST,
 	                  G_CALLBACK (device_auth_request_cb),
