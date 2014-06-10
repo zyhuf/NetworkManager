@@ -93,6 +93,58 @@ get_uint (const char *str, guint32 *value)
 	return TRUE;
 }
 
+static void
+_clear_match (char *str, const GMatchInfo *match_info, gint match_num)
+{
+	gint start_pos, end_pos;
+
+	if (!g_match_info_fetch_pos (match_info, match_num, &start_pos, &end_pos))
+		return;
+
+	if (start_pos == -1 && end_pos == -1)
+		return;
+
+	memset (&str[start_pos], ' ', end_pos - start_pos);
+}
+
+static const char *
+_find_first_non_ws (const char *str)
+{
+	g_return_val_if_fail (str, NULL);
+
+	while (str[0] && str[0] == ' ')
+		str++;
+	return str;
+}
+
+static gboolean
+_validate_match (const GRegex *regex, const char *str, GError **error,
+                 const char *format, ...) G_GNUC_PRINTF (4, 5);
+static gboolean
+_validate_match (const GRegex *regex, const char *str, GError **error,
+                 const char *format, ...)
+{
+	gboolean success;
+	GMatchInfo *match_info;
+
+	g_regex_match (regex, str, 0, &match_info);
+	success = g_match_info_matches (match_info);
+	g_match_info_free (match_info);
+
+	if (!success && error) {
+		va_list args;
+		char *message;
+
+		va_start (args, format);
+		message = g_strdup_vprintf (format, args);
+		va_end (args);
+
+		g_set_error_literal (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION, message);
+		g_free (message);
+	}
+	return success;
+}
+
 static char *
 make_connection_name (shvarFile *ifcfg,
                       const char *ifcfg_name,
@@ -822,21 +874,29 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 	char *contents = NULL;
 	gsize len = 0;
 	char **lines = NULL, **iter;
-	GRegex *regex_to1, *regex_to2, *regex_via, *regex_metric;
+	GRegex *regex_empty, *regex_to, *regex_via, *regex_metric, *regex_all;
 	GMatchInfo *match_info;
 	NMIP6Route *route;
 	struct in6_addr ip6_addr;
-	char *dest = NULL, *prefix = NULL, *metric = NULL;
+	char *dest = NULL, *prefix = NULL, *metric = NULL, *tmp_str = NULL;
+	const char *tmp_str2;
 	long int prefix_int, metric_int;
 	gboolean success = FALSE;
+	gboolean is_default;
 
-	const char *pattern_empty = "^\\s*(\\#.*)?$";
-	const char *pattern_to1 = "^\\s*(default|" IPV6_ADDR_REGEX ")"  /* IPv6 or 'default' keyword */
-	                          "(?:/(\\d{1,3}))?";                   /* optional prefix */
-	const char *pattern_to2 = "to\\s+(default|" IPV6_ADDR_REGEX ")" /* IPv6 or 'default' keyword */
-	                          "(?:/(\\d{1,3}))?";                   /* optional prefix */
-	const char *pattern_via = "via\\s+(" IPV6_ADDR_REGEX ")";       /* IPv6 of gateway */
-	const char *pattern_metric = "metric\\s+(\\d+)";                /* metric */
+	#define PATTERN_EMPTY  "^\\s*(\\#.*)?$"
+	#define PATTERN_TO     "^\\s*(to\\s+)?((default)|" \
+	                       "("IPV6_ADDR_REGEX")(?:/(\\d{1,3}))?)"
+	#define PATTERN_VIA    "\\s+via\\s+(" IPV6_ADDR_REGEX ")"
+    #define PATTERN_METRIC "\\s+metric\\s+(\\d+)"
+	#define PATTERN_ALL \
+		"" \
+		"("PATTERN_TO")" \
+		"(" \
+			"("PATTERN_VIA")|" \
+			"("PATTERN_METRIC")|" \
+		")*" \
+		"\\s*$"
 
 	g_return_val_if_fail (filename != NULL, FALSE);
 	g_return_val_if_fail (s_ip6 != NULL, FALSE);
@@ -850,10 +910,11 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 	}
 
 	/* Create regexes for pieces to be matched */
-	regex_to1 = g_regex_new (pattern_to1, 0, 0, NULL);
-	regex_to2 = g_regex_new (pattern_to2, 0, 0, NULL);
-	regex_via = g_regex_new (pattern_via, 0, 0, NULL);
-	regex_metric = g_regex_new (pattern_metric, 0, 0, NULL);
+	regex_empty = g_regex_new (PATTERN_EMPTY, 0, 0, NULL);
+	regex_to = g_regex_new (PATTERN_TO, 0, 0, NULL);
+	regex_via = g_regex_new (PATTERN_VIA, 0, 0, NULL);
+	regex_metric = g_regex_new (PATTERN_METRIC, 0, 0, NULL);
+	regex_all = g_regex_new (PATTERN_ALL, 0, 0, NULL);
 
 	/* New NMIP6Route structure */
 	route = nm_ip6_route_new ();
@@ -863,40 +924,40 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 	for (iter = lines; iter && *iter; iter++) {
 
 		/* Skip empty lines */
-		if (g_regex_match_simple (pattern_empty, *iter, 0, 0))
+		if (g_regex_match (regex_empty, *iter, 0, NULL))
 			continue;
 
+		g_free (tmp_str);
+		tmp_str = g_strdup (*iter);
+
 		/* Destination */
-		g_regex_match (regex_to1, *iter, 0, &match_info);
+		g_regex_match (regex_to, tmp_str, 0, &match_info);
 		if (!g_match_info_matches (match_info)) {
 			g_match_info_free (match_info);
-			g_regex_match (regex_to2, *iter, 0, &match_info);
-			if (!g_match_info_matches (match_info)) {
-				g_match_info_free (match_info);
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+			     "Missing IP6 route destination address in record: '%s'", *iter);
+			goto error;
+		}
+		is_default = FALSE;
+		dest = g_match_info_fetch (match_info, 3);
+		if (!g_strcmp0 (dest, "default")) {
+			ip6_addr = in6addr_any;
+			is_default = TRUE;
+		} else {
+			g_free (dest);
+			dest = g_match_info_fetch (match_info, 4);
+			if (!dest || inet_pton (AF_INET6, dest, &ip6_addr) != 1) {
 				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-				             "Missing IP6 route destination address in record: '%s'", *iter);
+				     "Invalid IP6 route destination address '%s'", dest);
+				g_free (dest);
 				goto error;
 			}
 		}
-		dest = g_match_info_fetch (match_info, 1);
-		if (!g_strcmp0 (dest, "default")) {
-			/* Ignore default route - NM handles it internally */
-			g_free (dest);
-			g_match_info_free (match_info);
-			PARSE_WARNING ("ignoring manual default route: '%s' (%s)", *iter, filename);
-			continue;
-		}
-		if (inet_pton (AF_INET6, dest, &ip6_addr) != 1) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Invalid IP6 route destination address '%s'", dest);
-			g_free (dest);
-			goto error;
-		}
-		nm_ip6_route_set_dest (route, &ip6_addr);
 		g_free (dest);
 
 		/* Prefix - is optional; 128 if missing */
-		prefix = g_match_info_fetch (match_info, 2);
+		prefix = g_match_info_fetch (match_info, 5);
+		_clear_match (tmp_str, match_info, 0);
 		g_match_info_free (match_info);
 		prefix_int = 128;
 		if (prefix) {
@@ -912,8 +973,16 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 		nm_ip6_route_set_prefix (route, (guint32) prefix_int);
 		g_free (prefix);
 
+		/* FIXME: clear the host part of the route. As does `ip -6 route add` */
+		/* nm_utils_ip6_address_clear_host_address (&ip6_addr, &ip6_addr, prefix_int); */
+
+		nm_ip6_route_set_dest (route, &ip6_addr);
+
+		/* FIXME: also skip over routes to ::/prefix */
+		/* is_default = is_default || IN6_IS_ADDR_UNSPECIFIED (&ip6_addr); */
+
 		/* Next hop */
-		g_regex_match (regex_via, *iter, 0, &match_info);
+		g_regex_match (regex_via, tmp_str, 0, &match_info);
 		if (g_match_info_matches (match_info)) {
 			char *next_hop = g_match_info_fetch (match_info, 1);
 			if (inet_pton (AF_INET6, next_hop, &ip6_addr) != 1) {
@@ -925,6 +994,7 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 				goto error;
 			}
 			g_free (next_hop);
+			_clear_match (tmp_str, match_info, 0);
 		} else {
 			/* Missing "via" is taken as :: */
 			ip6_addr = in6addr_any;
@@ -933,7 +1003,7 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 		g_match_info_free (match_info);
 
 		/* Metric */
-		g_regex_match (regex_metric, *iter, 0, &match_info);
+		g_regex_match (regex_metric, tmp_str, 0, &match_info);
 		metric_int = 0;
 		if (g_match_info_matches (match_info)) {
 			metric = g_match_info_fetch (match_info, 1);
@@ -947,11 +1017,37 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 				goto error;
 			}
 			g_free (metric);
+			_clear_match (tmp_str, match_info, 0);
 		}
 
 		nm_ip6_route_set_metric (route, (guint32) metric_int);
 		g_match_info_free (match_info);
 
+		/* check that we matched every part of the string. */
+		tmp_str2 = _find_first_non_ws (tmp_str);
+		if (tmp_str2[0]) {
+			/* FIXME: do we really want to bail out? Maybe just skip this route? Or maybe
+			 * just log a warning and accept it? */
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+			             "Invalid IP6 route contains unparsable text at position %ld ('%s')",
+			             (long) (tmp_str2 - tmp_str), &(*iter)[tmp_str2 - tmp_str]);
+			goto error;
+		}
+
+		/* Ok. Basic matching succeeded. Now validate the whole line with one regex.
+		 * We do the step-by-step matching above to give better error messages
+		 * because when PATTERN_ALL fails, we don't know why it failed. */
+		if (!_validate_match (regex_all, *iter, error, "Invalid IP6 route due to unexpected content ('%s')", *iter)) {
+			/* FIXME: do we really want to be so strict? Maybe just accept it silently
+			 * or log a warning. */
+			goto error;
+		}
+
+		if (is_default) {
+			/* Ignore default route - NM handles it internally */
+			PARSE_WARNING ("ignoring manual default route: '%s' (%s)", *iter, filename);
+			continue;
+		}
 		if (!nm_setting_ip6_config_add_route (s_ip6, route))
 			PARSE_WARNING ("duplicate IP6 route");
 	}
@@ -959,13 +1055,15 @@ read_route6_file (const char *filename, NMSettingIP6Config *s_ip6, GError **erro
 	success = TRUE;
 
 error:
+	g_free (tmp_str);
 	g_free (contents);
 	g_strfreev (lines);
 	nm_ip6_route_unref (route);
-	g_regex_unref (regex_to1);
-	g_regex_unref (regex_to2);
+	g_regex_unref (regex_empty);
+	g_regex_unref (regex_to);
 	g_regex_unref (regex_via);
 	g_regex_unref (regex_metric);
+	g_regex_unref (regex_all);
 
 	return success;
 }
