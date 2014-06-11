@@ -199,8 +199,7 @@ typedef struct {
 	RfKillType    rfkill_type;
 	gboolean      firmware_missing;
 	GHashTable *  available_connections;
-	guint8        hw_addr[NM_UTILS_HWADDR_LEN_MAX];
-	guint         hw_addr_len;
+	NMPlatformHwAddress hw_addr;
 	char *        physical_port_id;
 
 	NMUnmanagedFlags        unmanaged_flags;
@@ -2757,7 +2756,7 @@ dhcp4_start (NMDevice *self,
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMSettingIP4Config *s_ip4;
-	GByteArray *tmp = NULL;
+	GByteArray *tmp;
 
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
 
@@ -2766,10 +2765,7 @@ dhcp4_start (NMDevice *self,
 		g_object_unref (priv->dhcp4_config);
 	priv->dhcp4_config = nm_dhcp4_config_new ();
 
-	if (priv->hw_addr_len) {
-		tmp = g_byte_array_sized_new (priv->hw_addr_len);
-		g_byte_array_append (tmp, priv->hw_addr, priv->hw_addr_len);
-	}
+	tmp = nm_platform_hw_address_to_byte_array (&priv->hw_addr);
 
 	/* Begin DHCP on the interface */
 	g_warn_if_fail (priv->dhcp4_client == NULL);
@@ -3225,7 +3221,7 @@ dhcp6_start (NMDevice *self,
 	NMSettingIP6Config *s_ip6;
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMActStageReturn ret = NM_ACT_STAGE_RETURN_FAILURE;
-	GByteArray *tmp = NULL;
+	GByteArray *tmp;
 
 	if (!connection) {
 		connection = nm_device_get_connection (self);
@@ -3245,10 +3241,7 @@ dhcp6_start (NMDevice *self,
 		priv->dhcp6_ip6_config = NULL;
 	}
 
-	if (priv->hw_addr_len) {
-		tmp = g_byte_array_sized_new (priv->hw_addr_len);
-		g_byte_array_append (tmp, priv->hw_addr, priv->hw_addr_len);
-	}
+	tmp = nm_platform_hw_address_to_byte_array (&priv->hw_addr);
 
 	priv->dhcp6_client = nm_dhcp_manager_start_ip6 (nm_dhcp_manager_get (),
 	                                                nm_device_get_ip_iface (self),
@@ -3665,12 +3658,7 @@ addrconf6_start_with_link_ready (NMDevice *self)
 	g_assert (priv->rdisc);
 
 	/* FIXME: what if interface has no lladdr, like PPP? */
-	if (priv->hw_addr_len) {
-		NMPlatformHwAddress addr;
-
-		nm_platform_hw_address_set (&addr, (const char *) priv->hw_addr, priv->hw_addr_len);
-		nm_rdisc_set_lladdr (priv->rdisc, &addr);
-	}
+	nm_rdisc_set_lladdr (priv->rdisc, &priv->hw_addr);
 
 	nm_device_ipv6_sysctl_set (self, "accept_ra", "1");
 	nm_device_ipv6_sysctl_set (self, "accept_ra_defrtr", "0");
@@ -6936,12 +6924,12 @@ nm_device_get_hw_address (NMDevice *dev, guint *out_len)
 	priv = NM_DEVICE_GET_PRIVATE (dev);
 
 	if (out_len)
-		*out_len = priv->hw_addr_len;
+		*out_len = priv->hw_addr.len;
 
-	if (priv->hw_addr_len == 0)
+	if (priv->hw_addr.len == 0)
 		return NULL;
 	else
-		return priv->hw_addr;
+		return priv->hw_addr.hw_addr;
 }
 
 gboolean
@@ -6949,14 +6937,22 @@ nm_device_update_hw_address (NMDevice *dev)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (dev);
 	gboolean changed = FALSE, permanent = FALSE;
+	guint len = nm_device_get_hw_address_length (dev, &permanent);
 
-	priv->hw_addr_len = nm_device_get_hw_address_length (dev, &permanent);
+	if (len != priv->hw_addr.len) {
+		if (len == 0) {
+			if (!nm_platform_hw_address_is_zero (&priv->hw_addr)) {
+				nm_log_dbg (LOGD_HW | LOGD_DEVICE,
+				            "(%s): previous hardware address is no longer valid",
+				            nm_device_get_iface (dev));
+			}
+		}
+		changed = TRUE;
+		nm_platform_hw_address_clear (&priv->hw_addr, len);
+	}
 
 	/* If the address can't be changed, don't bother trying */
-	if (permanent)
-		return FALSE;
-
-	if (priv->hw_addr_len) {
+	if (!permanent && priv->hw_addr.len) {
 		int ifindex = nm_device_get_ip_ifindex (dev);
 		gsize addrlen;
 		const guint8 *binaddr;
@@ -6965,39 +6961,27 @@ nm_device_update_hw_address (NMDevice *dev)
 
 		binaddr = nm_platform_link_get_address (ifindex, &addrlen);
 
-		if (addrlen != priv->hw_addr_len) {
+		if (addrlen != priv->hw_addr.len) {
 			nm_log_err (LOGD_HW | LOGD_DEVICE,
 			            "(%s): hardware address is wrong length (got %zd, expected %d)",
-			            nm_device_get_iface (dev), addrlen, priv->hw_addr_len);
-		} else {
-			changed = !!memcmp (priv->hw_addr, binaddr, addrlen);
-			if (changed) {
-				char *addrstr = nm_utils_hwaddr_ntoa_len (binaddr, priv->hw_addr_len);
+			            nm_device_get_iface (dev), addrlen, priv->hw_addr.len);
+		} else if (!nm_platform_hw_address_is_equal (&priv->hw_addr, binaddr, priv->hw_addr.len)) {
+			changed = TRUE;
+			nm_platform_hw_address_set (&priv->hw_addr, binaddr, priv->hw_addr.len);
 
-				memcpy (priv->hw_addr, binaddr, addrlen);
+			if (nm_logging_enabled (LOGL_DEBUG, LOGD_HW | LOGD_DEVICE)) {
+				char *addrstr = nm_utils_hwaddr_ntoa_len (binaddr, priv->hw_addr.len);
+
 				nm_log_dbg (LOGD_HW | LOGD_DEVICE,
 				            "(%s): hardware address is %s",
 				            nm_device_get_iface (dev), addrstr);
 				g_free (addrstr);
-				g_object_notify (G_OBJECT (dev), NM_DEVICE_HW_ADDRESS);
 			}
 		}
-	} else {
-		int i;
-
-		/* hw_addr_len is now 0; see if hw_addr was already empty */
-		for (i = 0; i < sizeof (priv->hw_addr) && !changed; i++) {
-			if (priv->hw_addr[i])
-				changed = TRUE;
-		}
-		if (changed) {
-			memset (priv->hw_addr, 0, sizeof (priv->hw_addr));
-			nm_log_dbg (LOGD_HW | LOGD_DEVICE,
-			            "(%s): previous hardware address is no longer valid",
-			            nm_device_get_iface (dev));
-			g_object_notify (G_OBJECT (dev), NM_DEVICE_HW_ADDRESS);
-		}
 	}
+
+	if (changed)
+		g_object_notify (G_OBJECT (dev), NM_DEVICE_HW_ADDRESS);
 
 	return changed;
 }
@@ -7093,8 +7077,8 @@ spec_match_list (NMDevice *device, const GSList *specs)
 	if (nm_match_spec_string (specs, "*"))
 		return TRUE;
 
-	if (priv->hw_addr_len) {
-		hwaddr_str = nm_utils_hwaddr_ntoa_len (priv->hw_addr, priv->hw_addr_len);
+	if (priv->hw_addr.len) {
+		hwaddr_str = nm_utils_hwaddr_ntoa_len (priv->hw_addr.hw_addr, priv->hw_addr.len);
 		matched = nm_match_spec_hwaddr (specs, hwaddr_str);
 		g_free (hwaddr_str);
 	}
@@ -7451,19 +7435,24 @@ set_property (GObject *object, guint prop_id,
 		priv->is_master = g_value_get_boolean (value);
 		break;
 	case PROP_HW_ADDRESS:
-		priv->hw_addr_len = nm_device_get_hw_address_length (NM_DEVICE (object), NULL);
+		{
+			guint len = nm_device_get_hw_address_length (NM_DEVICE (object), NULL);
+
+			if (len != priv->hw_addr.len)
+				nm_platform_hw_address_clear (&priv->hw_addr, len);
+		}
 
 		hw_addr = g_value_get_string (value);
 		if (!hw_addr)
 			break;
-		if (priv->hw_addr_len == 0) {
+		if (priv->hw_addr.len == 0) {
 			g_warn_if_fail (*hw_addr == '\0');
 			break;
 		}
 
-		if (!nm_utils_hwaddr_aton_len (hw_addr, priv->hw_addr, priv->hw_addr_len)) {
+		if (!nm_platform_hw_address_set_from_string (&priv->hw_addr, hw_addr, priv->hw_addr.len)) {
 			g_warning ("Could not parse hw-address '%s'", hw_addr);
-			memset (priv->hw_addr, 0, sizeof (priv->hw_addr));
+			nm_platform_hw_address_clear (&priv->hw_addr, priv->hw_addr.len);
 		}
 		break;
 	default:
@@ -7593,8 +7582,8 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_object (value, priv->master);
 		break;
 	case PROP_HW_ADDRESS:
-		if (priv->hw_addr_len)
-			g_value_take_string (value, nm_utils_hwaddr_ntoa_len (priv->hw_addr, priv->hw_addr_len));
+		if (priv->hw_addr.len)
+			g_value_take_string (value, nm_utils_hwaddr_ntoa_len (priv->hw_addr.hw_addr, priv->hw_addr.len));
 		else
 			g_value_set_string (value, NULL);
 		break;
