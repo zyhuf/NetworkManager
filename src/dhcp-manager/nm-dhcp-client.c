@@ -36,7 +36,7 @@
 
 typedef struct {
 	char *       iface;
-	GByteArray * hwaddr;
+	NMPlatformHwAddress hwaddr;
 	gboolean     ipv6;
 	char *       uuid;
 	guint        priority;
@@ -1504,7 +1504,7 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_string (value, priv->iface);
 		break;
 	case PROP_HWADDR:
-		g_value_set_boxed (value, priv->hwaddr);
+		g_value_take_boxed (value, nm_platform_hw_address_to_byte_array (&priv->hwaddr));
 		break;
 	case PROP_IPV6:
 		g_value_set_boolean (value, priv->ipv6);
@@ -1537,7 +1537,8 @@ set_property (GObject *object, guint prop_id,
 		break;
 	case PROP_HWADDR:
 		/* construct only */
-		priv->hwaddr = g_value_dup_boxed (value);
+		nm_platform_hw_address_set_byte_array (&priv->hwaddr,
+		                                       g_value_get_boxed (value));
 		break;
 	case PROP_IPV6:
 		/* construct-only */
@@ -1581,11 +1582,6 @@ dispose (GObject *object)
 		priv->options = NULL;
 	}
 	g_clear_pointer (&priv->iface, g_free);
-
-	if (priv->hwaddr) {
-		g_byte_array_free (priv->hwaddr, TRUE);
-		priv->hwaddr = NULL;
-	}
 
 	if (priv->duid) {
 		g_byte_array_free (priv->duid, TRUE);

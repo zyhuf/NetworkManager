@@ -2756,7 +2756,6 @@ dhcp4_start (NMDevice *self,
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMSettingIP4Config *s_ip4;
-	GByteArray *tmp;
 
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
 
@@ -2765,21 +2764,16 @@ dhcp4_start (NMDevice *self,
 		g_object_unref (priv->dhcp4_config);
 	priv->dhcp4_config = nm_dhcp4_config_new ();
 
-	tmp = nm_platform_hw_address_to_byte_array (&priv->hw_addr);
-
 	/* Begin DHCP on the interface */
 	g_warn_if_fail (priv->dhcp4_client == NULL);
 	priv->dhcp4_client = nm_dhcp_manager_start_ip4 (nm_dhcp_manager_get (),
 	                                                nm_device_get_ip_iface (self),
-	                                                tmp,
+	                                                &priv->hw_addr,
 	                                                nm_connection_get_uuid (connection),
 	                                                nm_device_get_priority (self),
 	                                                s_ip4,
 	                                                priv->dhcp_timeout,
 	                                                priv->dhcp_anycast_address);
-
-	if (tmp)
-		g_byte_array_free (tmp, TRUE);
 
 	if (!priv->dhcp4_client) {
 		*reason = NM_DEVICE_STATE_REASON_DHCP_START_FAILED;
@@ -3221,7 +3215,6 @@ dhcp6_start (NMDevice *self,
 	NMSettingIP6Config *s_ip6;
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMActStageReturn ret = NM_ACT_STAGE_RETURN_FAILURE;
-	GByteArray *tmp;
 
 	if (!connection) {
 		connection = nm_device_get_connection (self);
@@ -3241,19 +3234,15 @@ dhcp6_start (NMDevice *self,
 		priv->dhcp6_ip6_config = NULL;
 	}
 
-	tmp = nm_platform_hw_address_to_byte_array (&priv->hw_addr);
-
 	priv->dhcp6_client = nm_dhcp_manager_start_ip6 (nm_dhcp_manager_get (),
 	                                                nm_device_get_ip_iface (self),
-	                                                tmp,
+	                                                &priv->hw_addr,
 	                                                nm_connection_get_uuid (connection),
 	                                                nm_device_get_priority (self),
 	                                                nm_connection_get_setting_ip6_config (connection),
 	                                                priv->dhcp_timeout,
 	                                                priv->dhcp_anycast_address,
 	                                                (dhcp_opt == NM_RDISC_DHCP_LEVEL_OTHERCONF) ? TRUE : FALSE);
-	if (tmp)
-		g_byte_array_free (tmp, TRUE);
 
 	if (priv->dhcp6_client) {
 		priv->dhcp6_state_sigid = g_signal_connect (priv->dhcp6_client,

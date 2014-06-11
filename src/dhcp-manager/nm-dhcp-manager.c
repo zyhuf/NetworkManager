@@ -382,7 +382,7 @@ add_client (NMDHCPManager *self, NMDHCPClient *client)
 static NMDHCPClient *
 client_start (NMDHCPManager *self,
               const char *iface,
-              const GByteArray *hwaddr,
+              const NMPlatformHwAddress *hwaddr,
               const char *uuid,
               guint priority,
               gboolean ipv6,
@@ -395,6 +395,7 @@ client_start (NMDHCPManager *self,
 	NMDHCPManagerPrivate *priv;
 	NMDHCPClient *client;
 	gboolean success = FALSE;
+	GByteArray *hwaddr_tmp = NULL;
 
 	g_return_val_if_fail (self, NULL);
 	g_return_val_if_fail (NM_IS_DHCP_MANAGER (self), NULL);
@@ -413,15 +414,21 @@ client_start (NMDHCPManager *self,
 		remove_client (self, client);
 	}
 
+	hwaddr_tmp = hwaddr ? nm_platform_hw_address_to_byte_array (hwaddr) : NULL;
+
 	/* And make a new one */
 	client = g_object_new (priv->client_type,
 	                       NM_DHCP_CLIENT_INTERFACE, iface,
-	                       NM_DHCP_CLIENT_HWADDR, hwaddr,
+	                       NM_DHCP_CLIENT_HWADDR, hwaddr_tmp,
 	                       NM_DHCP_CLIENT_IPV6, ipv6,
 	                       NM_DHCP_CLIENT_UUID, uuid,
 	                       NM_DHCP_CLIENT_PRIORITY, priority,
 	                       NM_DHCP_CLIENT_TIMEOUT, timeout ? timeout : DHCP_TIMEOUT,
 	                       NULL);
+
+	if (hwaddr_tmp)
+		g_byte_array_free (hwaddr_tmp, TRUE);
+
 	g_return_val_if_fail (client != NULL, NULL);
 	add_client (self, client);
 
@@ -452,7 +459,7 @@ get_send_hostname (NMDHCPManager *self, const char *setting_hostname)
 NMDHCPClient *
 nm_dhcp_manager_start_ip4 (NMDHCPManager *self,
                            const char *iface,
-                           const GByteArray *hwaddr,
+                           const NMPlatformHwAddress *hwaddr,
                            const char *uuid,
                            guint priority,
                            NMSettingIP4Config *s_ip4,
@@ -481,7 +488,7 @@ nm_dhcp_manager_start_ip4 (NMDHCPManager *self,
 NMDHCPClient *
 nm_dhcp_manager_start_ip6 (NMDHCPManager *self,
                            const char *iface,
-                           const GByteArray *hwaddr,
+                           const NMPlatformHwAddress *hwaddr,
                            const char *uuid,
                            guint priority,
                            NMSettingIP6Config *s_ip6,
