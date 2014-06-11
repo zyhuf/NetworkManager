@@ -3665,8 +3665,12 @@ addrconf6_start_with_link_ready (NMDevice *self)
 	g_assert (priv->rdisc);
 
 	/* FIXME: what if interface has no lladdr, like PPP? */
-	if (priv->hw_addr_len)
-		nm_rdisc_set_lladdr (priv->rdisc, (const char *) priv->hw_addr, priv->hw_addr_len);
+	if (priv->hw_addr_len) {
+		NMPlatformHwAddress addr;
+
+		nm_platform_hw_address_set (&addr, (const char *) priv->hw_addr, priv->hw_addr_len);
+		nm_rdisc_set_lladdr (priv->rdisc, &addr);
+	}
 
 	nm_device_ipv6_sysctl_set (self, "accept_ra", "1");
 	nm_device_ipv6_sysctl_set (self, "accept_ra_defrtr", "0");

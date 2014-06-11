@@ -37,7 +37,7 @@ main (int argc, char **argv)
 	NMRDisc *(*new) (int ifindex, const char *ifname);
 	int ifindex = 1;
 	const char *ifname;
-	char mac[6] = { 0x02, 0xaa, 0xbb, 0xcc, 0xdd, 0xee };
+	NMPlatformHwAddress mac = { .hw_addr = { 0x02, 0xaa, 0xbb, 0xcc, 0xdd, 0xee }, .len = 6 };
 
 #if !GLIB_CHECK_VERSION (2, 35, 0)
 	g_type_init ();
@@ -69,7 +69,7 @@ main (int argc, char **argv)
 	if (!rdisc)
 		return EXIT_FAILURE;
 
-	nm_rdisc_set_lladdr (rdisc, mac, 6);
+	nm_rdisc_set_lladdr (rdisc, &mac);
 
 	nm_rdisc_start (rdisc);
 	g_main_loop_run (loop);

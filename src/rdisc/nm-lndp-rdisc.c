@@ -433,12 +433,14 @@ translate_preference (enum ndp_route_preference preference)
 }
 
 static void
-fill_address_from_mac (struct in6_addr *address, const char *mac)
+fill_address_from_mac (struct in6_addr *address, const NMPlatformHwAddress *hw_addr)
 {
 	unsigned char *identifier = address->s6_addr + 8;
+	const guint8 *mac;
 
-	if (!mac)
-		return;
+	g_return_if_fail (!hw_addr || hw_addr->len != 6);
+
+	mac = hw_addr->hw_addr;
 
 	/* Translate 48-bit MAC address to a 64-bit modified interface identifier
 	 * and write it to the second half of the IPv6 address.
@@ -458,16 +460,11 @@ receive_ra (struct ndp *ndp, struct ndp_msg *msg, gpointer user_data)
 	NMRDisc *rdisc = (NMRDisc *) user_data;
 	NMLNDPRDiscPrivate *priv = NM_LNDP_RDISC_GET_PRIVATE (rdisc);
 	NMRDiscConfigMap changed = 0;
-	size_t lladdrlen = 0;
-	const char *lladdr = NULL;
 	struct ndp_msgra *msgra = ndp_msgra (msg);
 	NMRDiscGateway gateway;
 	guint32 now = nm_utils_get_monotonic_timestamp_s ();
 	int offset;
 	int hop_limit;
-
-	if (rdisc->lladdr)
-		lladdr = g_bytes_get_data (rdisc->lladdr, &lladdrlen);
 
 	/* Router discovery is subject to the following RFC documents:
 	 *
@@ -541,7 +538,7 @@ receive_ra (struct ndp *ndp, struct ndp_msg *msg, gpointer user_data)
 
 		/* Address */
 		if (ndp_msg_opt_prefix_flag_auto_addr_conf (msg, offset)) {
-			if (route.plen == 64 && lladdrlen == 6) {
+			if (route.plen == 64 && rdisc->lladdr.len == 6) {
 				memset (&address, 0, sizeof (address));
 				address.address = route.network;
 				address.timestamp = now;
@@ -550,7 +547,7 @@ receive_ra (struct ndp *ndp, struct ndp_msg *msg, gpointer user_data)
 				if (address.preferred > address.lifetime)
 					address.preferred = address.lifetime;
 
-				fill_address_from_mac (&address.address, lladdr);
+				fill_address_from_mac (&address.address, &rdisc->lladdr);
 
 				if (add_address (rdisc, &address))
 					changed |= NM_RDISC_CONFIG_ADDRESSES;
