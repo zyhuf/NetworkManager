@@ -29,6 +29,7 @@
 #include <linux/if_addr.h>
 
 #include <NetworkManager.h>
+#include <nm-utils.h>
 
 #define NM_TYPE_PLATFORM            (nm_platform_get_type ())
 #define NM_PLATFORM(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_PLATFORM, NMPlatform))
@@ -156,6 +157,12 @@ typedef enum {
 	NM_PLATFORM_SOURCE_USER,
 } NMPlatformSource;
 
+typedef struct {
+	/* must be the very first element, so that the address of NMPlatformHwAddress
+	 * is the same as &hw_addr[0]. */
+	guint8 hw_addr[NM_UTILS_HWADDR_LEN_MAX];
+	guint8 len;
+} NMPlatformHwAddress;
 
 typedef struct {
 	__NMPlatformObject_COMMON;
@@ -604,6 +611,16 @@ int nm_platform_ip4_address_cmp (const NMPlatformIP4Address *a, const NMPlatform
 int nm_platform_ip6_address_cmp (const NMPlatformIP6Address *a, const NMPlatformIP6Address *b);
 int nm_platform_ip4_route_cmp (const NMPlatformIP4Route *a, const NMPlatformIP4Route *b);
 int nm_platform_ip6_route_cmp (const NMPlatformIP6Route *a, const NMPlatformIP6Route *b);
+
+gboolean nm_platform_hw_address_is_zero (const NMPlatformHwAddress *addr);
+gboolean nm_platform_hw_address_is_equal (const NMPlatformHwAddress *addr, const void *data, int len);
+int nm_platform_hw_address_cmp (const NMPlatformHwAddress *a, const NMPlatformHwAddress *b);
+void nm_platform_hw_address_clear (NMPlatformHwAddress *addr, int len);
+void nm_platform_hw_address_cpy (NMPlatformHwAddress *addr, const NMPlatformHwAddress *source);
+void nm_platform_hw_address_set (NMPlatformHwAddress *addr, const void *data, int len);
+void nm_platform_hw_address_set_byte_array (NMPlatformHwAddress *addr, const GByteArray *data);
+gboolean nm_platform_hw_address_set_from_string (NMPlatformHwAddress *addr, const char *str, int expected_len);
+GByteArray *nm_platform_hw_address_to_byte_array (const NMPlatformHwAddress *addr);
 
 gboolean nm_platform_check_support_libnl_extended_ifa_flags (void);
 gboolean nm_platform_check_support_kernel_extended_ifa_flags (void);

@@ -311,6 +311,132 @@ nm_platform_sysctl_get_int_checked (const char *path, guint base, gint64 min, gi
 
 /******************************************************************/
 
+gboolean
+nm_platform_hw_address_is_zero (const NMPlatformHwAddress *addr)
+{
+	guint8 i;
+
+	g_return_val_if_fail (addr, FALSE);
+
+	for (i = 0; i < addr->len; i++) {
+		if (addr->hw_addr[i])
+			return FALSE;
+	}
+	return TRUE;
+}
+
+gboolean
+nm_platform_hw_address_is_equal (const NMPlatformHwAddress *addr, const void *data, int len)
+{
+	g_return_val_if_fail (addr, FALSE);
+	g_return_val_if_fail (len >= 0 && len <= G_N_ELEMENTS (addr->hw_addr), FALSE);
+	g_return_val_if_fail (data || len == 0, FALSE);
+
+	return addr->len == len &&
+	       (len == 0 || memcmp (addr->hw_addr, data, len) == 0);
+}
+
+int
+nm_platform_hw_address_cmp (const NMPlatformHwAddress *a, const NMPlatformHwAddress *b)
+{
+	int c;
+
+	if (a == b)
+		return 0;
+	if (!a)
+		return -1;
+	if (!b)
+		return 1;
+	if (a->len < b->len)
+		return -1;
+	if (a->len > b->len)
+		return 1;
+	c = memcmp (a->hw_addr, b->hw_addr, a->len);
+	return CLAMP (c, -1, 1);
+}
+
+void
+nm_platform_hw_address_clear (NMPlatformHwAddress *addr, int len)
+{
+	g_return_if_fail (addr);
+	g_return_if_fail (len >= 0 && len <= G_N_ELEMENTS (addr->hw_addr));
+
+	memset (addr->hw_addr, 0, sizeof (addr->hw_addr));
+	addr->len = len;
+}
+
+void
+nm_platform_hw_address_cpy (NMPlatformHwAddress *addr, const NMPlatformHwAddress *source)
+{
+	g_return_if_fail (addr);
+	g_return_if_fail (!source || source->len <= G_N_ELEMENTS (addr->hw_addr));
+
+	if (source)
+		memcpy (addr, source, sizeof (*addr));
+	else
+		memset (addr, 0, sizeof (*addr));
+}
+
+void
+nm_platform_hw_address_set (NMPlatformHwAddress *addr, const void *data, int len)
+{
+	g_return_if_fail (addr);
+	g_return_if_fail (len >= 0 && len <= G_N_ELEMENTS (addr->hw_addr));
+	g_return_if_fail (data || len == 0);
+
+	if (len <= 0)
+		nm_platform_hw_address_clear (addr, 0);
+	else {
+		memcpy (addr, data, len);
+		if (len < G_N_ELEMENTS (addr->hw_addr))
+			memset (&addr[len], 0, G_N_ELEMENTS (addr->hw_addr) - len);
+		addr->len = len;
+	}
+}
+
+void
+nm_platform_hw_address_set_byte_array (NMPlatformHwAddress *addr, const GByteArray *data)
+{
+	if (!data)
+		nm_platform_hw_address_clear (addr, 0);
+	else
+		nm_platform_hw_address_set (addr, data->data, data->len);
+}
+
+gboolean
+nm_platform_hw_address_set_from_string (NMPlatformHwAddress *addr,
+                                        const char *str, int expected_len)
+{
+	guint8 buf[sizeof (addr->hw_addr)];
+
+	g_return_val_if_fail (addr, FALSE);
+	g_return_val_if_fail (expected_len > 0 || expected_len <= G_N_ELEMENTS (addr->hw_addr), FALSE);
+	g_return_val_if_fail (str && *str, FALSE);
+
+	if (nm_utils_hwaddr_aton_len (str, buf, expected_len)) {
+		nm_platform_hw_address_set (addr, buf, expected_len);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+GByteArray *
+nm_platform_hw_address_to_byte_array (const NMPlatformHwAddress *addr)
+{
+	GByteArray *ba;
+
+	g_return_val_if_fail (addr, NULL);
+
+	if (!addr->len)
+		return NULL;
+
+	ba = g_byte_array_sized_new (addr->len);
+	g_byte_array_append (ba, addr->hw_addr, addr->len);
+
+	return ba;
+}
+
+/******************************************************************/
 /**
  * nm_platform_query_devices:
  *
