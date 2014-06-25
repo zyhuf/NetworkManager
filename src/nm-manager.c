@@ -128,7 +128,10 @@ static void impl_manager_check_connectivity (NMManager *manager,
 
 #include "nm-manager-glue.h"
 
-static void add_device (NMManager *self, NMDevice *device, gboolean generate_con);
+static void add_device (NMManager *self,
+                        NMDevice *device,
+                        gboolean generate_con,
+                        NMUnmanagedFlags initial_unmanaged);
 static void remove_device (NMManager *self, NMDevice *device, gboolean quitting);
 
 static NMActiveConnection *_new_active_connection (NMManager *self,
@@ -141,6 +144,7 @@ static NMActiveConnection *_new_active_connection (NMManager *self,
 static void policy_activating_device_changed (GObject *object, GParamSpec *pspec, gpointer user_data);
 
 static NMDevice *find_device_by_ip_iface (NMManager *self, const gchar *iface);
+static gboolean is_child_device (NMManager *self, NMDevice *device);
 
 static void rfkill_change (const char *desc, RfKillType rtype, gboolean enabled);
 
@@ -1114,7 +1118,7 @@ system_create_virtual_device (NMManager *self, NMConnection *connection)
 
 	if (device) {
 		nm_device_set_nm_owned (device);
-		add_device (self, device, FALSE);
+		add_device (self, device, FALSE, NM_UNMANAGED_NONE);
 		g_object_unref (device);
 	}
 
@@ -1668,6 +1672,11 @@ recheck_assume_connection (NMDevice *device, gpointer user_data)
 		return;
 	if (nm_device_get_unmanaged_flag (device, NM_UNMANAGED_USER))
 		return;
+	/* Never assume connections on child devices since that can screw up the
+	 * configuration which the device's parent has applied.
+	 */
+	if (nm_device_get_unmanaged_flag (device, NM_UNMANAGED_CHILD))
+		return;
 
 	connection = get_existing_connection (self, device);
 	if (!connection) {
@@ -1695,6 +1704,36 @@ recheck_assume_connection (NMDevice *device, gpointer user_data)
 	}
 }
 
+static void
+device_ip_iface_changed (NMDevice *device,
+                         GParamSpec *pspec,
+                         NMManager *self)
+{
+	GSList *iter;
+
+	if (!nm_device_get_ip_iface (device))
+		return;
+
+	/* Unmanage NMDevice objects that are actually child devices of others,
+	 * when the other device finally knows its IP interface name.  For example,
+	 * unmanage the PPP or network interface that's owned by a WWAN device,
+	 * since it cannot be controlled independently.
+	 */
+	for (iter = NM_MANAGER_GET_PRIVATE (self)->devices; iter; iter = iter->next) {
+		NMDevice *candidate = NM_DEVICE (iter->data);
+
+		if (candidate == device)
+			continue;
+		if (nm_device_owns_iface (device, nm_device_get_iface (candidate))) {
+			nm_device_set_unmanaged (candidate,
+			                         NM_UNMANAGED_CHILD,
+			                         TRUE,
+			                         NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED);
+			break;
+		}
+	}
+}
+
 /**
  * add_device:
  * @self: the #NMManager
@@ -1705,7 +1744,10 @@ recheck_assume_connection (NMDevice *device, gpointer user_data)
  * Callers should decrease the reference count.
  */
 static void
-add_device (NMManager *self, NMDevice *device, gboolean generate_con)
+add_device (NMManager *self,
+            NMDevice *device,
+            gboolean generate_con,
+            NMUnmanagedFlags initial_unmanaged)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	const char *iface, *driver, *type_desc;
@@ -1714,27 +1756,22 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 	NMConnection *connection = NULL;
 	gboolean enabled = FALSE;
 	RfKillType rtype;
-	GSList *iter, *remove = NULL;
+	GSList *iter;
 
 	/* No duplicates */
 	if (nm_manager_get_device_by_udi (self, nm_device_get_udi (device)))
 		return;
-
-	/* Remove existing devices owned by the new device; eg remove ethernet
-	 * ports that are owned by a WWAN modem, since udev may announce them
-	 * before the modem is fully discovered.
-	 *
-	 * FIXME: use parent/child device relationships instead of removing
-	 * the child NMDevice entirely
-	 */
+	/* Unmanage sub-devices of this new device */
 	for (iter = priv->devices; iter; iter = iter->next) {
-		iface = nm_device_get_ip_iface (iter->data);
-		if (nm_device_owns_iface (device, iface))
-			remove = g_slist_prepend (remove, iter->data);
+		NMDevice *candidate = NM_DEVICE (iter->data);
+
+		if (nm_device_owns_iface (device, nm_device_get_iface (candidate))) {
+			nm_device_set_unmanaged (candidate,
+			                         NM_UNMANAGED_CHILD,
+			                         TRUE,
+			                         NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED);
+		}
 	}
-	for (iter = remove; iter; iter = iter->next)
-		remove_device (self, NM_DEVICE (iter->data), FALSE);
-	g_slist_free (remove);
 
 	priv->devices = g_slist_append (priv->devices, g_object_ref (device));
 
@@ -1748,6 +1785,10 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 
 	g_signal_connect (device, NM_DEVICE_REMOVED,
 	                  G_CALLBACK (device_removed_cb),
+	                  self);
+
+	g_signal_connect (device, "notify::" NM_DEVICE_IP_IFACE,
+	                  G_CALLBACK (device_ip_iface_changed),
 	                  self);
 
 	if (priv->startup) {
@@ -1785,11 +1826,20 @@ add_device (NMManager *self, NMDevice *device, gboolean generate_con)
 	sleeping = manager_sleeping (self);
 	nm_device_set_initial_unmanaged_flag (device, NM_UNMANAGED_INTERNAL, sleeping);
 
+	/* Keep child devices unmanaged since they are not indepdently usable */
+	nm_device_set_initial_unmanaged_flag (device, NM_UNMANAGED_CHILD, is_child_device (self, device));
+
+	if (initial_unmanaged != NM_UNMANAGED_NONE)
+		nm_device_set_initial_unmanaged_flag (device, initial_unmanaged, TRUE);
+
 	nm_device_dbus_export (device);
 
-	/* Don't generate a connection e.g. for devices NM just created, or
-	 * for the loopback, or when we're sleeping. */
-	if (generate_con && !user_unmanaged && !sleeping)
+	/* Only generate a connection when one was requested, when the device is
+	 * managed by NM (or only default-unmanaged), and when NM is active.
+	 */
+	if (   generate_con
+	    && !sleeping
+	    && (nm_device_get_managed (device) || nm_device_get_only_default_unmanaged (device)))
 		connection = get_existing_connection (self, device);
 
 	/* Start the device if it's supposed to be managed. Note that this will
@@ -1852,12 +1902,42 @@ find_device_by_ifindex (NMManager *self, guint32 ifindex)
 	return NULL;
 }
 
+static gboolean
+is_child_device (NMManager *self, NMDevice *device)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	GSList *iter;
+	int ifindex = nm_device_get_ifindex (device);
+	const char *iface = nm_device_get_iface (device);
+
+	for (iter = priv->devices; iter; iter = iter->next) {
+		NMDevice *candidate = iter->data;
+
+		if (candidate != device && nm_device_owns_iface (candidate, iface))
+			return TRUE;
+	}
+
+	for (iter = priv->active_connections; iter; iter = iter->next) {
+		NMActiveConnection *candidate = iter->data;
+		NMVPNConnection *vpn = (NMVPNConnection *) candidate;
+
+		if (!NM_IS_VPN_CONNECTION (candidate))
+			continue;
+		if (nm_vpn_connection_get_ip_ifindex (vpn) == ifindex)
+			return TRUE;
+		if (g_strcmp0 (nm_vpn_connection_get_ip_iface (vpn), iface) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void
 factory_device_added_cb (NMDeviceFactory *factory,
                          NMDevice *device,
                          gpointer user_data)
 {
-	add_device (NM_MANAGER (user_data), device, FALSE);
+	add_device (NM_MANAGER (user_data), device, FALSE, NM_UNMANAGED_NONE);
 }
 
 static gboolean
@@ -1993,6 +2073,8 @@ platform_link_added (NMManager *self,
 	NMDevice *device = NULL;
 	GSList *iter;
 	GError *error = NULL;
+	NMUnmanagedFlags initial_unmanaged = NM_UNMANAGED_NONE;
+	gboolean create_generic = FALSE;
 
 	g_return_if_fail (ifindex > 0);
 
@@ -2077,27 +2159,31 @@ platform_link_added (NMManager *self,
 		case NM_LINK_TYPE_GRETAP:
 			device = nm_device_gre_new (plink);
 			break;
-
 		case NM_LINK_TYPE_WWAN_ETHERNET:
 			/* WWAN pseudo-ethernet interfaces are handled automatically by
-			 * their NMDeviceModem and don't get a separate NMDevice object.
+			 * their NMDeviceModem and stay unmanaged.
 			 */
+			create_generic = TRUE;
+			initial_unmanaged = NM_UNMANAGED_CHILD;
 			break;
-
 		case NM_LINK_TYPE_OLPC_MESH:
 		case NM_LINK_TYPE_WIFI:
 		case NM_LINK_TYPE_WIMAX:
 			nm_log_info (LOGD_HW, "(%s): '%s' plugin not available; creating generic device",
 			             plink->name, plink->type_name);
-			/* fall through */
+			create_generic = TRUE;
+			break;
 		default:
-			device = nm_device_generic_new (plink);
+			create_generic = TRUE;
 			break;
 		}
 	}
 
+	if (create_generic)
+		device = nm_device_generic_new (plink);
+
 	if (device) {
-		add_device (self, device, plink->type != NM_LINK_TYPE_LOOPBACK);
+		add_device (self, device, plink->type != NM_LINK_TYPE_LOOPBACK, initial_unmanaged);
 		g_object_unref (device);
 	}
 }

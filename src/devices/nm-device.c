@@ -5943,6 +5943,18 @@ nm_device_get_unmanaged_flag (NMDevice *device, NMUnmanagedFlags flag)
 }
 
 /**
+ * nm_device_get_only_default_unmanaged():
+ * @device: the #NMDevice
+ *
+ * Returns: %TRUE if the device is only default unmanaged
+ */
+gboolean
+nm_device_get_only_default_unmanaged (NMDevice *device)
+{
+	return NM_DEVICE_GET_PRIVATE (device)->unmanaged_flags == NM_UNMANAGED_DEFAULT;
+}
+
+/**
  * nm_device_get_default_unmanaged():
  * @device: the #NMDevice
  *
