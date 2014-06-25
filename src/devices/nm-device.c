@@ -1154,26 +1154,35 @@ nm_device_notify_component_added (NMDevice *device, GObject *component)
 	return FALSE;
 }
 
+static gboolean
+owns_iface (NMDevice *device, int ifindex, const char *iface)
+{
+	if (ifindex > 0 && nm_device_get_ip_ifindex (device) == ifindex)
+		return TRUE;
+	if (g_strcmp0 (nm_device_get_ip_iface (device), iface) == 0)
+		return TRUE;
+	return FALSE;
+}
+
 /**
  * nm_device_owns_iface():
  * @device: the #NMDevice
+ * @ifindex: interface index, or -1 if not a kernel network interface
  * @iface: an interface name
  *
  * Called by the manager to ask if the device or any of its components owns
- * @iface.  For example, a WWAN implementation would return %TRUE for an
- * ethernet interface name that was owned by the WWAN device's modem component,
- * because that ethernet interface is controlled by the WWAN device and cannot
- * be used independently of the WWAN device.
+ * @iface or @ifindex.  For example, a WWAN implementation would return %TRUE
+ * for an ethernet interface name that was owned by the WWAN device's modem
+ * component, because that ethernet interface is controlled by the WWAN device
+ * and cannot be used independently of the WWAN device.
  *
- * Returns: %TRUE if @device or it's components owns the interface name,
+ * Returns: %TRUE if @device or its components owns the interface name,
  * %FALSE if not
  */
 gboolean
-nm_device_owns_iface (NMDevice *device, const char *iface)
+nm_device_owns_iface (NMDevice *device, int ifindex, const char *iface)
 {
-	if (NM_DEVICE_GET_CLASS (device)->owns_iface)
-		return NM_DEVICE_GET_CLASS (device)->owns_iface (device, iface);
-	return FALSE;
+	return NM_DEVICE_GET_CLASS (device)->owns_iface (device, ifindex, iface);
 }
 
 static void
@@ -7667,6 +7676,7 @@ nm_device_class_init (NMDeviceClass *klass)
 	klass->take_down = take_down;
 	klass->carrier_changed = carrier_changed;
 	klass->get_hw_address_length = get_hw_address_length;
+	klass->owns_iface = owns_iface;
 
 	/* Properties */
 	g_object_class_install_property

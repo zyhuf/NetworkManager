@@ -517,6 +517,28 @@ carrier_update_cb (gpointer user_data)
 	return TRUE;
 }
 
+static gboolean
+owns_iface (NMDevice *device, int ifindex, const char *iface)
+{
+	NMDeviceAdslPrivate *priv = NM_DEVICE_ADSL_GET_PRIVATE (device);
+
+	/* The BR2684 (NAS) based stack looks like this:
+	 *    PPPoE  <---- NMDevice "IP interface"
+	 *     NAS         (ethernet-over-ATM)
+	 *     ATM   <---- NMDevice "interface"
+	 *
+	 * So we have to check the NAS interface (if any) separately from
+	 * the device's "IP interface".
+	 */
+	if (ifindex > 0 && priv->nas_ifindex == ifindex)
+		return TRUE;
+	if (iface && g_strcmp0 (priv->nas_ifname, iface) == 0)
+		return TRUE;
+
+	/* Chain up to parent to handle the "IP interface" (eg, PPP) check for us */
+	return NM_DEVICE_CLASS (nm_device_adsl_parent_class)->owns_iface (device, ifindex, iface);
+}
+
 /**************************************************************/
 
 NMDevice *
@@ -633,6 +655,7 @@ nm_device_adsl_class_init (NMDeviceAdslClass *klass)
 	parent_class->act_stage2_config = act_stage2_config;
 	parent_class->act_stage3_ip4_config_start = act_stage3_ip4_config_start;
 	parent_class->deactivate = deactivate;
+	parent_class->owns_iface = owns_iface;
 
 	nm_dbus_manager_register_exported_type (nm_dbus_manager_get (),
 	                                        G_TYPE_FROM_CLASS (klass),

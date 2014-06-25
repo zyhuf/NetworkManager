@@ -1724,7 +1724,9 @@ device_ip_iface_changed (NMDevice *device,
 
 		if (candidate == device)
 			continue;
-		if (nm_device_owns_iface (device, nm_device_get_iface (candidate))) {
+		if (nm_device_owns_iface (device,
+		                          nm_device_get_ifindex (candidate),
+		                          nm_device_get_iface (candidate))) {
 			nm_device_set_unmanaged (candidate,
 			                         NM_UNMANAGED_CHILD,
 			                         TRUE,
@@ -1765,7 +1767,9 @@ add_device (NMManager *self,
 	for (iter = priv->devices; iter; iter = iter->next) {
 		NMDevice *candidate = NM_DEVICE (iter->data);
 
-		if (nm_device_owns_iface (device, nm_device_get_iface (candidate))) {
+		if (nm_device_owns_iface (device,
+		                          nm_device_get_ifindex (candidate),
+		                          nm_device_get_iface (candidate))) {
 			nm_device_set_unmanaged (candidate,
 			                         NM_UNMANAGED_CHILD,
 			                         TRUE,
@@ -1913,7 +1917,7 @@ is_child_device (NMManager *self, NMDevice *device)
 	for (iter = priv->devices; iter; iter = iter->next) {
 		NMDevice *candidate = iter->data;
 
-		if (candidate != device && nm_device_owns_iface (candidate, iface))
+		if (candidate != device && nm_device_owns_iface (candidate, ifindex, iface))
 			return TRUE;
 	}
 

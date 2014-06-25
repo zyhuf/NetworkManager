@@ -242,12 +242,15 @@ modem_removed_cb (NMModem *modem, gpointer user_data)
 /*****************************************************************************/
 
 static gboolean
-owns_iface (NMDevice *device, const char *iface)
+owns_iface (NMDevice *device, int ifindex, const char *iface)
 {
 	NMDeviceModemPrivate *priv = NM_DEVICE_MODEM_GET_PRIVATE (device);
 
 	g_assert (priv->modem);
-	return nm_modem_owns_port (priv->modem, iface);
+	if (nm_modem_owns_port (priv->modem, iface))
+		return TRUE;
+
+	return NM_DEVICE_CLASS (nm_device_modem_parent_class)->owns_iface (device, ifindex, iface);
 }
 
 /*****************************************************************************/
