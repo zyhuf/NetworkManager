@@ -122,6 +122,7 @@ enum {
 	PROP_BANNER,
 	PROP_IP4_CONFIG,
 	PROP_IP6_CONFIG,
+	PROP_IP_IFINDEX,
 	PROP_MASTER = 2000,
 
 	LAST_PROP
@@ -241,6 +242,7 @@ vpn_cleanup (NMVPNConnection *connection, NMDevice *parent_dev)
 	g_free (priv->ip_iface);
 	priv->ip_iface = NULL;
 	priv->ip_ifindex = 0;
+	g_object_notify (G_OBJECT (connection), NM_VPN_CONNECTION_INT_IP_IFINDEX);
 
 	/* Clear out connection secrets to ensure that the settings service
 	 * gets asked for them next time the connection is activated.
@@ -962,6 +964,7 @@ process_generic_config (NMVPNConnection *connection,
 			nm_vpn_connection_config_maybe_complete (connection, FALSE);
 			return FALSE;
 		}
+		g_object_notify (G_OBJECT (connection), NM_VPN_CONNECTION_INT_IP_IFINDEX);
 	}
 
 	g_clear_pointer (&priv->banner, g_free);
@@ -1996,6 +1999,9 @@ get_property (GObject *object, guint prop_id,
 		else
 			g_value_set_boxed (value, "/");
 		break;
+	case PROP_IP_IFINDEX:
+		g_value_set_int (value, priv->ip_ifindex);
+		break;
 	case PROP_MASTER:
 		parent_dev = nm_active_connection_get_device (NM_ACTIVE_CONNECTION (object));
 		g_value_set_boxed (value, parent_dev ? nm_device_get_path (parent_dev) : "/");
@@ -2044,6 +2050,12 @@ nm_vpn_connection_class_init (NMVPNConnectionClass *connection_class)
 	                                  NM_ACTIVE_CONNECTION_IP4_CONFIG);
 	g_object_class_override_property (object_class, PROP_IP6_CONFIG,
 	                                  NM_ACTIVE_CONNECTION_IP6_CONFIG);
+
+	g_object_class_install_property
+		(object_class, PROP_IP_IFINDEX,
+		 g_param_spec_int (NM_VPN_CONNECTION_INT_IP_IFINDEX, "", "",
+		                   -1, G_MAXINT, 0,
+		                   G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
 	/* signals */
 	signals[VPN_STATE_CHANGED] =

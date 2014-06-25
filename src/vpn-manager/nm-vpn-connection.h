@@ -36,8 +36,11 @@
 #define NM_VPN_CONNECTION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_VPN_CONNECTION, NMVPNConnectionClass))
 
 /* Properties */
-#define NM_VPN_CONNECTION_VPN_STATE "vpn-state"
-#define NM_VPN_CONNECTION_BANNER "banner"
+#define NM_VPN_CONNECTION_VPN_STATE      "vpn-state"
+#define NM_VPN_CONNECTION_BANNER         "banner"
+
+/* not exported */
+#define NM_VPN_CONNECTION_INT_IP_IFINDEX "ip-ifindex"
 
 /* Signals */
 /* not exported: includes old reason code */
