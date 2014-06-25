@@ -437,6 +437,7 @@ static const char *reason_table[] = {
 	[NM_DEVICE_STATE_REASON_MODEM_FAILED]             = "modem-failed",
 	[NM_DEVICE_STATE_REASON_MODEM_AVAILABLE]          = "modem-available",
 	[NM_DEVICE_STATE_REASON_SIM_PIN_INCORRECT]        = "sim-pin-incorrect",
+	[NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED]      = "child-now-unmanaged",
 };
 
 static const char *
@@ -6637,8 +6638,12 @@ _set_state_full (NMDevice *device,
 	switch (state) {
 	case NM_DEVICE_STATE_UNMANAGED:
 		nm_device_set_firmware_missing (device, FALSE);
-		if (old_state > NM_DEVICE_STATE_UNMANAGED) {
-			/* Clean up if the device is now unmanaged but was activated */
+		if (   old_state > NM_DEVICE_STATE_UNMANAGED
+		    && reason != NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED) {
+			/* Clean up if the device is now unmanaged but was activated; but
+			 * don't touch sub-devices since the parent may have configured them
+			 * and we don't want to blow that away.
+			 */
 			if (nm_device_get_act_request (device))
 				nm_device_cleanup (device, reason);
 			nm_device_take_down (device, TRUE);

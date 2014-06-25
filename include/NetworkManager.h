@@ -561,6 +561,9 @@ typedef enum {
 	/* SIM PIN was incorrect */
 	NM_DEVICE_STATE_REASON_SIM_PIN_INCORRECT = 59,
 
+	/* Child device now unmanaged */
+	NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED = 60,
+
 	/* Unused */
 	NM_DEVICE_STATE_REASON_LAST = 0xFFFF
 } NMDeviceStateReason;

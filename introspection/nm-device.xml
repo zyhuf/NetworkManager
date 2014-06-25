@@ -627,6 +627,11 @@
           The SIM PIN was incorrect.
         </tp:docstring>
       </tp:enumvalue>
+      <tp:enumvalue suffix="CHILD_NOW_UNMANAGED" value="60">
+        <tp:docstring>
+          The child device is now unmanaged.
+        </tp:docstring>
+      </tp:enumvalue>
     </tp:enum>
 
     <tp:struct name="NM_DEVICE_STATE_REASON_STRUCT">

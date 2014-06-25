@@ -890,6 +890,9 @@ nmc_device_reason_to_string (NMDeviceStateReason reason)
 	case NM_DEVICE_STATE_REASON_SIM_PIN_INCORRECT:
 		return _("SIM PIN was incorrect");
 
+	case NM_DEVICE_STATE_REASON_CHILD_NOW_UNMANAGED:
+		return _("Child device now unmanaged");
+
 	default:
 		/* TRANSLATORS: Unknown reason for a device state change (NMDeviceStateReason) */
 		return _("Unknown");
