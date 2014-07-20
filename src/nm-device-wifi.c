@@ -2118,7 +2118,7 @@ supplicant_iface_bss_updated_cb (NMSupplicantInterface *iface,
 	/* Update the AP's last-seen property */
 	ap = get_ap_by_supplicant_path (self, object_path);
 	if (ap)
-		nm_ap_set_last_seen (ap, (guint32) time (NULL));
+		nm_ap_set_last_seen (ap, (glong) time (NULL));
 
 	/* Remove outdated access points */
 	schedule_scanlist_cull (self);

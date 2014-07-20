@@ -1130,7 +1130,7 @@ glong nm_ap_get_last_seen (const NMAccessPoint *ap)
 	return NM_AP_GET_PRIVATE (ap)->last_seen;
 }
 
-void nm_ap_set_last_seen (NMAccessPoint *ap, const glong last_seen)
+void nm_ap_set_last_seen (NMAccessPoint *ap, glong last_seen)
 {
 	g_return_if_fail (NM_IS_AP (ap));
 
