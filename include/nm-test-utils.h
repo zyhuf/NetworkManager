@@ -36,6 +36,30 @@
 #include "gsystem-local-alloc.h"
 
 
+/*******************************************************************************/
+
+/* general purpose functions that have no dependency on other nmtst functions */
+
+inline static void
+nmtst_assert_error (GError *error,
+                    GQuark expect_error_domain,
+                    gint expect_error_code,
+                    const char *expect_error_pattern)
+{
+	if (expect_error_domain)
+		g_assert_error (error, expect_error_domain, expect_error_code);
+	else
+		g_assert (error);
+	g_assert (error->message);
+	if (   expect_error_pattern
+	    && !g_pattern_match_simple (expect_error_pattern, error->message)) {
+		g_error ("error message does not have expected pattern '%s'. Instead it is '%s' (%s, %d)",
+		         expect_error_pattern, error->message, g_quark_to_string (error->domain), error->code);
+	}
+}
+
+/*******************************************************************************/
+
 struct __nmtst_internal
 {
 	GRand *rand0;
@@ -811,7 +835,9 @@ nmtst_assert_connection_verifies_without_normalization (NMConnection *con)
 }
 
 inline static void
-nmtst_assert_connection_verifies_after_normalization (NMConnection *con)
+nmtst_assert_connection_verifies_after_normalization (NMConnection *con,
+                                                      GQuark expect_error_domain,
+                                                      gint expect_error_code)
 {
 	/* assert that the connection does not verify, but normalization does fix it */
 	GError *error = NULL;
@@ -821,7 +847,7 @@ nmtst_assert_connection_verifies_after_normalization (NMConnection *con)
 	g_assert (NM_IS_CONNECTION (con));
 
 	success = nm_connection_verify (con, &error);
-	g_assert (error);
+	nmtst_assert_error (error, expect_error_domain, expect_error_code, NULL);
 	g_assert (!success);
 	g_clear_error (&error);
 
@@ -835,7 +861,9 @@ nmtst_assert_connection_verifies_after_normalization (NMConnection *con)
 }
 
 inline static void
-nmtst_assert_connection_unnormalizable (NMConnection *con)
+nmtst_assert_connection_unnormalizable (NMConnection *con,
+                                        GQuark expect_error_domain,
+                                        gint expect_error_code)
 {
 	/* assert that the connection does not verify, and it cannot be fixed by normalization */
 
@@ -849,12 +877,12 @@ nmtst_assert_connection_unnormalizable (NMConnection *con)
 	clone = nm_simple_connection_new_clone (con);
 
 	success = nm_connection_verify (con, &error);
-	g_assert (error);
+	nmtst_assert_error (error, expect_error_domain, expect_error_code, NULL);
 	g_assert (!success);
 	g_clear_error (&error);
 
 	success = nm_connection_normalize (con, NULL, &was_modified, &error);
-	g_assert (error);
+	nmtst_assert_error (error, expect_error_domain, expect_error_code, NULL);
 	g_assert (!success);
 	g_assert (!was_modified);
 	g_clear_error (&error);
