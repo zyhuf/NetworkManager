@@ -79,6 +79,12 @@ connection_diff (NMConnection *a, NMConnection *b)
 }
 #endif
 
+static inline const char *
+inet_ntoa32 (guint32 a)
+{
+	return inet_ntoa (*((const struct in_addr *) &a));
+}
+
 static gboolean
 verify_cert_or_key (NMSetting8021x *s_compare,
                     const char *file,
@@ -11090,8 +11096,6 @@ test_write_wifi_dynamic_wep_leap (void)
 	g_object_unref (reread);
 }
 
-#define TEST_IFCFG_IBFT_DHCP TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-dhcp"
-
 static void
 test_read_ibft_dhcp (void)
 {
@@ -11099,137 +11103,44 @@ test_read_ibft_dhcp (void)
 	NMSettingConnection *s_con;
 	NMSettingWired *s_wired;
 	NMSettingIP4Config *s_ip4;
-	char *unmanaged = NULL;
-	char *keyfile = NULL;
-	char *routefile = NULL;
-	char *route6file = NULL;
-	gboolean ignore_error = FALSE;
 	GError *error = NULL;
-	const char *tmp;
 	const GByteArray *array;
 	char expected_mac_address[ETH_ALEN] = { 0x00, 0x33, 0x21, 0x98, 0xb9, 0xf1 };
-	const char *expected_id = "System test-ibft-dhcp";
-	guint64 expected_timestamp = 0;
+	gboolean success;
 
-	connection = connection_from_file (TEST_IFCFG_IBFT_DHCP,
-	                                   NULL,
-	                                   TYPE_ETHERNET,
-	                                   TEST_IFCFG_DIR "/iscsiadm-test-dhcp",
-	                                   &unmanaged,
-	                                   &keyfile,
-	                                   &routefile,
-	                                   &route6file,
-	                                   &error,
-	                                   &ignore_error);
-	ASSERT (connection != NULL,
-	        "ibft-dhcp-read", "failed to read %s: %s", TEST_IFCFG_IBFT_DHCP, error->message);
-
-	ASSERT (nm_connection_verify (connection, &error),
-	        "ibft-dhcp-verify", "failed to verify %s: %s", TEST_IFCFG_IBFT_DHCP, error->message);
+	connection = connection_from_file (TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-dhcp",
+	                                   NULL, TYPE_ETHERNET, TEST_IFCFG_DIR "/iscsiadm-test-dhcp",
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert_no_error (error);
+	g_assert (connection);
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
 
 	/* ===== CONNECTION SETTING ===== */
-
 	s_con = nm_connection_get_setting_connection (connection);
-	ASSERT (s_con != NULL,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME);
-
-	/* ID */
-	tmp = nm_setting_connection_get_id (s_con);
-	ASSERT (tmp != NULL,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: missing %s / %s key",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_ID);
-	ASSERT (strcmp (tmp, expected_id) == 0,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_ID);
-
-	/* UUID can't be tested if the ifcfg does not contain the UUID key, because
-	 * the UUID is generated on the full path of the ifcfg file, which can change
-	 * depending on where the tests are run.
-	 */
-
-	/* Timestamp */
-	ASSERT (nm_setting_connection_get_timestamp (s_con) == expected_timestamp,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_TIMESTAMP);
-
-	/* Autoconnect */
-	ASSERT (nm_setting_connection_get_autoconnect (s_con) == TRUE,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_AUTOCONNECT);
-
-	/* Read-only */
-	ASSERT (nm_setting_connection_get_read_only (s_con) == TRUE,
-	        "ibft-dhcp-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_READ_ONLY);
+	g_assert (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "System test-ibft-dhcp");
+	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
+	g_assert (nm_setting_connection_get_autoconnect (s_con));
+	g_assert (nm_setting_connection_get_read_only (s_con));
 
 	/* ===== WIRED SETTING ===== */
-
 	s_wired = nm_connection_get_setting_wired (connection);
-	ASSERT (s_wired != NULL,
-	        "ibft-dhcp-verify-wired", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_WIRED_SETTING_NAME);
-
-	/* MAC address */
+	g_assert (s_wired);
 	array = nm_setting_wired_get_mac_address (s_wired);
-	ASSERT (array != NULL,
-	        "ibft-dhcp-verify-wired", "failed to verify %s: missing %s / %s key",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-	ASSERT (array->len == ETH_ALEN,
-	        "ibft-dhcp-verify-wired", "failed to verify %s: unexpected %s / %s key value length",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-	ASSERT (memcmp (array->data, &expected_mac_address[0], sizeof (expected_mac_address)) == 0,
-	        "ibft-dhcp-verify-wired", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-
-	ASSERT (nm_setting_wired_get_mtu (s_wired) == 0,
-	        "ibft-dhcp-verify-wired", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MTU);
+	g_assert (array);
+	g_assert_cmpint (array->len, ==, ETH_ALEN);
+	g_assert (memcmp (array->data, &expected_mac_address[0], ETH_ALEN) == 0);
+	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
 
 	/* ===== IPv4 SETTING ===== */
-
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	ASSERT (s_ip4 != NULL,
-	        "ibft-dhcp-verify-ip4", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME);
+	g_assert (s_ip4);
+	g_assert_cmpstr (nm_setting_ip4_config_get_method (s_ip4), ==, NM_SETTING_IP4_CONFIG_METHOD_AUTO);
 
-	/* Method */
-	tmp = nm_setting_ip4_config_get_method (s_ip4);
-	ASSERT (strcmp (tmp, NM_SETTING_IP4_CONFIG_METHOD_AUTO) == 0,
-	        "ibft-dhcp-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_DHCP,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_METHOD);
-
-	g_free (unmanaged);
-	g_free (keyfile);
-	g_free (routefile);
-	g_free (route6file);
 	g_object_unref (connection);
 }
-
-#define TEST_IFCFG_IBFT_STATIC TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-static"
 
 static void
 test_read_ibft_static (void)
@@ -11238,249 +11149,72 @@ test_read_ibft_static (void)
 	NMSettingConnection *s_con;
 	NMSettingWired *s_wired;
 	NMSettingIP4Config *s_ip4;
-	char *unmanaged = NULL;
-	char *keyfile = NULL;
-	char *routefile = NULL;
-	char *route6file = NULL;
-	gboolean ignore_error = FALSE;
 	GError *error = NULL;
-	const char *tmp;
 	const GByteArray *array;
 	char expected_mac_address[ETH_ALEN] = { 0x00, 0x33, 0x21, 0x98, 0xb9, 0xf0 };
-	const char *expected_id = "System test-ibft-static";
-	guint64 expected_timestamp = 0;
-	const char *expected_dns1 = "10.16.255.2";
-	const char *expected_dns2 = "10.16.255.3";
-	guint32 addr;
-	const char *expected_address1 = "192.168.32.72";
-	const char *expected_address1_gw = "192.168.35.254";
 	NMIP4Address *ip4_addr;
+	gboolean success;
 
-	connection = connection_from_file (TEST_IFCFG_IBFT_STATIC,
-	                                   NULL,
-	                                   TYPE_ETHERNET,
-	                                   TEST_IFCFG_DIR "/iscsiadm-test-static",
-	                                   &unmanaged,
-	                                   &keyfile,
-	                                   &routefile,
-	                                   &route6file,
-	                                   &error,
-	                                   &ignore_error);
-	ASSERT (connection != NULL,
-	        "ibft-static-read", "failed to read %s: %s", TEST_IFCFG_IBFT_STATIC, error->message);
-
-	ASSERT (nm_connection_verify (connection, &error),
-	        "ibft-static-verify", "failed to verify %s: %s", TEST_IFCFG_IBFT_STATIC, error->message);
+	connection = connection_from_file (TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-static",
+	                                   NULL, TYPE_ETHERNET, TEST_IFCFG_DIR "/iscsiadm-test-static",
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert_no_error (error);
+	g_assert (connection);
+	success = nm_connection_verify (connection, &error);
+	g_assert_no_error (error);
+	g_assert (success);
 
 	/* ===== CONNECTION SETTING ===== */
-
 	s_con = nm_connection_get_setting_connection (connection);
-	ASSERT (s_con != NULL,
-	        "ibft-static-verify-connection", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME);
-
-	/* ID */
-	tmp = nm_setting_connection_get_id (s_con);
-	ASSERT (tmp != NULL,
-	        "ibft-static-verify-connection", "failed to verify %s: missing %s / %s key",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_ID);
-	ASSERT (strcmp (tmp, expected_id) == 0,
-	        "ibft-static-verify-connection", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_ID);
-
-	/* UUID can't be tested if the ifcfg does not contain the UUID key, because
-	 * the UUID is generated on the full path of the ifcfg file, which can change
-	 * depending on where the tests are run.
-	 */
-
-	/* Timestamp */
-	ASSERT (nm_setting_connection_get_timestamp (s_con) == expected_timestamp,
-	        "ibft-static-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_TIMESTAMP);
-
-	/* Autoconnect */
-	ASSERT (nm_setting_connection_get_autoconnect (s_con) == TRUE,
-	        "ibft-static-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_AUTOCONNECT);
-
-	/* Read-only */
-	ASSERT (nm_setting_connection_get_read_only (s_con) == TRUE,
-	        "ibft-static-verify-connection", "failed to verify %s: unexpected %s /%s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_CONNECTION_SETTING_NAME,
-	        NM_SETTING_CONNECTION_READ_ONLY);
+	g_assert (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "System test-ibft-static");
+	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
+	g_assert (nm_setting_connection_get_autoconnect (s_con));
+	g_assert (nm_setting_connection_get_read_only (s_con));
 
 	/* ===== WIRED SETTING ===== */
-
 	s_wired = nm_connection_get_setting_wired (connection);
-	ASSERT (s_wired != NULL,
-	        "ibft-static-verify-wired", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_WIRED_SETTING_NAME);
-
-	/* MAC address */
+	g_assert (s_wired);
 	array = nm_setting_wired_get_mac_address (s_wired);
-	ASSERT (array != NULL,
-	        "ibft-static-verify-wired", "failed to verify %s: missing %s / %s key",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-	ASSERT (array->len == ETH_ALEN,
-	        "ibft-static-verify-wired", "failed to verify %s: unexpected %s / %s key value length",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-	ASSERT (memcmp (array->data, &expected_mac_address[0], sizeof (expected_mac_address)) == 0,
-	        "ibft-static-verify-wired", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MAC_ADDRESS);
-
-	ASSERT (nm_setting_wired_get_mtu (s_wired) == 0,
-	        "ibft-static-verify-wired", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_WIRED_SETTING_NAME,
-	        NM_SETTING_WIRED_MTU);
+	g_assert (array);
+	g_assert_cmpint (array->len, ==, ETH_ALEN);
+	g_assert (memcmp (array->data, &expected_mac_address[0], ETH_ALEN) == 0);
+	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
 
 	/* ===== IPv4 SETTING ===== */
-
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	ASSERT (s_ip4 != NULL,
-	        "ibft-static-verify-ip4", "failed to verify %s: missing %s setting",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME);
+	g_assert (s_ip4);
+	g_assert_cmpstr (nm_setting_ip4_config_get_method (s_ip4), ==, NM_SETTING_IP4_CONFIG_METHOD_MANUAL);
 
-	/* Method */
-	tmp = nm_setting_ip4_config_get_method (s_ip4);
-	ASSERT (strcmp (tmp, NM_SETTING_IP4_CONFIG_METHOD_MANUAL) == 0,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_METHOD);
+	g_assert_cmpint (nm_setting_ip4_config_get_num_dns (s_ip4), ==, 2);
+	g_assert_cmpstr (inet_ntoa32 (nm_setting_ip4_config_get_dns (s_ip4, 0)), ==, "10.16.255.2");
+	g_assert_cmpstr (inet_ntoa32 (nm_setting_ip4_config_get_dns (s_ip4, 1)), ==, "10.16.255.3");
 
-	/* DNS Addresses */
-	ASSERT (nm_setting_ip4_config_get_num_dns (s_ip4) == 2,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-
-	ASSERT (inet_pton (AF_INET, expected_dns1, &addr) > 0,
-	        "ibft-static-verify-ip4", "failed to verify %s: couldn't convert DNS IP address #1",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-	ASSERT (nm_setting_ip4_config_get_dns (s_ip4, 0) == addr,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected %s / %s key value #1",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-
-	ASSERT (inet_pton (AF_INET, expected_dns2, &addr) > 0,
-	        "ibft-static-verify-ip4", "failed to verify %s: couldn't convert DNS IP address #2",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-	ASSERT (nm_setting_ip4_config_get_dns (s_ip4, 1) == addr,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected %s / %s key value #2",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-
-	ASSERT (nm_setting_ip4_config_get_num_addresses (s_ip4) == 1,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected %s / %s key value",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-
-	/* Address #1 */
+	g_assert_cmpint (nm_setting_ip4_config_get_num_addresses (s_ip4), ==, 1);
 	ip4_addr = nm_setting_ip4_config_get_address (s_ip4, 0);
-	ASSERT (ip4_addr,
-	        "ibft-static-verify-ip4", "failed to verify %s: missing IP4 address #1",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_ADDRESSES);
+	g_assert (ip4_addr);
+	g_assert_cmpstr (inet_ntoa32 (nm_ip4_address_get_address (ip4_addr)), ==, "192.168.32.72");
+	g_assert_cmpint (nm_ip4_address_get_prefix (ip4_addr), ==, 22);
+	g_assert_cmpstr (inet_ntoa32 (nm_ip4_address_get_gateway (ip4_addr)), ==, "192.168.35.254");
 
-	ASSERT (nm_ip4_address_get_prefix (ip4_addr) == 22,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected IP4 address #1 prefix",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_ADDRESSES);
-
-	ASSERT (inet_pton (AF_INET, expected_address1, &addr) > 0,
-	        "ibft-static-verify-ip4", "failed to verify %s: couldn't convert IP address #1",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_DNS);
-	ASSERT (nm_ip4_address_get_address (ip4_addr) == addr,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected IP4 address #1",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_ADDRESSES);
-
-	ASSERT (inet_pton (AF_INET, expected_address1_gw, &addr) > 0,
-	        "ibft-static-verify-ip4", "failed to verify %s: couldn't convert IP address #1 gateway",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_ADDRESSES);
-	ASSERT (nm_ip4_address_get_gateway (ip4_addr) == addr,
-	        "ibft-static-verify-ip4", "failed to verify %s: unexpected IP4 address #1 gateway",
-	        TEST_IFCFG_IBFT_STATIC,
-	        NM_SETTING_IP4_CONFIG_SETTING_NAME,
-	        NM_SETTING_IP4_CONFIG_ADDRESSES);
-
-	g_free (unmanaged);
-	g_free (keyfile);
-	g_free (routefile);
-	g_free (route6file);
 	g_object_unref (connection);
 }
 
 static void
-test_read_ibft_malformed (const char *name, const char *iscsiadm_path, gboolean expect_warning)
+test_read_ibft_malformed (gconstpointer user_data)
 {
+	const char *iscsiadm_path = user_data;
 	NMConnection *connection;
-	char *unmanaged = NULL;
-	char *keyfile = NULL;
-	char *routefile = NULL;
-	char *route6file = NULL;
-	gboolean ignore_error = FALSE;
 	GError *error = NULL;
 
 	g_assert (g_file_test (iscsiadm_path, G_FILE_TEST_EXISTS));
 
-	if (expect_warning) {
-		g_test_expect_message ("NetworkManager", G_LOG_LEVEL_WARNING,
-		                       "*malformed iscsiadm record*");
-	}
-	connection = connection_from_file (TEST_IFCFG_IBFT_STATIC,
-	                                   NULL,
-	                                   TYPE_ETHERNET,
-	                                   iscsiadm_path,
-	                                   &unmanaged,
-	                                   &keyfile,
-	                                   &routefile,
-	                                   &route6file,
-	                                   &error,
-	                                   &ignore_error);
-	if (expect_warning)
-		g_test_assert_expected_messages ();
-	ASSERT (connection == NULL,
-	        name, "unexpectedly able to read %s", TEST_IFCFG_IBFT_STATIC);
-
-	g_free (unmanaged);
-	g_free (keyfile);
-	g_free (routefile);
-	g_free (route6file);
+	g_test_expect_message ("NetworkManager", G_LOG_LEVEL_WARNING, "*malformed iscsiadm record*");
+	connection = connection_from_file (TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-static",
+	                                   NULL, TYPE_ETHERNET, iscsiadm_path,
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_test_assert_expected_messages ();
+	g_assert (connection == NULL);
 }
 
 static void
@@ -14705,12 +14439,12 @@ int main (int argc, char **argv)
 	/* iSCSI / ibft */
 	test_read_ibft_dhcp ();
 	test_read_ibft_static ();
-	test_read_ibft_malformed ("ibft-bad-record-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-record", FALSE);
-	test_read_ibft_malformed ("ibft-bad-entry-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-entry", TRUE);
-	test_read_ibft_malformed ("ibft-bad-ipaddr-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-ipaddr", TRUE);
-	test_read_ibft_malformed ("ibft-bad-gateway-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-gateway", TRUE);
-	test_read_ibft_malformed ("ibft-bad-dns1-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns1", TRUE);
-	test_read_ibft_malformed ("ibft-bad-dns2-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns2", TRUE);
+	g_test_add_data_func (TPATH "ibft/bad-record-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-record", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-entry-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-entry", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-ipaddr-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-ipaddr", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-gateway-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-gateway", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-dns1-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns1", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-dns2-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns2", test_read_ibft_malformed);
 	g_test_add_func (TPATH "dcb/read-basic", test_read_dcb_basic);
 	g_test_add_func (TPATH "dcb/write-basic", test_write_dcb_basic);
 	g_test_add_func (TPATH "dcb/default-app-priorities", test_read_dcb_default_app_priorities);
