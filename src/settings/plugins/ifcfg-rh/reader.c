@@ -136,7 +136,8 @@ make_connection_setting (const char *file,
                          shvarFile *ifcfg,
                          const char *type,
                          const char *suggested,
-                         const char *prefix)
+                         const char *prefix,
+                         gboolean set_interface_name)
 {
 	NMSettingConnection *s_con;
 	const char *ifcfg_name = NULL;
@@ -165,15 +166,17 @@ make_connection_setting (const char *file,
 	              NULL);
 	g_free (uuid);
 
-	value = svGetValue (ifcfg, "DEVICE", FALSE);
-	if (value) {
-		if (nm_utils_iface_valid_name (value)) {
-			g_object_set (s_con,
-			              NM_SETTING_CONNECTION_INTERFACE_NAME, value,
-			              NULL);
-		} else
-			PARSE_WARNING ("invalid DEVICE name '%s'", value);
-		g_free (value);
+	if (set_interface_name) {
+		value = svGetValue (ifcfg, "DEVICE", FALSE);
+		if (value) {
+			if (nm_utils_iface_valid_name (value)) {
+				g_object_set (s_con,
+					          NM_SETTING_CONNECTION_INTERFACE_NAME, value,
+					          NULL);
+			} else
+				PARSE_WARNING ("invalid DEVICE name '%s'", value);
+			g_free (value);
+		}
 	}
 
 	/* Missing ONBOOT is treated as "ONBOOT=true" by the old network service */
@@ -3873,7 +3876,7 @@ wireless_connection_from_ifcfg (const char *file,
 	/* Connection */
 	con_setting = make_connection_setting (file, ifcfg,
 	                                       NM_SETTING_WIRELESS_SETTING_NAME,
-	                                       printable_ssid, NULL);
+	                                       printable_ssid, NULL, TRUE);
 	g_free (printable_ssid);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
@@ -4081,7 +4084,7 @@ wired_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_WIRED_SETTING_NAME, NULL, NULL);
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_WIRED_SETTING_NAME, NULL, NULL, TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Failed to create connection setting.");
@@ -4247,7 +4250,7 @@ infiniband_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_INFINIBAND_SETTING_NAME, NULL, NULL);
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_INFINIBAND_SETTING_NAME, NULL, NULL, TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Failed to create connection setting.");
@@ -4364,7 +4367,7 @@ bond_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_BOND_SETTING_NAME, NULL, _("Bond"));
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_BOND_SETTING_NAME, NULL, _("Bond"), TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Failed to create connection setting.");
@@ -4475,7 +4478,7 @@ team_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_TEAM_SETTING_NAME, NULL, _("Team"));
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_TEAM_SETTING_NAME, NULL, _("Team"), TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Failed to create connection setting.");
@@ -4670,7 +4673,7 @@ bridge_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_BRIDGE_SETTING_NAME, NULL, _("Bridge"));
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_BRIDGE_SETTING_NAME, NULL, _("Bridge"), TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Failed to create connection setting.");
@@ -4968,7 +4971,7 @@ vlan_connection_from_ifcfg (const char *file,
 
 	connection = nm_connection_new ();
 
-	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_VLAN_SETTING_NAME, NULL, "Vlan");
+	con_setting = make_connection_setting (file, ifcfg, NM_SETTING_VLAN_SETTING_NAME, NULL, "Vlan", TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 			     "Failed to create connection setting.");
@@ -5027,7 +5030,7 @@ create_unhandled_connection (const char *filename, shvarFile *ifcfg,
 	 * nm_connection_verify() later.
 	 */
 	s_con = make_connection_setting (filename, ifcfg, NM_SETTING_GENERIC_SETTING_NAME,
-	                                 NULL, NULL);
+	                                 NULL, NULL, TRUE);
 	nm_connection_add_setting (connection, s_con);
 
 	nm_connection_add_setting (connection, nm_setting_generic_new ());
