@@ -11213,7 +11213,27 @@ test_read_ibft_malformed (gconstpointer user_data)
 	connection = connection_from_file (TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-static",
 	                                   NULL, TYPE_ETHERNET, iscsiadm_path,
 	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert (error);
+	g_clear_error (&error);
+	g_assert (connection == NULL);
 	g_test_assert_expected_messages ();
+}
+
+static void
+test_read_ibft_bad_address (gconstpointer user_data)
+{
+	const char *iscsiadm_path = user_data;
+	NMConnection *connection;
+	GError *error = NULL;
+
+	g_assert (g_file_test (iscsiadm_path, G_FILE_TEST_EXISTS));
+
+	connection = connection_from_file (TEST_IFCFG_DIR"/network-scripts/ifcfg-test-ibft-static",
+	                                   NULL, TYPE_ETHERNET, iscsiadm_path,
+	                                   NULL, NULL, NULL, NULL, &error, NULL);
+	g_assert_error (error, IFCFG_PLUGIN_ERROR, 0);
+	g_assert (strstr (error->message, "iBFT: malformed iscsiadm record: invalid"));
+	g_clear_error (&error);
 	g_assert (connection == NULL);
 }
 
@@ -14441,10 +14461,10 @@ int main (int argc, char **argv)
 	test_read_ibft_static ();
 	g_test_add_data_func (TPATH "ibft/bad-record-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-record", test_read_ibft_malformed);
 	g_test_add_data_func (TPATH "ibft/bad-entry-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-entry", test_read_ibft_malformed);
-	g_test_add_data_func (TPATH "ibft/bad-ipaddr-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-ipaddr", test_read_ibft_malformed);
-	g_test_add_data_func (TPATH "ibft/bad-gateway-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-gateway", test_read_ibft_malformed);
-	g_test_add_data_func (TPATH "ibft/bad-dns1-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns1", test_read_ibft_malformed);
-	g_test_add_data_func (TPATH "ibft/bad-dns2-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns2", test_read_ibft_malformed);
+	g_test_add_data_func (TPATH "ibft/bad-ipaddr-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-ipaddr", test_read_ibft_bad_address);
+	g_test_add_data_func (TPATH "ibft/bad-gateway-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-gateway", test_read_ibft_bad_address);
+	g_test_add_data_func (TPATH "ibft/bad-dns1-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns1", test_read_ibft_bad_address);
+	g_test_add_data_func (TPATH "ibft/bad-dns2-read", TEST_IFCFG_DIR "/iscsiadm-test-bad-dns2", test_read_ibft_bad_address);
 	g_test_add_func (TPATH "dcb/read-basic", test_read_dcb_basic);
 	g_test_add_func (TPATH "dcb/write-basic", test_write_dcb_basic);
 	g_test_add_func (TPATH "dcb/default-app-priorities", test_read_dcb_default_app_priorities);
