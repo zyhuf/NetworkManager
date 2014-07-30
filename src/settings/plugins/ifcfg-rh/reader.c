@@ -286,326 +286,6 @@ read_mac_address (shvarFile *ifcfg, const char *key, int type,
 	return TRUE;
 }
 
-static void
-iscsiadm_child_setup (gpointer user_data G_GNUC_UNUSED)
-{
-	/* We are in the child process here; set a different process group to
-	 * ensure signal isolation between child and parent.
-	 */
-	pid_t pid = getpid ();
-	setpgid (pid, pid);
-
-	/*
-	 * We blocked signals in main(). We need to restore original signal
-	 * mask for iscsiadm here so that it can receive signals.
-	 */
-	nm_unblock_posix_signals (NULL);
-}
-
-static char *
-match_iscsiadm_tag (char *line, const char *tag)
-{
-	char *p = NULL;
-
-	if (g_ascii_strncasecmp (line, tag, strlen (tag)) == 0) {
-		p = strchr (line, '=');
-		g_assert (p);
-		p = g_strstrip (p + 1);
-	}
-	return p;
-}
-
-#define ISCSI_HWADDR_TAG    "iface.hwaddress"
-#define ISCSI_BOOTPROTO_TAG "iface.bootproto"
-#define ISCSI_IPADDR_TAG    "iface.ipaddress"
-#define ISCSI_SUBNET_TAG    "iface.subnet_mask"
-#define ISCSI_GATEWAY_TAG   "iface.gateway"
-#define ISCSI_DNS1_TAG      "iface.primary_dns"
-#define ISCSI_DNS2_TAG      "iface.secondary_dns"
-#define ISCSI_VLAN_ID_TAG   "iface.vlan_id"
-
-#define CLEAR_ARRAY(a) { if (a->len) g_ptr_array_remove_range (a, 0, a->len); }
-
-/**
- * read_ibft_config:
- * @ifcfg: the ifcfg file
- * @iscsiadm_path: path to iscsiadm program
- * @error: location for an error on failure
- *
- * Parses iscsiadm output and searches for an interface block with the same
- * hardware adress as @hwaddr.  If found, the block is returned.
- *
- * Returns: a #GPtrArray containing the iscsiadm interface block lines, or %NULL
- * on error.  Caller owns the returned array and should call g_ptr_array_unref()
- * on it when no longer used.
- */
-static GPtrArray *
-read_ibft_config (shvarFile *ifcfg,
-                  const char *iscsiadm_path,
-                  GError **error)
-{
-	const char *argv[4] = { iscsiadm_path, "-m", "fw", NULL };
-	const char *envp[1] = { NULL };
-	GByteArray *mac = NULL;
-	gboolean success = FALSE, hwaddr_matched = FALSE;
-	char *out = NULL, *err = NULL;
-	gint status = 0;
-	char **lines = NULL, **iter, *p;
-	GPtrArray *block_lines = NULL;
-
-	g_return_val_if_fail (iscsiadm_path != NULL, NULL);
-	g_return_val_if_fail (ifcfg != NULL, NULL);
-
-	if (!read_mac_address (ifcfg, "HWADDR", ARPHRD_ETHER, &mac, error))
-		return NULL;
-	if (!mac) {
-		g_set_error_literal (error, IFCFG_PLUGIN_ERROR, 0,
-		                     "iBFT: missing device MAC address (no HWADDR tag present).");
-		return NULL;
-	}
-
-	if (!g_spawn_sync ("/", (char **) argv, (char **) envp, 0,
-	                   iscsiadm_child_setup, NULL, &out, &err, &status, error))
-		goto done;
-
-	if (!WIFEXITED (status)) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: %s exited abnormally.", iscsiadm_path);
-		goto done;
-	}
-
-	if (WEXITSTATUS (status) != 0) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: %s exited with error %d.  Message: '%s'",
-		             iscsiadm_path, WEXITSTATUS (status), err ? err : "(none)");
-		goto done;
-	}
-
-	block_lines = g_ptr_array_new_full (15, g_free);
-
-	lines = g_strsplit_set (out, "\n\r", -1);
-	for (iter = lines; iter && *iter; iter++) {
-		if (!*iter[0])
-			continue;
-
-		if (!g_ascii_strcasecmp (*iter, "# BEGIN RECORD")) {
-			if (block_lines->len) {
-				PARSE_WARNING ("malformed iscsiadm record: missing END RECORD.");
-				CLEAR_ARRAY (block_lines);
-			}
-			/* Start new record */
-			g_ptr_array_add (block_lines, g_strdup (*iter));
-			hwaddr_matched = FALSE;
-		} else if (!g_ascii_strcasecmp (*iter, "# END RECORD")) {
-			if (hwaddr_matched && block_lines->len) {
-				success = TRUE;
-				break;
-			}
-			CLEAR_ARRAY (block_lines);
-		} else if (block_lines->len) {
-			if (!strchr (*iter, '=')) {
-				PARSE_WARNING ("malformed iscsiadm record: no = in '%s'.", *iter);
-				CLEAR_ARRAY (block_lines);
-				continue;
-			}
-
-			/* If we find the hwaddress line and it doesn't match, throw away
-			 * any cached lines and skip the block.
-			 */
-			p = match_iscsiadm_tag (*iter, ISCSI_HWADDR_TAG);
-			if (p) {
-				struct ether_addr *ibft_mac;
-
-				ibft_mac = ether_aton (p);
-				if (ibft_mac && memcmp (mac->data, ibft_mac->ether_addr_octet, ETH_ALEN) == 0)
-					hwaddr_matched = TRUE;
-				else {
-					/* This record isn't for the current device, ignore it */
-					CLEAR_ARRAY (block_lines);
-					continue;
-				}
-			}
-
-			g_ptr_array_add (block_lines, g_strstrip (g_strdup (*iter)));
-		}
-	}
-
-	if (!success) {
-		if (block_lines->len)
-			PARSE_WARNING ("malformed iscsiadm record: missing # END RECORD.");
-		g_clear_pointer (&block_lines, g_ptr_array_unref);
-
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: failed to find matching iscsiadm block for '%s'",
-		             ether_ntoa ((const struct ether_addr *) mac->data));
-	}
-
-done:
-	g_byte_array_free (mac, TRUE);
-	g_strfreev (lines);
-	g_free (out);
-	return block_lines;
-}
-
-static gboolean parse_ibft_config (const GPtrArray *data, GError **error, ...) G_GNUC_NULL_TERMINATED;
-
-/**
- * parse_ibft_config:
- * @data: an array of iscsiadm interface block lines
- * @error: return location for errors
- * @...: pairs of key (const char *) : location (const char **) indicating the
- * key to look for and the location to store the retrieved value in
- *
- * Parses an iscsiadm interface block into variables requested by the caller.
- * Callers should verify the returned data is complete and valid.  Returned
- * strings are owned by @data and should not be used after @data is freed.
- *
- * Returns: %TRUE if at least , %FALSE on failure
- */
-static gboolean
-parse_ibft_config (const GPtrArray *data, GError **error, ...)
-{
-	gboolean success = FALSE;
-	char **out_value, *p;
-	va_list ap;
-	const char *key;
-	guint i;
-
-	g_return_val_if_fail (data != NULL, FALSE);
-	g_return_val_if_fail (data->len > 0, FALSE);
-
-	/* Find requested keys and populate return values */
-	va_start (ap, error);
-	while ((key = va_arg (ap, const char *))) {
-		out_value = va_arg (ap, char **);
-		*out_value = NULL;
-		for (i = 0; i < data->len; i++) {
-			p = match_iscsiadm_tag (g_ptr_array_index (data, i), key);
-			if (p) {
-				*out_value = p;
-				success = TRUE;
-				break;
-			}
-		}
-	}
-	va_end (ap);
-
-	if (!success) {
-		g_set_error_literal (error, IFCFG_PLUGIN_ERROR, 0,
-		                     "iBFT: failed to match at least one iscsiadm block field");
-	}
-	return success;
-}
-
-static gboolean
-fill_ip4_setting_from_ibft (NMSettingIP4Config *s_ip4,
-                            const GPtrArray *ibft_data,
-                            GError **error)
-{
-	gboolean success = FALSE;
-	NMIP4Address *addr;
-	const char *s_method = NULL;
-	const char *s_ipaddr = NULL;
-	const char *s_gateway = NULL;
-	const char *s_dns1 = NULL;
-	const char *s_dns2 = NULL;
-	const char *s_netmask = NULL;
-	guint32 ipaddr = 0;
-	guint32 netmask = 0;
-	guint32 gateway = 0;
-	guint32 dns1 = 0;
-	guint32 dns2 = 0;
-	guint32 prefix;
-
-	g_assert (ibft_data);
-
-	g_return_val_if_fail (s_ip4 != NULL, FALSE);
-
-	if (!parse_ibft_config (ibft_data, error,
-	                        ISCSI_BOOTPROTO_TAG, &s_method,
-	                        ISCSI_IPADDR_TAG,    &s_ipaddr,
-	                        ISCSI_SUBNET_TAG,    &s_netmask,
-	                        ISCSI_GATEWAY_TAG,   &s_gateway,
-	                        ISCSI_DNS1_TAG,      &s_dns1,
-	                        ISCSI_DNS2_TAG,      &s_dns2,
-	                        NULL))
-		goto done;
-
-	if (!s_method) {
-		g_set_error_literal (error, IFCFG_PLUGIN_ERROR, 0,
-		                     "iBFT: malformed iscsiadm record: missing BOOTPROTO");
-		goto done;
-	}
-	if (!g_ascii_strcasecmp (s_method, "dhcp")) {
-		g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO, NULL);
-		success = TRUE;
-		goto done;
-	} else if (g_ascii_strcasecmp (s_method, "static") != 0) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: unknown BOOTPROTO '%s'.",
-		             s_method);
-		goto done;
-	}
-
-	/* Static configuration stuff */
-	g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL, NULL);
-
-	/* IP address */
-	if (!s_ipaddr || inet_pton (AF_INET, s_ipaddr, &ipaddr) != 1) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: invalid IP address '%s'.",
-		             s_ipaddr);
-		goto done;
-	}
-
-	/* Subnet/prefix */
-	if (!s_netmask || inet_pton (AF_INET, s_netmask, &netmask) != 1) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: invalid subnet mask '%s'.",
-		             s_netmask);
-		goto done;
-	}
-	prefix = nm_utils_ip4_netmask_to_prefix (netmask);
-
-	if (!s_gateway || inet_pton (AF_INET, s_gateway, &gateway) != 1) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: invalid IP gateway '%s'.",
-		             s_gateway);
-		goto done;
-	}
-
-	if (s_dns1 && inet_pton (AF_INET, s_dns1, &dns1) != 1) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: invalid DNS1 address '%s'.",
-		             s_dns1);
-		goto done;
-	}
-
-	if (s_dns2 && inet_pton (AF_INET, s_dns2, &dns2) != 1) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
-		             "iBFT: malformed iscsiadm record: invalid DNS2 address '%s'.",
-		             s_dns2);
-		goto done;
-	}
-
-	addr = nm_ip4_address_new ();
-	nm_ip4_address_set_address (addr, ipaddr);
-	nm_ip4_address_set_prefix (addr, prefix);
-	nm_ip4_address_set_gateway (addr, gateway);
-	nm_setting_ip4_config_add_address (s_ip4, addr);
-	nm_ip4_address_unref (addr);
-
-	if (dns1)
-		nm_setting_ip4_config_add_dns (s_ip4, dns1);
-	if (dns2)
-		nm_setting_ip4_config_add_dns (s_ip4, dns2);
-
-	success = TRUE;
-
-done:
-	return success;
-}
-
 /* Returns TRUE on missing address or valid address */
 static gboolean
 read_ip4_address (shvarFile *ifcfg,
@@ -1329,7 +1009,6 @@ error:
 static NMSetting *
 make_ip4_setting (shvarFile *ifcfg,
                   const char *network_file,
-                  const GPtrArray *ibft_data,
                   GError **error)
 {
 	NMSettingIP4Config *s_ip4 = NULL;
@@ -1381,14 +1060,6 @@ make_ip4_setting (shvarFile *ifcfg,
 		method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
 	} else if (!g_ascii_strcasecmp (value, "static")) {
 		method = NM_SETTING_IP4_CONFIG_METHOD_MANUAL;
-	} else if (!g_ascii_strcasecmp (value, "ibft")) {
-		g_assert (ibft_data);
-		g_free (value);
-		g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_NEVER_DEFAULT, never_default, NULL);
-		if (fill_ip4_setting_from_ibft (s_ip4, ibft_data, error))
-			return NM_SETTING (s_ip4);
-		g_object_unref (s_ip4);
-		return NULL;
 	} else if (!g_ascii_strcasecmp (value, "autoip")) {
 		g_free (value);
 		g_object_set (s_ip4,
@@ -1685,7 +1356,6 @@ read_aliases (NMSettingIP4Config *s_ip4, const char *filename, const char *netwo
 static NMSetting *
 make_ip6_setting (shvarFile *ifcfg,
                   const char *network_file,
-                  const char *iscsiadm_path,
                   GError **error)
 {
 	NMSettingIP6Config *s_ip6 = NULL;
@@ -4784,24 +4454,6 @@ is_bond_device (const char *name, shvarFile *parsed)
 }
 
 static gboolean
-is_ibft_vlan_device (const GPtrArray *ibft_data)
-{
-	char *s_vlan_id = NULL;
-
-	if (ibft_data) {
-		if (parse_ibft_config (ibft_data, NULL, ISCSI_VLAN_ID_TAG, &s_vlan_id, NULL)) {
-			g_assert (s_vlan_id);
-
-			/* VLAN 0 is normally a valid VLAN ID, but in the iBFT case it
-			 * means "no VLAN".
-			 */
-			return get_int_full (s_vlan_id, NULL, 1, 4095);
-		}
-	}
-	return FALSE;
-}
-
-static gboolean
 is_vlan_device (const char *name, shvarFile *parsed)
 {
 	g_return_val_if_fail (name != NULL, FALSE);
@@ -4980,39 +4632,9 @@ error:
 	return NULL;
 }
 
-static NMSetting *
-make_ibft_vlan_setting (shvarFile *ifcfg,
-                        const GPtrArray *ibft_data,
-                        char **out_master,
-                        GError **error)
-{
-	NMSetting *s_vlan = NULL;
-	const char *vlan_id_str = NULL;
-	gint vlan_id = -1;
-
-	/* This won't fail since this function shouldn't be called unless the
-	 * iBFT VLAN ID exists and is > 0.
-	 */
-	g_assert (parse_ibft_config (ibft_data, NULL, ISCSI_VLAN_ID_TAG, &vlan_id_str, NULL));
-	g_assert (vlan_id_str);
-
-	/* VLAN 0 is normally a valid VLAN ID, but in the iBFT case it means "no VLAN" */
-	if (!get_int_full (vlan_id_str, &vlan_id, 1, 4095)) {
-		g_set_error (error, IFCFG_PLUGIN_ERROR, 0, "Invalid VLAN_ID '%s'", vlan_id_str);
-		return NULL;
-	}
-
-	s_vlan = nm_setting_vlan_new ();
-	g_object_set (s_vlan, NM_SETTING_VLAN_ID, vlan_id, NULL);
-	vlan_add_other_properties (ifcfg, NM_SETTING_VLAN (s_vlan), out_master);
-
-	return s_vlan;
-}
-
 static NMConnection *
 vlan_connection_from_ifcfg (const char *file,
                             shvarFile *ifcfg,
-                            const GPtrArray *ibft_data,
                             GError **error)
 {
 	NMConnection *connection = NULL;
@@ -5032,7 +4654,7 @@ vlan_connection_from_ifcfg (const char *file,
 	                                       NM_SETTING_VLAN_SETTING_NAME,
 	                                       NULL,
 	                                       "Vlan",
-	                                       ibft_data ? FALSE : TRUE);
+	                                       TRUE);
 	if (!con_setting) {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 			     "Failed to create connection setting.");
@@ -5041,10 +4663,7 @@ vlan_connection_from_ifcfg (const char *file,
 	}
 	nm_connection_add_setting (connection, con_setting);
 
-	if (ibft_data)
-		vlan_setting = make_ibft_vlan_setting (ifcfg, ibft_data, &master, error);
-	else
-		vlan_setting = make_vlan_setting (ifcfg, file, &master, error);
+	vlan_setting = make_vlan_setting (ifcfg, file, &master, error);
 	if (!vlan_setting) {
 		g_object_unref (connection);
 		return NULL;
@@ -5188,7 +4807,6 @@ NMConnection *
 connection_from_file (const char *filename,
                       const char *network_file,  /* for unit tests only */
                       const char *test_type,     /* for unit tests only */
-                      const char *iscsiadm_path, /* for unit tests only */
                       char **out_unhandled,
                       char **out_keyfile,
                       char **out_routefile,
@@ -5201,8 +4819,6 @@ connection_from_file (const char *filename,
 	char *type, *devtype, *bootproto;
 	NMSetting *s_ip4, *s_ip6, *s_port, *s_dcb = NULL;
 	const char *ifcfg_name = NULL;
-	GPtrArray *ibft_data = NULL;
-	gboolean is_ibft_vlan = FALSE;
 
 	g_return_val_if_fail (filename != NULL, NULL);
 	if (out_unhandled)
@@ -5217,9 +4833,6 @@ connection_from_file (const char *filename,
 	/* Non-NULL only for unit tests; normally use /etc/sysconfig/network */
 	if (!network_file)
 		network_file = SYSCONFDIR "/sysconfig/network";
-
-	if (!iscsiadm_path)
-		iscsiadm_path = "/sbin/iscsiadm";
 
 	ifcfg_name = utils_get_ifcfg_name (filename, TRUE);
 	if (!ifcfg_name) {
@@ -5241,12 +4854,11 @@ connection_from_file (const char *filename,
 		goto done;
 	}
 
-	/* iBFT can override the device type so we must read it early */
+	/* iBFT is handled by the iBFT settings plugin */
 	bootproto = svGetValue (parsed, "BOOTPROTO", FALSE);
 	if (bootproto && !g_ascii_strcasecmp (bootproto, "ibft")) {
-		ibft_data = read_ibft_config (parsed, iscsiadm_path, error);
-		if (!ibft_data)
-			goto done;
+		g_free (bootproto);
+		goto done;
 	}
 
 	type = NULL;
@@ -5259,10 +4871,6 @@ connection_from_file (const char *filename,
 			type = g_strdup (TYPE_ETHERNET);
 		g_free (devtype);
 	}
-
-	is_ibft_vlan = is_ibft_vlan_device (ibft_data);
-	if (!type && is_ibft_vlan)
-		type = g_strdup (TYPE_VLAN);
 
 	if (!type)
 		type = svGetValue (parsed, "TYPE", FALSE);
@@ -5330,12 +4938,9 @@ connection_from_file (const char *filename,
 		connection = bond_connection_from_ifcfg (filename, parsed, error);
 	else if (!strcasecmp (type, TYPE_TEAM))
 		connection = team_connection_from_ifcfg (filename, parsed, error);
-	else if (!strcasecmp (type, TYPE_VLAN)) {
-		connection = vlan_connection_from_ifcfg (filename,
-		                                         parsed,
-		                                         is_ibft_vlan ? ibft_data : NULL,
-		                                         error);
-	} else if (!strcasecmp (type, TYPE_BRIDGE))
+	else if (!strcasecmp (type, TYPE_VLAN))
+		connection = vlan_connection_from_ifcfg (filename, parsed, error);
+	else if (!strcasecmp (type, TYPE_BRIDGE))
 		connection = bridge_connection_from_ifcfg (filename, parsed, error);
 	else {
 		g_assert (out_unhandled != NULL);
@@ -5350,7 +4955,7 @@ connection_from_file (const char *filename,
 	if (!connection)
 		goto done;
 
-	s_ip6 = make_ip6_setting (parsed, network_file, iscsiadm_path, error);
+	s_ip6 = make_ip6_setting (parsed, network_file, error);
 	if (!s_ip6) {
 		g_object_unref (connection);
 		connection = NULL;
@@ -5358,7 +4963,7 @@ connection_from_file (const char *filename,
 	} else
 		nm_connection_add_setting (connection, s_ip6);
 
-	s_ip4 = make_ip4_setting (parsed, network_file, ibft_data, error);
+	s_ip4 = make_ip4_setting (parsed, network_file, error);
 	if (!s_ip4) {
 		g_object_unref (connection);
 		connection = NULL;
@@ -5392,22 +4997,6 @@ connection_from_file (const char *filename,
 	if (s_dcb)
 		nm_connection_add_setting (connection, s_dcb);
 
-	/* iSCSI / ibft connections are read-only since their settings are
-	 * stored in NVRAM and can only be changed in BIOS.
-	 */
-	bootproto = svGetValue (parsed, "BOOTPROTO", FALSE);
-	if (   bootproto
-	    && connection
-	    && !g_ascii_strcasecmp (bootproto, "ibft")) {
-		NMSettingConnection *s_con;
-
-		s_con = nm_connection_get_setting_connection (connection);
-		g_assert (s_con);
-
-		g_object_set (G_OBJECT (s_con), NM_SETTING_CONNECTION_READ_ONLY, TRUE, NULL);
-	}
-	g_free (bootproto);
-
 	if (!nm_connection_normalize (connection, NULL, NULL, error)) {
 		g_object_unref (connection);
 		connection = NULL;
@@ -5421,8 +5010,6 @@ connection_from_file (const char *filename,
 		*out_route6file = utils_get_route6_path (filename);
 
 done:
-	if (ibft_data)
-		g_ptr_array_unref (ibft_data);
 	svCloseFile (parsed);
 	return connection;
 }
