@@ -934,4 +934,16 @@ nmtst_create_minimal_connection (const char *id, const char *uuid, const char *t
 
 #endif
 
+static inline void
+nmtst_assert_ip4_address_equals (guint32 addr, const char *expected, const char *loc)
+{
+    guint32 addr2 = nmtst_inet4_from_string (expected ? expected : "0.0.0.0");
+
+    if (addr != addr2)
+        g_error ("assert: %s: ip4 address '%s' expected, but got %s",
+                 loc, expected ? expected : "any", nm_utils_inet4_ntop (addr, NULL));
+}
+#define nmtst_assert_ip4_address_equals(addr, expected) \
+    nmtst_assert_ip4_address_equals (addr, expected, G_STRLOC)
+
 #endif /* __NM_TEST_UTILS_H__ */
