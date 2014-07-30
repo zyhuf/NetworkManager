@@ -4846,15 +4846,12 @@ make_vlan_setting (shvarFile *ifcfg,
 	char *iface_name = NULL;
 	char *parent = NULL;
 	const char *p = NULL;
-	char *end = NULL;
 	gint vlan_id = -1;
 	guint32 vlan_flags = 0;
 
 	value = svGetValue (ifcfg, "VLAN_ID", FALSE);
 	if (value) {
-		errno = 0;
-		vlan_id = (gint) g_ascii_strtoll (value, NULL, 10);
-		if (vlan_id < 0 || vlan_id > 4096 || errno) {
+		if (!get_int_full (value, &vlan_id, 0, 4095)) {
 			g_set_error (error, IFCFG_PLUGIN_ERROR, 0, "Invalid VLAN_ID '%s'", value);
 			g_free (value);
 			return NULL;
@@ -4902,8 +4899,7 @@ make_vlan_setting (shvarFile *ifcfg,
 			/* Grab VLAN ID from interface name; this takes precedence over the
 			 * separate VLAN_ID property for backwards compat.
 			 */
-			vlan_id = (gint) g_ascii_strtoll (p, &end, 10);
-			if (vlan_id < 0 || vlan_id > 4095 || end == p || *end) {
+			if (!get_int_full (p, &vlan_id, 0, 4095)) {
 				g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 				             "Failed to determine VLAN ID from DEVICE '%s'",
 				             iface_name);
