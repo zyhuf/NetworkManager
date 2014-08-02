@@ -1229,7 +1229,7 @@ add_network_cb (DBusGProxy *proxy, DBusGProxyCall *call_id, gpointer user_data)
 			                            add_blob_cb,
 			                            blob_info,
 			                            nm_supplicant_info_destroy,
-			                            DBUS_TYPE_STRING, name,
+			                            G_TYPE_STRING, name,
 			                            DBUS_TYPE_G_UCHAR_ARRAY, data,
 			                            G_TYPE_INVALID);
 		nm_supplicant_info_set_call (blob_info, call);
