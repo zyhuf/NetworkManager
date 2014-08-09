@@ -172,7 +172,7 @@ read_ibft_blocks (const char *iscsiadm_path,
 			}
 		} else if (block_lines) {
 			if (strchr (*iter, '='))
-				g_ptr_array_add (block_lines, g_strstrip (g_strdup (*iter)));
+				g_ptr_array_add (block_lines, remove_most_whitespace (*iter));
 			else {
 				PARSE_WARNING ("malformed iscsiadm record: no = in '%s'.", *iter);
 				g_clear_pointer (&block_lines, g_ptr_array_unref);
@@ -207,18 +207,16 @@ done:
 #define ISCSI_VLAN_ID_TAG    "iface.vlan_id"
 #define ISCSI_IFACE_TAG      "iface.net_ifacename"
 
-static char *
-match_iscsiadm_tag (char *line, const char *tag)
+static const char *
+match_iscsiadm_tag (const char *line, const char *tag)
 {
 	gsize taglen = strlen (tag);
 
 	if (g_ascii_strncasecmp (line, tag, taglen) != 0)
 		return NULL;
-	while (g_ascii_isspace (line[taglen]))
-		taglen++;
 	if (line[taglen] != '=')
 		return NULL;
-	return g_strstrip (line + taglen + 1);
+	return line + taglen + 1;
 }
 
 /**
@@ -238,7 +236,7 @@ gboolean
 parse_ibft_config (const GPtrArray *data, GError **error, ...)
 {
 	gboolean success = FALSE;
-	char **out_value, *p;
+	const char **out_value, *p;
 	va_list ap;
 	const char *key;
 	guint i;
@@ -249,7 +247,7 @@ parse_ibft_config (const GPtrArray *data, GError **error, ...)
 	/* Find requested keys and populate return values */
 	va_start (ap, error);
 	while ((key = va_arg (ap, const char *))) {
-		out_value = va_arg (ap, char **);
+		out_value = va_arg (ap, const char **);
 		*out_value = NULL;
 		for (i = 0; i < data->len; i++) {
 			p = match_iscsiadm_tag (g_ptr_array_index (data, i), key);
