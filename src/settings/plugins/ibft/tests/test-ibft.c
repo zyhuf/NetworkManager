@@ -105,7 +105,7 @@ test_read_ibft_dhcp (void)
 	g_assert (s_wired);
 	array = nm_setting_wired_get_mac_address (s_wired);
 	g_assert (array);
-	g_assert (nm_utils_hwaddr_matches (array->data, array->len, expected_mac_address, -1));
+	nmtst_assert_hwaddr_equals (array->data, array->len, expected_mac_address);
 	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
 
 	/* ===== IPv4 SETTING ===== */
@@ -151,7 +151,7 @@ test_read_ibft_static (void)
 	g_assert (s_wired);
 	array = nm_setting_wired_get_mac_address (s_wired);
 	g_assert (array);
-	g_assert (nm_utils_hwaddr_matches (array->data, array->len, expected_mac_address, -1));
+	nmtst_assert_hwaddr_equals (array->data, array->len, expected_mac_address);
 	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
 
 	/* ===== IPv4 SETTING ===== */
@@ -245,7 +245,7 @@ test_read_ibft_vlan (void)
 	g_assert (s_wired);
 	array = nm_setting_wired_get_mac_address (s_wired);
 	g_assert (array);
-	g_assert (nm_utils_hwaddr_matches (array->data, array->len, expected_mac_address, -1));
+	nmtst_assert_hwaddr_equals (array->data, array->len, expected_mac_address);
 
 	/* ===== VLAN SETTING ===== */
 	s_vlan = nm_connection_get_setting_vlan (connection);
