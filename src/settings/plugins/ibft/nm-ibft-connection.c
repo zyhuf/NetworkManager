@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2014 Red Hat, Inc.
+ * Copyright 2014 Red Hat, Inc.
  */
 
 #include <string.h>
@@ -41,14 +41,13 @@ nm_ibft_connection_new (const GPtrArray *block, GError **error)
 		return NULL;
 
 	object = g_object_new (NM_TYPE_IBFT_CONNECTION, NULL);
-	if (object) {
-		/* Update settings with what was read from iscsiadm */
-		if (!nm_settings_connection_replace_settings (NM_SETTINGS_CONNECTION (object),
-		                                              source,
-		                                              FALSE,
-		                                              error))
-			g_clear_object (&object);
-	}
+	/* Update settings with what was read from iscsiadm */
+	if (!nm_settings_connection_replace_settings (NM_SETTINGS_CONNECTION (object),
+	                                              source,
+	                                              FALSE,
+	                                              error))
+		g_clear_object (&object);
+
 	return (NMIbftConnection *) object;
 }
 

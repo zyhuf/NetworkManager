@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2014 Red Hat, Inc.
+ * Copyright 2014 Red Hat, Inc.
  */
 
 #include <config.h>
@@ -457,6 +457,7 @@ vlan_setting_add_from_block (const GPtrArray *block,
 	NMSetting *s_vlan = NULL;
 	const char *vlan_id_str = NULL;
 	gint64 vlan_id = -1;
+	gboolean success;
 
 	g_assert (block);
 	g_assert (connection);
@@ -464,7 +465,8 @@ vlan_setting_add_from_block (const GPtrArray *block,
 	/* This won't fail since this function shouldn't be called unless the
 	 * iBFT VLAN ID exists and is > 0.
 	 */
-	g_assert (parse_ibft_config (block, NULL, ISCSI_VLAN_ID_TAG, &vlan_id_str, NULL));
+	success = parse_ibft_config (block, NULL, ISCSI_VLAN_ID_TAG, &vlan_id_str, NULL);
+	g_assert (success);
 	g_assert (vlan_id_str);
 
 	/* VLAN 0 is normally a valid VLAN ID, but in the iBFT case it means "no VLAN" */

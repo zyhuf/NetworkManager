@@ -9,18 +9,14 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/libnm-core \
 	-I$(top_builddir)/libnm-core \
 	-I$(top_srcdir)/src/ \
-	-I$(top_srcdir)/src/logging \
 	-I$(top_srcdir)/src/platform \
 	-I$(top_srcdir)/src/settings \
-	-I$(top_srcdir)/src/posix-signals \
 	-I$(srcdir)/../ \
 	-DG_LOG_DOMAIN=\""NetworkManager-ibft"\" \
 	-DNETWORKMANAGER_COMPILATION \
 	-DNM_VERSION_MAX_ALLOWED=NM_VERSION_NEXT_STABLE \
 	-DTEST_IBFT_DIR=\"$(abs_srcdir)\" \
-	-DTEST_SCRATCH_DIR=\"$(abs_builddir)/\" \
-	-DSYSCONFDIR=\"nonexistent\" \
-	-DSBINDIR=\"nonexistent\"
+	-DTEST_SCRATCH_DIR=\"$(abs_builddir)/\"
 
 AM_LDFLAGS = \
 	$(GLIB_LIBS) \

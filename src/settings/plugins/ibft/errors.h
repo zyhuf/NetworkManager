@@ -15,15 +15,15 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * (C) Copyright 2008 - 2013 Red Hat, Inc.
+ * Copyright 2014 Red Hat, Inc.
  */
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef __ERRORS_H__
+#define __ERRORS_H__
 
 #define IBFT_PLUGIN_ERROR (ibft_plugin_error_quark ())
 GQuark ibft_plugin_error_quark (void);
 
 
-#endif  /* __COMMON_H__ */
+#endif  /* __ERRORS_H__ */
 
