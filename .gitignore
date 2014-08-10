@@ -215,6 +215,7 @@ valgrind-*.log
 /src/dhcp-manager/tests/test-dnsmasq-utils
 
 /src/settings/plugins/keyfile/tests/test-keyfile
+/src/settings/plugins/ibft/tests/test-ibft
 /src/settings/plugins/ifcfg-rh/tests/test-ifcfg-rh
 /src/settings/plugins/ifcfg-rh/tests/test-ifcfg-rh-utils
 /src/settings/plugins/ifcfg-rh/tests/network-scripts/Test_Write_*

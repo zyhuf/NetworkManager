@@ -937,7 +937,7 @@ nmtst_create_minimal_connection (const char *id, const char *uuid, const char *t
 static inline void
 nmtst_assert_ip4_address_equals (guint32 addr, const char *expected, const char *loc)
 {
-    guint32 addr2 = nmtst_inet4_from_string (expected ? expected : "0.0.0.0");
+    guint32 addr2 = nmtst_inet4_from_string (expected);
 
     if (addr != addr2)
         g_error ("assert: %s: ip4 address '%s' expected, but got %s",
@@ -946,16 +946,19 @@ nmtst_assert_ip4_address_equals (guint32 addr, const char *expected, const char 
 #define nmtst_assert_ip4_address_equals(addr, expected) \
     nmtst_assert_ip4_address_equals (addr, expected, G_STRLOC)
 
+#ifdef __NM_UTILS_H__
 static inline void
 nmtst_assert_hwaddr_equals (gconstpointer hwaddr1, gssize hwaddr1_len, const char *expected, const char *loc)
 {
-    if (!nm_utils_hwaddr_matches (hwaddr1, hwaddr1_len, expected, -1)) {
-        g_error ("assert: %s: hwaddr '%s' expected, but got %s",
-                 loc, expected ? expected : "any",
-                 nm_utils_hwaddr_ntoa (hwaddr1, hwaddr1_len));
+	g_assert (expected);
+
+	if (!nm_utils_hwaddr_matches (hwaddr1, hwaddr1_len, expected, -1)) {
+		g_error ("assert: %s: hwaddr '%s' expected, but got %s",
+		         loc, expected, nm_utils_hwaddr_ntoa (hwaddr1, hwaddr1_len));
 	}
 }
 #define nmtst_assert_hwaddr_equals(hwaddr1, hwaddr1_len, expected) \
     nmtst_assert_hwaddr_equals (hwaddr1, hwaddr1_len, expected, G_STRLOC)
+#endif
 
 #endif /* __NM_TEST_UTILS_H__ */

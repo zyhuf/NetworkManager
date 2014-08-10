@@ -171,8 +171,10 @@ read_ibft_blocks (const char *iscsiadm_path,
 				block_lines = NULL;
 			}
 		} else if (block_lines) {
-			if (strchr (*iter, '='))
-				g_ptr_array_add (block_lines, remove_most_whitespace (*iter));
+			char *s = remove_most_whitespace (*iter);
+
+			if (s)
+				g_ptr_array_add (block_lines, s);
 			else {
 				PARSE_WARNING ("malformed iscsiadm record: no = in '%s'.", *iter);
 				g_clear_pointer (&block_lines, g_ptr_array_unref);
