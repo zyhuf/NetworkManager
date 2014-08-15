@@ -950,9 +950,24 @@ nmtst_assert_ip4_address_equals (guint32 addr, const char *expected, const char 
 static inline void
 nmtst_assert_hwaddr_equals (gconstpointer hwaddr1, gssize hwaddr1_len, const char *expected, const char *loc)
 {
+	gboolean success;
+
 	g_assert (expected);
 
-	if (!nm_utils_hwaddr_matches (hwaddr1, hwaddr1_len, expected, -1)) {
+	success = nm_utils_hwaddr_matches (hwaddr1, hwaddr1_len, expected, -1);
+
+	/* nm_utils_hwaddr_matches() fuzzy-matches InfiniBand addresses, but
+	 * for testcases we want to match the entire address.
+	 */
+	if (success && hwaddr1_len == INFINIBAND_ALEN) {
+		guint8 buf[INFINIBAND_ALEN];
+
+		success = !!nm_utils_hwaddr_aton (expected, buf, sizeof (buf));
+		if (success)
+			success = memcmp (hwaddr1, buf, sizeof (buf)) == 0 ? TRUE : FALSE;
+	}
+
+	if (!success) {
 		g_error ("assert: %s: hwaddr '%s' expected, but got %s",
 		         loc, expected, nm_utils_hwaddr_ntoa (hwaddr1, hwaddr1_len));
 	}
