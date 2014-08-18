@@ -1084,10 +1084,9 @@ get_settings_auth_cb (NMSettingsConnection *self,
 		 */
 		bssid_list = nm_settings_connection_get_seen_bssids (self);
 		s_wifi = nm_connection_get_setting_wireless (NM_CONNECTION (dupl_con));
-		if (bssid_list && s_wifi) {
+		if (bssid_list && s_wifi)
 			g_object_set (s_wifi, NM_SETTING_WIRELESS_SEEN_BSSIDS, bssid_list, NULL);
-			nm_utils_slist_free (bssid_list, g_free);
-		}
+		nm_utils_slist_free (bssid_list, g_free);
 
 		/* Secrets should *never* be returned by the GetSettings method, they
 		 * get returned by the GetSecrets method which can be better
