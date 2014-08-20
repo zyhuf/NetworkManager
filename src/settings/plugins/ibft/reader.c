@@ -128,8 +128,8 @@ read_ibft_blocks (const char *iscsiadm_path,
 	GPtrArray *block_lines = NULL;
 	gboolean success = FALSE;
 
-	g_return_val_if_fail (iscsiadm_path != NULL, NULL);
-	g_return_val_if_fail (out_blocks != NULL && *out_blocks == NULL, NULL);
+	g_return_val_if_fail (iscsiadm_path != NULL, FALSE);
+	g_return_val_if_fail (out_blocks != NULL && *out_blocks == NULL, FALSE);
 
 	if (!g_spawn_sync ("/", (char **) argv, (char **) envp, 0,
 	                   iscsiadm_child_setup, NULL, &out, &err, &status, error))
