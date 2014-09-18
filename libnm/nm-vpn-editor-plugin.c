@@ -152,6 +152,17 @@ nm_vpn_editor_default_init (NMVpnEditorInterface *iface)
 	              G_TYPE_NONE, 0);
 }
 
+char *
+nm_vpn_editor_get_property_xml (NMVpnEditor *editor)
+{
+	g_return_val_if_fail (NM_IS_VPN_EDITOR (editor), NULL);
+
+	if (NM_VPN_EDITOR_GET_INTERFACE (editor)->get_property_xml)
+		return NM_VPN_EDITOR_GET_INTERFACE (editor)->get_property_xml (editor);
+	else
+		return NULL;
+}
+
 /**
  * nm_vpn_editor_get_widget:
  *
@@ -162,7 +173,10 @@ nm_vpn_editor_get_widget (NMVpnEditor *editor)
 {
 	g_return_val_if_fail (NM_IS_VPN_EDITOR (editor), NULL);
 
-	return NM_VPN_EDITOR_GET_INTERFACE (editor)->get_widget (editor);
+	if (NM_VPN_EDITOR_GET_INTERFACE (editor)->get_widget)
+		return NM_VPN_EDITOR_GET_INTERFACE (editor)->get_widget (editor);
+	else
+		return NULL;
 }
 
 gboolean

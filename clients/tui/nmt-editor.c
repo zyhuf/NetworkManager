@@ -52,6 +52,7 @@
 #include "nmt-page-team.h"
 #include "nmt-page-team-port.h"
 #include "nmt-page-vlan.h"
+#include "nmt-page-vpn.h"
 #include "nmt-page-wifi.h"
 
 G_DEFINE_TYPE (NmtEditor, nmt_editor, NMT_TYPE_NEWT_FORM)
@@ -367,6 +368,8 @@ nmt_editor_constructed (GObject *object)
 		page = nmt_page_team_new (priv->edit_connection, deventry);
 	else if (nm_connection_is_type (priv->edit_connection, NM_SETTING_VLAN_SETTING_NAME))
 		page = nmt_page_vlan_new (priv->edit_connection, deventry);
+	else if (nm_connection_is_type (priv->edit_connection, NM_SETTING_VPN_SETTING_NAME))
+		page = nmt_page_vpn_new (priv->edit_connection);
 	else if (nm_connection_is_type (priv->edit_connection, NM_SETTING_WIRED_SETTING_NAME))
 		page = nmt_page_ethernet_new (priv->edit_connection, deventry);
 	else if (nm_connection_is_type (priv->edit_connection, NM_SETTING_WIRELESS_SETTING_NAME))

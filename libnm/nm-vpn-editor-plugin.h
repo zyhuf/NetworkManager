@@ -150,7 +150,7 @@ char         *nm_vpn_editor_plugin_get_suggested_filename (NMVpnEditorPlugin *pl
  * NMVpnEditorInterface:
  * @g_iface: the parent interface
  * @get_widget: return the #GtkWidget for the VPN editor's UI
- * @placeholder: not currently used
+ * @get_property_xml: returns an XML description of the VPN's configuration options
  * @update_connection: called to save the user-entered options to the connection
  *   object.  Should return %FALSE and set @error if the current options are
  *   invalid.  @error should contain enough information for the plugin to
@@ -167,7 +167,7 @@ typedef struct {
 
 	GObject * (*get_widget) (NMVpnEditor *editor);
 
-	void (*placeholder) (void);
+	char * (*get_property_xml) (NMVpnEditor *editor);
 
 	gboolean (*update_connection) (NMVpnEditor *editor,
 	                               NMConnection *connection,
@@ -178,11 +178,13 @@ typedef struct {
 
 GType nm_vpn_editor_get_type (void);
 
-GObject * nm_vpn_editor_get_widget (NMVpnEditor *editor);
+char     *nm_vpn_editor_get_property_xml  (NMVpnEditor *editor);
 
-gboolean nm_vpn_editor_update_connection (NMVpnEditor *editor,
-                                          NMConnection *connection,
-                                          GError **error);
+GObject  *nm_vpn_editor_get_widget        (NMVpnEditor *editor);
+
+gboolean  nm_vpn_editor_update_connection (NMVpnEditor *editor,
+                                           NMConnection *connection,
+                                           GError **error);
 
 G_END_DECLS
 

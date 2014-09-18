@@ -99,6 +99,8 @@ nmtui_SOURCES = \
 	nmt-page-team-port.h \
 	nmt-page-vlan.c \
 	nmt-page-vlan.h \
+	nmt-page-vpn.c \
+	nmt-page-vpn.h \
 	nmt-page-wifi.c \
 	nmt-page-wifi.h \
 	nmt-password-dialog.c \

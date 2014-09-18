@@ -810,6 +810,7 @@ global:
 	nm_vpn_connection_get_vpn_state;
 	nm_vpn_connection_state_get_type;
 	nm_vpn_connection_state_reason_get_type;
+	nm_vpn_editor_get_property_xml;
 	nm_vpn_editor_get_type;
 	nm_vpn_editor_get_widget;
 	nm_vpn_editor_plugin_capability_get_type;
