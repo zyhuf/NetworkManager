@@ -336,7 +336,8 @@ usage_connection_add (void)
 	              "    wifi:         ssid <SSID>\n"
 	              "                  [mac <MAC address>]\n"
 	              "                  [cloned-mac <cloned MAC address>]\n"
-	              "                  [mtu <MTU>]\n\n"
+	              "                  [mtu <MTU>]\n"
+	              "                  [mode ap|adhoc|infrastructure]\n\n"
 	              "    wimax:        [mac <MAC address>]\n"
 	              "                  [nsp <NSP>]\n\n"
 	              "    pppoe:        username <PPPoE username>\n"
@@ -2880,10 +2881,9 @@ do_questionnaire_ethernet (gboolean ethernet, char **mtu, char **mac, char **clo
 {
 	gboolean once_more;
 	GError *error = NULL;
-	const char *type = ethernet ? _("ethernet") : _("Wi-Fi");
 
 	/* Ask for optional arguments */
-	if (!want_provide_opt_args (type, 3))
+	if (ethernet && !want_provide_opt_args (_("ethernet"), 3))
 		return;
 
 	if (!*mtu) {
@@ -2999,10 +2999,17 @@ do_questionnaire_infiniband (char **mtu, char **mac, char **mode, char **parent,
 }
 
 static void
-do_questionnaire_wifi (char **mtu, char **mac, char **cloned_mac)
+do_questionnaire_wifi (char **mtu, char **mac, char **cloned_mac, char **mode)
 {
-	/* At present, the optional Wi-Fi arguments are the same as for ethernet. */
-	return do_questionnaire_ethernet (FALSE, mtu, mac, cloned_mac);
+	/* Ask for optional arguments */
+	if (!want_provide_opt_args (_("Wi-Fi"), 4))
+		return;
+
+	/* Most optional Wi-Fi arguments are the same as for ethernet. */
+	do_questionnaire_ethernet (FALSE, mtu, mac, cloned_mac);
+
+	if (!*mode)
+		*mode = nmc_readline (_("Mode [infrastructure]: "));
 }
 
 static void
@@ -3711,6 +3718,7 @@ cleanup_wired:
 		g_free (mtu);
 		g_free (mac);
 		g_free (cloned_mac);
+		g_free (mode);
 		if (!success)
 			return FALSE;
 
@@ -3803,10 +3811,13 @@ cleanup_ib:
 		char *mac = NULL;
 		const char *cloned_mac_c = NULL;
 		char *cloned_mac = NULL;
+		const char *mode_c = NULL;
+		char *mode = NULL;
 		nmc_arg_t exp_args[] = { {"ssid",       TRUE, &ssid,         !ask},
 		                         {"mtu",        TRUE, &mtu_c,        FALSE},
 		                         {"mac",        TRUE, &mac_c,        FALSE},
 		                         {"cloned-mac", TRUE, &cloned_mac_c, FALSE},
+		                         {"mode",       TRUE, &mode_c,       FALSE},
 		                         {NULL} };
 
 		if (!nmc_parse_args (exp_args, FALSE, &argc, &argv, error))
@@ -3824,8 +3835,9 @@ cleanup_ib:
 		mtu = mtu_c ? g_strdup (mtu_c) : NULL;
 		mac = mac_c ? g_strdup (mac_c) : NULL;
 		cloned_mac = cloned_mac_c ? g_strdup (cloned_mac_c) : NULL;
+		mode = mode_c ? g_strdup (mode_c) : NULL;
 		if (ask)
-			do_questionnaire_wifi (&mtu, &mac, &cloned_mac);
+			do_questionnaire_wifi (&mtu, &mac, &cloned_mac, &mode);
 
 		if (!check_and_convert_mtu (mtu, &mtu_int, error))
 			goto cleanup_wifi;
@@ -3847,6 +3859,9 @@ cleanup_ib:
 			g_object_set (s_wifi, NM_SETTING_WIRELESS_MAC_ADDRESS, mac, NULL);
 		if (cloned_mac)
 			g_object_set (s_wifi, NM_SETTING_WIRELESS_CLONED_MAC_ADDRESS, cloned_mac, NULL);
+		if (mode)
+			g_object_set (s_wifi, NM_SETTING_WIRELESS_MODE, mode, NULL);
+
 		g_bytes_unref (ssid_bytes);
 
 		success = TRUE;
