@@ -1059,23 +1059,19 @@ complete_connection (NMDevice *device,
 		nm_connection_add_setting (connection, NM_SETTING (s_wifi));
 	}
 
-	if (ap) {
-		ssid = nm_ap_get_ssid (ap);
-
-		if (ssid == NULL) {
-			/* The AP must be hidden.  Connecting to a WiFi AP requires the SSID
-			 * as part of the initial handshake, so check the connection details
-			 * for the SSID.  The AP object will still be used for encryption
-			 * settings and such.
-			 */
-			setting_ssid = nm_setting_wireless_get_ssid (s_wifi);
-			if (setting_ssid) {
-				ssid = tmp_ssid = g_byte_array_new ();
-				g_byte_array_append (tmp_ssid,
-				                     g_bytes_get_data (setting_ssid, NULL),
-				                     g_bytes_get_size (setting_ssid));
-			}
+	if (ssid == NULL) {
+		setting_ssid = nm_setting_wireless_get_ssid (s_wifi);
+		if (setting_ssid) {
+			ssid = tmp_ssid = g_byte_array_new ();
+			g_byte_array_append (tmp_ssid,
+					     g_bytes_get_data (setting_ssid, NULL),
+					     g_bytes_get_size (setting_ssid));
 		}
+	}
+
+	if (ap) {
+		if (ssid == NULL)
+			ssid = nm_ap_get_ssid (ap);
 
 		if (ssid == NULL) {
 			/* If there's no SSID on the AP itself, and no SSID in the
