@@ -884,6 +884,8 @@ write_wireless_setting (NMConnection *connection,
 	} else if (!strcmp (mode, "adhoc")) {
 		svSetValue (ifcfg, "MODE", "Ad-Hoc", FALSE);
 		adhoc = TRUE;
+	} else if (!strcmp (mode, "ap")) {
+		svSetValue (ifcfg, "MODE", "Ap", FALSE);
 	} else {
 		g_set_error (error, IFCFG_PLUGIN_ERROR, 0,
 		             "Invalid mode '%s' in '%s' setting",
