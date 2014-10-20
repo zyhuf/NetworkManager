@@ -337,7 +337,7 @@ usage_connection_add (void)
 	              "                  [mac <MAC address>]\n"
 	              "                  [cloned-mac <cloned MAC address>]\n"
 	              "                  [mtu <MTU>]\n"
-	              "                  [mode ap|adhoc|infrastructure]\n\n"
+	              "                  [mode infrastructure|ap|adhoc]\n\n"
 	              "    wimax:        [mac <MAC address>]\n"
 	              "                  [nsp <NSP>]\n\n"
 	              "    pppoe:        username <PPPoE username>\n"
@@ -2567,29 +2567,66 @@ check_infiniband_p_key (const char *p_key, guint32 *p_key_int, GError **error)
 	return TRUE;
 }
 
-/* Checks InfiniBand mode.
- * It accepts shortcuts and normalizes them ('mode' argument is modified on success).
+/**
+ * check_valid_enumeration:
+ * @str: string to check against string array @strings
+ * @strings: string array to check @str againt
+ * @what: what parameter @str belongs to (used in error message)
+ * @what_desc: longer description of @what parameter (used in error message)
+ * @error: location to store an error, or %NULL
+ *
+ * Check whether @str is one of the string of @strings array. It accepts
+ * shortcuts and normalizes them (@str argument is modified on success).
+ *
+ * Returns: %TRUE on success, %FALSE on failure
  */
+static gboolean
+check_valid_enumeration (char **str,
+                         const char *strings[],
+                         const char *what,
+                         const char *what_desc,
+                         GError **error)
+{
+	char *tmp;
+	const char *checked_str;
+
+	if (!str || !*str)
+		return TRUE;
+
+	tmp = g_strstrip (g_strdup (*str));
+	checked_str = nmc_string_is_valid (tmp, strings, NULL);
+	g_free (tmp);
+	if (checked_str) {
+		g_free (*str);
+		*str = g_strdup (checked_str);
+	} else {
+		char *options;
+
+		options = nmc_util_strv_for_display (strings);
+		g_set_error (error, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
+		             _("Error: '%s': '%s' is not a valid %s %s."),
+		             what, *str, what_desc, options);
+		g_free (options);
+	}
+	return !!checked_str;
+}
+
+/* Checks Wi-Fi mode. */
+static gboolean
+check_wifi_mode (char **mode, GError **error)
+{
+	const char *modes[] = { "infrastructure", "ap", "adhoc", NULL };
+
+	return check_valid_enumeration (mode, modes, "mode", _("Wi-Fi mode"), error);
+}
+
+/* Checks InfiniBand mode. */
 static gboolean
 check_infiniband_mode (char **mode, GError **error)
 {
-	char *tmp;
-	const char *checked_mode;
 	const char *modes[] = { "datagram", "connected", NULL };
 
-	if (!mode || !*mode)
-		return TRUE;
-
-	tmp = g_strstrip (g_strdup (*mode));
-	checked_mode = nmc_string_is_valid (tmp, modes, NULL);
-	g_free (tmp);
-	if (checked_mode) {
-		g_free (*mode);
-		*mode = g_strdup (checked_mode);
-	} else
-		g_set_error (error, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
-		             _("Error: 'mode': '%s' is not a valid InfiniBand transport mode [datagram, connected]."), *mode);
-	return !!checked_mode;
+	return check_valid_enumeration (mode, modes, "mode", _("InfiniBand transport mode"), error);
 }
 
 static gboolean
@@ -2998,9 +3035,16 @@ do_questionnaire_infiniband (char **mtu, char **mac, char **mode, char **parent,
 	}
 }
 
+#define WORD_INFRA  "infrastructure"
+#define WORD_AP     "ap"
+#define WORD_ADHOC  "adhoc"
+#define PROMPT_WIFI_MODE "(" WORD_INFRA "/" WORD_AP "/" WORD_ADHOC ") [" WORD_INFRA "]: "
 static void
 do_questionnaire_wifi (char **mtu, char **mac, char **cloned_mac, char **mode)
 {
+	gboolean once_more;
+	GError *error = NULL;
+
 	/* Ask for optional arguments */
 	if (!want_provide_opt_args (_("Wi-Fi"), 4))
 		return;
@@ -3008,8 +3052,19 @@ do_questionnaire_wifi (char **mtu, char **mac, char **cloned_mac, char **mode)
 	/* Most optional Wi-Fi arguments are the same as for ethernet. */
 	do_questionnaire_ethernet (FALSE, mtu, mac, cloned_mac);
 
-	if (!*mode)
-		*mode = nmc_readline (_("Mode [infrastructure]: "));
+	if (!*mode) {
+		do {
+			*mode = nmc_readline (_("Mode %s"), PROMPT_WIFI_MODE);
+			if (!*mode)
+				*mode = g_strdup ("infrastructure");
+			once_more = !check_wifi_mode (mode, &error);
+			if (once_more) {
+				g_print ("%s\n", error->message);
+				g_clear_error (&error);
+				g_free (*mode);
+			}
+		} while (once_more);
+	}
 }
 
 static void
@@ -3718,7 +3773,6 @@ cleanup_wired:
 		g_free (mtu);
 		g_free (mac);
 		g_free (cloned_mac);
-		g_free (mode);
 		if (!success)
 			return FALSE;
 
@@ -3845,6 +3899,8 @@ cleanup_ib:
 			goto cleanup_wifi;
 		if (!check_mac (cloned_mac, ARPHRD_ETHER, "cloned-mac", error))
 			goto cleanup_wifi;
+		if (!check_wifi_mode (&mode, error))
+			goto cleanup_wifi;
 
 		/* Add wifi setting */
 		s_wifi = (NMSettingWireless *) nm_setting_wireless_new ();
@@ -3870,6 +3926,7 @@ cleanup_wifi:
 		g_free (mtu);
 		g_free (mac);
 		g_free (cloned_mac);
+		g_free (mode);
 		if (!success)
 			return FALSE;
 
@@ -5026,6 +5083,13 @@ gen_func_bool_values_l10n (const char *text, int state)
 }
 
 static char *
+gen_func_wifi_mode (const char *text, int state)
+{
+	const char *words[] = { "infrastructure", "ap", "adhoc", NULL };
+	return nmc_rl_gen_func_basic (text, state, words);
+}
+
+static char *
 gen_func_ib_type (const char *text, int state)
 {
 	const char *words[] = { "datagram", "connected", NULL };
@@ -5131,6 +5195,8 @@ nmcli_con_add_tab_completion (const char *text, int start, int end)
 	         || g_str_has_suffix (rl_prompt, prompt_yes_no (FALSE, NULL))
 	         || g_str_has_suffix (rl_prompt, prompt_yes_no (FALSE, ":")))
 		generator_func = gen_func_bool_values_l10n;
+	else if (g_str_has_suffix (rl_prompt, PROMPT_WIFI_MODE))
+		generator_func = gen_func_wifi_mode;
 	else if (g_str_has_suffix (rl_prompt, PROMPT_IB_MODE))
 		generator_func = gen_func_ib_type;
 	else if (g_str_has_suffix (rl_prompt, PROMPT_BT_TYPE))
