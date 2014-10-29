@@ -210,6 +210,7 @@ build_edit_connection (NMConnection *orig_connection)
 	GVariant *settings, *secrets;
 	GVariantIter iter;
 	const char *setting_name;
+	gboolean vpn;
 	NmtSyncOp op;
 
 	edit_connection = nm_simple_connection_new_clone (orig_connection);
@@ -217,9 +218,18 @@ build_edit_connection (NMConnection *orig_connection)
 	if (!NM_IS_REMOTE_CONNECTION (orig_connection))
 		return edit_connection;
 
+	vpn = nm_connection_is_type (orig_connection, NM_SETTING_VPN_SETTING_NAME);
+
 	settings = nm_connection_to_dbus (orig_connection, NM_CONNECTION_SERIALIZE_NO_SECRETS);
 	g_variant_iter_init (&iter, settings);
 	while (g_variant_iter_next (&iter, "{&s@a{sv}}", &setting_name, NULL)) {
+		if (vpn && strcmp (setting_name, NM_SETTING_VPN_SETTING_NAME) != 0) {
+			/* gnome-shell fails to deal with a request for non-VPN secrets on a
+			 * VPN connection.
+			 */
+			continue;
+		}
+
 		nmt_sync_op_init (&op);
 		nm_remote_connection_get_secrets_async (NM_REMOTE_CONNECTION (orig_connection),
 		                                        setting_name, NULL, got_secrets, &op);
