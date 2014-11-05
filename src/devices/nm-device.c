@@ -715,6 +715,17 @@ nm_device_uses_generated_connection (NMDevice *self)
 	return nm_settings_connection_get_nm_generated (NM_SETTINGS_CONNECTION (connection));
 }
 
+gboolean
+nm_device_uses_assumed_connection (NMDevice *self)
+{
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+
+	if (   priv->act_request
+	    && nm_active_connection_get_assumed (NM_ACTIVE_CONNECTION (priv->act_request)))
+		return TRUE;
+	return FALSE;
+}
+
 static SlaveInfo *
 find_slave_info (NMDevice *self, NMDevice *slave)
 {
