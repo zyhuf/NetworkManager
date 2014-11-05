@@ -372,13 +372,9 @@ nmt_add_connection_class_init (NmtAddConnectionClass *add_class)
 	g_object_class_install_property
 		(object_class, PROP_SECONDARY_TEXT,
 		 g_param_spec_string ("secondary-text", "", "",
-#if 0
 		                      _("If you are creating a VPN, and the VPN connection you "
 		                      "wish to create does not appear in the list, you may "
 		                      "not have the correct VPN plugin installed."),
-#else
-		                      NULL,
-#endif
 		                      G_PARAM_READWRITE |
 		                      G_PARAM_CONSTRUCT_ONLY |
 		                      G_PARAM_STATIC_STRINGS));

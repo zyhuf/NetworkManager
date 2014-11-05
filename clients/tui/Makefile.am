@@ -17,6 +17,8 @@ AM_CPPFLAGS= \
 	-DG_LOG_DOMAIN=\""nmtui"\" \
 	-DNM_VERSION_MAX_ALLOWED=NM_VERSION_NEXT_STABLE \
 	-DLOCALEDIR=\""$(localedir)"\" \
+	-DSYSCONFDIR=\""$(sysconfdir)"\" \
+	-DLIBDIR=\""$(libdir)"\" \
 	$(NULL)
 
 bin_PROGRAMS = nmtui
@@ -46,6 +48,8 @@ nmtui_SOURCES = \
 	nm-editor-bindings.h \
 	nm-editor-utils.c \
 	nm-editor-utils.h \
+	nm-editor-vpn-helpers.c \
+	nm-editor-vpn-helpers.h \
 	\
 	nmt-address-list.c \
 	nmt-address-list.h \

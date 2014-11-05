@@ -31,21 +31,20 @@
 #include <NetworkManager.h>
 
 #include "nm-editor-utils.h"
-#if 0
-#include "vpn-helpers.h"
+#include "nm-editor-vpn-helpers.h"
 
 static GSList *vpn_plugins;
 
 static gint
 sort_vpn_plugins (gconstpointer a, gconstpointer b)
 {
-	NMVpnPluginUiInterface *aa = NM_VPN_PLUGIN_UI_INTERFACE (a);
-	NMVpnPluginUiInterface *bb = NM_VPN_PLUGIN_UI_INTERFACE (b);
+	NMVpnEditorPlugin *aa = NM_VPN_EDITOR_PLUGIN (a);
+	NMVpnEditorPlugin *bb = NM_VPN_EDITOR_PLUGIN (b);
 	char *aa_desc = NULL, *bb_desc = NULL;
 	int ret;
 
-	g_object_get (aa, NM_VPN_PLUGIN_UI_INTERFACE_NAME, &aa_desc, NULL);
-	g_object_get (bb, NM_VPN_PLUGIN_UI_INTERFACE_NAME, &bb_desc, NULL);
+	g_object_get (aa, NM_VPN_EDITOR_PLUGIN_NAME, &aa_desc, NULL);
+	g_object_get (bb, NM_VPN_EDITOR_PLUGIN_NAME, &bb_desc, NULL);
 
 	ret = g_strcmp0 (aa_desc, bb_desc);
 
@@ -54,7 +53,6 @@ sort_vpn_plugins (gconstpointer a, gconstpointer b)
 
 	return ret;
 }
-#endif
 
 static void
 wifi_connection_setup_func (NMConnection        *connection,
@@ -133,10 +131,8 @@ nm_editor_utils_get_connection_type_list (void)
 	GPtrArray *array;
 	NMEditorConnectionTypeDataReal *item;
 	static NMEditorConnectionTypeData **list;
-#if 0
 	GHashTable *vpn_plugins_hash;
 	gboolean have_vpn_plugins;
-#endif
 
 	if (list)
 		return list;
@@ -222,9 +218,8 @@ nm_editor_utils_get_connection_type_list (void)
 	item->id_format = _("VLAN connection %d");
 	g_ptr_array_add (array, item);
 
-#if 0
 	/* Add "VPN" only if there are plugins */
-	vpn_plugins_hash = vpn_get_plugins (NULL);
+	vpn_plugins_hash = nm_editor_get_vpn_plugins (NULL);
 	have_vpn_plugins  = vpn_plugins_hash && g_hash_table_size (vpn_plugins_hash);
 	if (have_vpn_plugins) {
 		GHashTableIter iter;
@@ -244,7 +239,6 @@ nm_editor_utils_get_connection_type_list (void)
 			vpn_plugins = g_slist_prepend (vpn_plugins, plugin);
 		vpn_plugins = g_slist_sort (vpn_plugins, sort_vpn_plugins);
 	}
-#endif
 
 	g_ptr_array_sort (array, sort_types);
 	g_ptr_array_add (array, NULL);

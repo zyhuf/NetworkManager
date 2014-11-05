@@ -13,27 +13,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 Red Hat, Inc.
+ * Copyright 2013-2014 Red Hat, Inc.
  */
 
-#ifndef _VPN_HELPERS_H_
-#define _VPN_HELPERS_H_
+#ifndef _NM_EDITOR_VPN_HELPERS_H_
+#define _NM_EDITOR_VPN_HELPERS_H_
 
-#include <glib.h>
-#include <nm-connection.h>
+#include <NetworkManager.h>
 
-#define NM_VPN_API_SUBJECT_TO_CHANGE
-#include <nm-vpn-plugin-ui-interface.h>
+GHashTable *nm_editor_get_vpn_plugins (GError **error);
 
-GHashTable *vpn_get_plugins (GError **error);
+NMVpnEditorPlugin *nm_editor_get_vpn_plugin_by_service (const char *service, GError **erro);
 
-NMVpnPluginUiInterface *vpn_get_plugin_by_service (const char *service);
+typedef void (*NMEditorVpnImportSuccessCallback) (NMConnection *connection, gpointer user_data);
+void nm_editor_vpn_import (NMEditorVpnImportSuccessCallback callback, gpointer user_data);
 
-typedef void (*VpnImportSuccessCallback) (NMConnection *connection, gpointer user_data);
-void vpn_import (VpnImportSuccessCallback callback, gpointer user_data);
+void nm_editor_vpn_export (NMConnection *connection);
 
-void vpn_export (NMConnection *connection);
+gboolean nm_editor_vpn_supports_ipv6 (NMConnection *connection);
 
-gboolean vpn_supports_ipv6 (NMConnection *connection);
-
-#endif  /* _VPN_HELPERS_H_ */
+#endif  /* _NM_EDITOR_VPN_HELPERS_H_ */

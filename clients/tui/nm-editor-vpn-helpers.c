@@ -17,13 +17,10 @@
  */
 
 /**
- * SECTION:vpn-helpers
+ * SECTION:nm-editor-vpn-helpers
  * @short_description: VPN-related utilities
  *
- * This is copied directly from libnm-gtk and should probably
- * eventually move into libnm.
- *
- * It is also currently unused in nmtui.
+ * This is copied from libnm-gtk and should probably eventually move into libnm.
  *
  * FIXME.
  */
@@ -33,33 +30,14 @@
 #include <gmodule.h>
 #include <glib/gi18n.h>
 
-#include <nm-connection.h>
-#include <nm-setting-connection.h>
-#include <nm-setting-vpn.h>
+#include "nm-editor-vpn-helpers.h"
 
-#include "vpn-helpers.h"
-
-#define NM_VPN_API_SUBJECT_TO_CHANGE
-#include "nm-vpn-plugin-ui-interface.h"
-
-#define VPN_NAME_FILES_DIR SYSCONFDIR"/NetworkManager/VPN"
+#define VPN_NAME_FILES_DIR SYSCONFDIR "/NetworkManager/VPN"
 
 static GHashTable *plugins = NULL;
 
-G_DEFINE_QUARK (NMA_ERROR, nma_error)
-#define NMA_ERROR nma_error_quark ()
-#define NMA_ERROR_GENERIC 0
-
-NMVpnPluginUiInterface *
-vpn_get_plugin_by_service (const char *service)
-{
-	g_return_val_if_fail (service != NULL, NULL);
-
-	return g_hash_table_lookup (plugins, service);
-}
-
 GHashTable *
-vpn_get_plugins (GError **error)
+nm_editor_get_vpn_plugins (GError **error)
 {
 	GDir *dir;
 	const char *f;
@@ -72,7 +50,8 @@ vpn_get_plugins (GError **error)
 
 	dir = g_dir_open (VPN_NAME_FILES_DIR, 0, NULL);
 	if (!dir) {
-		g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "Couldn't read VPN .name files directory " VPN_NAME_FILES_DIR ".");
+		g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+		             "Couldn't read VPN .name files directory " VPN_NAME_FILES_DIR ".");
 		return NULL;
 	}
 
@@ -84,7 +63,7 @@ vpn_get_plugins (GError **error)
 		char *so_path = NULL, *so_name = NULL;
 		GKeyFile *keyfile = NULL;
 		GModule *module;
-		NMVpnPluginUiFactory factory = NULL;
+		NMVpnEditorPluginFactory factory = NULL;
 
 		if (!g_str_has_suffix (f, ".name"))
 			continue;
@@ -99,7 +78,7 @@ vpn_get_plugins (GError **error)
 		if (!service)
 			goto next;
 
-		so_path = g_key_file_get_string (keyfile,  "GNOME", "properties", NULL);
+		so_path = g_key_file_get_string (keyfile,  "libnm", "properties", NULL);
 		if (!so_path)
 			goto next;
 
@@ -113,13 +92,14 @@ vpn_get_plugins (GError **error)
 
 		module = g_module_open (so_path, G_MODULE_BIND_LAZY | G_MODULE_BIND_LOCAL);
 		if (!module) {
-			g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "Cannot load the VPN plugin which provides the "
-			             "service '%s'.", service);
+			g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+			             "Cannot load the VPN plugin which provides the service '%s'.",
+			             service);
 			goto next;
 		}
 
-		if (g_module_symbol (module, "nm_vpn_plugin_ui_factory", (gpointer) &factory)) {
-			NMVpnPluginUiInterface *plugin;
+		if (g_module_symbol (module, "nm_vpn_editor_plugin_factory", (gpointer) &factory)) {
+			NMVpnEditorPlugin *plugin;
 			GError *factory_error = NULL;
 			gboolean success = FALSE;
 
@@ -129,14 +109,16 @@ vpn_get_plugins (GError **error)
 
 				/* Validate plugin properties */
 				g_object_get (G_OBJECT (plugin),
-				              NM_VPN_PLUGIN_UI_INTERFACE_NAME, &plug_name,
-				              NM_VPN_PLUGIN_UI_INTERFACE_SERVICE, &plug_service,
+				              NM_VPN_EDITOR_PLUGIN_NAME, &plug_name,
+				              NM_VPN_EDITOR_PLUGIN_SERVICE, &plug_service,
 				              NULL);
 				if (!plug_name || !strlen (plug_name)) {
-					g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "cannot load VPN plugin in '%s': missing plugin name", 
+					g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+					             "cannot load VPN plugin in '%s': missing plugin name", 
 					             g_module_name (module));
 				} else if (!plug_service || strcmp (plug_service, service)) {
-					g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "cannot load VPN plugin in '%s': invalid service name", 
+					g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+					             "cannot load VPN plugin in '%s': invalid service name", 
 					             g_module_name (module));
 				} else {
 					/* Success! */
@@ -148,14 +130,16 @@ vpn_get_plugins (GError **error)
 				g_free (plug_name);
 				g_free (plug_service);
 			} else {
-				g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "cannot load VPN plugin in '%s': %s", 
+				g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+				             "cannot load VPN plugin in '%s': %s", 
 				             g_module_name (module), g_module_error ());
 			}
 
 			if (!success)
 				g_module_close (module);
 		} else {
-			g_set_error (error, NMA_ERROR, NMA_ERROR_GENERIC, "cannot locate nm_vpn_plugin_ui_factory() in '%s': %s", 
+			g_set_error (error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+			             "cannot locate nm_vpn_editor_plugin_factory() in '%s': %s", 
 			             g_module_name (module), g_module_error ());
 			g_module_close (module);
 		}
@@ -171,6 +155,19 @@ vpn_get_plugins (GError **error)
 	return plugins;
 }
 
+NMVpnEditorPlugin *
+nm_editor_get_vpn_plugin_by_service (const char *service, GError **error)
+{
+	g_return_val_if_fail (service != NULL, NULL);
+
+	if (!plugins) {
+		if (!nm_editor_get_vpn_plugins (error))
+			return NULL;
+	}
+
+	return g_hash_table_lookup (plugins, service);
+}
+
 #if 0
 typedef struct {
 	VpnImportSuccessCallback callback;
@@ -184,7 +181,7 @@ import_vpn_from_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 	ActionInfo *info = (ActionInfo *) user_data;
 	GHashTableIter iter;
 	gpointer key;
-	NMVpnPluginUiInterface *plugin;
+	NMVpnEditorPlugin *plugin;
 	NMConnection *connection = NULL;
 	GError *error = NULL;
 
@@ -200,7 +197,7 @@ import_vpn_from_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 	g_hash_table_iter_init (&iter, plugins);
 	while (!connection && g_hash_table_iter_next (&iter, &key, (gpointer *)&plugin)) {
 		g_clear_error (&error);
-		connection = nm_vpn_plugin_ui_interface_import (plugin, filename, &error);
+		connection = nm_vpn_editor_plugin_import (plugin, filename, &error);
 	}
 
 	if (connection)
@@ -272,7 +269,7 @@ export_vpn_to_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 	NMConnection *connection = NM_CONNECTION (user_data);
 	char *filename = NULL;
 	GError *error = NULL;
-	NMVpnPluginUiInterface *plugin;
+	NMVpnEditorPlugin *plugin;
 	NMSettingConnection *s_con = NULL;
 	NMSettingVpn *s_vpn = NULL;
 	const char *service_type;
@@ -284,7 +281,7 @@ export_vpn_to_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	if (!filename) {
-		g_set_error (&error, NMA_ERROR, NMA_ERROR_GENERIC, "no filename");
+		g_set_error (&error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED, "no filename");
 		goto done;
 	}
 
@@ -313,7 +310,8 @@ export_vpn_to_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 	s_con = nm_connection_get_setting_connection (connection);
 	id = s_con ? nm_setting_connection_get_id (s_con) : NULL;
 	if (!id) {
-		g_set_error (&error, NMA_ERROR, NMA_ERROR_GENERIC, "connection setting invalid");
+		g_set_error (&error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+		             "connection setting invalid");
 		goto done;
 	}
 
@@ -321,13 +319,14 @@ export_vpn_to_file_cb (GtkWidget *dialog, gint response, gpointer user_data)
 	service_type = s_vpn ? nm_setting_vpn_get_service_type (s_vpn) : NULL;
 
 	if (!service_type) {
-		g_set_error (&error, NMA_ERROR, NMA_ERROR_GENERIC, "VPN setting invalid");
+		g_set_error (&error, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_FAILED,
+		             "VPN setting invalid");
 		goto done;
 	}
 
-	plugin = vpn_get_plugin_by_service (service_type);
+	plugin = nm_editor_get_vpn_plugin_by_service (service_type, NULL);
 	if (plugin)
-		success = nm_vpn_plugin_ui_interface_export (plugin, filename, connection, &error);
+		success = nm_vpn_editor_plugin_export (plugin, filename, connection, &error);
 
 done:
 	if (!success) {
@@ -362,7 +361,7 @@ void
 vpn_export (NMConnection *connection)
 {
 	GtkWidget *dialog;
-	NMVpnPluginUiInterface *plugin;
+	NMVpnEditorPlugin *plugin;
 	NMSettingVpn *s_vpn = NULL;
 	const char *service_type;
 	const char *home_folder;
@@ -384,11 +383,11 @@ vpn_export (NMConnection *connection)
 	home_folder = g_get_home_dir ();
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog), home_folder);
 
-	plugin = vpn_get_plugin_by_service (service_type);
+	plugin = nm_editor_get_vpn_plugin_by_service (service_type, NULL);
 	if (plugin) {
 		char *suggested = NULL;
 
-		suggested = nm_vpn_plugin_ui_interface_get_suggested_name (plugin, connection);
+		suggested = nm_vpn_editor_plugin_get_suggested_filename (plugin, connection);
 		if (suggested) {
 			gtk_file_chooser_set_current_name (GTK_FILE_CHOOSER (dialog), suggested);
 			g_free (suggested);
@@ -403,12 +402,12 @@ vpn_export (NMConnection *connection)
 #endif
 
 gboolean
-vpn_supports_ipv6 (NMConnection *connection)
+nm_editor_vpn_supports_ipv6 (NMConnection *connection)
 {
 	NMSettingVpn *s_vpn;
 	const char *service_type;
-	NMVpnPluginUiInterface *plugin;
-	guint32 capabilities;
+	NMVpnEditorPlugin *plugin;
+	NMVpnEditorPluginCapability capabilities;
 
 	s_vpn = nm_connection_get_setting_vpn (connection);
 	g_return_val_if_fail (s_vpn != NULL, FALSE);
@@ -416,9 +415,9 @@ vpn_supports_ipv6 (NMConnection *connection)
 	service_type = nm_setting_vpn_get_service_type (s_vpn);
 	g_return_val_if_fail (service_type != NULL, FALSE);
 
-	plugin = vpn_get_plugin_by_service (service_type);
+	plugin = nm_editor_get_vpn_plugin_by_service (service_type, NULL);
 	g_return_val_if_fail (plugin != NULL, FALSE);
 
-	capabilities = nm_vpn_plugin_ui_interface_get_capabilities (plugin);
-	return (capabilities & NM_VPN_PLUGIN_UI_CAPABILITY_IPV6) != 0;
+	capabilities = nm_vpn_editor_plugin_get_capabilities (plugin);
+	return (capabilities & NM_VPN_EDITOR_PLUGIN_CAPABILITY_IPV6) != 0;
 }
