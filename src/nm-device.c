@@ -1263,11 +1263,12 @@ nm_device_get_best_auto_connection (NMDevice *dev,
 		s_con = nm_connection_get_setting_connection (connection);
 		g_assert (s_con);
 		if (nm_setting_connection_get_autoconnect (s_con))
-			available_conns = g_slist_append (available_conns, connection);
+			available_conns = g_slist_prepend (available_conns, connection);
 	}
 
 	if (!available_conns)
 		return NULL;
+	available_conns = g_slist_reverse (available_conns);
 
 	best_connection = NM_DEVICE_GET_CLASS (dev)->get_best_auto_connection (dev, available_conns, specific_object);
 
