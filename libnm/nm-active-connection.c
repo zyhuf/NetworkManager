@@ -593,8 +593,6 @@ nm_active_connection_class_init (NMActiveConnectionClass *ap_class)
 	 * NMActiveConnection:devices:
 	 *
 	 * The devices of the active connection.
-	 *
-	 * Element-type: NMDevice
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_DEVICES,

@@ -259,8 +259,6 @@ nm_device_team_class_init (NMDeviceTeamClass *team_class)
 	 * NMDeviceTeam:slaves:
 	 *
 	 * The devices enslaved to the team device.
-	 *
-	 * Element-type: NMDevice
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_SLAVES,

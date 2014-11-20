@@ -734,8 +734,6 @@ nm_device_class_init (NMDeviceClass *device_class)
 	 * NMDevice:available-connections:
 	 *
 	 * The available connections of the device
-	 *
-	 * Element-type: NMRemoteConnection
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_AVAILABLE_CONNECTIONS,

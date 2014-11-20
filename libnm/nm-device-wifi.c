@@ -789,8 +789,6 @@ nm_device_wifi_class_init (NMDeviceWifiClass *wifi_class)
 	 * NMDeviceWifi:access-points:
 	 *
 	 * List of all Wi-Fi access points the device can see.
-	 *
-	 * Element-type: NMAccessPoint
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_ACCESS_POINTS,

@@ -177,6 +177,12 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 
 CLEANFILES += $(gir_DATA) $(typelib_DATA)
+
+NM-1.0.typelib: NM-1.0.gir.fixup-stamp
+
+NM-1.0.gir.fixup-stamp: NM-1.0.gir fix-gir.pl
+	@($(srcdir)/fix-gir.pl $< > $<.tmp && mv $<.tmp $< && touch $@) || rm -f $<.tmp
+
 endif
 
 check-local:

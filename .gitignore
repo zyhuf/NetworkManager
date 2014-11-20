@@ -168,6 +168,7 @@ valgrind-*.log
 /libnm/nm-property-docs.xml
 /libnm/nm-setting-docs.xml
 /libnm/nm-setting-docs-overrides.xml
+/libnm/NM-1.0.gir.fixup-stamp
 /libnm/tests/test-nm-client
 /libnm/tests/test-remote-settings-client
 /libnm/tests/test-secret-agent

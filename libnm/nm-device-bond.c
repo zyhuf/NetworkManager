@@ -259,8 +259,6 @@ nm_device_bond_class_init (NMDeviceBondClass *bond_class)
 	 * NMDeviceBond:slaves:
 	 *
 	 * The devices slaved to the bond device.
-	 *
-	 * Element-type: NMDevice
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_SLAVES,

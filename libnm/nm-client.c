@@ -2045,8 +2045,6 @@ nm_client_class_init (NMClientClass *client_class)
 	 * NMClient:active-connections:
 	 *
 	 * The active connections.
-	 *
-	 * Element-type: NMActiveConnection
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_ACTIVE_CONNECTIONS,
@@ -2098,8 +2096,6 @@ nm_client_class_init (NMClientClass *client_class)
 	 * NMClient:devices:
 	 *
 	 * List of known network devices.
-	 *
-	 * Element-type: NMDevice
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_DEVICES,
@@ -2115,8 +2111,6 @@ nm_client_class_init (NMClientClass *client_class)
 	 * that this differs from the underlying D-Bus property, which may also
 	 * contain the object paths of connections that the user does not have
 	 * permission to read the details of.)
-	 *
-	 * Element-type: NMRemoteConnection
 	 */
 	g_object_class_install_property
 		(object_class, PROP_CONNECTIONS,
