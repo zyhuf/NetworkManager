@@ -248,6 +248,11 @@ make_connection_setting (const char *file,
 		g_free (value);
 	}
 
+	value = svGetValue (ifcfg, "QDISC", FALSE);
+	if (value && strlen (value))
+		g_object_set (s_con, NM_SETTING_CONNECTION_QDISC, value, NULL);
+	g_free (value);
+
 	return NM_SETTING (s_con);
 }
 

@@ -78,6 +78,7 @@ GQuark nm_setting_connection_error_quark (void);
 #define NM_SETTING_CONNECTION_SLAVE_TYPE     "slave-type"
 #define NM_SETTING_CONNECTION_SECONDARIES    "secondaries"
 #define NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT "gateway-ping-timeout"
+#define NM_SETTING_CONNECTION_QDISC          "qdisc"
 
 /**
  * NMSettingConnection:
@@ -145,6 +146,9 @@ gboolean    nm_setting_connection_remove_secondary_by_value (NMSettingConnection
 
 NM_AVAILABLE_IN_0_9_10
 guint32     nm_setting_connection_get_gateway_ping_timeout (NMSettingConnection *setting);
+
+NM_AVAILABLE_IN_1_0
+const char *nm_setting_connection_get_qdisc            (NMSettingConnection *setting);
 
 G_END_DECLS
 

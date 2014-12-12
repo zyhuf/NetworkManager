@@ -109,6 +109,7 @@ enum {
 	PROP_SLAVE_TYPE,
 	PROP_SECONDARIES,
 	PROP_GATEWAY_PING_TIMEOUT,
+	PROP_QDISC,
 
 	LAST_PROP
 };
@@ -1331,5 +1332,24 @@ nm_setting_connection_class_init (NMSettingConnectionClass *setting_class)
 		                    0, 30, 0,
 		                    G_PARAM_READWRITE |
 		                    G_PARAM_CONSTRUCT |
+		                    G_PARAM_STATIC_STRINGS));
+
+
+	/**
+	 * NMSettingConnection:qdisc:
+	 *
+	 * Interface's queueing discipline.
+	 * Only parameter-less qdiscs are supported.
+	 *
+	 * Since: 1.0
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_QDISC,
+		 g_param_spec_uint (NM_SETTING_CONNECTION_QDISC, "", "",
+		                    0, 30, 0,
+		                    G_PARAM_READWRITE |
+		                    G_PARAM_CONSTRUCT |
+		                    NM_SETTING_PARAM_FUZZY_IGNORE |
+		                    NM_SETTING_PARAM_INFERRABLE |
 		                    G_PARAM_STATIC_STRINGS));
 }

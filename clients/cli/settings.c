@@ -53,6 +53,7 @@ NmcOutputField nmc_fields_setting_connection[] = {
 	SETTING_FIELD (NM_SETTING_CONNECTION_SLAVE_TYPE, 20),            /* 12 */
 	SETTING_FIELD (NM_SETTING_CONNECTION_SECONDARIES, 40),           /* 13 */
 	SETTING_FIELD (NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT, 30),  /* 14 */
+	SETTING_FIELD (NM_SETTING_CONNECTION_QDISC, 20),                 /* 15 */
 	{NULL, NULL, 0, NULL, FALSE, FALSE, 0}
 };
 #define NMC_FIELDS_SETTING_CONNECTION_ALL     "name"","\
@@ -69,7 +70,8 @@ NmcOutputField nmc_fields_setting_connection[] = {
                                               NM_SETTING_CONNECTION_MASTER","\
                                               NM_SETTING_CONNECTION_SLAVE_TYPE","\
                                               NM_SETTING_CONNECTION_SECONDARIES","\
-                                              NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT
+                                              NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT","\
+                                              NM_SETTING_CONNECTION_QDISC
 #define NMC_FIELDS_SETTING_CONNECTION_COMMON  NMC_FIELDS_SETTING_CONNECTION_ALL
 
 /* Available fields for NM_SETTING_WIRED_SETTING_NAME */
@@ -1048,6 +1050,7 @@ DEFINE_GETTER (nmc_property_connection_get_master, NM_SETTING_CONNECTION_MASTER)
 DEFINE_GETTER (nmc_property_connection_get_slave_type, NM_SETTING_CONNECTION_SLAVE_TYPE)
 DEFINE_GETTER (nmc_property_connection_get_secondaries, NM_SETTING_CONNECTION_SECONDARIES)
 DEFINE_GETTER (nmc_property_connection_get_gateway_ping_timeout, NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT)
+DEFINE_GETTER (nmc_property_connection_get_qdisc, NM_SETTING_CONNECTION_QDISC)
 
 /* --- NM_SETTING_DCB_SETTING_NAME property get functions --- */
 static char *
@@ -5218,6 +5221,13 @@ nmc_properties_init (void)
 	nmc_add_prop_funcs (GLUE (CONNECTION, GATEWAY_PING_TIMEOUT),
 	                    nmc_property_connection_get_gateway_ping_timeout,
 	                    nmc_property_set_uint,
+	                    NULL,
+	                    NULL,
+	                    NULL,
+	                    NULL);
+	nmc_add_prop_funcs (GLUE (CONNECTION, ID),
+	                    nmc_property_connection_get_qdisc,
+	                    nmc_property_set_string,
 	                    NULL,
 	                    NULL,
 	                    NULL,

@@ -74,6 +74,7 @@ typedef struct {
 	char *zone;
 	GSList *secondaries; /* secondary connections to activate with the base connection */
 	guint gateway_ping_timeout;
+	char *qdisc;
 } NMSettingConnectionPrivate;
 
 enum {
@@ -92,6 +93,7 @@ enum {
 	PROP_SLAVE_TYPE,
 	PROP_SECONDARIES,
 	PROP_GATEWAY_PING_TIMEOUT,
+	PROP_QDISC,
 
 	LAST_PROP
 };
@@ -738,6 +740,22 @@ nm_setting_connection_get_gateway_ping_timeout (NMSettingConnection *setting)
 	return NM_SETTING_CONNECTION_GET_PRIVATE (setting)->gateway_ping_timeout;
 }
 
+/**
+ * nm_setting_connection_get_qdisc:
+ * @setting: the #NMSettingConnection
+ *
+ * Returns the #NMSettingConnection:qdisc property of the connection.
+ *
+ * Returns: the queueing discipline for this connection is, if any
+ */
+const char *
+nm_setting_connection_get_qdisc (NMSettingConnection *setting)
+{
+	g_return_val_if_fail (NM_IS_SETTING_CONNECTION (setting), NULL);
+
+	return NM_SETTING_CONNECTION_GET_PRIVATE (setting)->qdisc;
+}
+
 static void
 _set_error_missing_base_setting (GError **error, const char *type)
 {
@@ -1128,6 +1146,10 @@ set_property (GObject *object, guint prop_id,
 	case PROP_GATEWAY_PING_TIMEOUT:
 		priv->gateway_ping_timeout = g_value_get_uint (value);
 		break;
+	case PROP_QDISC:
+		g_free (priv->qdisc);
+		priv->qdisc = g_value_dup_string (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -1197,6 +1219,9 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_GATEWAY_PING_TIMEOUT:
 		g_value_set_uint (value, priv->gateway_ping_timeout);
+		break;
+	case PROP_QDISC:
+		g_value_set_string (value, nm_setting_connection_get_qdisc (setting));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1565,5 +1590,29 @@ nm_setting_connection_class_init (NMSettingConnectionClass *setting_class)
 		                    0, 30, 0,
 		                    G_PARAM_READWRITE |
 		                    G_PARAM_CONSTRUCT |
+		                    G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMSettingConnection:qdisc:
+	 *
+	 * Interface's queueing discipline.
+	 * Only parameter-less qdiscs are supported.
+	 **/
+	/* ---ifcfg-rh---
+	 * property: gateway-ping-timeout
+	 * variable: QDISC(+)
+	 * description: Interface's queueing discipline.
+	 *   Only parameter-less qdiscs are supported.
+	 * example: QDISC=fq_codel
+	 * ---end---
+	 */
+	g_object_class_install_property
+		(object_class, PROP_QDISC,
+		 g_param_spec_uint (NM_SETTING_CONNECTION_QDISC, "", "",
+		                    0, 30, 0,
+		                    G_PARAM_READWRITE |
+		                    G_PARAM_CONSTRUCT |
+		                    NM_SETTING_PARAM_FUZZY_IGNORE |
+		                    NM_SETTING_PARAM_INFERRABLE |
 		                    G_PARAM_STATIC_STRINGS));
 }
