@@ -1655,7 +1655,7 @@ write_dcb_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 static void
 write_connection_setting (NMSettingConnection *s_con, shvarFile *ifcfg)
 {
-	guint32 n, i;
+	guint32 mtu, n, i;
 	GString *str;
 	const char *master;
 	char *tmp;
@@ -1738,6 +1738,14 @@ write_connection_setting (NMSettingConnection *s_con, shvarFile *ifcfg)
 	if (nm_setting_connection_get_gateway_ping_timeout (s_con)) {
 		tmp = g_strdup_printf ("%" G_GUINT32_FORMAT, nm_setting_connection_get_gateway_ping_timeout (s_con));
 		svSetValue (ifcfg, "GATEWAY_PING_TIMEOUT", tmp, FALSE);
+		g_free (tmp);
+	}
+
+	svSetValue (ifcfg, "MTU", NULL, FALSE);
+	mtu = nm_setting_connection_get_mtu (s_con);
+	if (mtu) {
+		tmp = g_strdup_printf ("%u", mtu);
+		svSetValue (ifcfg, "MTU", tmp, FALSE);
 		g_free (tmp);
 	}
 }

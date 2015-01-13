@@ -248,6 +248,19 @@ make_connection_setting (const char *file,
 		g_free (value);
 	}
 
+	value = svGetValue (ifcfg, "MTU", FALSE);
+	if (value) {
+		long int mtu;
+
+		errno = 0;
+		mtu = strtol (value, NULL, 10);
+		if (errno == 0 && mtu >= 0 && mtu < G_MAXINT32)
+			g_object_set (s_con, NM_SETTING_CONNECTION_MTU, (guint32) mtu, NULL);
+		else
+			PARSE_WARNING ("Invalid MTU '%s'", value);
+		g_free (value);
+	}
+
 	return NM_SETTING (s_con);
 }
 
