@@ -182,8 +182,8 @@ nm_setting_infiniband_get_virtual_interface_name (NMSettingInfiniband *setting)
 static gboolean
 verify (NMSetting *setting, NMConnection *connection, GError **error)
 {
-	NMSettingConnection *s_con;
 	NMSettingInfinibandPrivate *priv = NM_SETTING_INFINIBAND_GET_PRIVATE (setting);
+	NMSettingConnection *s_con = nm_connection_get_setting_connection (connection);
 	guint32 normerr_max_mtu = 0;
 
 	if (priv->mac_address && !nm_utils_hwaddr_valid (priv->mac_address, INFINIBAND_ALEN)) {
@@ -239,7 +239,6 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		}
 	}
 
-	s_con = nm_connection_get_setting_connection (connection);
 	if (s_con) {
 		const char *interface_name = nm_setting_connection_get_interface_name (s_con);
 
@@ -288,6 +287,15 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		             priv->transport_mode, normerr_max_mtu, priv->mtu);
 		g_prefix_error (error, "%s.%s: ", NM_SETTING_INFINIBAND_SETTING_NAME, NM_SETTING_INFINIBAND_MTU);
 		return NM_SETTING_VERIFY_NORMALIZABLE_ERROR;
+	}
+
+	if (s_con && priv->mtu != nm_setting_connection_get_mtu (s_con)) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		                     _("does not match connection.mtu"));
+		g_prefix_error (error, "%s.%s: ", NM_SETTING_INFINIBAND_SETTING_NAME, NM_SETTING_INFINIBAND_MTU);
+		return NM_SETTING_VERIFY_NORMALIZABLE;
 	}
 
 	return TRUE;

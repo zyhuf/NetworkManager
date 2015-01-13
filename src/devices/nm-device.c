@@ -2879,6 +2879,7 @@ ip4_config_merge_and_apply (NMDevice *self,
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMConnection *connection;
+	NMSettingConnection *s_con;
 	gboolean success;
 	NMIP4Config *composite;
 	const guint32 default_route_metric = nm_device_get_ip4_route_metric (self);
@@ -2974,6 +2975,14 @@ ip4_config_merge_and_apply (NMDevice *self,
 
 	/* Allow setting MTU etc */
 	if (commit) {
+		guint32 mtu;
+
+		s_con = nm_connection_get_setting_connection (connection);
+		g_assert (s_con);
+		mtu = nm_setting_connection_get_mtu (s_con);
+		if (mtu)
+			nm_ip4_config_set_mtu (composite, mtu, NM_IP_CONFIG_SOURCE_USER);
+
 		if (NM_DEVICE_GET_CLASS (self)->ip4_config_pre_commit)
 			NM_DEVICE_GET_CLASS (self)->ip4_config_pre_commit (self, composite);
 	}

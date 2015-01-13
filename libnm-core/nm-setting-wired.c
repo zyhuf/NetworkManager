@@ -30,6 +30,7 @@
 #include "nm-utils.h"
 #include "nm-utils-private.h"
 #include "nm-setting-private.h"
+#include "nm-setting-connection.h"
 
 /**
  * SECTION:nm-setting-wired
@@ -567,6 +568,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	GHashTableIter iter;
 	const char *key, *value;
 	int i;
+	NMSettingConnection *s_con;
 
 	if (priv->port && !_nm_utils_string_in_list (priv->port, valid_ports)) {
 		g_set_error (error,
@@ -655,6 +657,16 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		                     _("is not a valid MAC address"));
 		g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRED_SETTING_NAME, NM_SETTING_WIRED_CLONED_MAC_ADDRESS);
 		return FALSE;
+	}
+
+	s_con = nm_connection_get_setting_connection (connection);
+	if (s_con && priv->mtu != nm_setting_connection_get_mtu (s_con)) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		                     _("does not match connection.mtu"));
+		g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRED_SETTING_NAME, NM_SETTING_WIRED_MTU);
+		return NM_SETTING_VERIFY_NORMALIZABLE;
 	}
 
 	return TRUE;

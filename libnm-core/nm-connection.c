@@ -700,27 +700,75 @@ _normalize_ip_config (NMConnection *self, GHashTable *parameters)
 }
 
 static gboolean
-_normalize_infiniband_mtu (NMConnection *self, GHashTable *parameters)
+_normalize_mtu (NMConnection *self)
 {
+	NMSettingConnection *s_con = nm_connection_get_setting_connection (self);
 	NMSettingInfiniband *s_infini = nm_connection_get_setting_infiniband (self);
+	NMSettingWireless *s_wireless = nm_connection_get_setting_wireless (self);
+	NMSettingWired *s_wired = nm_connection_get_setting_wired (self);
+	guint32 con_mtu = nm_setting_connection_get_mtu (s_con);
+	guint32 mtu = con_mtu;
+	guint32 old_mtu = 0;
+	guint32 max_mtu = 0;
+	gboolean ret = FALSE;
 
-	if (s_infini) {
+	g_assert (s_con);
+
+	/* Read the MTU from the deprecated properties. */
+	if (s_wired)
+		mtu = nm_setting_wired_get_mtu (s_wired);
+	else if (s_wireless)
+		mtu = nm_setting_wireless_get_mtu (s_wireless);
+	else if (s_infini) {
 		const char *transport_mode = nm_setting_infiniband_get_transport_mode (s_infini);
-		guint32 max_mtu = 0;
 
 		if (transport_mode) {
 			if (!strcmp (transport_mode, "datagram"))
 				max_mtu = 2044;
 			else if (!strcmp (transport_mode, "connected"))
 				max_mtu = 65520;
+		}
 
-			if (max_mtu && nm_setting_infiniband_get_mtu (s_infini) > max_mtu) {
-				g_object_set (s_infini, NM_SETTING_INFINIBAND_MTU, max_mtu, NULL);
-				return TRUE;
-			}
+		mtu = nm_setting_infiniband_get_mtu (s_infini);
+	}
+
+	if (mtu == 0 && con_mtu == 0)
+		return ret;
+
+	if (max_mtu && mtu > max_mtu)
+		mtu = max_mtu;
+
+	if (con_mtu != mtu && mtu != 0) {
+		/* Update the connection.mtu if deprecated properties are set. */
+		con_mtu = mtu;
+		g_object_set (s_con, NM_SETTING_CONNECTION_MTU, con_mtu, NULL);
+		ret = TRUE;
+	}
+
+	/* Propagate the changed MTU to the deprecated properties. */
+	if (s_infini) {
+		old_mtu = nm_setting_infiniband_get_mtu (s_infini);
+		if (old_mtu != con_mtu) {
+			g_object_set (s_infini, NM_SETTING_INFINIBAND_MTU, con_mtu, NULL);
+			ret = TRUE;
 		}
 	}
-	return FALSE;
+	if (s_wireless) {
+		old_mtu = nm_setting_wireless_get_mtu (s_wireless);
+		if (old_mtu != con_mtu) {
+			g_object_set (s_wireless, NM_SETTING_WIRELESS_MTU, con_mtu, NULL);
+			ret = TRUE;
+		}
+	}
+	if (s_wired) {
+		old_mtu = nm_setting_wired_get_mtu (s_wired);
+		if (old_mtu != con_mtu) {
+			g_object_set (s_wired, NM_SETTING_WIRED_MTU, con_mtu, NULL);
+			ret = TRUE;
+		}
+	}
+
+	return ret;
 }
 
 static gboolean
@@ -956,7 +1004,7 @@ nm_connection_normalize (NMConnection *connection,
 	was_modified |= _normalize_connection_type (connection);
 	was_modified |= _normalize_connection_slave_type (connection);
 	was_modified |= _normalize_ip_config (connection, parameters);
-	was_modified |= _normalize_infiniband_mtu (connection, parameters);
+	was_modified |= _normalize_mtu (connection);
 	was_modified |= _normalize_bond_mode (connection, parameters);
 
 	/* Verify anew. */
