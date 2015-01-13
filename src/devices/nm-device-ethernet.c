@@ -1325,23 +1325,9 @@ act_stage3_ip4_config_start (NMDevice *device,
 static void
 ip4_config_pre_commit (NMDevice *device, NMIP4Config *config)
 {
-	NMConnection *connection;
-	NMSettingWired *s_wired;
-	guint32 mtu;
-
 	/* MTU only set for plain ethernet */
 	if (NM_DEVICE_ETHERNET_GET_PRIVATE (device)->ppp_manager)
-		return;
-
-	connection = nm_device_get_connection (device);
-	g_assert (connection);
-	s_wired = nm_connection_get_setting_wired (connection);
-	g_assert (s_wired);
-
-	/* MTU override */
-	mtu = nm_setting_wired_get_mtu (s_wired);
-	if (mtu)
-		nm_ip4_config_set_mtu (config, mtu, NM_IP_CONFIG_SOURCE_USER);
+		nm_ip4_config_set_mtu (config, 0, NM_IP_CONFIG_SOURCE_USER);
 }
 
 static void

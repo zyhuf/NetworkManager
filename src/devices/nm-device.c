@@ -2973,7 +2973,6 @@ ip4_config_merge_and_apply (NMDevice *self,
 		}
 	}
 
-	/* Allow setting MTU etc */
 	if (commit) {
 		guint32 mtu;
 

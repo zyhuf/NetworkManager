@@ -366,24 +366,6 @@ act_stage1_prepare (NMDevice *dev, NMDeviceStateReason *reason)
 }
 
 static void
-ip4_config_pre_commit (NMDevice *device, NMIP4Config *config)
-{
-	NMConnection *connection;
-	NMSettingWired *s_wired;
-	guint32 mtu;
-
-	connection = nm_device_get_connection (device);
-	g_assert (connection);
-
-	s_wired = nm_connection_get_setting_wired (connection);
-	if (s_wired) {
-		mtu = nm_setting_wired_get_mtu (s_wired);
-		if (mtu)
-			nm_ip4_config_set_mtu (config, mtu, NM_IP_CONFIG_SOURCE_USER);
-	}
-}
-
-static void
 deactivate (NMDevice *device)
 {
 	NMDeviceVlan *self = NM_DEVICE_VLAN (device);
@@ -554,7 +536,6 @@ nm_device_vlan_class_init (NMDeviceVlanClass *klass)
 	parent_class->get_generic_capabilities = get_generic_capabilities;
 	parent_class->bring_up = bring_up;
 	parent_class->act_stage1_prepare = act_stage1_prepare;
-	parent_class->ip4_config_pre_commit = ip4_config_pre_commit;
 	parent_class->deactivate = deactivate;
 
 	parent_class->check_connection_compatible = check_connection_compatible;
