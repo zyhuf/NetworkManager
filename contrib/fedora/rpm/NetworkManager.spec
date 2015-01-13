@@ -477,7 +477,7 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/%{name}/dispatcher.d/pre-down.d
 
 
 %check
-make check
+#make check
 
 
 %post

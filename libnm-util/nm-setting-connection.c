@@ -92,6 +92,7 @@ typedef struct {
 	char *zone;
 	GSList *secondaries; /* secondary connections to activate with the base connection */
 	guint gateway_ping_timeout;
+	guint32 mtu;
 } NMSettingConnectionPrivate;
 
 enum {
@@ -109,6 +110,7 @@ enum {
 	PROP_SLAVE_TYPE,
 	PROP_SECONDARIES,
 	PROP_GATEWAY_PING_TIMEOUT,
+	PROP_MTU,
 
 	LAST_PROP
 };
@@ -918,6 +920,21 @@ compare_property (NMSetting *setting,
 	return NM_SETTING_CLASS (nm_setting_connection_parent_class)->compare_property (setting, other, prop_spec, flags);
 }
 
+/**
+ * nm_setting_connection_get_mtu:
+ * @setting: the #NMSettingConnection
+ *
+ * Returns: the value contained in the #NMSettingConnection:mtu
+ * property.
+ **/
+guint32
+nm_setting_connection_get_mtu (NMSettingConnection *setting)
+{
+	g_return_val_if_fail (NM_IS_SETTING_CONNECTION (setting), 0);
+
+	return NM_SETTING_CONNECTION_GET_PRIVATE (setting)->mtu;
+}
+
 static void
 nm_setting_connection_init (NMSettingConnection *setting)
 {
@@ -1012,6 +1029,9 @@ set_property (GObject *object, guint prop_id,
 	case PROP_GATEWAY_PING_TIMEOUT:
 		priv->gateway_ping_timeout = g_value_get_uint (value);
 		break;
+	case PROP_MTU:
+		priv->mtu = g_value_get_uint (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -1074,6 +1094,9 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_GATEWAY_PING_TIMEOUT:
 		g_value_set_uint (value, priv->gateway_ping_timeout);
+		break;
+	case PROP_MTU:
+		g_value_set_uint (value, nm_setting_connection_get_mtu (setting));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1332,4 +1355,26 @@ nm_setting_connection_class_init (NMSettingConnectionClass *setting_class)
 		                    G_PARAM_READWRITE |
 		                    G_PARAM_CONSTRUCT |
 		                    G_PARAM_STATIC_STRINGS));
+
+
+	/**
+	 * NMSettingBond:mtu:
+	 *
+	 * If non-zero, only transmit packets of the specified size or smaller,
+	 * breaking larger packets up into multiple frames.
+	 **/
+	/* ---ifcfg-rh---
+	 * property: mtu
+	 * variable: MTU
+	 * description: MTU of the interface.
+	 * ---end---
+	 */
+	g_object_class_install_property
+		(object_class, PROP_MTU,
+		g_param_spec_uint (NM_SETTING_CONNECTION_MTU, "", "",
+		                   0, G_MAXUINT32, 0,
+		                   G_PARAM_READWRITE |
+		                   G_PARAM_CONSTRUCT |
+		                   NM_SETTING_PARAM_FUZZY_IGNORE |
+		                   G_PARAM_STATIC_STRINGS));
 }
