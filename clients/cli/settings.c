@@ -6874,6 +6874,45 @@ nmc_setting_get_property_allowed_values (NMSetting *setting, const char *prop)
 #define nmc_setting_get_property_doc(setting, prop) _("(not available)")
 #endif
 
+static char *
+wrap_text (const char *text, int width)
+{
+	GString *wrapped;
+	const char *line;
+	int len = 0, remaining = strlen (text);
+
+	wrapped = g_string_new (NULL);
+	line = text;
+	while (remaining > width) {
+		len = width;
+		while (!g_ascii_isspace (line[len]) && len > 0)
+			len--;
+		if (len == 0) {
+			/* Oops, try the other direction */
+			len = width;
+			while (!g_ascii_isspace (line[len]) && len < remaining)
+				len++;
+		}
+
+		g_string_append_len (wrapped, line, len);
+		g_string_append_c (wrapped, '\n');
+
+		line += len;
+		remaining -= len;
+		if (*line) {
+			line++;
+			remaining--;
+		}
+	}
+
+	if (remaining) {
+		g_string_append_len (wrapped, line, remaining);
+		g_string_append_c (wrapped, '\n');
+	}
+
+	return g_string_free (wrapped, FALSE);
+}
+
 /*
  * Create a description string for a property.
  *
@@ -6887,16 +6926,20 @@ nmc_setting_get_property_desc (NMSetting *setting, const char *prop)
 {
 	const NmcPropertyFuncs *item;
 	const char *setting_desc = NULL;
+	char *setting_desc_wrapped = NULL;
 	const char *setting_desc_title = "";
 	const char *nmcli_desc = NULL;
 	const char *nmcli_desc_title = "";
 	const char *nmcli_nl = "";
+	char *desc;
 
 	g_return_val_if_fail (NM_IS_SETTING (setting), FALSE);
 
 	setting_desc = nmc_setting_get_property_doc (setting, prop);
-	if (setting_desc)
+	if (setting_desc) {
+		setting_desc_wrapped = wrap_text (setting_desc, 72);
 		setting_desc_title = _("[NM property description]");
+	}
 
 	item = nmc_properties_find (nm_setting_get_name (setting), prop);
 	if (item && item->describe_func) {
@@ -6905,11 +6948,14 @@ nmc_setting_get_property_desc (NMSetting *setting, const char *prop)
 		nmcli_nl = "\n";
 	}
 
-	return g_strdup_printf ("%s\n%s\n%s%s%s%s",
+	desc = g_strdup_printf ("%s\n%s\n%s%s%s%s",
 	                        setting_desc_title,
-	                        setting_desc ? setting_desc : "",
+	                        setting_desc_wrapped ? setting_desc_wrapped : "",
 	                        nmcli_nl, nmcli_desc_title, nmcli_nl,
 	                        nmcli_desc ? nmcli_desc : "");
+
+	g_free (setting_desc_wrapped);
+	return desc;
 }
 
 /*
