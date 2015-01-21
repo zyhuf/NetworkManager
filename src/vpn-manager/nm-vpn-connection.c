@@ -125,6 +125,8 @@ enum {
 	PROP_0,
 	PROP_VPN_STATE,
 	PROP_BANNER,
+	PROP_IP_IFACE,
+	PROP_IP_IFINDEX,
 	PROP_IP4_CONFIG,
 	PROP_IP6_CONFIG,
 	PROP_MASTER = 2000,
@@ -2135,6 +2137,12 @@ get_property (GObject *object, guint prop_id,
 	case PROP_BANNER:
 		g_value_set_string (value, priv->banner ? priv->banner : "");
 		break;
+	case PROP_IP_IFACE:
+		g_value_set_string (value, priv->ip_iface ? priv->ip_iface : "");
+		break;
+	case PROP_IP_IFINDEX:
+		g_value_set_uint (value, priv->ip_ifindex);
+		break;
 	case PROP_IP4_CONFIG:
 		if (ip_config_valid (priv->vpn_state) && priv->ip4_config)
 			g_value_set_boxed (value, nm_ip4_config_get_dbus_path (priv->ip4_config));
@@ -2191,6 +2199,21 @@ nm_vpn_connection_class_init (NMVpnConnectionClass *connection_class)
 		                      NULL,
 		                      G_PARAM_READABLE |
 		                      G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property
+		(object_class, PROP_IP_IFACE,
+		 g_param_spec_string (NM_VPN_CONNECTION_IP_IFACE, "", "",
+		                      NULL,
+		                      G_PARAM_READABLE |
+		                      G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property
+		(object_class, PROP_IP_IFINDEX,
+		 g_param_spec_uint (NM_VPN_CONNECTION_IP_IFINDEX, "", "",
+		                    0, G_MAXUINT32, 0,
+		                    G_PARAM_READABLE |
+		                    G_PARAM_STATIC_STRINGS));
+
 
 	g_object_class_override_property (object_class, PROP_IP4_CONFIG,
 	                                  NM_ACTIVE_CONNECTION_IP4_CONFIG);

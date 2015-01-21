@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2005 - 2011 Red Hat, Inc.
+ * Copyright (C) 2005 - 2015 Red Hat, Inc.
  * Copyright (C) 2006 - 2008 Novell, Inc.
  */
 
@@ -39,6 +39,8 @@
 /* Properties */
 #define NM_VPN_CONNECTION_VPN_STATE "vpn-state"
 #define NM_VPN_CONNECTION_BANNER "banner"
+#define NM_VPN_CONNECTION_IP_IFACE "ip-iface"
+#define NM_VPN_CONNECTION_IP_IFINDEX "ip-ifindex"
 
 /* Signals */
 /* not exported: includes old reason code */

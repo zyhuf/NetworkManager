@@ -22,6 +22,14 @@
     <property name="Banner" type="s" access="read">
       <tp:docstring>The banner string of the VPN connection.</tp:docstring>
     </property>
+    <property name="IpIface" type="s" access="read">
+      <tp:docstring>The IP interface associated with the VPN connection (if any).</tp:docstring>
+    </property>
+    <property name="IpIfindex" type="u" access="read">
+      <tp:docstring>The IP interface index associated with the VPN connection,
+        or 0 if there is no interface.
+      </tp:docstring>
+    </property>
 
     <signal name="VpnStateChanged">
       <tp:docstring>
