@@ -196,11 +196,14 @@ static NmcOutputField nmc_fields_con_active_details_vpn[] = {
 	{"USERNAME",  N_("USERNAME"),   15},  /* 2 */
 	{"GATEWAY",   N_("GATEWAY"),    25},  /* 3 */
 	{"BANNER",    N_("BANNER"),    120},  /* 4 */
-	{"VPN-STATE", N_("VPN-STATE"),  40},  /* 5 */
-	{"CFG",       N_("CFG"),       120},  /* 6 */
+	{"IP-IFACE",  N_("IP-IFACE"),   10},  /* 5 */
+	{"IP-IFINDEX",N_("IP-IFINDEX"), 10},  /* 6 */
+	{"VPN-STATE", N_("VPN-STATE"),  40},  /* 7 */
+	{"CFG",       N_("CFG"),       120},  /* 8 */
 	{NULL, NULL, 0}
 };
-#define NMC_FIELDS_CON_ACTIVE_DETAILS_VPN_ALL  "GROUP,TYPE,USERNAME,GATEWAY,BANNER,VPN-STATE,CFG"
+#define NMC_FIELDS_CON_ACTIVE_DETAILS_VPN_ALL  "GROUP,TYPE,USERNAME,GATEWAY,BANNER,"\
+                                               "IP-IFACE,IP-IFINDEX,VPN-STATE,CFG"
 
 /* defined in common.c */
 extern NmcOutputField nmc_fields_ip4_config[];
@@ -1161,11 +1164,11 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 			NMSettingConnection *s_con;
 			NMSettingVpn *s_vpn;
 			NMVpnConnectionState vpn_state;
-			char *type_str, *banner_str = NULL, *vpn_state_str;
+			char *type_str, *banner_str = NULL, *vpn_state_str, *ip_ifindex_str;
 			const char *banner;
 			const char *username = NULL;
 			char **vpn_data_array = NULL;
-			guint32 items_num;
+			guint32 items_num, ip_ifindex;
 
 			con = NM_CONNECTION (nm_active_connection_get_connection (acon));
 
@@ -1200,6 +1203,8 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 				banner_str = g_strescape (banner, "");
 			vpn_state = nm_vpn_connection_get_vpn_state (NM_VPN_CONNECTION (acon));
 			vpn_state_str = g_strdup_printf ("%d - %s", vpn_state, vpn_connection_state_to_string (vpn_state));
+			ip_ifindex = nm_vpn_connection_get_ip_ifindex (NM_VPN_CONNECTION (acon));
+			ip_ifindex_str = ip_ifindex ? g_strdup_printf ("%d", ip_ifindex) : NULL;
 
 			/* Add values */
 			arr = nmc_dup_fields_array (tmpl, tmpl_len, NMC_OF_FLAG_SECTION_PREFIX);
@@ -1208,8 +1213,10 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 			set_val_strc (arr, 2, username ? username : get_vpn_data_item (con, VPN_DATA_ITEM_USERNAME));
 			set_val_strc (arr, 3, get_vpn_data_item (con, VPN_DATA_ITEM_GATEWAY));
 			set_val_str  (arr, 4, banner_str);
-			set_val_str  (arr, 5, vpn_state_str);
-			set_val_arr  (arr, 6, vpn_data_array);
+			set_val_strc (arr, 5, nm_vpn_connection_get_ip_iface (NM_VPN_CONNECTION (acon)));
+			set_val_str  (arr, 6, ip_ifindex_str);
+			set_val_str  (arr, 7, vpn_state_str);
+			set_val_arr  (arr, 8, vpn_data_array);
 			g_ptr_array_add (nmc->output_data, arr);
 
 			print_data (nmc);  /* Print all data */
