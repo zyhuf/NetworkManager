@@ -845,6 +845,12 @@ local:
 	*;
 };
 
+libnm_1_0_2 {
+	# backports
+	# nm_utils_bond_mode_int_to_string@libnm_1_0_2;
+	# nm_utils_bond_mode_string_to_int@libnm_1_0_2;
+} libnm_1_0_0;
+
 libnm_1_2_0 {
 global:
 	nm_utils_bond_mode_int_to_string;

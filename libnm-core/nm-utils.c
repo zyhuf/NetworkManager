@@ -3239,7 +3239,7 @@ static BondMode bond_mode_table[] = {
  *
  * Returns: bonding mode string, or NULL on error
  *
- * Since: 1.2
+ * Since: 1.0.2
  */
 const char *
 nm_utils_bond_mode_int_to_string (int mode)
@@ -3248,6 +3248,8 @@ nm_utils_bond_mode_int_to_string (int mode)
 		return bond_mode_table[mode].str;
 	return NULL;
 }
+
+NM_BACKPORT_SYMBOL (libnm_1_0_2, const char *, nm_utils_bond_mode_int_to_string, (int mode), (mode));
 
 /**
  * nm_utils_bond_mode_string_to_int:
@@ -3260,7 +3262,7 @@ nm_utils_bond_mode_int_to_string (int mode)
  *
  * Returns: numeric bond mode, or -1 on error
  *
- * Since: 1.2
+ * Since: 1.0.2
  */
 int
 nm_utils_bond_mode_string_to_int (const char *mode)
@@ -3277,3 +3279,5 @@ nm_utils_bond_mode_string_to_int (const char *mode)
 	}
 	return -1;
 }
+
+NM_BACKPORT_SYMBOL (libnm_1_0_2, int, nm_utils_bond_mode_string_to_int, (const char *mode), (mode));
