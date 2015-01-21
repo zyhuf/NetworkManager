@@ -16,7 +16,7 @@
  * Boston, MA 02110-1301 USA.
  *
  * Copyright 2007 - 2008 Novell, Inc.
- * Copyright 2007 - 2010 Red Hat, Inc.
+ * Copyright 2007 - 2015 Red Hat, Inc.
  */
 
 #ifndef __NM_VPN_CONNECTION_H__
@@ -40,6 +40,8 @@ G_BEGIN_DECLS
 
 #define NM_VPN_CONNECTION_VPN_STATE "vpn-state"
 #define NM_VPN_CONNECTION_BANNER "banner"
+#define NM_VPN_CONNECTION_IP_IFACE "ip-iface"
+#define NM_VPN_CONNECTION_IP_IFINDEX "ip-ifindex"
 
 struct _NMVpnConnection {
 	NMActiveConnection parent;
@@ -61,6 +63,10 @@ GType nm_vpn_connection_get_type (void);
 
 NMVpnConnectionState  nm_vpn_connection_get_vpn_state  (NMVpnConnection *vpn);
 const char *          nm_vpn_connection_get_banner (NMVpnConnection *vpn);
+NM_AVAILABLE_IN_1_2
+const char *          nm_vpn_connection_get_ip_iface (NMVpnConnection *vpn);
+NM_AVAILABLE_IN_1_2
+guint32               nm_vpn_connection_get_ip_ifindex (NMVpnConnection *vpn);
 
 G_END_DECLS
 

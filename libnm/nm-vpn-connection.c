@@ -16,7 +16,7 @@
  * Boston, MA 02110-1301 USA.
  *
  * Copyright 2007 - 2008 Novell, Inc.
- * Copyright 2007 - 2012 Red Hat, Inc.
+ * Copyright 2007 - 2015 Red Hat, Inc.
  */
 
 #include "config.h"
@@ -37,6 +37,8 @@ G_DEFINE_TYPE (NMVpnConnection, nm_vpn_connection, NM_TYPE_ACTIVE_CONNECTION)
 
 typedef struct {
 	char *banner;
+	char *ip_iface;
+	guint32 ip_ifindex;
 	NMVpnConnectionState vpn_state;
 } NMVpnConnectionPrivate;
 
@@ -44,6 +46,8 @@ enum {
 	PROP_0,
 	PROP_VPN_STATE,
 	PROP_BANNER,
+	PROP_IP_IFACE,
+	PROP_IP_IFINDEX,
 
 	LAST_PROP
 };
@@ -97,6 +101,58 @@ nm_vpn_connection_get_vpn_state (NMVpnConnection *vpn)
 	return NM_VPN_CONNECTION_GET_PRIVATE (vpn)->vpn_state;
 }
 
+/**
+ * nm_vpn_connection_get_ip_iface:
+ * @vpn: a #NMVpnConnection
+ *
+ * Gets the interface associated with the active #NMVpnConnection.
+ *
+ * Returns: interface used for the VPN connection. This is the internal
+ * string used by the connection, and must not be modified.
+ *
+ * Since: 1.2
+ **/
+const char *
+nm_vpn_connection_get_ip_iface (NMVpnConnection *vpn)
+{
+	NMVpnConnectionPrivate *priv;
+
+	g_return_val_if_fail (NM_IS_VPN_CONNECTION (vpn), NULL);
+
+	priv = NM_VPN_CONNECTION_GET_PRIVATE (vpn);
+
+	if (priv->vpn_state != NM_VPN_CONNECTION_STATE_ACTIVATED)
+		return NULL;
+
+	return priv->ip_iface;
+}
+
+/**
+ * nm_vpn_connection_get_ip_ifindex:
+ * @vpn: a #NMVpnConnection
+ *
+ * Gets the index of interface associated with the active #NMVpnConnection.
+ *
+ * Returns: interface index used for the VPN connection. This is the internal
+ * string used by the connection, and must not be modified.
+ *
+ * Since: 1.2
+ **/
+guint32
+nm_vpn_connection_get_ip_ifindex (NMVpnConnection *vpn)
+{
+	NMVpnConnectionPrivate *priv;
+
+	g_return_val_if_fail (NM_IS_VPN_CONNECTION (vpn), 0);
+
+	priv = NM_VPN_CONNECTION_GET_PRIVATE (vpn);
+
+	if (priv->vpn_state != NM_VPN_CONNECTION_STATE_ACTIVATED)
+		return 0;
+
+	return priv->ip_ifindex;
+}
+
 static void
 vpn_state_changed_proxy (NMDBusVpnConnection *proxy,
                          guint vpn_state,
@@ -128,8 +184,10 @@ init_dbus (NMObject *object)
 {
 	NMVpnConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (object);
 	const NMPropertiesInfo property_info[] = {
-		{ NM_VPN_CONNECTION_BANNER,    &priv->banner },
-		{ NM_VPN_CONNECTION_VPN_STATE, &priv->vpn_state },
+		{ NM_VPN_CONNECTION_BANNER,     &priv->banner },
+		{ NM_VPN_CONNECTION_VPN_STATE,  &priv->vpn_state },
+		{ NM_VPN_CONNECTION_IP_IFACE,   &priv->ip_iface },
+		{ NM_VPN_CONNECTION_IP_IFINDEX, &priv->ip_ifindex },
 		{ NULL },
 	};
 	GDBusProxy *proxy;
@@ -151,6 +209,7 @@ finalize (GObject *object)
 	NMVpnConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (object);
 
 	g_free (priv->banner);
+	g_free (priv->ip_iface);
 
 	G_OBJECT_CLASS (nm_vpn_connection_parent_class)->finalize (object);
 }
@@ -169,6 +228,12 @@ get_property (GObject *object,
 		break;
 	case PROP_BANNER:
 		g_value_set_string (value, nm_vpn_connection_get_banner (self));
+		break;
+	case PROP_IP_IFACE:
+		g_value_set_string (value, nm_vpn_connection_get_ip_iface (self));
+		break;
+	case PROP_IP_IFINDEX:
+		g_value_set_uint (value, nm_vpn_connection_get_ip_ifindex (self));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -220,6 +285,34 @@ nm_vpn_connection_class_init (NMVpnConnectionClass *connection_class)
 		                      NULL,
 		                      G_PARAM_READABLE |
 		                      G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMVpnConnection:ip-iface:
+	 *
+	 * The interface used for the active VPN connection.
+	 *
+	 * Since: 1.2
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_IP_IFACE,
+		 g_param_spec_string (NM_VPN_CONNECTION_IP_IFACE, "", "",
+		                      NULL,
+		                      G_PARAM_READABLE |
+		                      G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMVpnConnection:ip-ifindex:
+	 *
+	 * The interface index used for the active VPN connection.
+	 *
+	 * Since: 1.2
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_IP_IFINDEX,
+		 g_param_spec_uint (NM_VPN_CONNECTION_IP_IFINDEX, "", "",
+		                    0, G_MAXUINT32, 0,
+		                    G_PARAM_READABLE |
+		                    G_PARAM_STATIC_STRINGS));
 
 	/* signals */
 	signals[VPN_STATE_CHANGED] =

@@ -855,4 +855,6 @@ libnm_1_2_0 {
 global:
 	nm_utils_bond_mode_int_to_string;
 	nm_utils_bond_mode_string_to_int;
+	nm_vpn_connection_get_ip_iface;
+	nm_vpn_connection_get_ip_ifindex;
 } libnm_1_0_0;
