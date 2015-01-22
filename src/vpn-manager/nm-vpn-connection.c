@@ -1021,8 +1021,10 @@ process_generic_config (NMVpnConnection *connection,
 			const char *tmp = g_value_get_string (val);
 
 			/* Backwards compat with NM-openswan */
-			if (g_strcmp0 (tmp, "_none_") != 0)
+			if (g_strcmp0 (tmp, "_none_") != 0) {
 				priv->ip_iface = g_strdup (tmp);
+				g_object_notify (G_OBJECT (connection), NM_VPN_CONNECTION_IP_IFACE);
+			}
 		} else
 			LOG_INVALID_ARG (NM_VPN_PLUGIN_CONFIG_TUNDEV);
 	}
@@ -1030,6 +1032,7 @@ process_generic_config (NMVpnConnection *connection,
 	if (priv->ip_iface) {
 		/* Grab the interface index for address/routing operations */
 		priv->ip_ifindex = nm_platform_link_get_ifindex (priv->ip_iface);
+		g_object_notify (G_OBJECT (connection), NM_VPN_CONNECTION_IP_IFINDEX);
 		if (!priv->ip_ifindex) {
 			nm_log_err (LOGD_VPN, "(%s): failed to look up VPN interface index", priv->ip_iface);
 			nm_vpn_connection_config_maybe_complete (connection, FALSE);
