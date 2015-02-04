@@ -134,6 +134,24 @@ libnm_la_LDFLAGS = -Wl,--version-script=$(SYMBOL_VIS_FILE) \
 
 ###
 
+pkglib_LTLIBRARIES = libnm-core-private.la
+
+libnm_core_private_la_SOURCES = \
+	libnm-core.c
+
+libnm_core_private_la_LDFLAGS = \
+	-Wl,--filter=libnm.so \
+	-avoid-version
+
+libnm-core.c: $(top_builddir)/libnm-core/.libs/libnm-core.a
+	$(AM_V_GEN) (echo '#pragma GCC diagnostic ignored "-Wmissing-prototypes"' > $@ && \
+	  echo "#include <glib.h>" >> $@ && \
+	  nm $< | awk '$$2 == "T" && $$3 ~ /^_*nm/ { print "void " $$3 "(void) { g_assert_not_reached (); }" }' >> $@) || rm -f $@
+
+CLEANFILES = libnm-core.c
+
+###
+
 BUILT_SOURCES = $(GLIB_GENERATED)
 
 pkgconfigdir = $(libdir)/pkgconfig
@@ -143,7 +161,7 @@ DISTCLEANFILES = libnm.pc
 
 EXTRA_DIST = libnm.pc.in libnm.ver
 
-CLEANFILES = $(BUILT_SOURCES)
+CLEANFILES += $(BUILT_SOURCES)
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =

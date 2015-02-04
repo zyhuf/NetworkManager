@@ -429,7 +429,7 @@ libNetworkManager_la_SOURCES = \
 	$(glue_sources)
 
 libNetworkManager_la_LIBADD = \
-	$(top_builddir)/libnm-core/libnm-core.la \
+	$(top_builddir)/libnm/libnm-core-private.la \
 	libsystemd-dhcp.la \
 	$(DBUS_LIBS) \
 	$(GLIB_LIBS) \
@@ -492,7 +492,7 @@ libnm_iface_helper_la_SOURCES += \
 endif
 
 libnm_iface_helper_la_LIBADD = \
-	$(top_builddir)/libnm-core/libnm-core.la \
+	$(top_builddir)/libnm/libnm-core-private.la \
 	libsystemd-dhcp.la \
 	$(DBUS_LIBS) \
 	$(GLIB_LIBS) \
@@ -512,7 +512,7 @@ nm_iface_helper_SOURCES = \
 	main-utils.h
 
 nm_iface_helper_LDADD = \
-	$(top_builddir)/libnm-core/libnm-core.la \
+	$(top_builddir)/libnm/libnm-core-private.la \
 	libsystemd-dhcp.la \
 	libnm-iface-helper.la \
 	$(DBUS_LIBS) \

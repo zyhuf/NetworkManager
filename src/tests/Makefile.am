@@ -102,7 +102,7 @@ check-local:
 	@for t in bond bridge ethernet gre infiniband macvlan tun veth vlan vxlan; do \
 		# Ensure the device subclass factory registration constructors exist \
 		# which could inadvertently break if src/Makefile.am gets changed \
-		if ! LC_ALL=C nm $(top_builddir)/src/NetworkManager | LC_ALL=C grep -q "register_device_factory_internal_$$t" ; then \
+		if ! LC_ALL=C nm $(top_builddir)/src/.libs/NetworkManager | LC_ALL=C grep -q "register_device_factory_internal_$$t" ; then \
 			echo "Testing device factory symbols... FAILED" ; \
 			exit 1 ; \
 		fi \

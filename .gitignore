@@ -163,6 +163,7 @@ valgrind-*.log
 /libnm-util/tests/test-setting-8021x
 /libnm-util/tests/test-setting-dcb
 
+/libnm/libnm-core.c
 /libnm/nm-ifcfg-rh-docs.xml
 /libnm/nm-keyfile-docs.xml
 /libnm/nm-property-docs.xml

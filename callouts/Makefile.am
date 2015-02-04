@@ -45,7 +45,7 @@ nm_dispatcher_SOURCES = \
 	nm-dispatcher-utils.h
 
 nm_dispatcher_LDADD = \
-	$(top_builddir)/libnm/libnm.la \
+	$(top_builddir)/libnm/libnm-core-private.la \
 	libnmdbus-dispatcher.la \
 	$(GLIB_LIBS)
 
@@ -83,7 +83,7 @@ libtest_dispatcher_envp_la_CPPFLAGS = \
 	$(AM_CPPFLAGS)
 
 libtest_dispatcher_envp_la_LIBADD = \
-	$(top_builddir)/libnm/libnm.la \
+	$(top_builddir)/libnm/libnm-core-private.la \
 	$(GLIB_LIBS)
 
 
