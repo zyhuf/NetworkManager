@@ -48,4 +48,44 @@ char **     _nm_utils_ptrarray_to_strv (GPtrArray *ptrarray);
 
 char *      _nm_utils_hwaddr_canonical_or_invalid (const char *mac, gssize length);
 
+void _nm_dbus_errors_init (void);
+
+extern gboolean _nm_utils_is_manager_process;
+
+guint32 _nm_setting_get_setting_priority (NMSetting *setting);
+gboolean _nm_setting_get_property (NMSetting *setting, const char *name, GValue *value);
+
+GSList *_nm_utils_hash_values_to_slist (GHashTable *hash);
+
+GHashTable *_nm_utils_copy_strdict (GHashTable *strdict);
+GPtrArray *_nm_utils_copy_slist_to_array (const GSList *list,
+                                          NMUtilsCopyFunc copy_func,
+                                          GDestroyNotify unref_func);
+GSList *_nm_utils_copy_array_to_slist (const GPtrArray *array,
+                                       NMUtilsCopyFunc copy_func);
+GPtrArray *_nm_utils_copy_array (const GPtrArray *array,
+                                 NMUtilsCopyFunc copy_func,
+                                 GDestroyNotify free_func);
+GPtrArray *_nm_utils_copy_object_array (const GPtrArray *array);
+
+gboolean _nm_utils_string_in_list (const char *str,
+                                   const char **valid_strings);
+
+char **_nm_utils_strsplit_set (const char *str,
+                               const char *delimiters,
+                               int max_tokens);
+
+char *_nm_utils_uuid_generate_from_string (const char *s,
+                                           gssize slen,
+                                           int uuid_type,
+                                           gpointer type_args);
+
+GByteArray *_nm_utils_rsa_key_encrypt (const guint8 *data,
+                                       gsize len,
+                                       const char *in_password,
+                                       char **out_password,
+                                       GError **error);
+
+void _nm_utils_set_is_manager_process (gboolean is_manager);
+
 #endif

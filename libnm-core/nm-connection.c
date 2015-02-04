@@ -29,7 +29,6 @@
 #include "nm-connection-private.h"
 #include "nm-utils.h"
 #include "nm-setting-private.h"
-#include "nm-core-internal.h"
 
 /**
  * SECTION:nm-connection

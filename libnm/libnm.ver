@@ -848,6 +848,7 @@ local:
 
 libnm_1_2_0 {
 global:
+	_nm_core_internal_functions_get;
 	nm_utils_bond_mode_int_to_string;
 	nm_utils_bond_mode_string_to_int;
 } libnm_1_0_0;

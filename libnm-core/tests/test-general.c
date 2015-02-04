@@ -417,9 +417,9 @@ test_setting_ip4_config_labels (void)
 	 */
 	conn = nmtst_create_minimal_connection ("label test", NULL, NM_SETTING_WIRED_SETTING_NAME, NULL);
 	nm_connection_add_setting (conn, NM_SETTING (s_ip4));
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 	dict = nm_connection_to_dbus (conn, NM_CONNECTION_SERIALIZE_ALL);
-	_nm_utils_is_manager_process = FALSE;
+	_nm_utils_set_is_manager_process (FALSE);
 	g_object_unref (conn);
 
 	setting_dict = g_variant_lookup_value (dict, NM_SETTING_IP4_CONFIG_SETTING_NAME, NM_VARIANT_TYPE_SETTING);
@@ -593,9 +593,9 @@ test_setting_ip4_config_address_data (void)
 	g_variant_unref (dict);
 
 	/* The daemon-side serialization should include both 'addresses' and 'address-data' */
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 	dict = nm_connection_to_dbus (conn, NM_CONNECTION_SERIALIZE_ALL);
-	_nm_utils_is_manager_process = FALSE;
+	_nm_utils_set_is_manager_process (FALSE);
 
 	setting_dict = g_variant_lookup_value (dict, NM_SETTING_IP4_CONFIG_SETTING_NAME, NM_VARIANT_TYPE_SETTING);
 	g_assert (setting_dict != NULL);
@@ -627,9 +627,9 @@ test_setting_ip4_config_address_data (void)
 	g_assert_cmpint (g_variant_get_int32 (value), ==, 42);
 
 	/* But on the server side, 'addresses' will have precedence. */
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 	conn = nm_simple_connection_new_from_dbus (dict, &error);
-	_nm_utils_is_manager_process = FALSE;
+	_nm_utils_set_is_manager_process (FALSE);
 	g_assert_no_error (error);
 	g_variant_unref (dict);
 
@@ -3761,9 +3761,9 @@ test_setting_ip4_gateway (void)
 	nm_setting_ip_config_add_address (s_ip4, addr);
 	nm_ip_address_unref (addr);
 
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 	conn_dict = nm_connection_to_dbus (conn, NM_CONNECTION_SERIALIZE_ALL);
-	_nm_utils_is_manager_process = FALSE;
+	_nm_utils_set_is_manager_process (FALSE);
 	g_object_unref (conn);
 
 	ip4_dict = g_variant_lookup_value (conn_dict, NM_SETTING_IP4_CONFIG_SETTING_NAME, NM_VARIANT_TYPE_SETTING);
@@ -3868,9 +3868,9 @@ test_setting_ip6_gateway (void)
 	nm_setting_ip_config_add_address (s_ip6, addr);
 	nm_ip_address_unref (addr);
 
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 	conn_dict = nm_connection_to_dbus (conn, NM_CONNECTION_SERIALIZE_ALL);
-	_nm_utils_is_manager_process = FALSE;
+	_nm_utils_set_is_manager_process (FALSE);
 	g_object_unref (conn);
 
 	ip6_dict = g_variant_lookup_value (conn_dict, NM_SETTING_IP6_CONFIG_SETTING_NAME, NM_VARIANT_TYPE_SETTING);

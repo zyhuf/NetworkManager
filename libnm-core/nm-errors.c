@@ -27,7 +27,7 @@
 #include "nm-glib-compat.h"
 #include "nm-dbus-interface.h"
 #include "nm-vpn-dbus-interface.h"
-#include "nm-core-internal.h"
+#include "nm-utils-private.h"
 
 G_DEFINE_QUARK (nm-agent-manager-error-quark, nm_agent_manager_error)
 G_DEFINE_QUARK (nm-connection-error-quark, nm_connection_error)

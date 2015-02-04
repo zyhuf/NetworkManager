@@ -220,7 +220,7 @@ main (int argc, char *argv[])
 		{NULL}
 	};
 
-	_nm_utils_is_manager_process = TRUE;
+	_nm_utils_set_is_manager_process (TRUE);
 
 	main_loop = g_main_loop_new (NULL, FALSE);
 

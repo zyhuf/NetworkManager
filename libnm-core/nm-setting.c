@@ -29,7 +29,6 @@
 #include "nm-setting.h"
 #include "nm-setting-private.h"
 #include "nm-utils.h"
-#include "nm-core-internal.h"
 #include "nm-utils-private.h"
 #include "nm-property-compare.h"
 

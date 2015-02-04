@@ -246,6 +246,34 @@ _nm_utils_init (void)
 
 gboolean _nm_utils_is_manager_process;
 
+void
+_nm_utils_set_is_manager_process (gboolean is_manager)
+{
+	_nm_utils_is_manager_process = is_manager;
+}
+
+static NMCoreInternalFunctions internal_functions = {
+	._nm_setting_get_setting_priority = _nm_setting_get_setting_priority,
+	._nm_setting_get_property = _nm_setting_get_property,
+	._nm_utils_hash_values_to_slist = _nm_utils_hash_values_to_slist,
+	._nm_utils_copy_strdict = _nm_utils_copy_strdict,
+	._nm_utils_copy_slist_to_array = _nm_utils_copy_slist_to_array,
+	._nm_utils_copy_array_to_slist = _nm_utils_copy_array_to_slist,
+	._nm_utils_copy_array = _nm_utils_copy_array,
+	._nm_utils_copy_object_array = _nm_utils_copy_object_array,
+	._nm_utils_string_in_list = _nm_utils_string_in_list,
+	._nm_utils_strsplit_set = _nm_utils_strsplit_set,
+	._nm_utils_uuid_generate_from_string = _nm_utils_uuid_generate_from_string,
+	._nm_utils_rsa_key_encrypt = _nm_utils_rsa_key_encrypt,
+	._nm_utils_set_is_manager_process = _nm_utils_set_is_manager_process,
+};
+
+NMCoreInternalFunctions *
+_nm_core_internal_functions_get (void)
+{
+	return &internal_functions;
+}
+
 /* ssid helpers */
 
 /**
