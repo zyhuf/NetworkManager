@@ -3990,7 +3990,7 @@ _test_uuid (int uuid_type, const char *expected_uuid, const char *str, gssize sl
 {
 	gs_free char *uuid_test = NULL;
 
-	uuid_test = nm_utils_uuid_generate_from_string (str, slen, uuid_type, type_args);
+	uuid_test = _nm_utils_uuid_generate_from_string (str, slen, uuid_type, type_args);
 
 	g_assert (uuid_test);
 	g_assert (nm_utils_is_uuid (uuid_test));

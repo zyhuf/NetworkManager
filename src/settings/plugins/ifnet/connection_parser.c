@@ -1629,7 +1629,7 @@ ifnet_update_connection_from_config_block (const char *conn_name,
 	id = connection_id_from_ifnet_name (conn_name);
 	uuid = g_strdup (ifnet_get_data (conn_name, "uuid"));
 	if (!uuid)
-		uuid = nm_utils_uuid_generate_from_string (id, -1, NM_UTILS_UUID_TYPE_LEGACY, NULL);
+		uuid = _nm_utils_uuid_generate_from_string (id, -1, NM_UTILS_UUID_TYPE_LEGACY, NULL);
 
 	g_object_set (setting,
 	              NM_SETTING_CONNECTION_TYPE, type,
@@ -1911,8 +1911,8 @@ write_8021x_certs (NMSetting8021x *s_8021x,
 
 		/* Encrypt the unencrypted private key with the fake password */
 		tmp_enc_key =
-		    nm_utils_rsa_key_encrypt (g_bytes_get_data (blob, NULL), g_bytes_get_size (blob),
-					      password, &generated_pw, error);
+		    _nm_utils_rsa_key_encrypt (g_bytes_get_data (blob, NULL), g_bytes_get_size (blob),
+		                               password, &generated_pw, error);
 		if (!tmp_enc_key)
 			goto out;
 

@@ -269,7 +269,7 @@ test_encrypt_private_key (const char *path,
 	g_assert_cmpint (key_type, ==, NM_CRYPTO_KEY_TYPE_RSA);
 
 	/* Now re-encrypt the private key */
-	encrypted = nm_utils_rsa_key_encrypt (array->data, array->len, password, NULL, &error);
+	encrypted = _nm_utils_rsa_key_encrypt (array->data, array->len, password, NULL, &error);
 	g_assert_no_error (error);
 	g_assert (encrypted != NULL);
 

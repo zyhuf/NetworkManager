@@ -1957,7 +1957,7 @@ nm_utils_uuid_generate (void)
 }
 
 /**
- * nm_utils_uuid_generate_from_string:
+ * _nm_utils_uuid_generate_from_string:
  * @s: a string to use as the seed for the UUID
  * @slen: if negative, treat @s as zero terminated C string.
  *   Otherwise, assume the length as given (and allow @s to be
@@ -1971,7 +1971,7 @@ nm_utils_uuid_generate (void)
  * object's #NMSettingConnection:id: property
  **/
 char *
-nm_utils_uuid_generate_from_string (const char *s, gssize slen, int uuid_type, gpointer type_args)
+_nm_utils_uuid_generate_from_string (const char *s, gssize slen, int uuid_type, gpointer type_args)
 {
 	uuid_t uuid;
 	char *buf;
@@ -2011,7 +2011,7 @@ nm_utils_uuid_generate_from_string (const char *s, gssize slen, int uuid_type, g
 }
 
 /**
- * nm_utils_rsa_key_encrypt:
+ * _nm_utils_rsa_key_encrypt:
  * @data: (array length=len): RSA private key data to be encrypted
  * @len: length of @data
  * @in_password: (allow-none): existing password to use, if any
@@ -2027,11 +2027,11 @@ nm_utils_uuid_generate_from_string (const char *s, gssize slen, int uuid_type, g
  * to a PEM-formatted certificate/private key file.
  **/
 GByteArray *
-nm_utils_rsa_key_encrypt (const guint8 *data,
-                          gsize len,
-                          const char *in_password,
-                          char **out_password,
-                          GError **error)
+_nm_utils_rsa_key_encrypt (const guint8 *data,
+                           gsize len,
+                           const char *in_password,
+                           char **out_password,
+                           GError **error)
 {
 	char salt[16];
 	int salt_len;

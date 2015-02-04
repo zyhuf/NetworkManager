@@ -1776,7 +1776,7 @@ nm_utils_uuid_generate_from_strings (const char *string1, ...)
 	char *uuid;
 
 	if (!string1)
-		return nm_utils_uuid_generate_from_string (NULL, 0, NM_UTILS_UUID_TYPE_VARIANT3, NM_UTILS_UUID_NS);
+		return _nm_utils_uuid_generate_from_string (NULL, 0, NM_UTILS_UUID_TYPE_VARIANT3, NM_UTILS_UUID_NS);
 
 	str = g_string_sized_new (120); /* effectively allocates power of 2 (128)*/
 
@@ -1790,7 +1790,7 @@ nm_utils_uuid_generate_from_strings (const char *string1, ...)
 	}
 	va_end (args);
 
-	uuid = nm_utils_uuid_generate_from_string (str->str, str->len, NM_UTILS_UUID_TYPE_VARIANT3, NM_UTILS_UUID_NS);
+	uuid = _nm_utils_uuid_generate_from_string (str->str, str->len, NM_UTILS_UUID_TYPE_VARIANT3, NM_UTILS_UUID_NS);
 
 	g_string_free (str, TRUE);
 	return uuid;
