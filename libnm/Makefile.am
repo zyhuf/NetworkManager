@@ -139,14 +139,15 @@ pkglib_LTLIBRARIES = libnm-core-private.la
 libnm_core_private_la_SOURCES = \
 	libnm-core.c
 
+libnm_core_private_la_CFLAGS =
+
 libnm_core_private_la_LDFLAGS = \
 	-Wl,--filter=libnm.so \
 	-avoid-version
 
 libnm-core.c: $(top_builddir)/libnm-core/.libs/libnm-core.a
-	$(AM_V_GEN) (echo '#pragma GCC diagnostic ignored "-Wmissing-prototypes"' > $@ && \
-	  echo "#include <glib.h>" >> $@ && \
-	  nm $< | awk '$$2 == "T" && $$3 ~ /^_*nm/ { print "void " $$3 "(void) { g_assert_not_reached (); }" }' >> $@) || rm -f $@
+	$(AM_V_GEN) (echo "#include <signal.h>" > $@ && \
+	  nm $< | awk '$$2 == "T" && $$3 ~ /^_?nm_/ { print "void "$$3"(void);"; print "void "$$3"(void) { raise (SIGABRT); }" }' >> $@) || rm -f $@
 
 CLEANFILES = libnm-core.c
 
