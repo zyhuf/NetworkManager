@@ -434,7 +434,7 @@ nm_connectivity_class_init (NMConnectivityClass *klass)
 		 g_param_spec_uint (NM_CONNECTIVITY_INTERVAL,
 		                    "Interval",
 		                    "Connectivity check interval in seconds",
-		                    0, G_MAXUINT, 300,
+		                    0, G_MAXUINT, NM_CONFIG_DEFAULT_CONNECTIVITY_INTERVAL,
 		                    G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property

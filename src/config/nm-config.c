@@ -455,6 +455,7 @@ nm_config_new (GError **error)
 	char *value;
 	int i;
 	GString *config_description;
+	char *interval;
 
 	g_assert (!singleton);
 	singleton = NM_CONFIG (g_object_new (NM_TYPE_CONFIG, NULL));
@@ -550,7 +551,13 @@ nm_config_new (GError **error)
 
 	if (cli_connectivity_interval >= 0)
 		g_key_file_set_integer (priv->keyfile, "connectivity", "interval", cli_connectivity_interval);
-	priv->connectivity_interval = g_key_file_get_integer (priv->keyfile, "connectivity", "interval", NULL);
+	/* On missing config value, fallback to 300. On invalid value, disable connectivity checking by setting
+	 * the interval to zero. */
+	interval = g_key_file_get_value (priv->keyfile, "connectivity", "interval", NULL);
+	priv->connectivity_interval = interval
+	    ? nm_utils_ascii_str_to_int64 (interval, 10, 0, G_MAXUINT, 0)
+	    : NM_CONFIG_DEFAULT_CONNECTIVITY_INTERVAL;
+	g_free (interval);
 
 	if (cli_connectivity_response && cli_connectivity_response[0])
 		g_key_file_set_value (priv->keyfile, "connectivity", "response", cli_connectivity_response);
