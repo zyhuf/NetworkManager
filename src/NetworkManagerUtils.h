@@ -53,7 +53,7 @@ nm_utils_ip6_route_metric_normalize (guint32 metric)
 	return metric ? metric : 1024 /*NM_PLATFORM_ROUTE_METRIC_DEFAULT*/;
 }
 
-int nm_spawn_process (const char *args);
+int nm_spawn_process (const char *args, GError **error);
 
 /* macro to return strlen() of a compile time string. */
 #define STRLEN(str)     ( sizeof ("" str) - 1 )
