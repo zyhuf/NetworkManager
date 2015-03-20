@@ -946,7 +946,7 @@ udev_get_driver (NMPlatform *platform, GUdevDevice *device, int ifindex)
 
 	driver = g_udev_device_get_driver (device);
 	if (driver)
-		return driver;
+		return g_intern_string (driver);
 
 	/* Try the parent */
 	parent = g_udev_device_get_parent (device);
