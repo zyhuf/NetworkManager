@@ -48,7 +48,7 @@ test_defname_no_connections (void)
 {
 	gs_free char *name = NULL;
 
-	name = nm_device_ethernet_utils_get_default_wired_name (NULL);
+	name = nm_device_ethernet_utils_get_default_wired_name (NULL, NULL);
 	g_assert_cmpstr (name, ==, "Wired connection 1");
 }
 
@@ -64,7 +64,7 @@ test_defname_no_conflict (void)
 	list = g_slist_append (list, _new_connection ("work wifi"));
 	list = g_slist_append (list, _new_connection ("random gsm connection"));
 
-	name = nm_device_ethernet_utils_get_default_wired_name (list);
+	name = nm_device_ethernet_utils_get_default_wired_name (NULL, list);
 	g_assert_cmpstr (name, ==, "Wired connection 1");
 
 	g_slist_free_full (list, g_object_unref);
@@ -82,7 +82,7 @@ test_defname_conflict (void)
 	list = g_slist_append (list, _new_connection ("Wired connection 1"));
 	list = g_slist_append (list, _new_connection ("random gsm connection"));
 
-	name = nm_device_ethernet_utils_get_default_wired_name (list);
+	name = nm_device_ethernet_utils_get_default_wired_name (NULL, list);
 	g_assert_cmpstr (name, ==, "Wired connection 2");
 
 	g_slist_free_full (list, g_object_unref);
@@ -104,7 +104,7 @@ test_defname_multiple_conflicts (void)
 	list = g_slist_append (list, _new_connection ("work wifi"));
 	list = g_slist_append (list, _new_connection ("a vpn"));
 
-	name = nm_device_ethernet_utils_get_default_wired_name (list);
+	name = nm_device_ethernet_utils_get_default_wired_name (NULL, list);
 	g_assert_cmpstr (name, ==, "Wired connection 4");
 
 	g_slist_free_full (list, g_object_unref);

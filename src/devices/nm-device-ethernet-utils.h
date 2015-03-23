@@ -20,7 +20,8 @@
 #define __NETWORKMANAGER_DEVICE_ETHERNET_UTILS_H__
 
 #include <glib.h>
+#include "nm-device.h"
 
-char *nm_device_ethernet_utils_get_default_wired_name (const GSList *connections);
+char *nm_device_ethernet_utils_get_default_wired_name (NMDevice *device, const GSList *connections);
 
 #endif  /* NETWORKMANAGER_DEVICE_ETHERNET_UTILS_H */

@@ -1475,7 +1475,7 @@ new_default_connection (NMDevice *self)
 	nm_connection_add_setting (connection, setting);
 
 	connections = nm_connection_provider_get_connections (nm_connection_provider_get ());
-	defname = nm_device_ethernet_utils_get_default_wired_name (connections);
+	defname = nm_device_ethernet_utils_get_default_wired_name (self, connections);
 	uuid = nm_utils_uuid_generate ();
 	g_object_set (setting,
 	              NM_SETTING_CONNECTION_ID, defname,

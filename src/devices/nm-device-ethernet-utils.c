@@ -26,18 +26,25 @@
 #include "nm-device-ethernet-utils.h"
 
 char *
-nm_device_ethernet_utils_get_default_wired_name (const GSList *connections)
+nm_device_ethernet_utils_get_default_wired_name (NMDevice *device, const GSList *connections)
 {
 	const GSList *iter;
 	char *cname = NULL;
 	int i = 0;
+	int port = device ? nm_device_get_port (device) : -1;
+	int vf = device ? nm_device_get_vf (device) : -1;
 
 	/* Find the next available unique connection name */
 	while (!cname && (i++ < 10000)) {
 		char *temp;
 		gboolean found = FALSE;
 
-		temp = g_strdup_printf (_("Wired connection %d"), i);
+		if (port >= 0 && vf >= 0) {
+			temp = g_strdup_printf (_("Wired port %d, function %d"), port, vf);
+			port = vf = -1;
+		} else {
+			temp = g_strdup_printf (_("Wired connection %d"), i);
+		}
 		for (iter = connections; iter; iter = iter->next) {
 			if (g_strcmp0 (nm_connection_get_id (NM_CONNECTION (iter->data)), temp) == 0) {
 				found = TRUE;
