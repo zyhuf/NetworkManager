@@ -265,6 +265,7 @@ const char *	nm_device_get_driver	(NMDevice *dev);
 const char *	nm_device_get_driver_version	(NMDevice *dev);
 const char *	nm_device_get_type_desc (NMDevice *dev);
 NMDeviceType	nm_device_get_device_type	(NMDevice *dev);
+int		nm_device_get_port	(NMDevice *dev);
 int		nm_device_get_vf	(NMDevice *dev);
 
 int			nm_device_get_priority (NMDevice *dev);

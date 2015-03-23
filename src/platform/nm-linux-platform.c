@@ -939,6 +939,17 @@ link_extract_type (NMPlatform *platform, struct rtnl_link *rtnllink, const char 
 }
 
 static int
+ethtool_get_port (const char *ifname)
+{
+	struct ethtool_cmd edata = { .cmd = ETHTOOL_GSET };
+
+	if (!ethtool_get (ifname, &edata))
+		return -1;
+
+	return edata.phy_address;
+}
+
+static int
 udev_get_vf (NMPlatform *platform, GUdevDevice *device)
 {
         NMLinuxPlatformPrivate *priv = NM_LINUX_PLATFORM_GET_PRIVATE (platform);
@@ -1048,6 +1059,7 @@ init_link (NMPlatform *platform, NMPlatformLink *info, struct rtnl_link *rtnllin
 	info->master = rtnl_link_get_master (rtnllink);
 	info->parent = rtnl_link_get_link (rtnllink);
 	info->mtu = rtnl_link_get_mtu (rtnllink);
+	info->port = ethtool_get_port (info->name);
 	info->vf = -1;
 
 	udev_device = g_hash_table_lookup (priv->udev_devices, GINT_TO_POINTER (info->ifindex));
