@@ -201,6 +201,7 @@ typedef struct {
 	char *        hw_addr;
 	guint         hw_addr_len;
 	char *        physical_port_id;
+	int           vf;
 
 	NMUnmanagedFlags        unmanaged_flags;
 	gboolean                is_nm_owned; /* whether the device is a device owned and created by NM */
@@ -656,6 +657,14 @@ nm_device_get_device_type (NMDevice *self)
 	g_return_val_if_fail (NM_IS_DEVICE (self), NM_DEVICE_TYPE_UNKNOWN);
 
 	return NM_DEVICE_GET_PRIVATE (self)->type;
+}
+
+int
+nm_device_get_vf (NMDevice *self)
+{
+	g_return_val_if_fail (NM_IS_DEVICE (self), -1);
+
+	return NM_DEVICE_GET_PRIVATE (self)->vf;
 }
 
 
@@ -8614,6 +8623,7 @@ set_property (GObject *object, guint prop_id,
 			priv->up = platform_device->up;
 			g_free (priv->driver);
 			priv->driver = g_strdup (platform_device->driver);
+			priv->vf = platform_device->vf;
 		}
 		break;
 	case PROP_UDI:

@@ -128,6 +128,7 @@ link_init (NMFakePlatformLink *device, int ifindex, int type, const char *name)
 	default:
 		device->link.arp = TRUE;
 	}
+	device->link.vf = -1;
 	device->address = NULL;
 }
 

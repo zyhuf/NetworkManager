@@ -938,6 +938,50 @@ link_extract_type (NMPlatform *platform, struct rtnl_link *rtnllink, const char 
 	return_type (NM_LINK_TYPE_UNKNOWN, type);
 }
 
+static int
+udev_get_vf (NMPlatform *platform, GUdevDevice *device)
+{
+        NMLinuxPlatformPrivate *priv = NM_LINUX_PLATFORM_GET_PRIVATE (platform);
+	GUdevDevice *parent = g_udev_device_get_parent (device);
+	char *path;
+	int ret = -1;
+	int i, dot;
+
+	if (!parent)
+		return ret;
+
+	if (g_strcmp0 (g_udev_device_get_subsystem (parent), "pci")) {
+		g_clear_object (&parent);
+		return ret;
+	}
+
+	/* Determine the function number */
+	path = (char *)g_udev_device_get_sysfs_path (parent);
+	for (dot = i = 0; path[i]; i++)
+		if (path[i] == '.')
+			dot = i;
+	g_return_val_if_fail (dot, -1);
+	ret = strtol (&path[dot + 1], NULL, 10);
+
+	/* If we're not function 0, locate function 0 device */
+	if (ret) {
+		path = g_strdup (path);
+		g_clear_object (&parent);
+		path[dot + 1] = '0';
+		path[dot + 2] = '\0';
+		parent = g_udev_client_query_by_sysfs_path (priv->udev_client, path);
+		g_free (path);
+		g_return_val_if_fail (parent, -1);
+	}
+
+	/* If the function 0 of the parent device supports SR-IOV, this is a vf */
+	if (!g_udev_device_get_sysfs_attr (parent, "sriov_totalvfs"))
+		ret = -1;
+	g_clear_object (&parent);
+
+	return ret;
+}
+
 static const char *
 udev_get_driver (NMPlatform *platform, GUdevDevice *device, int ifindex)
 {
@@ -1004,9 +1048,11 @@ init_link (NMPlatform *platform, NMPlatformLink *info, struct rtnl_link *rtnllin
 	info->master = rtnl_link_get_master (rtnllink);
 	info->parent = rtnl_link_get_link (rtnllink);
 	info->mtu = rtnl_link_get_mtu (rtnllink);
+	info->vf = -1;
 
 	udev_device = g_hash_table_lookup (priv->udev_devices, GINT_TO_POINTER (info->ifindex));
 	if (udev_device) {
+		info->vf = udev_get_vf (platform, udev_device);
 		info->driver = udev_get_driver (platform, udev_device, info->ifindex);
 		if (!info->driver)
 			info->driver = g_intern_string (rtnl_link_get_type (rtnllink));
