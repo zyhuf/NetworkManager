@@ -1669,6 +1669,8 @@ supplicant_iface_scan_done_cb (NMSupplicantInterface *iface,
  *
  */
 
+#define WPAS_REMOVED_TAG "supplicant-removed"
+
 static void
 try_fill_ssid_for_hidden_ap (NMAccessPoint *ap)
 {
@@ -1779,6 +1781,7 @@ merge_scanned_ap (NMDeviceWifi *self,
 		 * fake, since it clearly exists somewhere.
 		 */
 		nm_ap_set_fake (found_ap, FALSE);
+		g_object_set_data (G_OBJECT (found_ap), WPAS_REMOVED_TAG, NULL);
 	} else {
 		/* New entry in the list */
 		nm_log_dbg (LOGD_WIFI_SCAN, "(%s): adding new AP '%s' " MAC_FMT " (%p)",
@@ -1793,8 +1796,6 @@ merge_scanned_ap (NMDeviceWifi *self,
 		emit_ap_added_removed (self, ACCESS_POINT_ADDED, merge_ap, TRUE);
 	}
 }
-
-#define WPAS_REMOVED_TAG "supplicant-removed"
 
 static gboolean
 cull_scan_list (NMDeviceWifi *self)
@@ -1958,8 +1959,22 @@ supplicant_iface_bss_removed_cb (NMSupplicantInterface *iface,
 	g_return_if_fail (object_path != NULL);
 
 	ap = get_ap_by_supplicant_path (self, object_path);
-	if (ap)
+	if (ap) {
+		gint32 now = nm_utils_get_monotonic_timestamp_s ();
+		gint32 last_seen = nm_ap_get_last_seen (ap);
+
+		/* We don't know when the supplicant last saw the AP's beacons,
+		 * it could be two minutes or it could be 2 seconds.  Because the
+		 * supplicant doesn't send property change notifications if the
+		 * AP's other properties don't change, our last-seen time may be
+		 * much older the supplicant's, and the AP would be immediately
+		 * removed from the list on the next cleanup.  So update the
+		 * last-seen time to ensure the AP sticks around for at least
+		 * one more periodic scan.
+		 */
+		nm_ap_set_last_seen (ap, MAX (last_seen, now - SCAN_INTERVAL_MAX));
 		g_object_set_data (G_OBJECT (ap), WPAS_REMOVED_TAG, GUINT_TO_POINTER (TRUE));
+}
 }
 
 static void
