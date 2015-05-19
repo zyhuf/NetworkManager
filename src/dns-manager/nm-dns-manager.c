@@ -284,7 +284,7 @@ dispatch_netconfig (char **searches,
 	char *str;
 	GPid pid;
 	gint fd;
-	int ret;
+	int ret = 0;
 
 	pid = run_netconfig (error, &fd);
 	if (pid < 0)
@@ -330,11 +330,11 @@ dispatch_netconfig (char **searches,
 			/* child already exited */
 			ret = pid;
 		} else {
-			g_set_error_literal (error,
-			                     NM_MANAGER_ERROR,
-			                     NM_MANAGER_ERROR_FAILED,
-			                     "Error waiting for netconfig to exit: %s",
-			                     strerror (errno));
+			g_set_error (error,
+			             NM_DNS_MANAGER_ERROR,
+			             NM_DNS_MANAGER_ERROR_SYSTEM,
+			             "Error waiting for netconfig to exit: %s",
+			             strerror (errno));
 		}
 	}
 
@@ -416,8 +416,8 @@ dispatch_resolvconf (char **searches,
 
 	if (!g_file_test (RESOLVCONF_PATH, G_FILE_TEST_IS_EXECUTABLE)) {
 		g_set_error_literal (error,
-		                     NM_MANAGER_ERROR,
-		                     NM_MANAGER_ERROR_FAILED,
+		                     NM_DNS_MANAGER_ERROR,
+		                     NM_DNS_MANAGER_ERROR_SYSTEM,
 		                     RESOLVCONF_PATH " is not executable");
 		return FALSE;
 	}
