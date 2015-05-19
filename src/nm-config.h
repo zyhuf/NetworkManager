@@ -24,6 +24,8 @@
 #include <glib.h>
 #include <glib-object.h>
 
+#define NM_CONFIG_DEFAULT_CONNECTIVITY_INTERVAL 300
+
 typedef struct NMConfig NMConfig;
 
 typedef enum {
