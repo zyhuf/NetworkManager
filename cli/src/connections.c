@@ -731,20 +731,17 @@ find_active_connection (const GPtrArray *active_cons,
 	const char *path, *a_path, *path_num, *a_path_num;
 	const char *id;
 	const char *uuid;
-	NMConnection *con;
 	NMActiveConnection *found = NULL;
 
 	for (i = start; active_cons && (i < active_cons->len); i++) {
 		NMActiveConnection *candidate = g_ptr_array_index (active_cons, i);
 
+		id = nm_active_connection_get_id (candidate);
+		uuid = nm_active_connection_get_uuid (candidate);
 		path = nm_active_connection_get_connection (candidate);
 		a_path = nm_object_get_path (NM_OBJECT (candidate));
-		uuid = nm_active_connection_get_uuid (candidate);
 		path_num = path ? strrchr (path, '/') + 1 : NULL;
 		a_path_num = a_path ? strrchr (a_path, '/') + 1 : NULL;
-
-		con = get_connection_for_active (cons, candidate);
-		id = nm_connection_get_id (con);
 
 		/* When filter_type is NULL, compare connection ID (filter_val)
 		 * against all types. Otherwise, only compare against the specific
