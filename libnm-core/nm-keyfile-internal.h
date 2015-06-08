@@ -93,6 +93,7 @@ NMConnection *nm_keyfile_read (GKeyFile *keyfile,
                                const char *base_dir,
                                NMKeyfileReadHandler handler,
                                void *user_data,
+                               GHashTable **out_meta_data,
                                GError **error);
 
 /*********************************************************/
@@ -152,6 +153,7 @@ typedef struct {
 
 
 GKeyFile *nm_keyfile_write (NMConnection *connection,
+                            GHashTable *meta_data,
                             NMKeyfileWriteHandler handler,
                             void *user_data,
                             GError **error);
