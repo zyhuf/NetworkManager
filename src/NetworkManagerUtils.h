@@ -323,4 +323,12 @@ void nm_utils_g_value_set_object_path (GValue *value, gpointer object);
 void nm_utils_g_value_set_object_path_array (GValue *value, GSList *objects);
 void nm_utils_g_value_set_strv (GValue *value, GPtrArray *strings);
 
+typedef const char *NMRefString;
+NMRefString nm_ref_string_new (const char *str);
+NMRefString nm_ref_string_ref (NMRefString nmstr);
+void nm_ref_string_unref (NMRefString nmstr);
+NMRefString nm_ref_string_replace (NMRefString nmstr, const char *str);
+int nm_ref_string_cmp (NMRefString nmstr1, NMRefString nmstr2);
+gboolean nm_ref_string_equal (NMRefString nmstr1, NMRefString nmstr2);
+
 #endif /* __NETWORKMANAGER_UTILS_H__ */
