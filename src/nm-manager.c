@@ -90,8 +90,8 @@ typedef struct {
 	gboolean sw_enabled;
 	gboolean hw_enabled;
 	RfKillType rtype;
+	NMConfigRunStatePropertyType key;
 	const char *desc;
-	const char *key;
 	const char *prop;
 	const char *hw_prop;
 } RadioState;
@@ -1138,54 +1138,6 @@ system_hostname_changed_cb (NMSettings *settings,
 /*******************************************************************/
 /* General NMManager stuff                                         */
 /*******************************************************************/
-
-/* Store value into key-file; supported types: boolean, int, string */
-static gboolean
-write_value_to_state_file (const char *filename,
-                           const char *group,
-                           const char *key,
-                           GType value_type,
-                           gpointer value,
-                           GError **error)
-{
-	GKeyFile *key_file;
-	char *data;
-	gsize len = 0;
-	gboolean ret = FALSE;
-
-	g_return_val_if_fail (filename != NULL, FALSE);
-	g_return_val_if_fail (group != NULL, FALSE);
-	g_return_val_if_fail (key != NULL, FALSE);
-	g_return_val_if_fail (value_type == G_TYPE_BOOLEAN ||
-	                      value_type == G_TYPE_INT ||
-	                      value_type == G_TYPE_STRING,
-	                      FALSE);
-
-	key_file = g_key_file_new ();
-
-	g_key_file_set_list_separator (key_file, ',');
-	g_key_file_load_from_file (key_file, filename, G_KEY_FILE_KEEP_COMMENTS, NULL);
-	switch (value_type) {
-	case G_TYPE_BOOLEAN:
-		g_key_file_set_boolean (key_file, group, key, *((gboolean *) value));
-		break;
-	case G_TYPE_INT:
-		g_key_file_set_integer (key_file, group, key, *((gint *) value));
-		break;
-	case G_TYPE_STRING:
-		g_key_file_set_string (key_file, group, key, *((const gchar **) value));
-		break;
-	}
-
-	data = g_key_file_to_data (key_file, &len, NULL);
-	if (data) {
-		ret = g_file_set_contents (filename, data, len, error);
-		g_free (data);
-	}
-	g_key_file_free (key_file);
-
-	return ret;
-}
 
 static gboolean
 radio_enabled_for_rstate (RadioState *rstate, gboolean check_changeable)
@@ -3851,21 +3803,11 @@ static void
 _internal_enable (NMManager *self, gboolean enable)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	GError *err = NULL;
 
 	/* Update "NetworkingEnabled" key in state file */
-	if (priv->state_file) {
-		if (!write_value_to_state_file (priv->state_file,
-		                                "main", "NetworkingEnabled",
-		                                G_TYPE_BOOLEAN, (gpointer) &enable,
-		                                &err)) {
-			/* Not a hard error */
-			nm_log_warn (LOGD_SUSPEND, "writing to state file %s failed: (%d) %s.",
-			             priv->state_file,
-			             err ? err->code : -1,
-			             (err && err->message) ? err->message : "unknown");
-		}
-	}
+	nm_config_run_state_set (priv->config, TRUE, FALSE,
+	                         NM_CONFIG_RUN_STATE_PROPERTY_NETWORKING_ENABLED, enable,
+	                         0);
 
 	nm_log_info (LOGD_SUSPEND, "%s requested (sleeping: %s  enabled: %s)",
 	             enable ? "enable" : "disable",
@@ -4800,7 +4742,6 @@ manager_radio_user_toggled (NMManager *self,
                             gboolean enabled)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
-	GError *error = NULL;
 	gboolean old_enabled, new_enabled;
 
 	/* Don't touch devices if asleep/networking disabled */
@@ -4814,18 +4755,9 @@ manager_radio_user_toggled (NMManager *self,
 	}
 
 	/* Update enabled key in state file */
-	if (priv->state_file) {
-		if (!write_value_to_state_file (priv->state_file,
-		                                "main", rstate->key,
-		                                G_TYPE_BOOLEAN, (gpointer) &enabled,
-		                                &error)) {
-			nm_log_warn (LOGD_CORE, "writing to state file %s failed: (%d) %s.",
-			             priv->state_file,
-			             error ? error->code : -1,
-			             (error && error->message) ? error->message : "unknown");
-			g_clear_error (&error);
-		}
-	}
+	nm_config_run_state_set (priv->config, TRUE, FALSE,
+	                         rstate->key, enabled,
+	                         0);
 
 	/* When the user toggles the radio, their request should override any
 	 * daemon (like ModemManager) enabled state that can be changed.  For WWAN
@@ -4896,14 +4828,12 @@ nm_connection_provider_get (void)
 }
 
 NMManager *
-nm_manager_setup (const char *state_file,
-                  gboolean initial_net_enabled,
-                  gboolean initial_wifi_enabled,
-                  gboolean initial_wwan_enabled)
+nm_manager_setup (void)
 {
 	NMManager *self;
 	NMManagerPrivate *priv;
 	NMConfigData *config_data;
+	const NMConfigRunState *run_state;
 
 	/* Can only be called once */
 	g_assert (singleton_instance == NULL);
@@ -4953,12 +4883,12 @@ nm_manager_setup (const char *state_file,
 	g_signal_connect (priv->connectivity, "notify::" NM_CONNECTIVITY_STATE,
 	                  G_CALLBACK (connectivity_changed), self);
 
-	priv->state_file = g_strdup (state_file);
+	run_state = nm_config_run_state_get (priv->config);
 
-	priv->net_enabled = initial_net_enabled;
+	priv->net_enabled = run_state->net_enabled;
 
-	priv->radio_states[RFKILL_TYPE_WLAN].user_enabled = initial_wifi_enabled;
-	priv->radio_states[RFKILL_TYPE_WWAN].user_enabled = initial_wwan_enabled;
+	priv->radio_states[RFKILL_TYPE_WLAN].user_enabled = run_state->wifi_enabled;
+	priv->radio_states[RFKILL_TYPE_WWAN].user_enabled = run_state->wwan_enabled;
 
 	nm_exported_object_export (NM_EXPORTED_OBJECT (self));
 
@@ -4973,8 +4903,8 @@ nm_manager_setup (const char *state_file,
 	 * changes to the WirelessEnabled/WWANEnabled properties which toggle kernel
 	 * rfkill.
 	 */
-	rfkill_change (priv->radio_states[RFKILL_TYPE_WLAN].desc, RFKILL_TYPE_WLAN, initial_wifi_enabled);
-	rfkill_change (priv->radio_states[RFKILL_TYPE_WWAN].desc, RFKILL_TYPE_WWAN, initial_wwan_enabled);
+	rfkill_change (priv->radio_states[RFKILL_TYPE_WLAN].desc, RFKILL_TYPE_WLAN, run_state->wifi_enabled);
+	rfkill_change (priv->radio_states[RFKILL_TYPE_WWAN].desc, RFKILL_TYPE_WWAN, run_state->wwan_enabled);
 
 	nm_singleton_instance_register ();
 	nm_log_dbg (LOGD_CORE, "setup %s singleton (%p)", "NMManager", singleton_instance);
@@ -4993,14 +4923,14 @@ nm_manager_init (NMManager *manager)
 	memset (priv->radio_states, 0, sizeof (priv->radio_states));
 
 	priv->radio_states[RFKILL_TYPE_WLAN].user_enabled = TRUE;
-	priv->radio_states[RFKILL_TYPE_WLAN].key = "WirelessEnabled";
+	priv->radio_states[RFKILL_TYPE_WLAN].key = NM_CONFIG_RUN_STATE_PROPERTY_WIFI_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WLAN].prop = NM_MANAGER_WIRELESS_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WLAN].hw_prop = NM_MANAGER_WIRELESS_HARDWARE_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WLAN].desc = "WiFi";
 	priv->radio_states[RFKILL_TYPE_WLAN].rtype = RFKILL_TYPE_WLAN;
 
 	priv->radio_states[RFKILL_TYPE_WWAN].user_enabled = TRUE;
-	priv->radio_states[RFKILL_TYPE_WWAN].key = "WWANEnabled";
+	priv->radio_states[RFKILL_TYPE_WWAN].key = NM_CONFIG_RUN_STATE_PROPERTY_WWAN_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WWAN].prop = NM_MANAGER_WWAN_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WWAN].hw_prop = NM_MANAGER_WWAN_HARDWARE_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WWAN].desc = "WWAN";
@@ -5249,7 +5179,6 @@ dispose (GObject *object)
 		g_clear_object (&priv->settings);
 	}
 
-	g_free (priv->state_file);
 	g_clear_object (&priv->vpn_manager);
 
 	/* Unregister property filter */

@@ -39,12 +39,27 @@
 #define DEFAULT_SYSTEM_CONFIG_DIR       NMLIBDIR  "/conf.d"
 #define DEFAULT_NO_AUTO_DEFAULT_FILE    NMSTATEDIR "/no-auto-default.state"
 #define DEFAULT_INTERN_CONFIG_FILE      NMSTATEDIR "/NetworkManager-intern.conf"
+#define DEFAULT_STATE_FILE              NMSTATEDIR "/NetworkManager.state"
+
+/*****************************************************************************/
+
+#define _NMLOG_PREFIX_NAME                "config"
+#define _NMLOG_DOMAIN                     LOGD_CORE
+
+#define _NMLOG(level, ...) \
+	nm_log (level, _NMLOG_DOMAIN, \
+	        "%s: " _NM_UTILS_MACRO_FIRST(__VA_ARGS__), \
+	        _NMLOG_PREFIX_NAME \
+	        _NM_UTILS_MACRO_REST(__VA_ARGS__))
+
+/*****************************************************************************/
 
 struct NMConfigCmdLineOptions {
 	char *config_main_file;
 	char *intern_config_file;
 	char *config_dir;
 	char *system_config_dir;
+	char *state_file;
 	char *no_auto_default_file;
 	char *plugins;
 	gboolean configure_and_quit;
@@ -57,6 +72,10 @@ struct NMConfigCmdLineOptions {
 	int connectivity_interval;
 	char *connectivity_response;
 };
+
+typedef struct {
+	NMConfigRunState p;
+} RunState;
 
 typedef struct {
 	NMConfigCmdLineOptions cli;
@@ -82,6 +101,16 @@ typedef struct {
 	gboolean configure_and_quit;
 
 	char **atomic_section_prefixes;
+
+	/* The run-state. This is actually a mutable data member and it makes sense:
+	 * The regular config is immutable (NMConfigData) which allows atomic updates
+	 * which is handy during reload. Also, we invoke a config-changed signal when
+	 * the config changes.
+	 *
+	 * For run-state, there are no events. You can query it and set it.
+	 * It only gets read once at startup, and later is cached and only written
+	 * out to disk. Hence, no need for the immutable dance here. */
+	RunState *run_state;
 } NMConfigPrivate;
 
 enum {
@@ -407,6 +436,7 @@ _nm_config_cmd_line_options_clear (NMConfigCmdLineOptions *cli)
 	g_clear_pointer (&cli->system_config_dir, g_free);
 	g_clear_pointer (&cli->no_auto_default_file, g_free);
 	g_clear_pointer (&cli->intern_config_file, g_free);
+	g_clear_pointer (&cli->state_file, g_free);
 	g_clear_pointer (&cli->plugins, g_free);
 	cli->configure_and_quit = FALSE;
 	cli->is_debug = FALSE;
@@ -428,6 +458,7 @@ _nm_config_cmd_line_options_copy (const NMConfigCmdLineOptions *cli, NMConfigCmd
 	dst->config_main_file = g_strdup (cli->config_main_file);
 	dst->no_auto_default_file = g_strdup (cli->no_auto_default_file);
 	dst->intern_config_file = g_strdup (cli->intern_config_file);
+	dst->state_file = g_strdup (cli->state_file);
 	dst->plugins = g_strdup (cli->plugins);
 	dst->configure_and_quit = cli->configure_and_quit;
 	dst->is_debug = cli->is_debug;
@@ -467,6 +498,7 @@ nm_config_cmd_line_options_add_to_entries (NMConfigCmdLineOptions *cli,
 			{ "config-dir", 0, 0, G_OPTION_ARG_FILENAME, &cli->config_dir, N_("Config directory location"), N_(DEFAULT_CONFIG_DIR) },
 			{ "system-config-dir", 0, 0, G_OPTION_ARG_FILENAME, &cli->system_config_dir, N_("System config directory location"), N_(DEFAULT_SYSTEM_CONFIG_DIR) },
 			{ "intern-config", 0, 0, G_OPTION_ARG_FILENAME, &cli->intern_config_file, N_("Internal config file location"), N_(DEFAULT_INTERN_CONFIG_FILE) },
+			{ "state-file", 0, 0, G_OPTION_ARG_FILENAME, &cli->state_file, N_("State file location"), N_(DEFAULT_STATE_FILE) },
 			{ "no-auto-default", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_FILENAME, &cli->no_auto_default_file, N_("State file for no-auto-default devices"), N_(DEFAULT_NO_AUTO_DEFAULT_FILE) },
 			{ "plugins", 0, 0, G_OPTION_ARG_STRING, &cli->plugins, N_("List of plugins separated by ','"), N_(CONFIG_PLUGINS_DEFAULT) },
 			{ "configure-and-quit", 0, 0, G_OPTION_ARG_NONE, &cli->configure_and_quit, N_("Quit after initial configuration"), NULL },
@@ -1648,6 +1680,167 @@ nm_config_set_values (NMConfig *self,
 
 /************************************************************************/
 
+static const char *
+run_state_get_filename (const NMConfigCmdLineOptions *cli)
+{
+	/* For an empty filename, we assume the user wants to disable
+	 * persistant run-state. NMConfig will not try to read it nor
+	 * write it out. */
+	if (!cli->state_file)
+		return DEFAULT_STATE_FILE;
+	return cli->state_file[0] ? cli->state_file : NULL;
+}
+
+static void
+run_state_free (RunState *run_state)
+{
+	g_slice_free (RunState, run_state);
+}
+
+static RunState *
+run_state_new (void)
+{
+	RunState *run_state;
+
+	run_state = g_slice_new0 (RunState);
+	run_state->p.net_enabled = TRUE;
+	run_state->p.wifi_enabled = TRUE;
+	run_state->p.wwan_enabled = TRUE;
+
+	return run_state;
+}
+
+static RunState *
+run_state_new_from_file (const char *filename)
+{
+	GKeyFile *keyfile;
+	gs_free_error GError *error = NULL;
+	RunState *run_state;
+
+	run_state = run_state_new ();
+
+	if (!filename)
+		return run_state;
+
+	keyfile = g_key_file_new ();
+	g_key_file_set_list_separator (keyfile, ',');
+	if (!g_key_file_load_from_file (keyfile, filename, G_KEY_FILE_NONE, &error)) {
+		_LOGD ("run-state: error reading file: %s", error->message);
+		goto out;
+	}
+
+	run_state->p.net_enabled  = nm_config_keyfile_get_boolean (keyfile, "main", "NetworkingEnabled", run_state->p.net_enabled);
+	run_state->p.wifi_enabled = nm_config_keyfile_get_boolean (keyfile, "main", "WirelessEnabled", run_state->p.wifi_enabled);
+	run_state->p.wwan_enabled = nm_config_keyfile_get_boolean (keyfile, "main", "WWANEnabled", run_state->p.wwan_enabled);
+
+out:
+	g_key_file_unref (keyfile);
+	return run_state;
+}
+
+const NMConfigRunState *
+nm_config_run_state_get (NMConfig *config)
+{
+	return &NM_CONFIG_GET_PRIVATE (config)->run_state->p;
+}
+
+static gboolean
+run_state_write (NMConfig *self)
+{
+	NMConfigPrivate *priv = NM_CONFIG_GET_PRIVATE (self);
+	const char *filename;
+	GString *str;
+	GError *error = NULL;
+	gboolean success = TRUE;
+
+	filename = run_state_get_filename (&priv->cli);
+
+	if (!filename) {
+		priv->run_state->p.dirty = FALSE;
+		return TRUE;
+	}
+
+	str = g_string_sized_new (256);
+
+	/* Let's construct the keyfile data by hand. */
+
+	g_string_append (str, "[main]\n");
+	g_string_append_printf (str, "NetworkingEnabled=%s\n", priv->run_state->p.net_enabled ? "true" : "false");
+	g_string_append_printf (str, "WirelessEnabled=%s\n", priv->run_state->p.wifi_enabled ? "true" : "false");
+	g_string_append_printf (str, "WWANEnabled=%s\n", priv->run_state->p.wwan_enabled ? "true" : "false");
+
+	if (!g_file_set_contents (filename,
+	                          str->str, str->len,
+	                          &error)) {
+		_LOGD ("run-state: error writing file: %s", error->message);
+		g_clear_error (&error);
+		priv->run_state->p.dirty = TRUE;
+		success = FALSE;
+	} else
+		priv->run_state->p.dirty = FALSE;
+
+	g_string_free (str, TRUE);
+
+	return success;
+}
+
+void
+nm_config_run_state_set (NMConfig *self,
+                         gboolean allow_persist,
+                         gboolean force_persist,
+                         ...)
+{
+	NMConfigPrivate *priv;
+	va_list ap;
+	NMConfigRunStatePropertyType property_type;
+
+	g_return_if_fail (NM_IS_CONFIG (self));
+
+	priv = NM_CONFIG_GET_PRIVATE (self);
+
+	va_start (ap, force_persist);
+
+	/* We expect that the NMConfigRunStatePropertyType is an integer type <= sizeof (int).
+	 * Smaller would be fine, since the variadic arguments get promoted to int.
+	 * Larger would be a problem, also, because we want that "0" is a valid sentinel. */
+	G_STATIC_ASSERT_EXPR (sizeof (NMConfigRunStatePropertyType) <= sizeof (int));
+
+	while ((property_type = va_arg (ap, int)) != NM_CONFIG_RUN_STATE_PROPERTY_NONE) {
+		char *p_char, v_char;
+
+		switch (property_type) {
+
+		case NM_CONFIG_RUN_STATE_PROPERTY_NETWORKING_ENABLED:
+			p_char = &priv->run_state->p.net_enabled;
+			goto handle_x_enabled;
+		case NM_CONFIG_RUN_STATE_PROPERTY_WIFI_ENABLED:
+			p_char = &priv->run_state->p.wifi_enabled;
+			goto handle_x_enabled;
+		case NM_CONFIG_RUN_STATE_PROPERTY_WWAN_ENABLED:
+			p_char = &priv->run_state->p.wwan_enabled;
+handle_x_enabled:
+			v_char = !!va_arg (ap, gboolean);
+			if (*p_char != v_char) {
+				*p_char = v_char;
+				priv->run_state->p.dirty = TRUE;
+			}
+			continue;
+
+		case NM_CONFIG_RUN_STATE_PROPERTY_NONE:
+			break;
+		}
+		g_assert_not_reached ();
+	}
+
+	va_end (ap);
+
+	if (   allow_persist
+	    && (force_persist || priv->run_state->p.dirty))
+		run_state_write (self);
+}
+
+/************************************************************************/
+
 void
 nm_config_reload (NMConfig *self, int signal)
 {
@@ -1884,6 +2077,8 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 	if (!keyfile)
 		return FALSE;
 
+	priv->run_state = run_state_new_from_file (run_state_get_filename (&priv->cli));
+
 	/* Initialize read only private members */
 
 	if (priv->cli.no_auto_default_file)
@@ -1955,6 +2150,8 @@ static void
 finalize (GObject *gobject)
 {
 	NMConfigPrivate *priv = NM_CONFIG_GET_PRIVATE (gobject);
+
+	run_state_free (priv->run_state);
 
 	g_free (priv->config_dir);
 	g_free (priv->system_config_dir);

@@ -81,6 +81,24 @@ G_BEGIN_DECLS
 
 typedef struct NMConfigCmdLineOptions NMConfigCmdLineOptions;
 
+typedef enum {
+	NM_CONFIG_RUN_STATE_PROPERTY_NONE,
+	NM_CONFIG_RUN_STATE_PROPERTY_NETWORKING_ENABLED,
+	NM_CONFIG_RUN_STATE_PROPERTY_WIFI_ENABLED,
+	NM_CONFIG_RUN_STATE_PROPERTY_WWAN_ENABLED,
+} NMConfigRunStatePropertyType;
+
+typedef struct {
+	/* Store the boolean values as char */
+
+	char net_enabled;
+	char wifi_enabled;
+	char wwan_enabled;
+
+	/* Whether the runstate is modified and not saved to disk. */
+	char dirty;
+} NMConfigRunState;
+
 struct _NMConfig {
 	GObject parent;
 };
@@ -128,6 +146,13 @@ void nm_config_set_no_auto_default_for_device  (NMConfig *config, NMDevice *devi
 NMConfig *nm_config_new (const NMConfigCmdLineOptions *cli, char **atomic_section_prefixes, GError **error);
 NMConfig *nm_config_setup (const NMConfigCmdLineOptions *cli, char **atomic_section_prefixes, GError **error);
 void nm_config_reload (NMConfig *config, int signal);
+
+const NMConfigRunState *nm_config_run_state_get (NMConfig *config);
+
+void nm_config_run_state_set (NMConfig *config,
+                              gboolean allow_persist,
+                              gboolean force_persist,
+                              ...);
 
 gint nm_config_parse_boolean (const char *str, gint default_value);
 

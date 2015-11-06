@@ -77,10 +77,7 @@ typedef struct {
 GType nm_manager_get_type (void);
 
 /* nm_manager_setup() should only be used by main.c */
-NMManager *   nm_manager_setup                         (const char *state_file,
-                                                        gboolean initial_net_enabled,
-                                                        gboolean initial_wifi_enabled,
-                                                        gboolean initial_wwan_enabled);
+NMManager *   nm_manager_setup                         (void);
 
 NMManager *   nm_manager_get                           (void);
 
