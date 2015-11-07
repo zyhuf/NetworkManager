@@ -190,8 +190,10 @@
 
 #if NM_MORE_ASSERTS
 #define nm_assert(cond) G_STMT_START { g_assert (cond); } G_STMT_END
+#define nm_assert_not_reached() g_assert_not_reached()
 #else
 #define nm_assert(cond) G_STMT_START { if (FALSE) { if (cond) { } } } G_STMT_END
+#define nm_assert_not_reached() G_STMT_START { (void) 0; } G_STMT_END
 #endif
 
 /*****************************************************************************/
