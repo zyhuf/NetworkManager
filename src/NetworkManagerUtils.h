@@ -327,8 +327,11 @@ typedef const char *NMRefString;
 NMRefString nm_ref_string_new (const char *str);
 NMRefString nm_ref_string_ref (NMRefString nmstr);
 void nm_ref_string_unref (NMRefString nmstr);
+NMRefString nm_ref_string_dedup (NMRefString nmstr, const char *str);
 NMRefString nm_ref_string_replace (NMRefString nmstr, const char *str);
 int nm_ref_string_cmp (NMRefString nmstr1, NMRefString nmstr2);
 gboolean nm_ref_string_equal (NMRefString nmstr1, NMRefString nmstr2);
+
+NMRefString nm_utils_get_boot_id (void);
 
 #endif /* __NETWORKMANAGER_UTILS_H__ */
