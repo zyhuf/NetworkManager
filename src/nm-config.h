@@ -83,9 +83,20 @@ typedef struct NMConfigCmdLineOptions NMConfigCmdLineOptions;
 
 typedef enum {
 	NM_CONFIG_RUN_STATE_PROPERTY_NONE,
+
+	/* have argument of type gboolean */
 	NM_CONFIG_RUN_STATE_PROPERTY_NETWORKING_ENABLED,
 	NM_CONFIG_RUN_STATE_PROPERTY_WIFI_ENABLED,
 	NM_CONFIG_RUN_STATE_PROPERTY_WWAN_ENABLED,
+
+	/* have argument of type "const char *" */
+	NM_CONFIG_RUN_STATE_PROPERTY_DEVICE_MANAGED,
+	NM_CONFIG_RUN_STATE_PROPERTY_DEVICE_UNMANAGED,
+
+	/* has two arguments of type "const char *". First
+	 * the ifname which must not be NULL, and then the
+	 * UUID of the activated settings connection */
+	NM_CONFIG_RUN_STATE_PROPERTY_DEVICE_ACTIVATED_CONNECTION,
 } NMConfigRunStatePropertyType;
 
 typedef struct {
