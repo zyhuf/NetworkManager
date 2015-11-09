@@ -734,18 +734,18 @@ class CmdSubmit(CmdBase):
     def _process_line_get_GIT_TARGETBRANCH(self, key, replacement, index=None, none=None):
         return self.__process_line_get_GIT_TARGETBRANCH_detect("GIT_TARGETBRANCH")
 
-    def _process_line_get_DISTRO_NAME(self, key, replacement, index=None, none=None):
-        v = self._get_default('DISTO_NAME')
+    def _process_line_get_DISTRO_TAG(self, key, replacement, index=None, none=None):
+        v = self._get_default('DISTO_TAG')
         if v is not None:
             return v
-        target_branch = self.__process_line_get_GIT_TARGETBRANCH_detect("DISTRO_NAME")
+        target_branch = self.__process_line_get_GIT_TARGETBRANCH_detect("DISTRO_TAG")
         if target_branch == 'rhel-7.0':
-            return 'RHEL-7.0-20140507.0'
+            return 'RHEL-7_0-Z-branch'
         if target_branch == 'rhel-7.1':
-            return 'RHEL-7.1-20141023.n.1'
+            return 'RHEL-7_1-Z-branch'
         if target_branch == 'rhel-7':
             pass
-        return 'RHEL-7.2-20150907.n.0'
+        return 'RTT_ACCEPTED'
 
     def _process_line_get_RESERVESYS(self, key, replacement, index=None, none=None):
         v = self._get_default('RESERVESYS')
@@ -767,7 +767,7 @@ class CmdSubmit(CmdBase):
             'WHITEBOARD'        : 'Test NetworkManager',
             'DISTRO_FAMILY'     : 'RedHatEnterpriseLinux7',
             'DISTRO_VARIANT'    : 'Workstation',
-            'DISTRO_NAME'       : _process_line_get_DISTRO_NAME,
+            'DISTRO_TAG'        : _process_line_get_DISTRO_TAG,
             'DISTRO_METHOD'     : 'nfs',
             'DISTRO_ARCH'       : 'x86_64',
             'HOSTREQUIRES'      : _process_line_get_HOSTREQUIRES,
