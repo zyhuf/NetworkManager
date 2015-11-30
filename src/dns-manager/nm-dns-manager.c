@@ -990,8 +990,10 @@ update_dns (NMDnsManager *self,
 		update_resolv_conf (self, searches, nameservers, options, NULL, FALSE);
 
 	/* signal that resolv.conf was changed */
-	if (update && result == SR_SUCCESS)
-		g_signal_emit (self, signals[CONFIG_CHANGED], 0);
+	if (update && result == SR_SUCCESS) {
+		g_signal_emit (self, signals[CONFIG_CHANGED], 0,
+		               priv->plugin ? nm_dns_plugin_get_dnssec_level (priv->plugin) : NM_DNSSEC_NOT_SECURE);
+	}
 
 	if (searches)
 		g_strfreev (searches);
@@ -1036,6 +1038,12 @@ plugin_child_quit (NMDnsPlugin *plugin, int exit_status, gpointer user_data)
 		_LOGW ("could not commit DNS changes: %s", error->message);
 		g_clear_error (&error);
 	}
+}
+
+static void
+plugin_dnssec_changed (NMDnsPlugin *plugin, NMDnssecLevel level, gpointer user_data)
+{
+	g_signal_emit (NM_DNS_MANAGER (user_data), signals[CONFIG_CHANGED], 0, level);
 }
 
 gboolean
@@ -1291,6 +1299,7 @@ plugin_cleanup (NMDnsManager *self)
 		nm_dns_plugin_set_dnssec_level (priv->plugin, NM_DNSSEC_NOT_SECURE);
 		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_failed, self);
 		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_child_quit, self);
+		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_dnssec_changed, self);
 		g_clear_object (&priv->plugin);
 	}
 }
@@ -1341,6 +1350,7 @@ init_resolv_conf_mode (NMDnsManager *self)
 	if (priv->plugin) {
 		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_FAILED, G_CALLBACK (plugin_failed), self);
 		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_CHILD_QUIT, G_CALLBACK (plugin_child_quit), self);
+		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_DNSSEC_CHANGED, G_CALLBACK (plugin_dnssec_changed), self);
 	}
 
 out:
@@ -1495,7 +1505,7 @@ nm_dns_manager_class_init (NMDnsManagerClass *klass)
 		              G_SIGNAL_RUN_FIRST,
 		              G_STRUCT_OFFSET (NMDnsManagerClass, config_changed),
 		              NULL, NULL,
-		              g_cclosure_marshal_VOID__VOID,
-		              G_TYPE_NONE, 0);
+		              g_cclosure_marshal_VOID__ENUM,
+		              G_TYPE_NONE, 1, NM_TYPE_DNSSEC_LEVEL);
 }
 

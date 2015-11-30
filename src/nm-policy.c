@@ -1584,10 +1584,14 @@ firewall_started (NMFirewallManager *manager,
 }
 
 static void
-dns_config_changed (NMDnsManager *dns_manager, gpointer user_data)
+dns_config_changed (NMDnsManager *dns_manager,
+                    NMDnssecLevel dnssec_level,
+                    gpointer user_data)
 {
 	NMPolicy *policy = (NMPolicy *) user_data;
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (policy);
+
+	nm_manager_set_dnssec_level (priv->manager, dnssec_level);
 
 	/* Restart a thread for reverse-DNS lookup after we are signalled that
 	 * DNS changed. Because the result from a previous run may not be right
