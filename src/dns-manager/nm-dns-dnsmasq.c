@@ -226,7 +226,8 @@ update (NMDnsPlugin *plugin,
         const GSList *dev_configs,
         const GSList *other_configs,
         const NMGlobalDnsConfig *global_config,
-        const char *hostname)
+        const char *hostname,
+        char **nameservers)
 {
 	NMDnsDnsmasq *self = NM_DNS_DNSMASQ (plugin);
 	const char *dm_binary;

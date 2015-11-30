@@ -59,7 +59,8 @@ typedef struct {
 	                    const GSList *dev_configs,
 	                    const GSList *other_configs,
 	                    const NMGlobalDnsConfig *global_config,
-	                    const char *hostname);
+	                    const char *hostname,
+	                    char **nameservers);
 
 	gboolean (*recheck) (NMDnsPlugin *self);
 
@@ -102,7 +103,8 @@ gboolean nm_dns_plugin_update (NMDnsPlugin *self,
                                const GSList *dev_configs,
                                const GSList *other_configs,
                                const NMGlobalDnsConfig *global_config,
-                               const char *hostname);
+                               const char *hostname,
+                               char **nameservers);
 
 gboolean nm_dns_plugin_recheck (NMDnsPlugin *self);
 

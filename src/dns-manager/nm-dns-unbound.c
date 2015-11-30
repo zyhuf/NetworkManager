@@ -32,7 +32,8 @@ update (NMDnsPlugin *plugin,
         const GSList *dev_configs,
         const GSList *other_configs,
         const NMGlobalDnsConfig *global_config,
-        const char *hostname)
+        const char *hostname,
+        char **nameservers)
 {
 	/* TODO: We currently call a script installed with the dnssec-trigger
 	 * package that queries all information itself. Later, the dependency

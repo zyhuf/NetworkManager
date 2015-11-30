@@ -932,7 +932,8 @@ update_dns (NMDnsManager *self,
 		                           dev_configs,
 		                           other_configs,
 		                           global_config,
-		                           priv->hostname)) {
+		                           priv->hostname,
+		                           nameservers)) {
 			_LOGW ("update-dns: plugin %s update failed", plugin_name);
 
 			/* If the plugin failed to update, we shouldn't write out a local
