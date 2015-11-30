@@ -105,6 +105,7 @@ typedef struct {
 	NMActiveConnection *primary_connection;
 	NMActiveConnection *activating_connection;
 	NMMetered metered;
+	NMDnssecLevel dnssec_level;
 
 	GSList *devices;
 	NMState state;
@@ -181,6 +182,7 @@ enum {
 	PROP_ACTIVATING_CONNECTION,
 	PROP_DEVICES,
 	PROP_METERED,
+	PROP_DNSSEC_LEVEL,
 	PROP_GLOBAL_DNS_CONFIGURATION,
 
 	/* Not exported */
@@ -4194,6 +4196,19 @@ start_factory (NMDeviceFactory *factory, gpointer user_data)
 	nm_device_factory_start (factory);
 }
 
+void
+nm_manager_set_dnssec_level (NMManager *self, NMDnssecLevel dnssec_level)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+
+	if (priv->dnssec_level == dnssec_level)
+		return;
+
+	priv->dnssec_level = dnssec_level;
+	g_object_notify (G_OBJECT (self), NM_MANAGER_DNSSEC_LEVEL);
+	nm_manager_update_state (self);
+}
+
 gboolean
 nm_manager_start (NMManager *self, GError **error)
 {
@@ -5133,6 +5148,9 @@ get_property (GObject *object, guint prop_id,
 	case PROP_METERED:
 		g_value_set_uint (value, priv->metered);
 		break;
+	case PROP_DNSSEC_LEVEL:
+		g_value_set_uint (value, priv->dnssec_level);
+		break;
 	case PROP_GLOBAL_DNS_CONFIGURATION:
 		config_data = nm_config_get_data (priv->config);
 		dns_config = nm_config_data_get_global_dns_config (config_data);
@@ -5447,6 +5465,20 @@ nm_manager_class_init (NMManagerClass *manager_class)
 		(object_class, PROP_METERED,
 		 g_param_spec_uint (NM_MANAGER_METERED, "", "",
 		                    0, G_MAXUINT32, NM_METERED_UNKNOWN,
+		                    G_PARAM_READABLE |
+		                    G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMManager:dnssec-level:
+	 *
+	 * Whether the DNSSEC validation is usable.
+	 *
+	 * Since: 1.2
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_DNSSEC_LEVEL,
+		 g_param_spec_uint (NM_MANAGER_DNSSEC_LEVEL, "", "",
+		                    0, G_MAXUINT32, NM_DNSSEC_NOT_SECURE,
 		                    G_PARAM_READABLE |
 		                    G_PARAM_STATIC_STRINGS));
 

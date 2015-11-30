@@ -49,6 +49,7 @@
 #define NM_MANAGER_ACTIVATING_CONNECTION "activating-connection"
 #define NM_MANAGER_DEVICES "devices"
 #define NM_MANAGER_METERED "metered"
+#define NM_MANAGER_DNSSEC_LEVEL "dnssec-level"
 #define NM_MANAGER_GLOBAL_DNS_CONFIGURATION "global-dns-configuration"
 
 /* Not exported */
@@ -109,5 +110,8 @@ gboolean            nm_manager_deactivate_connection   (NMManager *manager,
                                                         const char *connection_path,
                                                         NMDeviceStateReason reason,
                                                         GError **error);
+
+void                nm_manager_set_dnssec_level        (NMManager *manager,
+                                                        NMDnssecLevel dnssec_level);
 
 #endif /* __NETWORKMANAGER_MANAGER_H__ */

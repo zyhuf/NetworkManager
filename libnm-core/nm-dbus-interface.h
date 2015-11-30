@@ -645,6 +645,24 @@ typedef enum /*< flags >*/ {
 	NM_SECRET_AGENT_CAPABILITY_LAST = NM_SECRET_AGENT_CAPABILITY_VPN_HINTS
 } NMSecretAgentCapabilities;
 
+/**
+ * NMDnssecLevel
+ * @NM_DNSSEC_NOT_SECURE: DNSSEC validation is not usable.
+ * @NM_DNSSEC_DISCONNECTED_SECURE: DNSSEC validation usable without a local forwarder.
+ * @NM_DNSSEC_CACHE_SECURE: Local DNS server is usable with DNSSEC validation.
+ * @NM_DNSSEC_AUTH_SECURE: Authoritative DNS server is used for DNSSEC validation.
+ *
+ * (Corresponds to the NM_DNSSEC_LEVEL type in nm-manager.xml.)
+ *
+ * Since: 1.2
+ */
+typedef enum {
+	NM_DNSSEC_NOT_SECURE = 0,
+	NM_DNSSEC_DISCONNECTED_SECURE = 2,
+	NM_DNSSEC_CACHE_SECURE = 2,
+	NM_DNSSEC_AUTH_SECURE = 3,
+} NMDnssecLevel;
+
 #ifndef NM_VERSION_H
 #undef NM_AVAILABLE_IN_1_2
 #endif
