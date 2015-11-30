@@ -1283,13 +1283,25 @@ nm_dns_manager_end_updates (NMDnsManager *self, const char *func)
 NM_DEFINE_SINGLETON_GETTER (NMDnsManager, nm_dns_manager_get, NM_TYPE_DNS_MANAGER);
 
 static void
+plugin_cleanup (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	if (priv->plugin) {
+		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_failed, self);
+		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_child_quit, self);
+		g_clear_object (&priv->plugin);
+	}
+}
+
+static void
 init_resolv_conf_mode (NMDnsManager *self)
 {
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
 	const char *mode;
 	int fd, flags;
 
-	g_clear_object (&priv->plugin);
+	plugin_cleanup (self);
 
 	mode = nm_config_data_get_dns_mode (nm_config_get_data (priv->config));
 	if (!g_strcmp0 (mode, "none")) {
@@ -1430,11 +1442,7 @@ dispose (GObject *object)
 
 	_LOGT ("disposing");
 
-	if (priv->plugin) {
-		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_failed, self);
-		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_child_quit, self);
-		g_clear_object (&priv->plugin);
-	}
+	plugin_cleanup (self);
 
 	/* If we're quitting, leave a valid resolv.conf in place, not one
 	 * pointing to 127.0.0.1 if any plugins were active.  Thus update
