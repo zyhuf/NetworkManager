@@ -81,6 +81,8 @@ void nm_dns_manager_set_initial_hostname (NMDnsManager *self,
 void nm_dns_manager_set_hostname         (NMDnsManager *self,
                                           const char *hostname);
 
+gboolean nm_dns_manager_recheck          (NMDnsManager *self);
+
 /**
  * NMDnsManagerResolvConfMode:
  * @NM_DNS_MANAGER_RESOLV_CONF_UNMANAGED: NM is not managing resolv.conf

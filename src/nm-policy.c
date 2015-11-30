@@ -897,6 +897,14 @@ sleeping_changed (NMManager *manager, GParamSpec *pspec, gpointer user_data)
 }
 
 static void
+connectivity_changed (NMManager *manager, GParamSpec *pspec, gpointer user_data)
+{
+	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (user_data);
+
+	nm_dns_manager_recheck (priv->dns_manager);
+}
+
+static void
 schedule_activate_check (NMPolicy *policy, NMDevice *device)
 {
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (policy);
@@ -1783,6 +1791,7 @@ nm_policy_new (NMManager *manager, NMSettings *settings)
 	_connect_manager_signal (policy, "notify::" NM_MANAGER_HOSTNAME, hostname_changed);
 	_connect_manager_signal (policy, "notify::" NM_MANAGER_SLEEPING, sleeping_changed);
 	_connect_manager_signal (policy, "notify::" NM_MANAGER_NETWORKING_ENABLED, sleeping_changed);
+	_connect_manager_signal (policy, "notify::" NM_MANAGER_CONNECTIVITY, connectivity_changed);
 	_connect_manager_signal (policy, "device-added", device_added);
 	_connect_manager_signal (policy, "device-removed", device_removed);
 	_connect_manager_signal (policy, NM_MANAGER_ACTIVE_CONNECTION_ADDED, active_connection_added);

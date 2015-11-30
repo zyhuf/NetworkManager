@@ -61,6 +61,8 @@ typedef struct {
 	                    const NMGlobalDnsConfig *global_config,
 	                    const char *hostname);
 
+	gboolean (*recheck) (NMDnsPlugin *self);
+
 	/* Subclasses should override and return TRUE if they start a local
 	 * caching nameserver that listens on localhost and would block any
 	 * other local caching nameserver from operating.
@@ -101,6 +103,8 @@ gboolean nm_dns_plugin_update (NMDnsPlugin *self,
                                const GSList *other_configs,
                                const NMGlobalDnsConfig *global_config,
                                const char *hostname);
+
+gboolean nm_dns_plugin_recheck (NMDnsPlugin *self);
 
 /* For subclasses/plugins */
 

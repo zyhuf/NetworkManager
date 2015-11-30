@@ -72,6 +72,15 @@ nm_dns_plugin_update (NMDnsPlugin *self,
 	                                               hostname);
 }
 
+gboolean
+nm_dns_plugin_recheck (NMDnsPlugin *self)
+{
+	if (NM_DNS_PLUGIN_GET_CLASS (self)->recheck == NULL)
+		return TRUE;
+
+	return NM_DNS_PLUGIN_GET_CLASS (self)->recheck (self);
+}
+
 static gboolean
 is_caching (NMDnsPlugin *self)
 {

@@ -1286,6 +1286,17 @@ nm_dns_manager_end_updates (NMDnsManager *self, const char *func)
 	memset (priv->prev_hash, 0, sizeof (priv->prev_hash));
 }
 
+gboolean
+nm_dns_manager_recheck (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	if (!priv->plugin)
+		return TRUE;
+
+	return nm_dns_plugin_recheck (priv->plugin);
+}
+
 /******************************************************************/
 
 NM_DEFINE_SINGLETON_GETTER (NMDnsManager, nm_dns_manager_get, NM_TYPE_DNS_MANAGER);
