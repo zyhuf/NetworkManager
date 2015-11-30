@@ -36,6 +36,8 @@ typedef struct {
 	guint32 watch_id;
 	char *progname;
 	char *pidfile;
+
+	NMDnssecLevel dnssec_level;
 } NMDnsPluginPrivate;
 
 #define NM_DNS_PLUGIN_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DNS_PLUGIN, NMDnsPluginPrivate))
@@ -45,6 +47,7 @@ G_DEFINE_TYPE_EXTENDED (NMDnsPlugin, nm_dns_plugin, G_TYPE_OBJECT, G_TYPE_FLAG_A
 enum {
 	FAILED,
 	CHILD_QUIT,
+	DNSSEC_CHANGED,
 	LAST_SIGNAL
 };
 static guint signals[LAST_SIGNAL] = { 0 };
@@ -210,6 +213,26 @@ nm_dns_plugin_child_kill (NMDnsPlugin *self)
 	return TRUE;
 }
 
+NMDnssecLevel
+nm_dns_plugin_get_dnssec_level (NMDnsPlugin *self)
+{
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	return priv->dnssec_level;
+}
+
+void
+nm_dns_plugin_set_dnssec_level (NMDnsPlugin *self, NMDnssecLevel level)
+{
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	if (priv->dnssec_level == level)
+		return;
+
+	priv->dnssec_level = level;
+	g_signal_emit (self, signals[DNSSEC_CHANGED], 0, level);
+}
+
 /********************************************/
 
 static void
@@ -274,5 +297,13 @@ nm_dns_plugin_class_init (NMDnsPluginClass *plugin_class)
 					  NULL, NULL,
 					  g_cclosure_marshal_VOID__INT,
 					  G_TYPE_NONE, 1, G_TYPE_INT);
-}
 
+	signals[DNSSEC_CHANGED] =
+		g_signal_new (NM_DNS_PLUGIN_DNSSEC_CHANGED,
+					  G_OBJECT_CLASS_TYPE (object_class),
+					  G_SIGNAL_RUN_FIRST,
+					  G_STRUCT_OFFSET (NMDnsPluginClass, dnssec_changed),
+					  NULL, NULL,
+					  g_cclosure_marshal_VOID__ENUM,
+					  G_TYPE_NONE, 1, NM_TYPE_DNSSEC_LEVEL);
+}

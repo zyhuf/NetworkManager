@@ -1288,6 +1288,7 @@ plugin_cleanup (NMDnsManager *self)
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
 
 	if (priv->plugin) {
+		nm_dns_plugin_set_dnssec_level (priv->plugin, NM_DNSSEC_NOT_SECURE);
 		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_failed, self);
 		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_child_quit, self);
 		g_clear_object (&priv->plugin);

@@ -21,6 +21,7 @@
 
 #include "nm-default.h"
 
+#include "nm-dbus-interface.h"
 #include "nm-config-data.h"
 
 #define NM_TYPE_DNS_PLUGIN            (nm_dns_plugin_get_type ())
@@ -32,6 +33,7 @@
 
 #define NM_DNS_PLUGIN_FAILED "failed"
 #define NM_DNS_PLUGIN_CHILD_QUIT "child-quit"
+#define NM_DNS_PLUGIN_DNSSEC_CHANGED "dnssec-changed"
 
 #define IP_CONFIG_IFACE_TAG "dns-manager-iface"
 
@@ -83,6 +85,8 @@ typedef struct {
 	 * by waitpid(2)) is fatal it should then emit the 'failed' signal.
 	 */
 	void (*child_quit) (NMDnsPlugin *self, gint status);
+
+	void (*dnssec_changed) (NMDnsPlugin *self, NMDnssecLevel level);
 } NMDnsPluginClass;
 
 GType nm_dns_plugin_get_type (void);
@@ -112,6 +116,10 @@ GPid nm_dns_plugin_child_spawn (NMDnsPlugin *self,
                                 const char *kill_match);
 
 gboolean nm_dns_plugin_child_kill (NMDnsPlugin *self);
+
+NMDnssecLevel nm_dns_plugin_get_dnssec_level (NMDnsPlugin *self);
+
+void nm_dns_plugin_set_dnssec_level (NMDnsPlugin *self, NMDnssecLevel level);
 
 #endif /* __NETWORKMANAGER_DNS_PLUGIN_H__ */
 
