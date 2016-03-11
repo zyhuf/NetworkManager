@@ -404,38 +404,6 @@ nm_dhcp_client_watch_child (NMDhcpClient *self, pid_t pid)
 	priv->watch_id = g_child_watch_add (pid, daemon_watch_cb, self);
 }
 
-gboolean
-nm_dhcp_client_start_ip4 (NMDhcpClient *self,
-                          const char *dhcp_client_id,
-                          const char *dhcp_anycast_addr,
-                          const char *hostname,
-                          const char *fqdn,
-                          const char *last_ip4_address)
-{
-	NMDhcpClientPrivate *priv;
-	gs_unref_bytes GBytes *tmp = NULL;
-
-	g_return_val_if_fail (NM_IS_DHCP_CLIENT (self), FALSE);
-
-	priv = NM_DHCP_CLIENT_GET_PRIVATE (self);
-	g_return_val_if_fail (priv->pid == -1, FALSE);
-	g_return_val_if_fail (priv->ipv6 == FALSE, FALSE);
-	g_return_val_if_fail (priv->uuid != NULL, FALSE);
-
-	_LOGI ("activation: beginning transaction (timeout in %d seconds)", priv->timeout);
-
-	if (dhcp_client_id)
-		tmp = nm_dhcp_utils_client_id_string_to_bytes (dhcp_client_id);
-	nm_dhcp_client_set_client_id (self, tmp);
-
-	g_clear_pointer (&priv->hostname, g_free);
-	priv->hostname = g_strdup (hostname);
-	g_free (priv->fqdn);
-	priv->fqdn = g_strdup (fqdn);
-
-	return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_start (self, dhcp_anycast_addr, last_ip4_address);
-}
-
 /* uuid_parse does not work for machine-id, so we use our own converter */
 static gboolean
 machine_id_parse (const char *in, uuid_t uu)
@@ -546,6 +514,38 @@ get_duid (NMDhcpClient *self)
 	}
 
 	return copy;
+}
+
+gboolean
+nm_dhcp_client_start_ip4 (NMDhcpClient *self,
+                          const char *dhcp_client_id,
+                          const char *dhcp_anycast_addr,
+                          const char *hostname,
+                          const char *fqdn,
+                          const char *last_ip4_address)
+{
+	NMDhcpClientPrivate *priv;
+	gs_unref_bytes GBytes *tmp = NULL;
+
+	g_return_val_if_fail (NM_IS_DHCP_CLIENT (self), FALSE);
+
+	priv = NM_DHCP_CLIENT_GET_PRIVATE (self);
+	g_return_val_if_fail (priv->pid == -1, FALSE);
+	g_return_val_if_fail (priv->ipv6 == FALSE, FALSE);
+	g_return_val_if_fail (priv->uuid != NULL, FALSE);
+
+	_LOGI ("activation: beginning transaction (timeout in %d seconds)", priv->timeout);
+
+	if (dhcp_client_id)
+		tmp = nm_dhcp_utils_client_id_string_to_bytes (dhcp_client_id);
+	nm_dhcp_client_set_client_id (self, tmp);
+
+	g_clear_pointer (&priv->hostname, g_free);
+	priv->hostname = g_strdup (hostname);
+	g_free (priv->fqdn);
+	priv->fqdn = g_strdup (fqdn);
+
+	return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_start (self, dhcp_anycast_addr, last_ip4_address);
 }
 
 gboolean
