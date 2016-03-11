@@ -367,7 +367,7 @@ dhclient_start (NMDhcpClient *client,
 	g_free (preferred_leasefile_path);
 
 	/* Save the DUID to the leasefile dhclient will actually use */
-	if (ipv6) {
+	if (duid) {
 		escaped = nm_dhcp_dhclient_escape_duid (duid);
 		success = nm_dhcp_dhclient_save_duid (priv->lease_file, escaped, &error);
 		g_free (escaped);
@@ -454,7 +454,10 @@ dhclient_start (NMDhcpClient *client,
 }
 
 static gboolean
-ip4_start (NMDhcpClient *client, const char *dhcp_anycast_addr, const char *last_ip4_address)
+ip4_start (NMDhcpClient *client,
+           const char *dhcp_anycast_addr,
+           const char *last_ip4_address,
+           const GByteArray *duid)
 {
 	NMDhcpDhclient *self = NM_DHCP_DHCLIENT (client);
 	NMDhcpDhclientPrivate *priv = NM_DHCP_DHCLIENT_GET_PRIVATE (self);
@@ -472,9 +475,11 @@ ip4_start (NMDhcpClient *client, const char *dhcp_anycast_addr, const char *last
 	priv->conf_file = create_dhclient_config (self, iface, FALSE, uuid, client_id, dhcp_anycast_addr,
 	                                          hostname, fqdn, &new_client_id);
 	if (priv->conf_file) {
-		if (new_client_id)
+		if (new_client_id) {
 			nm_dhcp_client_set_client_id (client, new_client_id);
-		success = dhclient_start (client, NULL, NULL, FALSE, NULL);
+			success = dhclient_start (client, NULL, NULL, FALSE, NULL);
+		} else
+			success = dhclient_start (client, NULL, duid, FALSE, NULL);
 	} else
 		_LOGW ("error creating dhclient configuration file");
 
@@ -497,7 +502,8 @@ ip6_start (NMDhcpClient *client,
 	uuid = nm_dhcp_client_get_uuid (client);
 	hostname = nm_dhcp_client_get_hostname (client);
 
-	priv->conf_file = create_dhclient_config (self, iface, TRUE, uuid, NULL, dhcp_anycast_addr, hostname, NULL, NULL);
+	priv->conf_file = create_dhclient_config (self, iface, TRUE, uuid, NULL, dhcp_anycast_addr,
+	                                          hostname, NULL, NULL);
 	if (!priv->conf_file) {
 		_LOGW ("error creating dhclient configuration file");
 		return FALSE;

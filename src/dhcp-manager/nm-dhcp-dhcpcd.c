@@ -57,7 +57,7 @@ nm_dhcp_dhcpcd_get_path (void)
 }
 
 static gboolean
-ip4_start (NMDhcpClient *client, const char *dhcp_anycast_addr, const char *last_ip4_address)
+ip4_start (NMDhcpClient *client, const char *dhcp_anycast_addr, const char *last_ip4_address, const GByteArray *duid)
 {
 	NMDhcpDhcpcd *self = NM_DHCP_DHCPCD (client);
 	NMDhcpDhcpcdPrivate *priv = NM_DHCP_DHCPCD_GET_PRIVATE (self);

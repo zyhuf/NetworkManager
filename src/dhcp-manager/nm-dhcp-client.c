@@ -495,17 +495,14 @@ get_duid (NMDhcpClient *self)
 {
 	static GByteArray *duid = NULL;
 	GByteArray *copy = NULL;
-	char *str;
 
 	if (G_UNLIKELY (duid == NULL)) {
+		gs_free char *str = NULL;
+
 		duid = generate_duid_from_machine_id ();
 		g_assert (duid);
-
-		if (nm_logging_enabled (LOGL_DEBUG, LOGD_DHCP6)) {
-			str = nm_dhcp_utils_duid_to_string (duid);
-			_LOGD ("generated DUID %s", str);
-			g_free (str);
-		}
+		_LOGD ("generated DUID %s",
+			(str = nm_dhcp_utils_duid_to_string (duid)));
 	}
 
 	if (G_LIKELY (duid)) {
@@ -536,8 +533,24 @@ nm_dhcp_client_start_ip4 (NMDhcpClient *self,
 
 	_LOGI ("activation: beginning transaction (timeout in %d seconds)", priv->timeout);
 
-	if (dhcp_client_id)
+	/* dhcp_client_id overrides default client_id policy */
+	if (dhcp_client_id) {
 		tmp = nm_dhcp_utils_client_id_string_to_bytes (dhcp_client_id);
+	} else {
+		/* If we don't have one yet, read the default DUID for this DHCPv4 client
+		 * from the client-specific persistent configuration. Needed to adhere to
+		 * RFC 4361 and keep same DUID for all connections.
+		 */
+		gs_free char *str = NULL;
+
+		if (!priv->duid)
+			priv->duid = NM_DHCP_CLIENT_GET_CLASS (self)->get_duid (self);
+
+		if (nm_logging_enabled (LOGL_DEBUG, LOGD_DHCP4)) {
+			str = nm_dhcp_utils_duid_to_string (priv->duid);
+			_LOGD ("DUID is '%s'", str);
+		}
+	}
 	nm_dhcp_client_set_client_id (self, tmp);
 
 	g_clear_pointer (&priv->hostname, g_free);
@@ -545,7 +558,10 @@ nm_dhcp_client_start_ip4 (NMDhcpClient *self,
 	g_free (priv->fqdn);
 	priv->fqdn = g_strdup (fqdn);
 
-	return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_start (self, dhcp_anycast_addr, last_ip4_address);
+	return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_start (self,
+	                                                   dhcp_anycast_addr,
+	                                                   last_ip4_address,
+	                                                   priv->duid);
 }
 
 gboolean

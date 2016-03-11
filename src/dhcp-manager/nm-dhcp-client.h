@@ -65,7 +65,8 @@ typedef struct {
 
 	gboolean (*ip4_start)     (NMDhcpClient *self,
 	                           const char *anycast_addr,
-	                           const char *last_ip4_address);
+	                           const char *last_ip4_address,
+	                           const GByteArray *duid);
 
 	gboolean (*ip6_start)     (NMDhcpClient *self,
 	                           const char *anycast_addr,

@@ -548,7 +548,10 @@ get_arp_type (const GByteArray *hwaddr)
 }
 
 static gboolean
-ip4_start (NMDhcpClient *client, const char *dhcp_anycast_addr, const char *last_ip4_address)
+ip4_start (NMDhcpClient *client,
+           const char *dhcp_anycast_addr,
+           const char *last_ip4_address,
+           const GByteArray *duid)
 {
 	NMDhcpSystemd *self = NM_DHCP_SYSTEMD (client);
 	NMDhcpSystemdPrivate *priv = NM_DHCP_SYSTEMD_GET_PRIVATE (self);
