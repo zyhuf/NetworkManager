@@ -40,6 +40,7 @@
 
 #include "nm-sd-adapt.h"
 #include "dhcp-lease-internal.h"
+#include "dhcp-identifier.h"
 
 G_DEFINE_TYPE (NMDhcpSystemd, nm_dhcp_systemd, NM_TYPE_DHCP_CLIENT)
 
@@ -569,6 +570,7 @@ ip4_start (NMDhcpClient *client,
 
 	g_assert (priv->client4 == NULL);
 	g_assert (priv->client6 == NULL);
+	g_return_val_if_fail (duid != NULL, FALSE);
 
 	g_free (priv->lease_file);
 	priv->lease_file = get_leasefile_path (iface, nm_dhcp_client_get_uuid (client), FALSE);
@@ -638,26 +640,52 @@ ip4_start (NMDhcpClient *client,
 
 	override_client_id = nm_dhcp_client_get_client_id (client);
 	if (override_client_id) {
+		_LOGD ("client id: override");
 		client_id = g_bytes_get_data (override_client_id, &client_id_len);
 		g_assert (client_id && client_id_len);
-		sd_dhcp_client_set_client_id (priv->client4,
-		                              client_id[0],
-		                              client_id + 1,
-		                              client_id_len - 1);
 	} else if (lease) {
 		r = sd_dhcp_lease_get_client_id (lease, (const void **) &client_id, &client_id_len);
 		if (r == 0 && client_id_len) {
-			sd_dhcp_client_set_client_id (priv->client4,
-			                              client_id[0],
-			                              client_id + 1,
-			                              client_id_len - 1);
+			_LOGD ("client id: from lease file %s", priv->lease_file);
 			_save_client_id (NM_DHCP_SYSTEMD (client),
 			                 client_id[0],
 			                 client_id + 1,
 			                 client_id_len - 1);
+		} else {
+			_LOGW ("client id missing in lease file %s", priv->lease_file);
 		}
 	}
 
+	if (!client_id) {
+		/* Generate RFC3315 client identifier */
+		be32_t iaid;
+		guint8 cid_type = 0xff;
+		GByteArray *iaid_duid;
+
+		_LOGD ("client id: generate from DUID");
+		iaid_duid = g_byte_array_new ();
+		g_byte_array_append (iaid_duid, duid->data, duid->len);
+
+		r = dhcp_identifier_set_iaid (nm_dhcp_client_get_ifindex (client),
+		                              hwaddr->data,
+		                              hwaddr->len,
+		                              &iaid);
+		if (r < 0) {
+			_LOGW ("unable to generate the iaid");
+			g_byte_array_free (iaid_duid, TRUE);
+			goto error;
+		}
+
+		g_byte_array_prepend (iaid_duid, (guint8 *)(&iaid), sizeof(be32_t));
+		g_array_prepend_val ((GArray *)iaid_duid, cid_type);
+		client_id_len = iaid_duid->len;
+		client_id = g_byte_array_free (iaid_duid, FALSE);
+	}
+
+	sd_dhcp_client_set_client_id (priv->client4,
+	                              client_id[0],
+	                              client_id + 1,
+	                              client_id_len -1);
 
 	/* Add requested options */
 	for (i = 0; dhcp4_requests[i].name; i++) {
