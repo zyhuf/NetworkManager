@@ -133,6 +133,11 @@ gboolean nm_config_data_get_ignore_carrier (const NMConfigData *self, NMDevice *
 gboolean nm_config_data_get_assume_ipv6ll_only (const NMConfigData *self, NMDevice *device);
 NMGlobalDnsConfig *nm_config_data_get_global_dns_config (const NMConfigData *self);
 
+void nm_config_data_get_ipv4_shared_address_range (const NMConfigData *self,
+                                                   guint32 *network,
+                                                   int *total_range,
+                                                   int *plen);
+
 char *nm_config_data_get_connection_default (const NMConfigData *self,
                                              const char *property,
                                              NMDevice *device);

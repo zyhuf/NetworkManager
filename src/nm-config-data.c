@@ -72,6 +72,12 @@ typedef struct {
 	char *dns_mode;
 	char *rc_manager;
 
+	struct {
+		guint32 network;
+		guint8 total_range;
+		guint8 plen;
+	} shared;
+
 	NMGlobalDnsConfig *global_dns;
 
 	/* mutable field */
@@ -1045,6 +1051,29 @@ global_dns_equal (NMGlobalDnsConfig *old, NMGlobalDnsConfig *new)
 	}
 
 	return TRUE;
+}
+
+/************************************************************************/
+
+void
+nm_config_data_get_ipv4_shared_address_range (const NMConfigData *self,
+                                              guint32 *network,
+                                              int *total_range,
+                                              int *plen)
+{
+	NMConfigDataPrivate *priv;
+
+	g_return_if_fail (NM_IS_CONFIG_DATA (self));
+
+	priv = NM_CONFIG_DATA_GET_PRIVATE (self);
+	if (G_UNLIKELY (priv->shared.network == 0)) {
+		priv->shared.network = ntohl (0x0a2a0001); /* 10.42.0.1 */
+		priv->shared.total_range = 16;
+		priv->shared.plen = 24;
+	}
+	*network = priv->shared.network;
+	*total_range = priv->shared.total_range;
+	*plen = priv->shared.plen;
 }
 
 /************************************************************************/

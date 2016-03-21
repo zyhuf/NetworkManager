@@ -4660,6 +4660,36 @@ reserve_shared_ip (NMDevice *self, NMSettingIPConfig *s_ip4, NMPlatformIP4Addres
 		nm_ip_address_get_address_binary (user, &a);
 		nm_platform_ip4_address_set_addr (address, a, nm_ip_address_get_prefix (user));
 	} else {
+		guint32 network;
+		int total_range;
+		int plen;
+		guint32 start;
+		guint32 network_start, network_end, network_step;
+
+		nm_config_data_get_ipv4_shared_address_range (NM_CONFIG_GET_DATA,
+		                                              &network,
+		                                              &total_range,
+		                                              &plen);
+
+		nm_assert (total_range >= 1 && total_range <= 31);
+		nm_assert (plen >= total_range && plen <= 32);
+
+		network_start = network & nm_utils_ip4_prefix_to_netmask (total_range);
+		network_end = network_start + ntohl (1LL << total_range);
+
+		network_sub = network_start;
+		do {
+			if (!g_hash_table_contains (shared_ips, GUINT_TO_POINTER (network_sub)))
+				break;
+
+			htonl (network_sub)
+
+
+
+		} while (network_sub != 0);
+
+		network_sub = network;
+		network_sub = (network & ~nm_utils_ip4_prefix_to_netmask (total_range))
 		/* Find an unused address in the 10.42.x.x range */
 		guint32 start = (guint32) ntohl (0x0a2a0001); /* 10.42.0.1 */
 		guint32 count = 0;
