@@ -501,15 +501,11 @@ get_duid (NMDhcpClient *self)
 
 		duid = generate_duid_from_machine_id ();
 		g_assert (duid);
-		_LOGD ("generated DUID %s",
-			(str = nm_dhcp_utils_duid_to_string (duid)));
+		_LOGD ("generated DUID %s", (str = nm_dhcp_utils_duid_to_string (duid)));
 	}
 
-	if (G_LIKELY (duid)) {
-		copy = g_byte_array_sized_new (duid->len);
-		g_byte_array_append (copy, duid->data, duid->len);
-	}
-
+	copy = g_byte_array_sized_new (duid->len);
+	g_byte_array_append (copy, duid->data, duid->len);
 	return copy;
 }
 
@@ -546,10 +542,7 @@ nm_dhcp_client_start_ip4 (NMDhcpClient *self,
 		if (!priv->duid)
 			priv->duid = NM_DHCP_CLIENT_GET_CLASS (self)->get_duid (self);
 
-		if (nm_logging_enabled (LOGL_DEBUG, LOGD_DHCP4)) {
-			str = nm_dhcp_utils_duid_to_string (priv->duid);
-			_LOGD ("DUID is '%s'", str);
-		}
+		_LOGD ("DUID is '%s'", (str = nm_dhcp_utils_duid_to_string (priv->duid)));
 	}
 	nm_dhcp_client_set_client_id (self, tmp);
 
@@ -573,7 +566,7 @@ nm_dhcp_client_start_ip6 (NMDhcpClient *self,
                           NMSettingIP6ConfigPrivacy privacy)
 {
 	NMDhcpClientPrivate *priv;
-	char *str;
+	gs_free char *str = NULL;
 
 	g_return_val_if_fail (NM_IS_DHCP_CLIENT (self), FALSE);
 
@@ -588,11 +581,7 @@ nm_dhcp_client_start_ip6 (NMDhcpClient *self,
 	if (!priv->duid)
 		priv->duid = NM_DHCP_CLIENT_GET_CLASS (self)->get_duid (self);
 
-	if (nm_logging_enabled (LOGL_DEBUG, LOGD_DHCP6)) {
-		str = nm_dhcp_utils_duid_to_string (priv->duid);
-		_LOGD ("DUID is '%s'", str);
-		g_free (str);
-	}
+	_LOGD ("DUID is '%s'", (str = nm_dhcp_utils_duid_to_string (priv->duid)));
 
 	g_clear_pointer (&priv->hostname, g_free);
 	priv->hostname = g_strdup (hostname);
