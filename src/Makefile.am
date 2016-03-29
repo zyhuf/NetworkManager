@@ -452,6 +452,11 @@ libNetworkManager_la_SOURCES += \
 	platform/wifi/wifi-utils-wext.h
 endif
 
+if WITH_CONCHECK
+libNetworkManager_la_SOURCES += \
+	connectivity/nm-connectivity-soup.c \
+	connectivity/nm-connectivity-soup.h
+endif
 
 GLIB_GENERATED = nm-enum-types.h nm-enum-types.c
 GLIB_MKENUMS_H_FLAGS = --identifier-prefix NM --fhead '\#include <nm-core-enum-types.h>\n'
