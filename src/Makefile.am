@@ -453,9 +453,15 @@ libNetworkManager_la_SOURCES += \
 endif
 
 if WITH_CONCHECK
+if WITH_LIBCURL
+libNetworkManager_la_SOURCES += \
+	connectivity/nm-connectivity-curl.c \
+	connectivity/nm-connectivity-curl.h
+else
 libNetworkManager_la_SOURCES += \
 	connectivity/nm-connectivity-soup.c \
 	connectivity/nm-connectivity-soup.h
+endif
 endif
 
 GLIB_GENERATED = nm-enum-types.h nm-enum-types.c

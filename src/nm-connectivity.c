@@ -24,7 +24,11 @@
 #include <string.h>
 
 #if WITH_CONCHECK
+#if WITH_LIBCURL
+#include "connectivity/nm-connectivity-curl.h"
+#else
 #include "connectivity/nm-connectivity-soup.h"
+#endif
 #endif
 
 #include "nm-connectivity.h"
