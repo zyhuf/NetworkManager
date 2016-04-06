@@ -63,43 +63,113 @@ _values_data_contains (ValuesData *values_data, gconstpointer value)
 }
 
 static void
+_values_data_get_data_0 (void *const**out_data,
+                         guint *out_len)
+{
+	NM_SET_OUT (out_data, NULL);
+	NM_SET_OUT (out_len, 0);
+}
+
+static void
+_values_data_get_data_1 (ValuesData *values_data,
+                         void *const**out_data,
+                         guint *out_len)
+{
+	nm_assert (values_data);
+	nm_assert (values_data->value0);
+	nm_assert (!values_data->index);
+
+	NM_SET_OUT (out_data, &values_data->value0);
+	NM_SET_OUT (out_len, 1);
+}
+
+static void
+_values_data_get_data_n (ValuesData *values_data,
+                         void *const**out_data,
+                         guint *out_len)
+{
+	gpointer *values;
+	GHashTableIter iter;
+	guint i, len;
+
+	nm_assert (values_data);
+	nm_assert (values_data->index);
+	nm_assert (g_hash_table_size (values_data->index) > 0);
+
+	if (values_data->values) {
+		NM_SET_OUT (out_len, g_hash_table_size (values_data->index));
+		NM_SET_OUT (out_data, values_data->values);
+		return;
+	}
+	if (!out_data) {
+		NM_SET_OUT (out_len, g_hash_table_size (values_data->index));
+		return;
+	}
+
+	len = g_hash_table_size (values_data->index);
+	values = g_new (gpointer, len + 1);
+
+	g_hash_table_iter_init (&iter, values_data->index);
+	for (i = 0; g_hash_table_iter_next (&iter, &values[i], NULL); i++)
+		nm_assert (i < len);
+	nm_assert (i == len);
+	values[i] = NULL;
+
+	values_data->values = values;
+	NM_SET_OUT (out_data, values);
+	NM_SET_OUT (out_len, len);
+}
+
+static void
 _values_data_get_data (ValuesData *values_data,
                        void *const**out_data,
                        guint *out_len)
 {
-	guint i, len;
-	gpointer *values;
-	GHashTableIter iter;
+	nm_assert (values_data);
+	nm_assert (out_data || out_len);
 
+	if (!values_data->index)
+		_values_data_get_data_1 (values_data, out_data, out_len);
+	else
+		_values_data_get_data_n (values_data, out_data, out_len);
+}
+
+static void
+_values_data_get_data_nullcheck (ValuesData *values_data,
+                                 void *const**out_data,
+                                 guint *out_len)
+{
 	nm_assert (values_data);
 
-	if (!values_data->index) {
-		NM_SET_OUT (out_data, &values_data->value0);
-		NM_SET_OUT (out_len, 1);
-		return;
-	}
-
-	nm_assert (values_data->index && g_hash_table_size (values_data->index) > 0);
-
-	if (!values_data->values) {
-		len = g_hash_table_size (values_data->index);
-		values = g_new (gpointer, len + 1);
-
-		g_hash_table_iter_init (&iter, values_data->index);
-		for (i = 0; g_hash_table_iter_next (&iter, &values[i], NULL); i++)
-			nm_assert (i < len);
-		nm_assert (i == len);
-		values[i] = NULL;
-
-		values_data->values = values;
-		NM_SET_OUT (out_len, len);
-	} else if (out_len)
-		NM_SET_OUT (out_len, g_hash_table_size (values_data->index));
-
-	NM_SET_OUT (out_data, values_data->values);
+	if (out_data || out_len)
+		_values_data_get_data (values_data, out_data, out_len);
 }
 
 /******************************************************************************************/
+
+/**
+ * nm_multi_index_lookup_len():
+ * @index:
+ * @id:
+ *
+ * Returns: the number of items for @id.
+ */
+guint
+nm_multi_index_lookup_len (const NMMultiIndex *index,
+                           const NMMultiIndexId *id)
+{
+	ValuesData *values_data;
+	guint len;
+
+	g_return_val_if_fail (index, 0);
+	g_return_val_if_fail (id, 0);
+
+	values_data = g_hash_table_lookup (index->hash, id);
+	if (!values_data)
+		return 0;
+	_values_data_get_data (values_data, NULL, &len);
+	return len;
+}
 
 /**
  * nm_multi_index_lookup():
@@ -124,8 +194,7 @@ nm_multi_index_lookup (const NMMultiIndex *index,
 
 	values_data = g_hash_table_lookup (index->hash, id);
 	if (!values_data) {
-		if (out_len)
-			*out_len = 0;
+		NM_SET_OUT (out_len, 0);
 		return NULL;
 	}
 	_values_data_get_data (values_data, &values, out_len);
@@ -227,8 +296,7 @@ nm_multi_index_iter_next (NMMultiIndexIter *iter,
 	while (g_hash_table_iter_next (&iter->_iter, (gpointer *) &id, (gpointer *) &values_data)) {
 		if (   !iter->_value
 		    || _values_data_contains (values_data, iter->_value)) {
-			if (out_values || out_len)
-				_values_data_get_data (values_data, out_values, out_len);
+			_values_data_get_data_nullcheck (values_data, out_values, out_len);
 			if (out_id)
 				*out_id = id;
 			return TRUE;
@@ -288,9 +356,12 @@ nm_multi_index_id_iter_next (NMMultiIndexIdIter *iter,
 static gboolean
 _do_add (NMMultiIndex *index,
          const NMMultiIndexId *id,
-         gconstpointer value)
+         gconstpointer value,
+         void *const**out_data,
+         guint *out_len)
 {
 	ValuesData *values_data;
+	gboolean changed = FALSE;
 
 	values_data = g_hash_table_lookup (index->hash, id);
 	if (!values_data) {
@@ -309,51 +380,70 @@ _do_add (NMMultiIndex *index,
 		if (!id_new)
 			g_return_val_if_reached (FALSE);
 
-		values_data = g_slice_new0 (ValuesData);
+		values_data = g_slice_new (ValuesData);
 		values_data->value0 = (gpointer) value;
+		values_data->index = NULL;
 
 		g_hash_table_insert (index->hash, id_new, values_data);
-	} else {
-		if (!values_data->index) {
-			if (values_data->value0 == value)
-				return FALSE;
+
+		_values_data_get_data_1 (values_data, out_data, out_len);
+		return TRUE;
+	}
+
+	if (!values_data->index) {
+		if (values_data->value0 != value) {
 			values_data->index = g_hash_table_new (NULL, NULL);
 			g_hash_table_replace (values_data->index, (gpointer) value, (gpointer) value);
 			g_hash_table_replace (values_data->index, values_data->value0, values_data->value0);
 			values_data->values = NULL;
-		} else {
-			if (!nm_g_hash_table_replace (values_data->index, (gpointer) value, (gpointer) value))
-				return FALSE;
+			changed = TRUE;
+		}
+	} else {
+		if (nm_g_hash_table_replace (values_data->index, (gpointer) value, (gpointer) value)) {
 			g_clear_pointer (&values_data->values, g_free);
+			changed = TRUE;
 		}
 	}
-	return TRUE;
+	_values_data_get_data_nullcheck (values_data, out_data, out_len);
+	return changed;
 }
 
 static gboolean
 _do_remove (NMMultiIndex *index,
             const NMMultiIndexId *id,
-            gconstpointer value)
+            gconstpointer value,
+            void *const**out_data,
+            guint *out_len)
 {
 	ValuesData *values_data;
+	gboolean changed = FALSE;
 
 	values_data = g_hash_table_lookup (index->hash, id);
-	if (!values_data)
+	if (!values_data) {
+		_values_data_get_data_0 (out_data, out_len);
 		return FALSE;
-
-	if (values_data->index) {
-		if (!g_hash_table_remove (values_data->index, value))
-			return FALSE;
-		if (g_hash_table_size (values_data->index) == 0)
-			g_hash_table_remove (index->hash, id);
-		else
-			g_clear_pointer (&values_data->values, g_free);
-	} else {
-		if (values_data->value0 != value)
-			return FALSE;
-		g_hash_table_remove (index->hash, id);
 	}
 
+	if (values_data->index) {
+		if (g_hash_table_remove (values_data->index, value)) {
+			if (g_hash_table_size (values_data->index) == 0)
+				goto delete_id;
+			g_clear_pointer (&values_data->values, g_free);
+			changed = TRUE;
+		}
+		_values_data_get_data_nullcheck (values_data, out_data, out_len);
+		return changed;
+	}
+
+	if (values_data->value0 == value)
+		goto delete_id;
+
+	_values_data_get_data_1 (values_data, out_data, out_len);
+	return FALSE;
+
+delete_id:
+	g_hash_table_remove (index->hash, id);
+	_values_data_get_data_0 (out_data, out_len);
 	return TRUE;
 }
 
@@ -366,7 +456,21 @@ nm_multi_index_add (NMMultiIndex *index,
 	g_return_val_if_fail (id, FALSE);
 	g_return_val_if_fail (value, FALSE);
 
-	return _do_add (index, id, value);
+	return _do_add (index, id, value, NULL, NULL);
+}
+
+gboolean
+nm_multi_index_add_lookup (NMMultiIndex *index,
+                           const NMMultiIndexId *id,
+                           gconstpointer value,
+                           void *const**out_data,
+                           guint *out_len)
+{
+	g_return_val_if_fail (index, FALSE);
+	g_return_val_if_fail (id, FALSE);
+	g_return_val_if_fail (value, FALSE);
+
+	return _do_add (index, id, value, out_data, out_len);
 }
 
 gboolean
@@ -375,11 +479,63 @@ nm_multi_index_remove (NMMultiIndex *index,
                        gconstpointer value)
 {
 	g_return_val_if_fail (index, FALSE);
+	g_return_val_if_fail (id, FALSE);
 	g_return_val_if_fail (value, FALSE);
 
-	if (!id)
-		g_return_val_if_reached (FALSE);
-	return _do_remove (index, id, value);
+	return _do_remove (index, id, value, NULL, NULL);
+}
+
+gboolean
+nm_multi_index_remove_lookup (NMMultiIndex *index,
+                              const NMMultiIndexId *id,
+                              gconstpointer value,
+                              void *const**out_data,
+                              guint *out_len)
+{
+	g_return_val_if_fail (index, FALSE);
+	g_return_val_if_fail (id, FALSE);
+	g_return_val_if_fail (value, FALSE);
+
+	return _do_remove (index, id, value, out_data, out_len);
+}
+
+static gboolean
+_do_move (NMMultiIndex *index,
+          const NMMultiIndexId *id_old,
+          const NMMultiIndexId *id_new,
+          gconstpointer value,
+          void *const**out_data,
+          guint *out_len)
+{
+	gboolean did_remove;
+
+	if (!id_old && !id_new) {
+		/* nothing to do, @value was and is not in @index. */
+		_values_data_get_data_0 (out_data, out_len);
+		return TRUE;
+	}
+
+	if (!id_old) {
+		/* add @value to @index with @id_new */
+		return _do_add (index, id_new, value, out_data, out_len);
+	}
+
+	if (!id_new) {
+		/* remove @value from @index with @id_old */
+		return _do_remove (index, id_old, value, out_data, out_len);
+	}
+
+	if (index->equal_fcn (id_old, id_new)) {
+		if (_do_add (index, id_new, value, out_data, out_len)) {
+			/* we would expect, that @value is already in @index,
+			 * Return %FALSE, if it wasn't. */
+			return FALSE;
+		}
+		return TRUE;
+	}
+
+	did_remove = _do_remove (index, id_old, value, NULL, NULL);
+	return _do_add (index, id_new, value, out_data, out_len) && did_remove;
 }
 
 /**
@@ -406,28 +562,21 @@ nm_multi_index_move (NMMultiIndex *index,
 	g_return_val_if_fail (index, FALSE);
 	g_return_val_if_fail (value, FALSE);
 
-	if (!id_old && !id_new) {
-		/* nothing to do, @value was and is not in @index. */
-		return TRUE;
-	} if (!id_old) {
-		/* add @value to @index with @id_new */
-		return _do_add (index, id_new, value);
-	} else if (!id_new) {
-		/* remove @value from @index with @id_old */
-		return _do_remove (index, id_old, value);
-	} else if (index->equal_fcn (id_old, id_new)) {
-		if (_do_add (index, id_new, value)) {
-			/* we would expect, that @value is already in @index,
-			 * Return %FALSE, if it wasn't. */
-			return FALSE;
-		}
-		return TRUE;
-	} else {
-		gboolean did_remove;
+	return _do_move (index, id_old, id_new, value, NULL, NULL);
+}
 
-		did_remove = _do_remove (index, id_old, value);
-		return _do_add (index, id_new, value) && did_remove;
-	}
+gboolean
+nm_multi_index_move_lookup (NMMultiIndex *index,
+                            const NMMultiIndexId *id_old,
+                            const NMMultiIndexId *id_new,
+                            gconstpointer value,
+                            void *const**out_data,
+                            guint *out_len)
+{
+	g_return_val_if_fail (index, FALSE);
+	g_return_val_if_fail (value, FALSE);
+
+	return _do_move (index, id_old, id_new, value, out_data, out_len);
 }
 
 /******************************************************************************************/

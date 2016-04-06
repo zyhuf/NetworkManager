@@ -64,21 +64,40 @@ void nm_multi_index_free (NMMultiIndex *index);
 gboolean nm_multi_index_add (NMMultiIndex *index,
                              const NMMultiIndexId *id,
                              gconstpointer value);
+gboolean nm_multi_index_add_lookup (NMMultiIndex *index,
+                                    const NMMultiIndexId *id,
+                                    gconstpointer value,
+                                    void *const**out_data,
+                                    guint *out_len);
 
 gboolean nm_multi_index_remove (NMMultiIndex *index,
                                 const NMMultiIndexId *id,
                                 gconstpointer value);
+gboolean nm_multi_index_remove_lookup (NMMultiIndex *index,
+                                       const NMMultiIndexId *id,
+                                       gconstpointer value,
+                                       void *const**out_data,
+                                       guint *out_len);
 
 gboolean nm_multi_index_move (NMMultiIndex *index,
                               const NMMultiIndexId *id_old,
                               const NMMultiIndexId *id_new,
                               gconstpointer value);
+gboolean nm_multi_index_move_lookup (NMMultiIndex *index,
+                                     const NMMultiIndexId *id_old,
+                                     const NMMultiIndexId *id_new,
+                                     gconstpointer value,
+                                     void *const**out_data,
+                                     guint *out_len);
 
 guint nm_multi_index_get_num_groups (const NMMultiIndex *index);
 
 void *const*nm_multi_index_lookup (const NMMultiIndex *index,
                                    const NMMultiIndexId *id,
                                    guint *out_len);
+
+guint nm_multi_index_lookup_len (const NMMultiIndex *index,
+                                 const NMMultiIndexId *id);
 
 gboolean nm_multi_index_contains (const NMMultiIndex *index,
                                   const NMMultiIndexId *id,
