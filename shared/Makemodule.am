@@ -1,0 +1,14 @@
+EXTRA_DIST += 				\
+	shared/gsystem-local-alloc.h 	\
+	shared/nm-dbus-compat.h 	\
+	shared/nm-default.h 		\
+	shared/nm-glib.h 		\
+	shared/nm-macros-internal.h 	\
+	shared/nm-shared-utils.c 	\
+	shared/nm-shared-utils.h 	\
+	shared/nm-test-libnm-utils.h 	\
+	shared/nm-test-utils.h 		\
+	shared/nm-test-utils-impl.c 	\
+	shared/nm-version-macros.h.in
+
+CLEANFILES += shared/nm-version.h

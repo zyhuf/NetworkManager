@@ -44,7 +44,7 @@
 #include <nm-device-wimax.h>
 #include <nm-device.h>
 #include <nm-dhcp-config.h>
-#include <nm-enum-types.h>
+#include <nm-libnm-enum-types.h>
 #include <nm-ip-config.h>
 #include <nm-object.h>
 #include <nm-remote-connection.h>

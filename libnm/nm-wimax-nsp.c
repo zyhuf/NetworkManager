@@ -29,7 +29,7 @@
 #include "nm-wimax-nsp.h"
 #include "nm-dbus-interface.h"
 #include "nm-object-private.h"
-#include "nm-enum-types.h"
+#include "nm-libnm-enum-types.h"
 
 G_DEFINE_TYPE (NMWimaxNsp, nm_wimax_nsp, NM_TYPE_OBJECT)
 

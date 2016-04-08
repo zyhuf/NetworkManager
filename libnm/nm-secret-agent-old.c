@@ -24,7 +24,7 @@
 
 #include "nm-dbus-interface.h"
 #include "nm-secret-agent-old.h"
-#include "nm-enum-types.h"
+#include "nm-libnm-enum-types.h"
 #include "nm-dbus-helpers.h"
 #include "nm-simple-connection.h"
 #include "nm-core-internal.h"

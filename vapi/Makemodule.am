@@ -1,0 +1,27 @@
+EXTRA_DIST += \
+	vapi/NetworkManager-1.0.metadata \
+	vapi/NMClient-1.0.metadata \
+	vapi/libnm-util.deps \
+	vapi/libnm-glib.deps
+
+if WITH_LEGACY_LIBRARIES
+VAPIGEN_VAPIS += vapi/libnm-util.vapi vapi/libnm-glib.vapi
+endif
+
+if ENABLE_VAPIGEN
+
+vapi/libnm-util.vapi: $(top_builddir)/libnm-util/NetworkManager-1.0.gir vapi/libnm-util.deps vapi/NetworkManager-1.0.metadata
+vapi/libnm-glib.vapi: $(top_builddir)/libnm-glib/NMClient-1.0.gir vapi/libnm-glib.deps vapi/NMClient-1.0.metadata vapi/libnm-util.vapi
+
+vapi_libnm_util_vapi_METADATADIRS = $(srcdir)/vapi
+vapi_libnm_util_vapi_FILES = $(top_builddir)/libnm-util/NetworkManager-1.0.gir
+
+vapi_libnm_glib_vapi_METADATADIRS = $(srcdir)/vapi
+vapi_libnm_glib_vapi_FILES = $(top_builddir)/libnm-glib/NMClient-1.0.gir
+vapi_libnm_glib_vapi_VAPIDIRS = $(builddir)/vapi
+vapi_libnm_glib_vapi_GIRDIRS = $(top_builddir)/libnm-util
+vapi_libnm_glib_vapi_DEPS = gio-2.0
+
+vapi_DATA += $(VAPIGEN_VAPIS) $(VAPIGEN_VAPIS:.vapi=.deps)
+
+endif

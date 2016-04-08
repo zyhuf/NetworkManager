@@ -79,7 +79,7 @@
  *
  * VPN daemon states
  */
-typedef enum NMVPNServiceState {
+typedef enum {
 	NM_VPN_SERVICE_STATE_UNKNOWN = 0,
 	NM_VPN_SERVICE_STATE_INIT,
 	NM_VPN_SERVICE_STATE_SHUTDOWN,
@@ -107,7 +107,7 @@ typedef enum NMVPNServiceState {
  *
  * VPN connection states
  */
-typedef enum NMVPNConnectionState {
+typedef enum {
 	NM_VPN_CONNECTION_STATE_UNKNOWN = 0,
 	NM_VPN_CONNECTION_STATE_PREPARE,
 	NM_VPN_CONNECTION_STATE_NEED_AUTH,
@@ -147,7 +147,7 @@ typedef enum NMVPNConnectionState {
  *
  * VPN connection state reasons
  */
-typedef enum NMVPNConnectionStateReason {
+typedef enum {
 	NM_VPN_CONNECTION_STATE_REASON_UNKNOWN = 0,
 	NM_VPN_CONNECTION_STATE_REASON_NONE,
 	NM_VPN_CONNECTION_STATE_REASON_USER_DISCONNECTED,

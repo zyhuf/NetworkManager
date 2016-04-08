@@ -1,0 +1,60 @@
+
+if HAVE_SYSTEMD
+systemdsystemunit_DATA = \
+	data/NetworkManager.service \
+	data/NetworkManager-wait-online.service \
+	data/NetworkManager-dispatcher.service
+
+data/NetworkManager.service: data/NetworkManager.service.in
+	$(edit) $< >$@
+
+if HAVE_SYSTEMD_200
+data/NetworkManager-wait-online.service: data/NetworkManager-wait-online.service.in
+	$(edit) $< >$@
+else
+data/NetworkManager-wait-online.service: data/NetworkManager-wait-online-systemd-pre200.service.in
+	$(edit) $< >$@
+endif
+
+data/NetworkManager-dispatcher.service: data/NetworkManager-dispatcher.service.in
+	$(edit) $< >$@
+
+service_in_files = data/org.freedesktop.NetworkManager.service.in
+service_DATA = $(service_in_files:.service.in=.service)
+
+$(service_DATA): $(service_in_files) Makefile
+	$(edit) $< >$@
+
+install-exec-local:
+	install -d $(DESTDIR)$(systemdsystemunitdir)/network-online.target.wants
+	ln -sf $(systemdsystemunitdir)/NetworkManager-wait-online.service $(DESTDIR)$(systemdsystemunitdir)/network-online.target.wants
+endif
+
+examples_DATA = data/server.conf
+
+if WITH_UDEV_DIR
+udevrules_DATA = \
+	data/84-nm-drivers.rules \
+	data/85-nm-unmanaged.rules
+endif
+
+data/server.conf: data/server.conf.in
+	$(edit) $< >$@
+
+EXTRA_DIST += \
+	data/NetworkManager.service.in \
+	data/NetworkManager-wait-online.service.in \
+	data/NetworkManager-wait-online-systemd-pre200.service.in \
+	data/NetworkManager-dispatcher.service.in \
+	data/org.freedesktop.NetworkManager.service.in \
+	data/84-nm-drivers.rules \
+	data/85-nm-unmanaged.rules \
+	data/server.conf.in
+
+CLEANFILES += \
+	data/NetworkManager.service \
+	data/NetworkManager-wait-online.service \
+	data/NetworkManager-dispatcher.service \
+	data/org.freedesktop.NetworkManager.service \
+	data/server.conf
+

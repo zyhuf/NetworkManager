@@ -1,0 +1,224 @@
+#SUBDIRS += libnm/tests
+
+libnm_libnm_la_CPPFLAGS = \
+	-I$(top_srcdir)/shared \
+	-I$(top_builddir)/shared \
+	-I$(top_builddir)/introspection \
+	-I$(top_srcdir)/libnm-core \
+	-I$(top_builddir)/libnm-core \
+	-I$(top_srcdir)/libnm \
+	-I$(top_builddir)/libnm \
+	-DG_LOG_DOMAIN=\""libnm"\" \
+	-DNETWORKMANAGER_COMPILATION=NM_NETWORKMANAGER_COMPILATION_LIB \
+	$(GLIB_CFLAGS) \
+	$(GUDEV_CFLAGS) \
+	-DNMRUNDIR=\"$(nmrundir)\" \
+	$(CODE_COVERAGE_CFLAGS)
+
+#include $(top_srcdir)/libnm-core/Makefile.libnm-core
+
+# libnm
+
+lib_LTLIBRARIES += libnm/libnm.la
+
+libnminclude_hfiles =				\
+	$(top_builddir)/shared/nm-version-macros.h  \
+	libnm/NetworkManager.h			\
+	libnm/nm-access-point.h			\
+	libnm/nm-active-connection.h		\
+	libnm/nm-client.h			\
+	libnm/nm-device-adsl.h			\
+	libnm/nm-device-bond.h			\
+	libnm/nm-device-bridge.h		\
+	libnm/nm-device-bt.h			\
+	libnm/nm-device-ethernet.h		\
+	libnm/nm-device-generic.h		\
+	libnm/nm-device-infiniband.h		\
+	libnm/nm-device-ip-tunnel.h		\
+	libnm/nm-device-macvlan.h		\
+	libnm/nm-device-modem.h			\
+	libnm/nm-device-olpc-mesh.h		\
+	libnm/nm-device-team.h			\
+	libnm/nm-device-tun.h			\
+	libnm/nm-device-vlan.h			\
+	libnm/nm-device-vxlan.h			\
+	libnm/nm-device-wifi.h			\
+	libnm/nm-device-wimax.h			\
+	libnm/nm-device.h			\
+	libnm/nm-dhcp-config.h			\
+	libnm/nm-libnm-enum-types.h		\
+	libnm/nm-ip-config.h			\
+	libnm/nm-object.h			\
+	libnm/nm-remote-connection.h		\
+	libnm/nm-types.h			\
+	libnm/nm-vpn-connection.h		\
+	libnm/nm-vpn-editor.h			\
+	libnm/nm-wimax-nsp.h
+
+libnminclude_nointrospect_hfiles =		\
+	libnm/nm-secret-agent-old.h		\
+	libnm/nm-vpn-plugin-old.h		\
+	libnm/nm-vpn-service-plugin.h
+
+libnm_headers =					\
+	$(libnminclude_hfiles)			\
+	$(libnminclude_nointrospect_hfiles)
+
+libnminclude_HEADERS +=	$(libnm_headers)
+
+libnm_libnm_la_private_headers =		\
+	libnm/nm-dbus-helpers.h			\
+	libnm/nm-device-private.h		\
+	libnm/nm-dhcp4-config.h			\
+	libnm/nm-dhcp6-config.h			\
+	libnm/nm-ip4-config.h			\
+	libnm/nm-ip6-config.h			\
+	libnm/nm-manager.h			\
+	libnm/nm-object-cache.h			\
+	libnm/nm-object-private.h		\
+	libnm/nm-remote-connection-private.h	\
+	libnm/nm-remote-settings.h
+
+libnm_libnm_la_csources =			\
+	libnm/nm-access-point.c			\
+	libnm/nm-active-connection.c		\
+	libnm/nm-client.c			\
+	libnm/nm-dbus-helpers.c			\
+	libnm/nm-device-adsl.c			\
+	libnm/nm-device-bond.c			\
+	libnm/nm-device-bridge.c		\
+	libnm/nm-device-bt.c			\
+	libnm/nm-device-ethernet.c		\
+	libnm/nm-device-generic.c		\
+	libnm/nm-device-infiniband.c		\
+	libnm/nm-device-ip-tunnel.c		\
+	libnm/nm-device-macvlan.c		\
+	libnm/nm-device-modem.c			\
+	libnm/nm-device-olpc-mesh.c		\
+	libnm/nm-device-team.c			\
+	libnm/nm-device-tun.c			\
+	libnm/nm-device-vlan.c			\
+	libnm/nm-device-vxlan.c			\
+	libnm/nm-device-wifi.c			\
+	libnm/nm-device-wimax.c			\
+	libnm/nm-device.c			\
+	libnm/nm-dhcp-config.c			\
+	libnm/nm-dhcp4-config.c			\
+	libnm/nm-dhcp6-config.c			\
+	libnm/nm-libnm-enum-types.c		\
+	libnm/nm-ip-config.c			\
+	libnm/nm-ip4-config.c			\
+	libnm/nm-ip6-config.c			\
+	libnm/nm-manager.c			\
+	libnm/nm-object-cache.c			\
+	libnm/nm-object.c			\
+	libnm/nm-remote-connection.c		\
+	libnm/nm-remote-settings.c		\
+	libnm/nm-secret-agent-old.c		\
+	libnm/nm-vpn-connection.c		\
+	libnm/nm-vpn-plugin-old.c		\
+	libnm/nm-vpn-editor.c			\
+	libnm/nm-vpn-service-plugin.c		\
+	libnm/nm-wimax-nsp.c
+
+libnm_libnm_la_SOURCES =			\
+	$(libnm_libnm_la_csources)		\
+	$(libnm_libnm_la_private_headers)
+
+GLIB_GENERATED += libnm/nm-libnm-enum-types.h libnm/nm-libnm-enum-types.c
+nm_libnm_enum_types_sources = $(libnm_headers)
+nm_libnm_enum_types_MKENUMS_H_FLAGS = --identifier-prefix NM --fhead '\#include <nm-core-enum-types.h>\n'
+nm_libnm_enum_types_MKENUMS_C_FLAGS = --identifier-prefix NM --fhead '\#include "nm-default.h"\n'
+
+libnm_libnm_la_LIBADD = \
+	$(top_builddir)/libnm-core/libnm-core.la \
+	$(top_builddir)/introspection/libnmdbus.la \
+	$(GLIB_LIBS) \
+	$(UUID_LIBS) \
+	$(GUDEV_LIBS)
+
+libnm_libnm_la_LDFLAGS = \
+	$(CODE_COVERAGE_LDFLAGS)
+
+libnm_libnm_la_LDFLAGS += \
+	-Wl,--version-script=$(srcdir)/libnm/libnm.ver \
+	-version-info "1:0:1"
+
+###
+
+pkgconfig_DATA += libnm/libnm.pc
+
+DISTCLEANFILES += libnm/libnm.pc
+
+EXTRA_DIST += libnm/libnm.pc.in libnm/libnm.ver
+
+INTROSPECTION_COMPILER_ARGS +=			\
+	--includedir=$(top_srcdir)/libnm-core	\
+	--includedir=$(top_builddir)/libnm-core	\
+	--includedir=$(top_srcdir)/libnm	\
+	--includedir=$(top_builddir)/libnm
+
+if HAVE_INTROSPECTION
+libnm/NM-1.0.gir: libnm/libnm.la
+libnm_NM_1_0_gir_INCLUDES = Gio-2.0
+libnm_NM_1_0_gir_PACKAGES = gio-2.0 gudev-1.0
+libnm_NM_1_0_gir_EXPORT_PACKAGES = libnm
+libnm_NM_1_0_gir_CFLAGS = $(libnm_libnm_la_CPPFLAGS)
+libnm_NM_1_0_gir_LIBS = libnm/libnm.la
+libnm_NM_1_0_gir_FILES = \
+	$(libnm_core_libnm_core_headers)	\
+	$(libnminclude_hfiles)			\
+	$(libnm_core_libnm_core_sources)	\
+	$(libnm_libnm_la_csources)
+libnm_NM_1_0_gir_SCANNERFLAGS = --warn-all --identifier-prefix=NM --symbol-prefix=nm
+
+INTROSPECTION_GIRS += libnm/NM-1.0.gir
+typelib_DATA += libnm/NM-1.0.typelib
+endif
+
+CHECK_LOCALS += check-local-libnm
+
+check-local-libnm:
+	$(top_srcdir)/tools/check-exports.sh $(builddir)/.libs/libnm.so $(srcdir)/libnm/libnm.ver
+
+if BUILD_SETTING_DOCS
+
+noinst_DATA += \
+	libnm/nm-property-docs.xml \
+	libnm/nm-setting-docs-overrides.xml \
+	libnm/nm-setting-docs.xml \
+	libnm/nm-keyfile-docs.xml \
+	libnm/nm-ifcfg-rh-docs.xml
+
+docs_sources = $(filter-out %/nm-core-enum-types.c,$(libnm_core_libnm_core_sources))
+
+libnm/nm-setting-docs-overrides.xml: libnm/generate-plugin-docs.pl $(docs_sources)
+	$(AM_V_GEN) $(srcdir)/libnm/generate-plugin-docs.pl dbus $(top_srcdir)/libnm-core $@
+
+libnm/nm-property-docs.xml: libnm/generate-setting-docs.py $(docs_sources) | libnm/NM-1.0.gir libnm/NM-1.0.typelib libnm/libnm.la
+	$(AM_V_GEN) \
+	export GI_TYPELIB_PATH=$(abs_builddir)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH}; \
+	export LD_LIBRARY_PATH=$(abs_builddir)/.libs$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}; \
+	$(srcdir)/libnm/generate-setting-docs.py \
+		--gir $(builddir)/libnm/NM-1.0.gir \
+		--output $@
+
+libnm/nm-setting-docs.xml: libnm/generate-setting-docs.py $(docs_sources) libnm/nm-setting-docs-overrides.xml | libnm/NM-1.0.gir libnm/NM-1.0.typelib libnm/libnm.la
+	$(AM_V_GEN) \
+	export GI_TYPELIB_PATH=$(abs_builddir)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH}; \
+	export LD_LIBRARY_PATH=$(abs_builddir)/.libs$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}; \
+	$(srcdir)/libnm/generate-setting-docs.py \
+		--gir $(builddir)/libnm/NM-1.0.gir \
+		--overrides $(builddir)/libnm/nm-setting-docs-overrides.xml \
+		--output $@
+
+libnm/nm-keyfile-docs.xml: libnm/generate-plugin-docs.pl $(docs_sources)
+	$(srcdir)/libnm/generate-plugin-docs.pl keyfile $(top_srcdir)/libnm-core $@
+libnm/nm-ifcfg-rh-docs.xml: libnm/generate-plugin-docs.pl $(docs_sources)
+	$(srcdir)/libnm/generate-plugin-docs.pl ifcfg-rh $(top_srcdir)/libnm-core $@
+
+endif
+
+EXTRA_DIST += \
+	libnm/generate-setting-docs.py \
+	libnm/generate-plugin-docs.pl

@@ -1016,12 +1016,9 @@ fi
 AM_CONDITIONAL(BUILD_SETTING_DOCS, test "$build_setting_docs" = "yes")
 AM_CONDITIONAL(SETTING_DOCS_AVAILABLE, test "$build_setting_docs" = "yes" -o "$have_setting_docs" = "yes")
 
-
 AC_CONFIG_FILES([
 Makefile
-shared/Makefile
 shared/nm-version-macros.h
-src/Makefile
 src/tests/Makefile
 src/tests/config/Makefile
 src/dhcp-manager/Makefile
@@ -1055,32 +1052,22 @@ src/devices/team/Makefile
 src/devices/wifi/Makefile
 src/devices/wifi/tests/Makefile
 src/devices/wwan/Makefile
-libnm-core/Makefile
 libnm-core/tests/Makefile
 libnm/libnm.pc
-libnm/Makefile
 libnm/tests/Makefile
 libnm-util/libnm-util.pc
-libnm-util/Makefile
 libnm-util/tests/Makefile
 libnm-glib/libnm-glib.pc
 libnm-glib/libnm-glib-vpn.pc
-libnm-glib/Makefile
 libnm-glib/tests/Makefile
-callouts/Makefile
 callouts/tests/Makefile
-tools/Makefile
 clients/Makefile
 clients/cli/Makefile
 clients/tui/Makefile
 clients/tui/newt/Makefile
-introspection/Makefile
-man/Makefile
 man/common.ent
 po/Makefile.in
-policy/Makefile
 policy/org.freedesktop.NetworkManager.policy.in
-data/Makefile
 docs/Makefile
 docs/api/Makefile
 docs/api/version.xml
@@ -1091,20 +1078,8 @@ docs/libnm-util/version.xml
 docs/libnm/Makefile
 docs/libnm/version.xml
 NetworkManager.pc
-examples/Makefile
-examples/shell/Makefile
-examples/python/Makefile
-examples/python/dbus/Makefile
-examples/python/gi/Makefile
-examples/python/python-networkmanager/Makefile
-examples/ruby/Makefile
-examples/lua/Makefile
-examples/lua/lgi/Makefile
-examples/C/Makefile
 examples/C/glib/Makefile
 examples/C/qt/Makefile
-examples/dispatcher/Makefile
-vapi/Makefile
 ])
 AC_CONFIG_SUBDIRS([libndp])
 AC_OUTPUT

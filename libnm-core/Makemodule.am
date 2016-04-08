@@ -1,0 +1,49 @@
+#SUBDIRS += libnm-core/tests
+
+libnm_core_libnm_core_la_CPPFLAGS = \
+	-I${top_srcdir}/shared \
+	-I${top_builddir}/shared \
+	-I${top_srcdir}/libnm-core \
+	-I${top_builddir}/libnm-core \
+	-DG_LOG_DOMAIN=\""libnm"\" \
+	-DLOCALEDIR=\"$(datadir)/locale\" \
+	-DNMCONFDIR=\"$(nmconfdir)\" \
+	-DNMLIBDIR=\"$(nmlibdir)\" \
+	-DNETWORKMANAGER_COMPILATION=NM_NETWORKMANAGER_COMPILATION_LIB \
+	$(GLIB_CFLAGS) \
+	$(CODE_COVERAGE_CFLAGS)
+
+noinst_LTLIBRARIES += libnm-core/libnm-core.la
+
+# header/source defines are in Makefile.libnm-core, so they can be shared
+# with libnm/Makefile.am
+#include libnm-core/Makefile.libnm-core
+
+libnminclude_HEADERS += $(libnm_core_libnm_core_headers)
+libnm_core_libnm_core_la_SOURCES =			\
+	$(libnm_core_libnm_core_sources)		\
+	$(libnm_core_libnm_core_private_headers)
+
+GLIB_GENERATED += libnm-core/nm-core-enum-types.h libnm-core/nm-core-enum-types.c
+nm_core_enum_types_sources = $(filter-out %nm-core-enum-types.h,$(libnm_core_libnm_core_headers))
+nm_core_enum_types_MKENUMS_H_FLAGS = --identifier-prefix NM
+nm_core_enum_types_MKENUMS_C_FLAGS = --identifier-prefix NM
+
+libnm_core_libnm_core_la_LIBADD =	\
+	$(GLIB_LIBS)			\
+	$(UUID_LIBS)
+
+libnm_core_libnm_core_la_LDFLAGS =	\
+	$(CODE_COVERAGE_LDFLAGS)
+
+if WITH_GNUTLS
+libnm_core_libnm_core_la_CPPFLAGS += $(GNUTLS_CFLAGS)
+libnm_core_libnm_core_la_SOURCES += libnm-core/crypto_gnutls.c
+libnm_core_libnm_core_la_LIBADD += $(GNUTLS_LIBS)
+endif
+
+if WITH_NSS
+libnm_core_libnm_core_la_CPPFLAGS += $(NSS_CFLAGS)
+libnm_core_libnm_core_la_SOURCES += libnm-core/crypto_nss.c
+libnm_core_libnm_core_la_LIBADD += $(NSS_LIBS)
+endif

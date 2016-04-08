@@ -1029,7 +1029,8 @@ nm_vpn_plugin_class_init (NMVPNPluginClass *plugin_class)
 
 	dbus_g_error_domain_register (NM_VPN_PLUGIN_ERROR,
 	                              NM_DBUS_VPN_ERROR_PREFIX,
-	                              NM_TYPE_VPN_PLUGIN_ERROR);
+	                              nm_vpn_plugin_error_get_type ());
+//	                              NM_TYPE_VPN_PLUGIN_ERROR);
 
 	setup_unix_signal_handler ();
 }

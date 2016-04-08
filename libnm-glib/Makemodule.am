@@ -1,0 +1,222 @@
+#SUBDIRS = . tests
+
+libnm_glib_common_cppflags = \
+	-I$(top_srcdir)/shared \
+	-I$(top_builddir)/shared \
+	-I$(top_srcdir)/libnm-util \
+	-I$(top_builddir)/libnm-util \
+	-I$(top_srcdir)/libnm-glib \
+	-I$(top_builddir)/libnm-glib \
+	-DG_LOG_DOMAIN=\""libnm-glib"\" \
+	-DNETWORKMANAGER_COMPILATION=NM_NETWORKMANAGER_COMPILATION_LIB_LEGACY \
+	$(DBUS_CFLAGS) \
+	$(GLIB_CFLAGS)
+
+BUILT_SOURCES += \
+	libnm-glib/nm-vpn-plugin-glue.h \
+	libnm-glib/nm-secret-agent-glue.h
+
+
+noinst_LTLIBRARIES += \
+	libnm-glib/libdeprecated-nm-glib.la
+
+#####################################################
+# Deprecated original libnm_glib bits
+#####################################################
+
+libnm_glib_libdeprecated_nm_glib_la_SOURCES = \
+	libnm-glib/libnm_glib.h \
+	libnm-glib/libnm_glib.c
+
+libnm_glib_libdeprecated_nm_glib_la_CPPFLAGS = \
+	$(libnm_glib_common_cppflags) \
+	-Wno-deprecated-declarations \
+	-Wno-deprecated
+
+libnm_glib_libdeprecated_nm_glib_la_LIBADD = \
+	$(DBUS_LIBS) \
+	$(GLIB_LIBS)
+
+libnm_glib_libdeprecateddir = $(includedir)/libnm-glib
+libnm_glib_libdeprecated_HEADERS = libnm-glib/libnm_glib.h
+
+#####################################################
+# Real libnm-glib stuff
+#####################################################
+
+lib_LTLIBRARIES += \
+	libnm-glib/libnm-glib.la \
+	libnm-glib/libnm-glib-vpn.la
+
+libnm_glib_libnm_glib_la_CFLAGS = \
+	$(GLIB_CFLAGS) \
+	$(DBUS_CFLAGS) \
+	$(GUDEV_CFLAGS) \
+	-DNMRUNDIR=\"$(nmrundir)\"
+
+libnm_glib_libnm_glib_la_CPPFLAGS = \
+	$(libnm_glib_common_cppflags)
+
+libnmglibinclude_HEADERS = \
+	libnm-glib/nm-object.h \
+	libnm-glib/nm-client.h \
+	libnm-glib/nm-device.h \
+	libnm-glib/nm-device-ethernet.h \
+	libnm-glib/nm-device-infiniband.h \
+	libnm-glib/nm-device-adsl.h \
+	libnm-glib/nm-device-wifi.h \
+	libnm-glib/nm-device-bt.h \
+	libnm-glib/nm-device-olpc-mesh.h \
+	libnm-glib/nm-device-bond.h \
+	libnm-glib/nm-device-team.h \
+	libnm-glib/nm-device-bridge.h \
+	libnm-glib/nm-device-vlan.h \
+	libnm-glib/nm-device-generic.h \
+	libnm-glib/nm-access-point.h \
+	libnm-glib/nm-ip4-config.h \
+	libnm-glib/nm-device-modem.h \
+	libnm-glib/nm-vpn-connection.h \
+	libnm-glib/nm-types.h \
+	libnm-glib/nm-active-connection.h \
+	libnm-glib/nm-dhcp4-config.h \
+	libnm-glib/nm-ip6-config.h \
+	libnm-glib/nm-dhcp6-config.h \
+	libnm-glib/nm-remote-connection.h \
+	libnm-glib/nm-remote-settings.h \
+	libnm-glib/nm-secret-agent.h \
+	libnm-glib/nm-device-wimax.h \
+	libnm-glib/nm-wimax-nsp.h \
+	libnm-glib/nm-glib-enum-types.h
+
+libnmglibvpn_HEADERS = \
+	libnm-glib/nm-vpn-plugin.h \
+	libnm-glib/nm-vpn-plugin-ui-interface.h \
+	libnm-glib/nm-vpn-plugin-utils.h \
+	libnm-glib/nm-vpn-enum-types.h
+
+libnm_glib_libnm_glib_la_csources = \
+	libnm-glib/nm-object.c \
+	libnm-glib/nm-dbus-helpers.c \
+	libnm-glib/nm-client.c \
+	libnm-glib/nm-device.c \
+	libnm-glib/nm-device-ethernet.c \
+	libnm-glib/nm-device-infiniband.c \
+	libnm-glib/nm-device-adsl.c \
+	libnm-glib/nm-device-wifi.c \
+	libnm-glib/nm-device-bt.c \
+	libnm-glib/nm-device-olpc-mesh.c \
+	libnm-glib/nm-device-bond.c \
+	libnm-glib/nm-device-team.c \
+	libnm-glib/nm-device-bridge.c \
+	libnm-glib/nm-device-vlan.c \
+	libnm-glib/nm-device-generic.c \
+	libnm-glib/nm-access-point.c \
+	libnm-glib/nm-ip4-config.c \
+	libnm-glib/nm-device-modem.c \
+	libnm-glib/nm-vpn-connection.c \
+	libnm-glib/nm-types.c \
+	libnm-glib/nm-object-cache.c \
+	libnm-glib/nm-active-connection.c \
+	libnm-glib/nm-dhcp4-config.c \
+	libnm-glib/nm-ip6-config.c \
+	libnm-glib/nm-dhcp6-config.c \
+	libnm-glib/nm-remote-connection.c \
+	libnm-glib/nm-remote-settings.c \
+	libnm-glib/nm-secret-agent.c \
+	libnm-glib/nm-device-wimax.c \
+	libnm-glib/nm-wimax-nsp.c \
+	libnm-glib/nm-glib-enum-types.c
+
+libnm_glib_libnm_glib_la_private_headers = \
+	libnm-glib/nm-object-private.h \
+	libnm-glib/nm-device-private.h \
+	libnm-glib/nm-types-private.h \
+	libnm-glib/nm-object-cache.h \
+	libnm-glib/nm-remote-connection-private.h \
+	libnm-glib/nm-dbus-helpers-private.h
+
+libnm_glib_libnm_glib_la_SOURCES = \
+	$(libnm_glib_libnm_glib_la_csources) \
+	$(libnm_glib_libnm_glib_la_private_headers)
+
+GLIB_GENERATED += libnm-glib/nm-glib-enum-types.h libnm-glib/nm-glib-enum-types.c
+nm_glib_enum_types_sources = $(libnmglibinclude_HEADERS)
+nm_glib_enum_types_MKENUMS_H_FLAGS = --identifier-prefix NM
+nm_glib_enum_types_MKENUMS_C_FLAGS = --identifier-prefix NM
+
+libnm_glib_libnm_glib_la_LIBADD = \
+	$(top_builddir)/libnm-util/libnm-util.la \
+	$(builddir)/libnm-glib/libdeprecated-nm-glib.la \
+	$(GLIB_LIBS) \
+	$(DBUS_LIBS) \
+	$(GUDEV_LIBS)
+
+libnm_glib_libnm_glib_la_LDFLAGS = \
+	-Wl,--version-script=$(srcdir)/libnm-glib/libnm-glib.ver \
+	-version-info "13:0:9"
+
+noinst_PROGRAMS = libnm-glib/libnm-glib-test
+
+libnm_glib_libnm_glib_test_SOURCES = libnm-glib/libnm-glib-test.c
+libnm_glib_libnm_glib_test_CPPFLAGS = $(libnm_glib_common_cppflags)
+libnm_glib_libnm_glib_test_CFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS)
+libnm_glib_libnm_glib_test_LDADD = libnm-glib/libnm-glib.la $(top_builddir)/libnm-util/libnm-util.la $(GLIB_LIBS) $(DBUS_LIBS)
+
+libnm_glib_libnm_glib_vpn_la_SOURCES = \
+	libnm-glib/nm-vpn-plugin.c \
+	libnm-glib/nm-vpn-plugin-ui-interface.c \
+	libnm-glib/nm-vpn-plugin-utils.c \
+	libnm-glib/nm-vpn-enum-types.c
+GLIB_GENERATED += libnm-glib/nm-vpn-enum-types.h libnm-glib/nm-vpn-enum-types.c
+nm_vpn_enum_types_sources = $(libnmglibvpn_HEADERS)
+libnm_glib_libnm_glib_vpn_la_CPPFLAGS = $(libnm_glib_common_cppflags)
+libnm_glib_libnm_glib_vpn_la_CFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS)
+libnm_glib_libnm_glib_vpn_la_LIBADD = $(top_builddir)/libnm-util/libnm-util.la $(GLIB_LIBS) $(DBUS_LIBS)
+libnm_glib_libnm_glib_vpn_la_LDFLAGS = -Wl,--version-script=$(srcdir)/libnm-glib/libnm-glib-vpn.ver \
+	-version-info "3:0:2"
+
+BUILT_SOURCES += $(GLIB_GENERATED)
+
+#####################################################
+
+libnm-glib/nm-vpn-plugin-glue.h: $(top_srcdir)/introspection/nm-vpn-plugin.xml
+	$(AM_V_GEN) dbus-binding-tool --prefix=nm_vpn_plugin --mode=glib-server --output=$@ $<
+
+libnm-glib/nm-secret-agent-glue.h: $(top_srcdir)/introspection/nm-secret-agent.xml
+	$(AM_V_GEN) dbus-binding-tool --prefix=nm_secret_agent --mode=glib-server --output=$@ $<
+
+pkgconfig_DATA += libnm-glib/libnm-glib.pc libnm-glib/libnm-glib-vpn.pc
+
+DISTCLEANFILES += libnm-glib/libnm-glib.pc libnm-glib/libnm-glib.pc
+
+EXTRA_DIST += \
+	libnm-glib/libnm-glib.pc.in \
+	libnm-glib/libnm-glib-vpn.pc.in \
+	libnm-glib/libnm-glib.ver \
+	libnm-glib/libnm-glib-vpn.ver
+
+INTROSPECTION_COMPILER_ARGS += --includedir=$(top_builddir)/libnm-util
+
+if HAVE_INTROSPECTION
+libnm-glib/NMClient-1.0.gir: libnm-glib/libnm-glib.la
+libnm_glib_NMClient_1_0_gir_INCLUDES = Gio-2.0 DBusGLib-1.0
+libnm_glib_NMClient_1_0_gir_PACKAGES = gio-2.0 dbus-glib-1 gudev-1.0
+libnm_glib_NMClient_1_0_gir_EXPORT_PACKAGES = libnm-glib libnm-glib-vpn
+libnm_glib_NMClient_1_0_gir_CFLAGS = $(libnm_glib_common_cppflags) -I$(top_srcdir)/libnm-glib -I$(top_srcdir)/libnm-util
+libnm_glib_NMClient_1_0_gir_LIBS = libnm-glib/libnm-glib.la $(top_builddir)/libnm-util/libnm-util.la
+libnm_glib_NMClient_1_0_gir_FILES = $(libnmglibinclude_HEADERS) $(libnm_glib_libnm_glib_la_csources)
+libnm_glib_NMClient_1_0_gir_SCANNERFLAGS = --warn-all --identifier-prefix=NM --symbol-prefix=nm --include-uninstalled=$(top_builddir)/libnm-util/NetworkManager-1.0.gir
+
+INTROSPECTION_GIRS += libnm-glib/NMClient-1.0.gir
+typelib_DATA += libnm-glib/NMClient-1.0.typelib
+endif
+
+if ENABLE_TESTS
+
+CHECK_LOCALS += check-local-libnm-glib
+
+check-local-libnm-glib:
+	$(top_srcdir)/tools/check-exports.sh $(builddir)/.libs/libnm-glib.so $(srcdir)/libnm-glib.ver
+
+endif
+

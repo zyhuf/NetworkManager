@@ -30,7 +30,7 @@
 #include "nm-device-bt.h"
 #include "nm-device-private.h"
 #include "nm-object-private.h"
-#include "nm-enum-types.h"
+#include "nm-libnm-enum-types.h"
 
 G_DEFINE_TYPE (NMDeviceBt, nm_device_bt, NM_TYPE_DEVICE)
 

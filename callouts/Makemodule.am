@@ -1,0 +1,85 @@
+#SUBDIRS = . tests
+
+noinst_LTLIBRARIES += \
+	callouts/libnmdbus-dispatcher.la \
+	callouts/libtest-dispatcher-envp.la
+
+dbusservice_DATA += \
+	callouts/nm-dispatcher.conf
+
+libexec_PROGRAMS += \
+	callouts/nm-dispatcher
+
+callouts_nm_dispatcher_CPPFLAGS = \
+	-I${top_srcdir}/shared \
+	-I${top_builddir}/shared \
+	-I${top_srcdir}/libnm-core \
+	-I${top_builddir}/libnm-core \
+	$(GLIB_CFLAGS) \
+	-DNETWORKMANAGER_COMPILATION \
+	-DNMCONFDIR=\"$(nmconfdir)\" \
+	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DLIBEXECDIR=\"$(libexecdir)\"
+
+callouts_nm_dispatcher_SOURCES = \
+	callouts/nm-dispatcher.c \
+	callouts/nm-dispatcher-api.h \
+	callouts/nm-dispatcher-utils.c \
+	callouts/nm-dispatcher-utils.h
+
+callouts_nm_dispatcher_LDADD = \
+	$(top_builddir)/libnm/libnm.la \
+	callouts/libnmdbus-dispatcher.la \
+	$(GLIB_LIBS)
+
+# See note about gdbus-codegen in introspection/Makefile.am
+
+nodist_callouts_libnmdbus_dispatcher_la_SOURCES = \
+	callouts/nmdbus-dispatcher.c \
+	callouts/nmdbus-dispatcher.h
+
+callouts_libnmdbus_dispatcher_la_CPPFLAGS = \
+	$(filter-out -DGLIB_VERSION_MAX_ALLOWED%,$(callouts_nm_dispatcher_CPPFLAGS))
+
+callouts/nmdbus-dispatcher.h: callouts/nm-dispatcher.xml
+	$(AM_V_GEN) gdbus-codegen \
+		--generate-c-code $(basename $@) \
+		--c-namespace NMDBus \
+		--interface-prefix org.freedesktop \
+		$<
+
+callouts/nmdbus-dispatcher.c: callouts/nmdbus-dispatcher.h
+	@true
+
+BUILT_SOURCES += \
+	$(nodist_callouts_libnmdbus_dispatcher_la_SOURCES)
+
+callouts_libtest_dispatcher_envp_la_SOURCES = \
+	callouts/nm-dispatcher-utils.c \
+	callouts/nm-dispatcher-utils.h
+
+callouts_libtest_dispatcher_envp_la_CPPFLAGS = \
+	$(callouts_nm_dispatcher_CPPFLAGS)
+
+callouts_libtest_dispatcher_envp_la_LIBADD = \
+	$(top_builddir)/libnm/libnm.la \
+	$(GLIB_LIBS)
+
+dbusactivation_in_files = callouts/org.freedesktop.nm_dispatcher.service.in
+dbusactivation_DATA += $(dbusactivation_in_files:.service.in=.service)
+
+%.service: %.service.in
+	$(edit) $< >$@
+
+INSTALL_DATA_HOOKS += install-data-hook-callouts
+
+install-data-hook-callouts:
+	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)
+	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)/pre-down.d
+	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)/pre-up.d
+	   $(mkinstalldirs) -m 0755 $(DESTDIR)$(dispatcherdir)/no-wait.d
+
+EXTRA_DIST += \
+	$(dbusservice_DATA) \
+	$(dbusactivation_in_files) \
+	callouts/nm-dispatcher.xml

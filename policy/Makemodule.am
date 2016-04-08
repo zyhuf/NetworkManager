@@ -1,11 +1,7 @@
-polkit_policydir = $(datadir)/polkit-1/actions
-
 dist_polkit_policy_in_in_files = \
-	org.freedesktop.NetworkManager.policy.in.in
+	policy/org.freedesktop.NetworkManager.policy.in.in
 
-polkit_policy_DATA = $(dist_polkit_policy_in_in_files:.policy.in.in=.policy)
-
-@INTLTOOL_POLICY_RULE@
+polkit_policy_DATA += $(dist_polkit_policy_in_in_files:.policy.in.in=.policy)
 
 # polkit >= 0.92 doesn't have an updated polkit-policy-file-validate
 #check:
@@ -24,5 +20,3 @@ polkit_policy_DATA = $(dist_polkit_policy_in_in_files:.policy.in.in=.policy)
 
 clean-local :
 	rm -f *~
-
-DISTCLEANFILES = $(polkit_policy_DATA)

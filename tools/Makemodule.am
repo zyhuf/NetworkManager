@@ -1,0 +1,7 @@
+EXTRA_DIST += \
+	tools/check-exports.sh \
+	tools/debug-helper.py \
+	tools/run-test-valgrind.sh \
+	tools/run-test-dbus-session.sh \
+	tools/test-networkmanager-service.py \
+	tools/test-sudo-wrapper.sh
