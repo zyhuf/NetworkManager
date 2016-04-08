@@ -639,10 +639,9 @@ nm_exported_object_export (NMExportedObject *self)
 	nm_assert (priv->_constructed);
 #endif
 
-	priv->bus_mgr = nm_bus_manager_get ();
+	priv->bus_mgr =g_object_ref (nm_bus_manager_get ());
 	if (!priv->bus_mgr)
 		g_return_val_if_reached (NULL);
-	g_object_add_weak_pointer ((GObject *) priv->bus_mgr, (gpointer *) &priv->bus_mgr);
 
 	type = G_OBJECT_TYPE (self);
 	while (type != NM_TYPE_EXPORTED_OBJECT) {
@@ -685,11 +684,8 @@ nm_exported_object_unexport (NMExportedObject *self)
 
 	_LOGT ("unexport: \"%s\"", priv->path);
 
-	if (priv->bus_mgr) {
-		nm_bus_manager_unregister_object (priv->bus_mgr, (GDBusObjectSkeleton *) self);
-		g_object_remove_weak_pointer ((GObject *) priv->bus_mgr, (gpointer *) &priv->bus_mgr);
-		priv->bus_mgr = NULL;
-	}
+	nm_bus_manager_unregister_object (priv->bus_mgr, (GDBusObjectSkeleton *) self);
+	g_clear_object (&priv->bus_mgr);
 
 	nm_exported_object_destroy_skeletons (self);
 
