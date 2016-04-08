@@ -1,0 +1,37 @@
+
+/*
+  Log all allocations and frees:
+
+  stap -g --suppress-time-limits --ldd -vv meh.stp \
+	-d /usr/sbin/NetworkManager --ldd -x `pidof NetworkManager` \
+	$(cat /proc/`pidof NetworkManager`/maps |awk '/\.so/ {print "-d "$NF}' |sort |uniq)
+*/
+
+probe begin
+{
+	  if (target() == 0) error ("please specify target process with -c / -x")
+}
+
+probe process("/lib*/libc.so.6").function("sbrk")
+{
+	printf ("sbrk %s\n", $$parms);
+}
+
+probe process("/lib*/libc.so.6").function("realloc").return
+{
+	printf ("%s\n", $$parms);
+}
+
+probe process("/lib*/libc.so.6").function("malloc").return
+{
+	if ($bytes > 0) {
+		printf ("malloc(%d) = %x\n", $bytes, $return);
+		print_ubacktrace ();
+	}
+}
+
+probe process("/lib*/libc.so.6").function("free")
+{
+	if ($mem > 0)
+		printf ("free(%x)\n", $mem);
+}
