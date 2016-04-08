@@ -139,6 +139,8 @@ typedef struct {
 
 	gboolean startup;
 	gboolean devices_inited;
+
+	GArray *idle_cb_links;
 } NMManagerPrivate;
 
 #define NM_MANAGER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_MANAGER, NMManagerPrivate))
@@ -2038,52 +2040,46 @@ platform_link_added (NMManager *self,
 	}
 }
 
-typedef struct {
-	NMManager *self;
-	int ifindex;
-} PlatformLinkCbData;
-
 static gboolean
-_platform_link_cb_idle (PlatformLinkCbData *data)
+_platform_link_cb_idle (NMManager *self)
 {
-	NMManager *self = data->self;
-	const NMPlatformLink *l;
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	int i;
 
-	if (!self)
-		goto out;
+	for (i = 0; i < priv->idle_cb_links->len; i++) {
+		int ifindex = g_array_index (priv->idle_cb_links, int, i);
+		const NMPlatformLink *l = nm_platform_link_get (NM_PLATFORM_GET, ifindex);
 
-	g_object_remove_weak_pointer (G_OBJECT (self), (gpointer *) &data->self);
+		if (l) {
+			NMPlatformLink pllink;
 
-	l = nm_platform_link_get (NM_PLATFORM_GET, data->ifindex);
-	if (l) {
-		NMPlatformLink pllink;
+			pllink = *l; /* make a copy of the link instance */
+			platform_link_added (self, ifindex, &pllink);
+		} else {
+			NMDevice *device;
+			GError *error = NULL;
 
-		pllink = *l; /* make a copy of the link instance */
-		platform_link_added (self, data->ifindex, &pllink);
-	} else {
-		NMDevice *device;
-		GError *error = NULL;
-
-		device = nm_manager_get_device_by_ifindex (self, data->ifindex);
-		if (device) {
-			if (nm_device_is_software (device)) {
-				/* Our software devices stick around until their connection is removed */
-				if (!nm_device_unrealize (device, FALSE, &error)) {
-					_LOGW (LOGD_DEVICE, "(%s): failed to unrealize: %s",
-					       nm_device_get_iface (device),
-					       error->message);
-					g_clear_error (&error);
+			device = nm_manager_get_device_by_ifindex (self, ifindex);
+			if (device) {
+				if (nm_device_is_software (device)) {
+					/* Our software devices stick around until their connection is removed */
+					if (!nm_device_unrealize (device, FALSE, &error)) {
+						_LOGW (LOGD_DEVICE, "(%s): failed to unrealize: %s",
+						       nm_device_get_iface (device),
+						       error->message);
+						g_clear_error (&error);
+						remove_device (self, device, FALSE, TRUE);
+					}
+				} else {
+					/* Hardware and external devices always get removed when their kernel link is gone */
 					remove_device (self, device, FALSE, TRUE);
 				}
-			} else {
-				/* Hardware and external devices always get removed when their kernel link is gone */
-				remove_device (self, device, FALSE, TRUE);
 			}
 		}
 	}
 
-out:
-	g_slice_free (PlatformLinkCbData, data);
+	g_array_free (priv->idle_cb_links, TRUE);
+	priv->idle_cb_links = NULL;
 	return G_SOURCE_REMOVE;
 }
 
@@ -2095,16 +2091,16 @@ platform_link_cb (NMPlatform *platform,
                   NMPlatformSignalChangeType change_type,
                   gpointer user_data)
 {
-	PlatformLinkCbData *data;
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (user_data);
 
 	switch (change_type) {
 	case NM_PLATFORM_SIGNAL_ADDED:
 	case NM_PLATFORM_SIGNAL_REMOVED:
-		data = g_slice_new (PlatformLinkCbData);
-		data->self = NM_MANAGER (user_data);
-		data->ifindex = ifindex;
-		g_object_add_weak_pointer (G_OBJECT (data->self), (gpointer *) &data->self);
-		g_idle_add ((GSourceFunc) _platform_link_cb_idle, data);
+		if (priv->idle_cb_links == NULL) {
+			priv->idle_cb_links = g_array_new (FALSE, FALSE, sizeof (ifindex));
+			g_idle_add ((GSourceFunc) _platform_link_cb_idle, user_data);
+		}
+		g_array_append_val (priv->idle_cb_links, ifindex);
 		break;
 	default:
 		break;
@@ -5364,6 +5360,7 @@ dispose (GObject *object)
 	g_assert (priv->devices == NULL);
 
 	nm_clear_g_source (&priv->ac_cleanup_id);
+	g_idle_remove_by_data (object);
 
 	while (priv->active_connections)
 		active_connection_remove (manager, NM_ACTIVE_CONNECTION (priv->active_connections->data));
