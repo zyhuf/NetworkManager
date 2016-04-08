@@ -200,6 +200,10 @@ main (int argc, char *argv[])
 	NMConfigCmdLineOptions *config_cli;
 	guint sd_id = 0;
 
+	/* Has to be called before any g_malloc() */
+	if (getenv ("NM_MEM_PROFILE"))
+		g_mem_set_vtable (glib_mem_profiler_table);
+
 	nm_g_type_init ();
 
 	/* Known to cause a possible deadlock upon GDBus initialization:

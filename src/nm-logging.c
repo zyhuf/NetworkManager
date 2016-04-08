@@ -32,6 +32,8 @@
 #include <strings.h>
 #include <string.h>
 
+#include <malloc.h>
+
 #if defined (NO_SYSTEMD_JOURNAL) && defined (SYSTEMD_JOURNAL)
 #undef SYSTEMD_JOURNAL
 #define SYSTEMD_JOURNAL 0
@@ -294,6 +296,23 @@ nm_logging_setup (const char  *level,
 			bits = LOGD_PLATFORM;
 		else if (!g_ascii_strcasecmp (*iter, "WIMAX"))
 			continue;
+		else if (!g_ascii_strcasecmp (*iter, "MEM_PROFILE")) {
+			g_print ("==== malloc_inf o() ====\n");
+			malloc_info(0, stdout);
+			g_print ("==== g_mem_profile () ====\n");
+			if (getenv ("NM_MEM_PROFILE"))
+				g_mem_profile ();
+			else
+				g_print ("(NM_MEM_PROFILE not set in environment)\n");
+			g_print ("==== g_slice_debug_tree_statistics () ====\n");
+#ifdef G_ENABLE_DEBUG
+			g_slice_debug_tree_statistics ();
+#else
+			g_print ("(G_ENABLE_DEBUG not set in glib2)\n");
+#endif
+			g_print ("==== end of memory dump that blames memory usage on someone else ====\n");
+			continue;
+		}
 
 		else {
 			for (diter = &global.domain_desc[0]; diter->name; diter++) {

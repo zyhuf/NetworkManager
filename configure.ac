@@ -286,6 +286,9 @@ dnl nm-glib.h will cause it to be overridden for the functions
 dnl we have compat versions of.
 GLIB_CFLAGS="$GLIB_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32"
 
+dnl Debugging glib2 present
+AC_SEARCH_LIBS([g_slice_debug_tree_statistics], [glib-2.0], [GLIB_CFLAGS="$GLIB_CFLAGS -DG_ENABLE_DEBUG=1"], [])
+
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
