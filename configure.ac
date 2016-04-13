@@ -301,7 +301,7 @@ AM_CONDITIONAL(WITH_LEGACY_LIBRARIES, test "$with_libnm_glib" != "no")
 
 PKG_CHECK_MODULES(GUDEV, gudev-1.0 >= 165)
 
-GOBJECT_INTROSPECTION_CHECK([0.9.6])
+GOBJECT_INTROSPECTION_CHECK([1.39.0])
 
 # Qt4
 PKG_CHECK_MODULES(QT, [QtCore >= 4 QtDBus QtNetwork], [have_qt=yes],[have_qt=no])
