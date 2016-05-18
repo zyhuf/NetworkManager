@@ -928,13 +928,28 @@ if test "${enable_more_logging}" = "yes"; then
     AC_DEFINE(NM_MORE_LOGGING, [1], [Define if more debug logging is enabled])
 fi
 
-AC_ARG_ENABLE(lto, AS_HELP_STRING([--enable-lto], [Enable Link Time Optimization for smaller size (default: no)]))
-if (test "${enable_lto}" = "yes"); then
+AC_ARG_ENABLE(lto, AS_HELP_STRING([--enable-lto], [Enable Link Time Optimization for smaller size (default: yes if supported)]))
+if (test "${enable_lto}" != "no"); then
+    CFLAGS_SAVED="$CFLAGS"
     CFLAGS="-flto $CFLAGS"
-else
-    enable_lto='no'
+    AC_MSG_CHECKING([whether compiler accepts -flto])
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+        /* Older GCC doesn't support serializing optimize() in gimple for LTO */
+        #pragma GCC optimize("O0")
+    ])], [
+        AC_MSG_RESULT(yes)
+        enable_lto="yes"
+    ],[
+        AC_MSG_RESULT(no)
+        if (test "${enable_lto}" = "yes"); then
+            AC_MSG_ERROR([LTO requested but not supported.])
+        else
+            CFLAGS="$CFLAGS_SAVED"
+            enable_lto="no"
+        fi
+    ])
+    unset CFLAGS_SAVED
 fi
-
 
 dnl -------------------------
 dnl Vala bindings
