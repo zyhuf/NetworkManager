@@ -21,6 +21,8 @@
 #include "nm-default.h"
 
 #include <string.h>
+#include <errno.h>
+#include <gio/gunixfdlist.h>
 
 #include "nm-dbus-interface.h"
 #include "nm-secret-agent-old.h"
@@ -31,6 +33,7 @@
 
 #include "nmdbus-secret-agent.h"
 #include "nmdbus-agent-manager.h"
+
 
 static void nm_secret_agent_old_initable_iface_init (GInitableIface *iface);
 static void nm_secret_agent_old_async_initable_iface_init (GAsyncInitableIface *iface);
@@ -298,16 +301,109 @@ get_secrets_cb (NMSecretAgentOld *self,
 {
 	GetSecretsInfo *info = user_data;
 
-	if (error)
+	if (error) {
 		g_dbus_method_invocation_return_gerror (info->context, error);
-	else {
-		g_variant_take_ref (secrets);
-		g_dbus_method_invocation_return_value (info->context,
-		                                       g_variant_new ("(@a{sa{sv}})", secrets));
+		return;
 	}
+
+	g_variant_take_ref (secrets);
+	g_dbus_method_invocation_return_value (info->context,
+	                                       g_variant_new ("(@a{sa{sv}})", secrets));
 
 	/* Remove the request from internal tracking */
 	get_secrets_info_finalize (self, info);
+}
+
+static void
+p11_kit_setup (gpointer user_data)
+{
+	int *fds = (int *)user_data;
+
+	close (0);
+	close (1);
+	if (dup (fds[0]) == -1 || dup (fds[0]) == -1) {
+		g_warning ("Failed to set up standard i/o for p11-kit: %s", strerror (errno));
+		exit (1);
+	}
+	close (fds[0]);
+	close (fds[1]);
+}
+
+static int
+p11_remote_fd (const char *pkcs11_uri, GPid *pid, GError **error)
+{
+	int fds[2];
+	gs_free char *uri = g_strdup (pkcs11_uri);
+	char *argv[] = { "p11-kit", "remote", "--uri", uri, NULL };
+
+	if (socketpair (AF_UNIX, SOCK_STREAM, 0, fds) == -1) {
+		g_set_error (error,
+		             NM_SECRET_AGENT_ERROR,
+		             NM_SECRET_AGENT_ERROR_FAILED,
+		             "Could not create a socket pair: %s", strerror (errno));
+		return -1;
+	}
+
+	if (!g_spawn_async (NULL, argv, NULL,
+	                      G_SPAWN_LEAVE_DESCRIPTORS_OPEN
+	                    | G_SPAWN_SEARCH_PATH
+	                    | G_SPAWN_CHILD_INHERITS_STDIN,
+	                    p11_kit_setup, (gpointer)&fds[0],
+	                    pid, error))
+		return FALSE;
+
+	close (fds[0]);
+	return fds[1];
+}
+
+static void
+impl_secret_agent_old_get_p11_fd (NMSecretAgentOld *self,
+                                      GDBusMethodInvocation *context,
+                                      GUnixFDList *in_fd_list,
+                                      const char *pkcs11_uri,
+                                      gpointer user_data)
+{
+	NMSecretAgentOldPrivate *priv = NM_SECRET_AGENT_OLD_GET_PRIVATE (self);
+	GError *error = NULL;
+	int fd;
+	pid_t kid;
+	GUnixFDList *fd_list;
+
+	if (!pkcs11_uri) {
+		g_set_error_literal (&error,
+		                     NM_SECRET_AGENT_ERROR,
+		                     NM_SECRET_AGENT_ERROR_FAILED,
+		                     "Required URI argument is missing.");
+		g_dbus_method_invocation_take_error (context, error);
+		return;
+	}
+
+	if (!verify_sender (self, context, &error)) {
+		g_dbus_method_invocation_take_error (context, error);
+		return;
+	}
+
+	if (!(priv->capabilities & NM_SECRET_AGENT_CAPABILITY_P11_FD)) {
+		g_set_error_literal (&error,
+		                     NM_SECRET_AGENT_ERROR,
+		                     NM_SECRET_AGENT_ERROR_NO_SECRETS,
+		                     "The secret agent does not support p11-kit remoting.");
+		g_dbus_method_invocation_take_error (context, error);
+		return;
+	}
+
+	fd = p11_remote_fd (pkcs11_uri, &kid, &error);
+	if (fd == -1) {
+		g_dbus_method_invocation_take_error (context, error);
+		return;
+	}
+
+	fd_list = g_unix_fd_list_new_from_array (&fd, 1);
+	nmdbus_secret_agent_complete_get_p11_fd (priv->dbus_secret_agent,
+	                                             context,
+	                                             fd_list,
+	                                             g_variant_new_handle (0));
+	g_object_unref (fd_list);
 }
 
 static void
@@ -1021,6 +1117,7 @@ nm_secret_agent_old_init (NMSecretAgentOld *self)
 	_nm_dbus_bind_properties (self, priv->dbus_secret_agent);
 	_nm_dbus_bind_methods (self, priv->dbus_secret_agent,
 	                       "GetSecrets", impl_secret_agent_old_get_secrets,
+	                       "GetP11Fd", impl_secret_agent_old_get_p11_fd,
 	                       "CancelGetSecrets", impl_secret_agent_old_cancel_get_secrets,
 	                       "DeleteSecrets", impl_secret_agent_old_delete_secrets,
 	                       "SaveSecrets", impl_secret_agent_old_save_secrets,
