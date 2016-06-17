@@ -402,7 +402,15 @@ add_vpn_secrets (NMSecretAgentSimpleRequest *request,
 	char *tmp = NULL;
 	char **iter;
 
-	/* If hints are given, then always ask for what the hints require */
+	/* First add what client thinks might be required. The hints may be empty or incomplete
+	 * and the client likely has a better ui_name. */
+	p = secret_names = nm_vpn_get_secret_names (nm_setting_vpn_get_service_type (s_vpn));
+	while (p && p->name) {
+		add_vpn_secret_helper (secrets, s_vpn, p->name, _(p->ui_name));
+		p++;
+	}
+
+	/* Proceed adding the hits from the VPN service. */
 	if (request->hints && g_strv_length (request->hints)) {
 		for (iter = request->hints; iter && *iter; iter++) {
 			if (!tmp && g_str_has_prefix (*iter, VPN_MSG_TAG))
@@ -413,13 +421,6 @@ add_vpn_secrets (NMSecretAgentSimpleRequest *request,
 	}
 	if (msg)
 		*msg = g_strdup (tmp);
-
-	/* Now add what client thinks might be required, because hints may be empty or incomplete */
-	p = secret_names = nm_vpn_get_secret_names (nm_setting_vpn_get_service_type (s_vpn));
-	while (p && p->name) {
-		add_vpn_secret_helper (secrets, s_vpn, p->name, _(p->ui_name));
-		p++;
-	}
 
 	return TRUE;
 }
