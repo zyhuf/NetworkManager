@@ -120,6 +120,7 @@ nm_vpn_get_secret_names (const char *service_type)
 	static VpnPasswordName openvpn_secrets[] = { {"password", N_("Password")},
 	                                             {"cert-pass", N_("Certificate password")},
 	                                             {"http-proxy-password", N_("HTTP proxy password")},
+	                                             {"pkcs11-pin", N_("Security token PIN")},
 	                                             {NULL, NULL} };
 	static VpnPasswordName vpnc_secrets[] = { {"Xauth password", N_("Password")},
 	                                          {"IPSec secret", N_("Group password")},
