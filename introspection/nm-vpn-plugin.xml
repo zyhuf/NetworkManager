@@ -49,6 +49,20 @@
     </method>
 
     <!--
+        NeedP11Fd:
+        @settings: Describes the connection.
+        @uri: The PKCS#11 URI (RFC 7512) or an empty string
+
+        Asks the plugin whether the provided connection will require a file handle for p11-kit
+        remoting. The VPN plugin answers with the URI of the object for which it needs to set
+        up remoting or an empty string if none is required.
+    -->
+    <method name="NeedP11Fd">
+      <arg name="settings" type="a{sa{sv}}" direction="in"/>
+      <arg name="uri" type="s" direction="out"/>
+    </method>
+
+    <!--
         Disconnect:
 
         Disconnect the plugin.
@@ -137,6 +151,19 @@
     -->
     <method name="NewSecrets">
       <arg name="connection" type="a{sa{sv}}" direction="in"/>
+    </method>
+
+    <!--
+        P11Fd:
+        @fd: File descriptor that speaks the p11-kit remoting protocol
+
+        Called prior to Connecting when the plugin indicated the need of
+        p11-kit remoting in a response preceeding NeedP11 call. Passes the
+        file descriptor connected to the p11-kit remote agent.
+    -->
+    <method name="P11Fd">
+      <annotation name="org.gtk.GDBus.C.UnixFD" value="1"/>
+      <arg name="fd" type="h" direction="in"/>
     </method>
 
     <!--
