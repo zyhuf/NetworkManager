@@ -110,9 +110,20 @@ typedef struct {
 	                                 GVariant *details,
 	                                 GError **error);
 
+	NM_AVAILABLE_IN_1_4
+	gboolean (*need_p11_fd)  (NMVpnServicePlugin *plugin,
+	                              NMConnection *connection,
+	                              const char **uri,
+	                              GError **error);
+
+	NM_AVAILABLE_IN_1_4
+	gboolean (*p11_fd)  (NMVpnServicePlugin *plugin,
+	                         int fd,
+	                         GError **error);
+
 	/*< private >*/
 	NM_AVAILABLE_IN_1_2
-	gpointer padding[8];
+	gpointer padding[6];
 } NMVpnServicePluginClass NM_AVAILABLE_IN_1_2;
 
 NM_AVAILABLE_IN_1_2

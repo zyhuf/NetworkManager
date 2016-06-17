@@ -27,6 +27,8 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include <gio/gunixfdlist.h>
+
 #include "nm-enum-types.h"
 #include "nm-utils.h"
 #include "nm-connection.h"
@@ -664,6 +666,89 @@ impl_vpn_service_plugin_new_secrets (NMVpnServicePlugin *plugin,
 	g_object_unref (connection);
 }
 
+static void
+impl_vpn_service_plugin_need_p11_fd (NMVpnServicePlugin *plugin,
+                                         GDBusMethodInvocation *context,
+                                         GVariant *properties,
+                                         gpointer user_data)
+{
+	NMConnection *connection;
+	const char *uri = "";
+	GError *error = NULL;
+
+	connection = _nm_simple_connection_new_from_dbus (properties, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, &error);
+	if (!connection) {
+		g_dbus_method_invocation_return_error (context,
+		                                       NM_VPN_PLUGIN_ERROR,
+		                                       NM_VPN_PLUGIN_ERROR_INVALID_CONNECTION,
+		                                       "The connection was invalid: %s",
+		                                       error->message);
+		g_error_free (error);
+		return;
+	}
+
+	if (NM_VPN_SERVICE_PLUGIN_GET_CLASS (plugin)->need_p11_fd) {
+		NM_VPN_SERVICE_PLUGIN_GET_CLASS (plugin)->need_p11_fd (plugin, connection, &uri, &error);
+		if (error) {
+			g_dbus_method_invocation_take_error (context, error);
+			return;
+		}
+	}
+
+	g_dbus_method_invocation_return_value (context, g_variant_new ("(s)", uri));
+}
+
+static void
+impl_vpn_service_plugin_p11_fd (NMVpnServicePlugin *plugin,
+                                    GDBusMethodInvocation *context,
+                                    GUnixFDList *fd_list,
+                                    GVariant *handle,
+                                    gpointer user_data)
+{
+	NMVpnServicePluginPrivate *priv = NM_VPN_SERVICE_PLUGIN_GET_PRIVATE (plugin);
+	GError *error = NULL;
+	int fd;
+
+	if (   priv->state != NM_VPN_SERVICE_STATE_INIT
+	    && priv->state != NM_VPN_SERVICE_STATE_STOPPED) {
+		g_dbus_method_invocation_return_error (context,
+		                                       NM_VPN_PLUGIN_ERROR,
+		                                       NM_VPN_PLUGIN_ERROR_WRONG_STATE,
+		                                       "Could not accept p11-kit remoting fd: wrong plugin state %d",
+		                                       priv->state);
+		goto fail;
+	}
+
+	if (!NM_VPN_SERVICE_PLUGIN_GET_CLASS (plugin)->p11_fd) {
+		g_dbus_method_invocation_return_error (context,
+		                                       NM_VPN_PLUGIN_ERROR,
+		                                       NM_VPN_PLUGIN_ERROR_INTERACTIVE_NOT_SUPPORTED,
+		                                       "The plugin is not capable of accepting a p11-kit remoting fd");
+		goto fail;
+	}
+
+	fd = g_unix_fd_list_get (fd_list, g_variant_get_handle (handle), &error);
+	if (fd == -1) {
+		g_dbus_method_invocation_take_error (context, error);
+		goto fail;
+	}
+
+	if (!NM_VPN_SERVICE_PLUGIN_GET_CLASS (plugin)->p11_fd (plugin, fd, &error)) {
+		g_dbus_method_invocation_take_error (context, error);
+		goto fail;
+	}
+
+	g_dbus_method_invocation_return_value (context, NULL);
+	return;
+
+fail:
+	/* Stop the plugin from an idle handler so that the P11Fd
+	 * method return gets sent before the STOP StateChanged signal.
+	 */
+	schedule_fail_stop (plugin, 0);
+}
+
+
 /**
  * nm_vpn_service_plugin_secrets_required:
  * @plugin: the #NMVpnServicePlugin
@@ -1012,6 +1097,8 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 	                       "SetIp4Config", impl_vpn_service_plugin_set_ip4_config,
 	                       "SetIp6Config", impl_vpn_service_plugin_set_ip6_config,
 	                       "SetFailure", impl_vpn_service_plugin_set_failure,
+	                       "NeedP11Fd", impl_vpn_service_plugin_need_p11_fd,
+	                       "P11Fd", impl_vpn_service_plugin_p11_fd,
 	                       NULL);
 
 	nm_vpn_service_plugin_set_connection (plugin, connection);
