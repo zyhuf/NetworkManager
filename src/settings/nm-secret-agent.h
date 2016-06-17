@@ -91,6 +91,11 @@ NMSecretAgentCallId nm_secret_agent_get_secrets  (NMSecretAgent *agent,
                                                   NMSecretAgentCallback callback,
                                                   gpointer callback_data);
 
+NMSecretAgentCallId nm_secret_agent_get_p11_fd (NMSecretAgent *self,
+                                                    const char *uri,
+                                                    NMSecretAgentCallback callback,
+                                                    gpointer callback_data);
+
 void        nm_secret_agent_cancel_secrets (NMSecretAgent *agent,
                                             NMSecretAgentCallId call_id);
 

@@ -22,6 +22,7 @@
 
 #include <sys/types.h>
 #include <pwd.h>
+#include <gio/gunixfdlist.h>
 
 #include "nm-dbus-interface.h"
 #include "nm-secret-agent.h"
@@ -370,6 +371,70 @@ nm_secret_agent_get_secrets (NMSecretAgent *self,
 	                                      flags,
 	                                      r->cancellable,
 	                                      get_callback, r);
+
+	return r;
+}
+
+/*************************************************************/
+
+static void
+p11_fd_callback (GObject *proxy,
+                     GAsyncResult *result,
+                     gpointer user_data)
+{
+	Request *r = user_data;
+
+	if (request_check_return (r)) {
+		NMSecretAgentPrivate *priv = NM_SECRET_AGENT_GET_PRIVATE (r->agent);
+		gs_free_error GError *error = NULL;
+		GUnixFDList *fd_list = NULL;
+		GVariant *handle;
+		int fd = -1;
+
+		nmdbus_secret_agent_call_get_p11_fd_finish (priv->proxy, &handle, &fd_list, result, &error);
+		if (error)
+			g_dbus_error_strip_remote_error (error);
+		else
+			fd = g_unix_fd_list_get (fd_list, g_variant_get_handle (handle), &error);
+		r->callback (r->agent, r, NULL, fd, error, r->callback_data);
+		g_clear_object (&fd_list);
+	}
+
+	request_free (r);
+}
+
+/**
+ * nm_secret_agent_get_p11_fd:
+ * @agent: A #NMSecretAgent.
+ * @uri: The PKCS#11 URI (RFC 7512)
+ * @callback: #NMSecretAgentCallback to call when the agent responds or on error
+ * @callback_data: Opaque data to pass to the callback
+ *
+ * Get an open file descriptor connected to a p11-kit remoting agent
+ * that serves the module capable of handling the given URI.
+ */
+NMSecretAgentCallId
+nm_secret_agent_get_p11_fd (NMSecretAgent *self,
+                                const char *uri,
+                                NMSecretAgentCallback callback,
+                                gpointer callback_data)
+{
+	NMSecretAgentPrivate *priv;
+	Request *r;
+
+	g_return_val_if_fail (NM_IS_SECRET_AGENT (self), NULL);
+	g_return_val_if_fail (uri != NULL, NULL);
+
+	priv = NM_SECRET_AGENT_GET_PRIVATE (self);
+	g_return_val_if_fail (priv->proxy != NULL, NULL);
+
+	r = request_new (self, "GetP11Fd", NULL, NULL, callback, callback_data);
+	g_hash_table_add (priv->requests, r);
+	nmdbus_secret_agent_call_get_p11_fd (priv->proxy,
+	                                         uri,
+	                                         NULL,
+	                                         r->cancellable,
+	                                         p11_fd_callback, r);
 
 	return r;
 }
