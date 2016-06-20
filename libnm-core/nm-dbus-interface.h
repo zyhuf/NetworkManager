@@ -636,6 +636,24 @@ typedef enum /*< flags >*/ {
 	NM_SECRET_AGENT_CAPABILITY_LAST = NM_SECRET_AGENT_CAPABILITY_VPN_HINTS
 } NMSecretAgentCapabilities;
 
+/**
+ * NMSecretAgentCancelReason:
+ * @NM_SECRET_AGENT_CANCEL_REASON_UNKNOWN: the reason can't be determined
+ * @NM_SECRET_AGENT_CANCEL_REASON_CANCELED: the operation was canceled
+ * @NM_SECRET_AGENT_CANCEL_REASON_TIMED_OUT: the agent did not respond in time
+ * @NM_SECRET_AGENT_CANCEL_REASON_LAST: bounds checking value; should not be used.
+ *
+ * #NMSecretAgentCancelReason indicates the reason of a secret request cancelation
+ */
+typedef enum {
+	NM_SECRET_AGENT_CANCEL_REASON_UNKNOWN    = 0,
+	NM_SECRET_AGENT_CANCEL_REASON_CANCELED   = 1,
+	NM_SECRET_AGENT_CANCEL_REASON_TIMED_OUT  = 2,
+
+	/* boundary value */
+	NM_SECRET_AGENT_CANCEL_REASON_LAST = NM_SECRET_AGENT_CANCEL_REASON_TIMED_OUT
+} NMSecretAgentCancelReason;
+
 #ifndef NM_VERSION_H
 #undef NM_AVAILABLE_IN_1_2
 #endif

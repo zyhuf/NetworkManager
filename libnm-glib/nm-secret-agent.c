@@ -42,6 +42,12 @@ static void impl_secret_agent_cancel_get_secrets (NMSecretAgent *self,
                                                   const char *setting_name,
                                                   DBusGMethodInvocation *context);
 
+static void impl_secret_agent_cancel_get_secrets_with_reason (NMSecretAgent *self,
+                                                              const char *connection_path,
+                                                              const char *setting_name,
+                                                              guint32 reason,
+                                                              DBusGMethodInvocation *context);
+
 static void impl_secret_agent_save_secrets (NMSecretAgent *self,
                                             GHashTable *connection_hash,
                                             const char *connection_path,
@@ -434,6 +440,17 @@ impl_secret_agent_cancel_get_secrets (NMSecretAgent *self,
 	                                                      info->path,
 	                                                      info->setting_name);
 	dbus_g_method_return (context);
+}
+
+static void
+impl_secret_agent_cancel_get_secrets_with_reason (NMSecretAgent *self,
+                                                  const char *connection_path,
+                                                  const char *setting_name,
+                                                  guint32 reason,
+                                                  DBusGMethodInvocation *context)
+{
+	/* Reason is ignored */
+	impl_secret_agent_cancel_get_secrets (self, connection_path, setting_name, context);
 }
 
 static void

@@ -364,11 +364,12 @@ find_get_secrets_info (GSList *list, const char *path, const char *setting_name)
 }
 
 static void
-impl_secret_agent_old_cancel_get_secrets (NMSecretAgentOld *self,
-                                          GDBusMethodInvocation *context,
-                                          const char *connection_path,
-                                          const char *setting_name,
-                                          gpointer user_data)
+impl_secret_agent_old_cancel_get_secrets_with_reason (NMSecretAgentOld *self,
+                                                      GDBusMethodInvocation *context,
+                                                      const char *connection_path,
+                                                      const char *setting_name,
+                                                      NMSecretAgentCancelReason reason,
+                                                      gpointer user_data)
 {
 	NMSecretAgentOldPrivate *priv = NM_SECRET_AGENT_OLD_GET_PRIVATE (self);
 	GError *error = NULL;
@@ -390,10 +391,32 @@ impl_secret_agent_old_cancel_get_secrets (NMSecretAgentOld *self,
 	}
 
 	/* Send the cancel request up to the subclass and finalize it */
-	NM_SECRET_AGENT_OLD_GET_CLASS (self)->cancel_get_secrets (self,
-	                                                      info->path,
-	                                                      info->setting_name);
+	if (NM_SECRET_AGENT_OLD_GET_CLASS (self)->cancel_get_secrets_with_reason) {
+		NM_SECRET_AGENT_OLD_GET_CLASS (self)->cancel_get_secrets_with_reason (self,
+		                                                                      connection_path,
+		                                                                      setting_name,
+		                                                                      reason);
+	} else {
+		NM_SECRET_AGENT_OLD_GET_CLASS (self)->cancel_get_secrets (self,
+		                                                          connection_path,
+		                                                          setting_name);
+	}
 	g_dbus_method_invocation_return_value (context, NULL);
+}
+
+static void
+impl_secret_agent_old_cancel_get_secrets (NMSecretAgentOld *self,
+                                          GDBusMethodInvocation *context,
+                                          const char *connection_path,
+                                          const char *setting_name,
+                                          gpointer user_data)
+{
+	impl_secret_agent_old_cancel_get_secrets_with_reason (self,
+	                                                      context,
+	                                                      connection_path,
+	                                                      setting_name,
+	                                                      NM_SECRET_AGENT_CANCEL_REASON_UNKNOWN,
+	                                                      user_data);
 }
 
 static void
@@ -1022,6 +1045,7 @@ nm_secret_agent_old_init (NMSecretAgentOld *self)
 	_nm_dbus_bind_methods (self, priv->dbus_secret_agent,
 	                       "GetSecrets", impl_secret_agent_old_get_secrets,
 	                       "CancelGetSecrets", impl_secret_agent_old_cancel_get_secrets,
+	                       "CancelGetSecretsWithReason", impl_secret_agent_old_cancel_get_secrets_with_reason,
 	                       "DeleteSecrets", impl_secret_agent_old_delete_secrets,
 	                       "SaveSecrets", impl_secret_agent_old_save_secrets,
 	                       NULL);

@@ -188,8 +188,19 @@ typedef struct {
 	                        NMSecretAgentOldDeleteSecretsFunc callback,
 	                        gpointer user_data);
 
+	/* Called when the subclass should cancel an outstanding request to
+	 * get secrets for a given connection.  Canceling the request MUST
+	 * call the callback that was passed along with the initial get_secrets
+	 * call, sending the NM_SECRET_AGENT_OLD_ERROR/
+	 * NM_SECRET_AGENT_OLD_ERROR_AGENT_CANCELED error to that callback.
+	 */
+	void (*cancel_get_secrets_with_reason) (NMSecretAgentOld *self,
+	                                        const char *connection_path,
+	                                        const char *setting_name,
+	                                        NMSecretAgentCancelReason reason);
+
 	/*< private >*/
-	gpointer padding[8];
+	gpointer padding[7];
 } NMSecretAgentOldClass;
 
 GType nm_secret_agent_old_get_type (void);
