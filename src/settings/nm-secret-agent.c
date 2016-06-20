@@ -155,6 +155,36 @@ request_check_return (Request *r)
 
 /*************************************************************/
 
+typedef struct {
+	char *path;
+	char *setting;
+	char *agent;
+} CancelInfo;
+
+static CancelInfo *
+cancel_info_new (NMSecretAgent *agent, const char *setting, const char *path)
+{
+	CancelInfo *info;
+
+	info = g_slice_new (CancelInfo);
+	info->agent = g_strdup (nm_secret_agent_get_description (agent));
+	info->setting = g_strdup (setting);
+	info->path = g_strdup (path);
+
+	return info;
+}
+
+static void
+cancel_info_free (CancelInfo *info)
+{
+	g_free (info->agent);
+	g_free (info->path);
+	g_free (info->setting);
+	g_slice_free (CancelInfo, info);
+}
+
+/*************************************************************/
+
 static char *
 _create_description (const char *dbus_owner, const char *identifier, gulong uid)
 {
@@ -383,17 +413,49 @@ nm_secret_agent_get_secrets (NMSecretAgent *self,
 static void
 cancel_done (GObject *proxy, GAsyncResult *result, gpointer user_data)
 {
-	char *description = user_data;
-	GError *error = NULL;
+	CancelInfo *info = user_data;
+	gs_free_error GError *error = NULL;
+	gboolean r;
 
-	if (!nmdbus_secret_agent_call_cancel_get_secrets_finish (NMDBUS_SECRET_AGENT (proxy), result, &error)) {
+	r = nmdbus_secret_agent_call_cancel_get_secrets_finish (NMDBUS_SECRET_AGENT (proxy),
+	                                                        result,
+	                                                        &error);
+
+	if (!r) {
 		nm_log_dbg (LOGD_AGENTS, "%s%s%s: agent failed to cancel secrets: %s",
-		            NM_PRINT_FMT_QUOTED (description, "(", description, ")", "???"),
+		            NM_PRINT_FMT_QUOTED (info->agent, "(", info->agent, ")", "???"),
 		            error->message);
-		g_clear_error (&error);
 	}
 
-	g_free (description);
+	cancel_info_free (info);
+}
+
+static void
+cancel_with_reason_done (GObject *proxy, GAsyncResult *result, gpointer user_data)
+{
+	CancelInfo *info = user_data;
+	gs_free_error GError *error = NULL;
+	gboolean r;
+
+	r = nmdbus_secret_agent_call_cancel_get_secrets_with_reason_finish (NMDBUS_SECRET_AGENT (proxy),
+	                                                                    result,
+	                                                                    &error);
+	if (!r) {
+		nm_log_dbg (LOGD_AGENTS, "%s%s%s: agent failed to cancel secrets with reason: %s",
+		            NM_PRINT_FMT_QUOTED (info->agent, "(", info->agent, ")", "???"),
+		            error->message);
+
+		if (g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD)) {
+			nmdbus_secret_agent_call_cancel_get_secrets (NMDBUS_SECRET_AGENT (proxy),
+			                                             info->path, info->setting,
+			                                             NULL,
+			                                             cancel_done,
+			                                             info);
+			return;
+		}
+	}
+
+	cancel_info_free (info);
 }
 
 static void
@@ -403,6 +465,7 @@ do_cancel_secrets (NMSecretAgent *self, Request *r, gboolean disposing)
 	GCancellable *cancellable;
 	NMSecretAgentCallback callback;
 	gpointer callback_data;
+	CancelInfo *info;
 
 	g_return_if_fail (r->agent == self);
 	g_return_if_fail (r->cancellable);
@@ -410,11 +473,13 @@ do_cancel_secrets (NMSecretAgent *self, Request *r, gboolean disposing)
 	if (   r->is_get_secrets
 	    && priv->proxy) {
 		/* for GetSecrets call, we must cancel the request. */
-		nmdbus_secret_agent_call_cancel_get_secrets (priv->proxy,
-		                                             r->path, r->setting_name,
-		                                             NULL,
-		                                             cancel_done,
-		                                             g_strdup (nm_secret_agent_get_description (self)));
+		info = cancel_info_new (r->agent, r->setting_name, r->path);
+		nmdbus_secret_agent_call_cancel_get_secrets_with_reason (priv->proxy,
+		                                                         r->path, r->setting_name,
+		                                                         NM_SECRET_AGENT_CANCEL_REASON_CANCELED,
+		                                                         NULL,
+		                                                         cancel_with_reason_done,
+		                                                         info);
 	}
 
 	cancellable = r->cancellable;
