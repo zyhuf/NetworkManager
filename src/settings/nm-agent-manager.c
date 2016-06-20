@@ -857,11 +857,6 @@ _con_get_request_done (NMSecretAgent *agent,
 			req_complete_error (req, error);
 			g_error_free (error);
 		} else {
-			if (req->current_call_id) {
-				/* Tell the failed agent we're no longer interested. */
-				nm_secret_agent_cancel_secrets (req->current, req->current_call_id);
-			}
-
 			/* Try the next agent */
 			request_next_agent (req);
 			maybe_remove_agent_on_error (agent, error);

@@ -84,6 +84,8 @@ enum {
 };
 static guint signals[LAST_SIGNAL] = { 0 };
 
+static void cancel_with_reason_done (GObject *proxy, GAsyncResult *result, gpointer user_data);
+
 /*************************************************************/
 
 struct _NMSecretAgentCallId {
@@ -345,6 +347,7 @@ get_callback (GObject *proxy,
               gpointer user_data)
 {
 	Request *r = user_data;
+	CancelInfo *info;
 
 	if (request_check_return (r)) {
 		NMSecretAgentPrivate *priv = NM_SECRET_AGENT_GET_PRIVATE (r->agent);
@@ -352,8 +355,19 @@ get_callback (GObject *proxy,
 		gs_unref_variant GVariant *secrets = NULL;
 
 		nmdbus_secret_agent_call_get_secrets_finish (priv->proxy, &secrets, result, &error);
-		if (error)
+		if (error) {
 			g_dbus_error_strip_remote_error (error);
+			if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT)) {
+				/* Tell the failed agent we're no longer interested */
+				info = cancel_info_new (r->agent, r->setting_name, r->path);
+				nmdbus_secret_agent_call_cancel_get_secrets_with_reason (priv->proxy,
+				                                                         r->path, r->setting_name,
+				                                                         NM_SECRET_AGENT_CANCEL_REASON_TIMED_OUT,
+				                                                         NULL,
+				                                                         cancel_with_reason_done,
+				                                                         info);
+			}
+		}
 		r->callback (r->agent, r, secrets, error, r->callback_data);
 	}
 
