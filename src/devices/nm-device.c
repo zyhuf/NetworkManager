@@ -271,7 +271,9 @@ typedef struct _NMDevicePrivate {
 
 	NMActRequest *  queued_act_request;
 	bool            queued_act_request_is_waiting_for_carrier;
+	guint8          act_request_stable_type;
 	NMActRequest *  act_request;
+	char *          act_request_stable_id;
 	ActivationHandleData act_handle4; /* for layer2 and IPv4. */
 	ActivationHandleData act_handle6;
 	guint           recheck_assume_id;
@@ -630,13 +632,15 @@ _add_capabilities (NMDevice *self, NMDeviceCapabilities capabilities)
 /***********************************************************/
 
 static const char *
-_get_stable_id (NMConnection *connection, NMUtilsStableType *out_stable_type)
+_get_stable_id_create (NMConnection *connection, NMUtilsStableType *out_stable_type, char **out_str)
 {
 	NMSettingConnection *s_con;
 	const char *stable_id;
+	const char *s;
 
 	nm_assert (NM_IS_CONNECTION (connection));
 	nm_assert (out_stable_type);
+	nm_assert (out_str && !*out_str);
 
 	s_con = nm_connection_get_setting_connection (connection);
 	g_return_val_if_fail (s_con, NULL);
@@ -647,8 +651,101 @@ _get_stable_id (NMConnection *connection, NMUtilsStableType *out_stable_type)
 		return nm_connection_get_uuid (connection);
 	}
 
+	if (g_str_has_prefix (stable_id, "generate:"))
+		s = &stable_id[NM_STRLEN ("generate:")];
+	else
+		goto out_stable_id;
+
+	if (   g_str_has_prefix (s, "utc:")
+	    || nm_streq (s, "utc")
+	    || g_str_has_prefix (s, "time:")
+	    || nm_streq (s, "time")) {
+		gboolean use_utc;
+		time_t now_s;
+		time_t time_base_epoch;
+		time_t timestamp_s;
+		struct tm tm;
+		char buf[255];
+		gint64 interval_s;
+
+		use_utc = g_str_has_prefix (s, "utc");
+		if (use_utc)
+			s = &s[NM_STRLEN ("utc")];
+		else
+			s = &s[NM_STRLEN ("time")];
+		if (s[0] == ':')
+			s++;
+
+		interval_s = 86400;
+		time_base_epoch = 0;
+		if (s[0]) {
+			char *t;
+
+			errno = 0;
+			t = NULL;
+			interval_s = g_ascii_strtoll (s, &t, 10);
+			if (errno)
+				goto out_stable_id;
+			if (t) {
+				while (g_ascii_isspace (t[0]))
+					t++;
+				t = strptime (t, "%Y-%m-%d %H:%M:%S", &tm);
+				if (t[0])
+					goto out_stable_id;
+				time_base_epoch = mktime (&tm);
+			}
+		}
+
+		now_s = time (NULL);
+		if (use_utc)
+			gmtime_r (&now_s, &tm);
+		else
+			localtime_r (&now_s, &tm);
+		now_s = mktime (&tm);
+
+		timestamp_s = time_base_epoch + ((now_s - time_base_epoch) / interval_s) * interval_s;
+
+		strftime (buf, sizeof (buf), "%Y-%m-%d %H:%M:%S", &tm);
+		*out_stable_type = NM_UTILS_STABLE_TYPE_TIME;
+		return (*out_str = g_strdup_printf ("%s %s",
+		                                    buf,
+		                                    use_utc ? "UTC" : "local"));
+	}
+
+out_stable_id:
 	*out_stable_type = NM_UTILS_STABLE_TYPE_STABLE_ID;
 	return stable_id;
+}
+
+static const char *
+_get_stable_id_cached (NMDevice *self, NMConnection *connection, NMUtilsStableType *out_stable_type)
+{
+	NMDevicePrivate *priv;
+	char *s;
+	const char *ss;
+	NMUtilsStableType stable_type;
+
+	nm_assert (NM_IS_DEVICE (self));
+	nm_assert (NM_IS_CONNECTION (connection));
+	nm_assert (out_stable_type);
+
+	priv = NM_DEVICE_GET_PRIVATE (self);
+	if (!priv->act_request)
+		g_return_val_if_reached (NULL);
+
+	/* for one activation request, we don't want to allow changing the stable-id.
+	 * Thus, cache it in priv->act_request_stable_id.  */
+
+	if (!priv->act_request_stable_id) {
+		ss = _get_stable_id_create (connection, &stable_type, &s);
+		if (!ss)
+			return NULL;
+		priv->act_request_stable_type = stable_type;
+		priv->act_request_stable_id = s ?: g_strdup (ss);
+	}
+
+	*out_stable_type = priv->act_request_stable_type;
+	return priv->act_request_stable_id;
 }
 
 /***********************************************************/
@@ -5955,7 +6052,7 @@ check_and_add_ipv6ll_addr (NMDevice *self)
 		NMUtilsStableType stable_type;
 		const char *stable_id;
 
-		stable_id = _get_stable_id (connection, &stable_type);
+		stable_id = _get_stable_id_cached (self, connection, &stable_type);
 		if (   !stable_id
 		    || !nm_utils_ipv6_addr_set_stable_privacy (stable_type,
 		                                               &lladdr,
@@ -6319,7 +6416,7 @@ addrconf6_start (NMDevice *self, NMSettingIP6ConfigPrivacy use_tempaddr)
 	s_ip6 = NM_SETTING_IP6_CONFIG (nm_connection_get_setting_ip6_config (connection));
 	g_assert (s_ip6);
 
-	stable_id = _get_stable_id (connection, &stable_type);
+	stable_id = _get_stable_id_cached (self, connection, &stable_type);
 	if (stable_id) {
 		priv->rdisc = nm_lndp_rdisc_new (NM_PLATFORM_GET,
 		                                 nm_device_get_ip_ifindex (self),
@@ -7427,6 +7524,7 @@ clear_act_request (NMDevice *self)
 	nm_clear_g_signal_handler (priv->act_request, &priv->master_ready_id);
 
 	g_clear_object (&priv->act_request);
+	g_clear_pointer (&priv->act_request_stable_id, g_free);
 	_notify (self, PROP_ACTIVE_CONNECTION);
 }
 
@@ -8171,6 +8269,7 @@ _device_activate (NMDevice *self, NMActRequest *req)
 	 * changing state to PREPARE so that the two properties change together.
 	 */
 	priv->act_request = g_object_ref (req);
+	g_clear_pointer (&priv->act_request_stable_id, g_free);
 
 	nm_device_activate_schedule_stage1_device_prepare (self);
 	return TRUE;
@@ -10749,7 +10848,7 @@ nm_device_spawn_iface_helper (NMDevice *self)
 	g_ptr_array_add (argv, g_strdup ("--uuid"));
 	g_ptr_array_add (argv, g_strdup (nm_connection_get_uuid (connection)));
 
-	stable_id = _get_stable_id (connection, &stable_type);
+	stable_id = _get_stable_id_cached (self, connection, &stable_type);
 	if (stable_id && stable_type != NM_UTILS_STABLE_TYPE_UUID) {
 		g_ptr_array_add (argv, g_strdup ("--stable-id"));
 		g_ptr_array_add (argv, g_strdup_printf ("%d %s", (int) stable_type, stable_id));
@@ -11772,7 +11871,7 @@ nm_device_hw_addr_set_cloned (NMDevice *self, NMConnection *connection, gboolean
 			return TRUE;
 		}
 
-		stable_id = _get_stable_id (connection, &stable_type);
+		stable_id = _get_stable_id_cached (self, connection, &stable_type);
 		if (stable_id) {
 			hw_addr_generated = nm_utils_hw_addr_gen_stable_eth (stable_type, stable_id,
 			                                                     nm_device_get_ip_iface (self),

@@ -362,6 +362,7 @@ gboolean nm_utils_get_ipv6_interface_identifier (NMLinkType link_type,
 typedef enum {
 	NM_UTILS_STABLE_TYPE_UUID = 0,
 	NM_UTILS_STABLE_TYPE_STABLE_ID = 1,
+	NM_UTILS_STABLE_TYPE_TIME = 2,
 } NMUtilsStableType;
 
 gboolean nm_utils_ipv6_addr_set_stable_privacy (NMUtilsStableType id_type,
