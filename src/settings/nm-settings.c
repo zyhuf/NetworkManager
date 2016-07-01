@@ -1012,6 +1012,8 @@ secret_agent_registered (NMAgentManager *agent_mgr,
 #define NM_OPENCONNECT_KEY_LASTHOST "lasthost"
 #define NM_OPENCONNECT_KEY_AUTOCONNECT "autoconnect"
 #define NM_OPENCONNECT_KEY_CERTSIGS "certsigs"
+#define NM_OPENCONNECT_KEY_CERTIFICATE "certificate"
+#define NM_OPENCONNECT_KEY_FORM "form"
 
 static void
 openconnect_migrate_hack (NMConnection *connection)
@@ -1041,6 +1043,8 @@ openconnect_migrate_hack (NMConnection *connection)
 		nm_setting_set_secret_flags (NM_SETTING (s_vpn), NM_OPENCONNECT_KEY_LASTHOST, flags, NULL);
 		nm_setting_set_secret_flags (NM_SETTING (s_vpn), NM_OPENCONNECT_KEY_AUTOCONNECT, flags, NULL);
 		nm_setting_set_secret_flags (NM_SETTING (s_vpn), NM_OPENCONNECT_KEY_CERTSIGS, flags, NULL);
+		nm_setting_set_secret_flags (NM_SETTING (s_vpn), NM_OPENCONNECT_KEY_CERTIFICATE, flags, NULL);
+		nm_setting_set_secret_flags (NM_SETTING (s_vpn), NM_OPENCONNECT_KEY_FORM, flags, NULL);
 	}
 }
 
