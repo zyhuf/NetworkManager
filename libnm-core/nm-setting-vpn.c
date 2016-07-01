@@ -572,14 +572,33 @@ get_secret_flags (NMSetting *setting,
 	unsigned long tmp;
 	NMSettingSecretFlags flags = NM_SETTING_SECRET_FLAG_NONE;
 
+
 	flags_key = g_strdup_printf ("%s-flags", secret_name);
-	if (g_hash_table_lookup_extended (priv->data, flags_key, NULL, &val)) {
+	success = g_hash_table_lookup_extended (priv->data, flags_key, NULL, &val);
+
+	if (!success) {
+		/* Try using the setting name only up to the first colon (":").
+		 * Useful with openconnect that stores secrets from forms whose name
+		 * are not known in advance. */
+		char *tmps;
+
+		g_free (flags_key);
+		tmps = g_strdup (secret_name);
+		*strchrnul (tmps, ':') = '\0';
+
+		flags_key = g_strdup_printf ("%s-flags", tmps);
+		success = g_hash_table_lookup_extended (priv->data, flags_key, NULL, &val);
+
+		g_free (tmps);
+	}
+
+	if (success) {
 		errno = 0;
 		tmp = strtoul ((const char *) val, NULL, 10);
 		if ((errno == 0) && (tmp <= NM_SETTING_SECRET_FLAGS_ALL)) {
 			flags = (NMSettingSecretFlags) tmp;
-			success = TRUE;
 		} else {
+			success = FALSE;
 			g_set_error (error,
 			             NM_CONNECTION_ERROR,
 			             NM_CONNECTION_ERROR_INVALID_PROPERTY,
