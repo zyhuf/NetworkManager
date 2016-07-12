@@ -45,8 +45,10 @@
 #include "nm-lndp-rdisc.h"
 #include "nm-dhcp-manager.h"
 #include "nm-activation-request.h"
+#include "nm-proxy-config.h"
 #include "nm-ip4-config.h"
 #include "nm-ip6-config.h"
+#include "nm-pacrunner-manager.h"
 #include "nm-dnsmasq-manager.h"
 #include "nm-dhcp4-config.h"
 #include "nm-dhcp6-config.h"
@@ -301,6 +303,10 @@ typedef struct _NMDevicePrivate {
 	guint32         dhcp_timeout;
 	char *          dhcp_anycast_address;
 
+	/* Proxy Configuration */
+	NMProxyConfig * proxy_config;
+	NMPacRunnerManager * pacrunner_manager;
+
 	/* IP4 configuration info */
 	NMIP4Config *   ip4_config;     /* Combined config from VPN, settings, and device */
 	IpState         ip4_state;
@@ -408,6 +414,8 @@ typedef struct _NMDevicePrivate {
 
 	guint check_delete_unrealized_id;
 } NMDevicePrivate;
+
+static void nm_device_set_proxy_config (NMDevice *self, GHashTable *options);
 
 static gboolean nm_device_set_ip4_config (NMDevice *self,
                                           NMIP4Config *config,
@@ -3145,6 +3153,7 @@ nm_device_generate_connection (NMDevice *self, NMDevice *master)
 	NMSetting *s_con;
 	NMSetting *s_ip4;
 	NMSetting *s_ip6;
+	NMSetting *s_proxy;
 	gs_free char *uuid = NULL;
 	const char *ip4_method, *ip6_method;
 	GError *error = NULL;
@@ -3195,6 +3204,9 @@ nm_device_generate_connection (NMDevice *self, NMDevice *master)
 
 		s_ip6 = nm_ip6_config_create_setting (priv->ip6_config);
 		nm_connection_add_setting (connection, s_ip6);
+
+		s_proxy = nm_proxy_config_create_setting (priv->proxy_config);
+		nm_connection_add_setting (connection, s_proxy);
 
 		pllink = nm_platform_link_get (NM_PLATFORM_GET, priv->ifindex);
 		if (pllink && pllink->inet6_token.id) {
@@ -4887,6 +4899,8 @@ dhcp4_state_changed (NMDhcpClient *client,
 			dhcp4_fail (self, FALSE);
 			break;
 		}
+
+		nm_device_set_proxy_config (self, options);
 
 		nm_dhcp4_config_set_options (priv->dhcp4.config, options);
 		_notify (self, PROP_DHCP4_CONFIG);
@@ -8315,8 +8329,50 @@ nm_device_is_activating (NMDevice *self)
 	return priv->act_handle4.id ? TRUE : FALSE;
 }
 
-/* IP Configuration stuff */
+NMProxyConfig *
+nm_device_get_proxy_config (NMDevice *self)
+{
+	g_return_val_if_fail (NM_IS_DEVICE (self), NULL);
 
+	return NM_DEVICE_GET_PRIVATE (self)->proxy_config;
+}
+
+static void
+nm_device_set_proxy_config (NMDevice *self, GHashTable *options)
+{
+	NMDevicePrivate *priv;
+	NMConnection *connection;
+	NMSettingProxy *s_proxy = NULL;
+	char *pac = NULL;
+
+	g_return_if_fail (NM_IS_DEVICE (self));
+
+	priv = NM_DEVICE_GET_PRIVATE (self);
+	if (!options)
+		_LOGI (LOGD_DEVICE, "Failed to get DHCP options");
+
+	g_clear_object (&priv->proxy_config);
+	priv->proxy_config = nm_proxy_config_new ();
+
+	pac = g_hash_table_lookup (options, "wpad");
+	if (pac) {
+		nm_proxy_config_set_method (priv->proxy_config, NM_PROXY_CONFIG_METHOD_AUTO);
+		nm_proxy_config_set_pac_url (priv->proxy_config, pac);
+		_LOGD (LOGD_PROXY, "PAC url obtained, method:auto");
+	} else {
+		nm_proxy_config_set_method (priv->proxy_config, NM_PROXY_CONFIG_METHOD_NONE);
+		_LOGI (LOGD_PROXY, "PAC url not obtained from DHCP server");
+	}
+
+	connection = nm_device_get_applied_connection (self);
+	if (connection)
+		s_proxy = nm_connection_get_setting_proxy (connection);
+
+	if (s_proxy)
+		nm_proxy_config_merge_setting (priv->proxy_config, s_proxy);
+}
+
+/* IP Configuration stuff */
 NMDhcp4Config *
 nm_device_get_dhcp4_config (NMDevice *self)
 {
@@ -10579,6 +10635,7 @@ _cleanup_generic_post (NMDevice *self, CleanupType cleanup_type)
 	 */
 	nm_device_set_ip4_config (self, NULL, 0, TRUE, TRUE, NULL);
 	nm_device_set_ip6_config (self, NULL, TRUE, TRUE, NULL);
+	g_clear_object (&priv->proxy_config);
 	g_clear_object (&priv->con_ip4_config);
 	g_clear_object (&priv->dev_ip4_config);
 	g_clear_object (&priv->ext_ip4_config);
@@ -11166,6 +11223,9 @@ _set_state_full (NMDevice *self,
 				deactivate_dispatcher_complete (0, self);
 			}
 		}
+
+		/* Remove config from PacRunner */
+		nm_pacrunner_manager_remove (priv->pacrunner_manager, nm_device_get_ip_iface (self));
 		break;
 	case NM_DEVICE_STATE_DISCONNECTED:
 		if (   priv->queued_act_request
@@ -11189,6 +11249,14 @@ _set_state_full (NMDevice *self,
 		                    nm_act_request_get_settings_connection (req),
 		                    nm_act_request_get_applied_connection (req),
 		                    self, NULL, NULL, NULL);
+
+		/* Load PacRunner with Device's config */
+		if (!nm_pacrunner_manager_send (priv->pacrunner_manager,
+		                                nm_device_get_ip_iface (self),
+		                                priv->proxy_config,
+		                                priv->ip4_config,
+		                                priv->ip6_config))
+			_LOGI (LOGD_PROXY, "Couldn't update pacrunner for %s", nm_device_get_ip_iface (self));
 		break;
 	case NM_DEVICE_STATE_FAILED:
 		/* Usually upon failure the activation chain is interrupted in
@@ -11952,6 +12020,8 @@ nm_device_init (NMDevice *self)
 	priv->available_connections = g_hash_table_new_full (g_direct_hash, g_direct_equal, g_object_unref, NULL);
 	priv->ip6_saved_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
+	priv->pacrunner_manager = g_object_ref (nm_pacrunner_manager_get ());
+
 	priv->default_route.v4_is_assumed = TRUE;
 	priv->default_route.v6_is_assumed = TRUE;
 
@@ -12062,6 +12132,8 @@ dispose (GObject *object)
 	nm_clear_g_signal_handler (nm_config_get (), &priv->ignore_carrier_id);
 
 	dispatcher_cleanup (self);
+
+	g_clear_object (&priv->pacrunner_manager);
 
 	_cleanup_generic_pre (self, CLEANUP_TYPE_KEEP);
 
