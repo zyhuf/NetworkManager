@@ -724,6 +724,7 @@ _normalize_ip_config (NMConnection *self, GHashTable *parameters)
 	const char *default_ip4_method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
 	const char *default_ip6_method = NULL;
 	NMSettingIPConfig *s_ip4, *s_ip6;
+	NMSettingProxy *s_proxy;
 	NMSetting *setting;
 	gboolean changed = FALSE;
 
@@ -732,11 +733,15 @@ _normalize_ip_config (NMConnection *self, GHashTable *parameters)
 	if (!default_ip6_method)
 		default_ip6_method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
 
+	s_proxy = nm_connection_get_setting_proxy (self);
 	s_ip4 = nm_connection_get_setting_ip4_config (self);
 	s_ip6 = nm_connection_get_setting_ip6_config (self);
 
 	if (nm_setting_connection_get_master (s_con)) {
 		/* Slave connections don't have IP configuration. */
+
+		if (s_proxy)
+			nm_connection_remove_setting (self, NM_TYPE_SETTING_PROXY);
 
 		if (s_ip4)
 			nm_connection_remove_setting (self, NM_TYPE_SETTING_IP4_CONFIG);
@@ -751,6 +756,14 @@ _normalize_ip_config (NMConnection *self, GHashTable *parameters)
 		 * to fail. But if no IP4 setting was specified, assume the caller was just
 		 * being lazy.
 		 */
+		if (!s_proxy) {
+			setting = nm_setting_proxy_new ();
+
+			g_object_set (setting,
+			              NM_SETTING_PROXY_METHOD, NM_SETTING_PROXY_METHOD_NONE,
+			              NULL);
+			nm_connection_add_setting (self, setting);
+		}
 		if (!s_ip4) {
 			setting = nm_setting_ip4_config_new ();
 
@@ -2134,6 +2147,22 @@ nm_connection_get_setting_pppoe (NMConnection *connection)
 	g_return_val_if_fail (NM_IS_CONNECTION (connection), NULL);
 
 	return (NMSettingPppoe *) nm_connection_get_setting (connection, NM_TYPE_SETTING_PPPOE);
+}
+
+/**
+ * nm_connection_get_setting_proxy:
+ * @connection: the #NMConnection
+ *
+ * A shortcut to return any #NMSettingProxy the connection might contain.
+ *
+ * Returns:an #NMSettingProxy if the connection contains one, otherwise %NULL
+ **/
+NMSettingProxy *
+nm_connection_get_setting_proxy (NMConnection *connection)
+{
+	g_return_val_if_fail (NM_IS_CONNECTION (connection), NULL);
+
+	return (NMSettingProxy *) nm_connection_get_setting (connection, NM_TYPE_SETTING_PROXY);
 }
 
 /**
