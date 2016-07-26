@@ -3205,8 +3205,10 @@ nm_device_generate_connection (NMDevice *self, NMDevice *master)
 		s_ip6 = nm_ip6_config_create_setting (priv->ip6_config);
 		nm_connection_add_setting (connection, s_ip6);
 
-		s_proxy = nm_proxy_config_create_setting (priv->proxy_config);
-		nm_connection_add_setting (connection, s_proxy);
+		if (priv->proxy_config) {
+			s_proxy = nm_proxy_config_create_setting (priv->proxy_config);
+			nm_connection_add_setting (connection, s_proxy);
+		}
 
 		pllink = nm_platform_link_get (NM_PLATFORM_GET, priv->ifindex);
 		if (pllink && pllink->inet6_token.id) {
@@ -11251,12 +11253,14 @@ _set_state_full (NMDevice *self,
 		                    self, NULL, NULL, NULL);
 
 		/* Load PacRunner with Device's config */
-		if (!nm_pacrunner_manager_send (priv->pacrunner_manager,
-		                                nm_device_get_ip_iface (self),
-		                                priv->proxy_config,
-		                                priv->ip4_config,
-		                                priv->ip6_config))
-			_LOGI (LOGD_PROXY, "Couldn't update pacrunner for %s", nm_device_get_ip_iface (self));
+		if (priv->proxy_config) {
+			if (!nm_pacrunner_manager_send (priv->pacrunner_manager,
+							nm_device_get_ip_iface (self),
+							priv->proxy_config,
+							priv->ip4_config,
+							priv->ip6_config))
+				_LOGI (LOGD_PROXY, "Couldn't update pacrunner for %s", nm_device_get_ip_iface (self));
+		}
 		break;
 	case NM_DEVICE_STATE_FAILED:
 		/* Usually upon failure the activation chain is interrupted in
