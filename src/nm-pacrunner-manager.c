@@ -288,7 +288,6 @@ pacrunner_proxy_cb (GObject *source, GAsyncResult *res, gpointer user_data)
 	NMPacRunnerManager *self = NULL;
 	NMPacRunnerManagerPrivate *priv;
 	gs_free_error GError *error = NULL;
-	gs_free char *owner = NULL;
 	GDBusProxy *proxy;
 
 	self = NM_PACRUNNER_MANAGER (user_data);

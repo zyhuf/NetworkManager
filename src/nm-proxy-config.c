@@ -195,7 +195,7 @@ nm_proxy_config_create_setting (const NMProxyConfig *config)
 				tmp = strchr (tmp, ':') + 1;
 				str = g_strndup (tmp, strchr (tmp, '/') - tmp);
 				port = (guint32) atoi (str);
-				if (port >= 0)
+				if (port > 0)
 					g_object_set (s_proxy, NM_SETTING_PROXY_HTTP_PORT, port, NULL);
 				g_free (str);
 
@@ -209,7 +209,7 @@ nm_proxy_config_create_setting (const NMProxyConfig *config)
 				tmp = strchr (tmp, ':') + 1;
 				str = g_strndup (tmp, strchr (tmp, '/') - tmp);
 				port = (guint32) atoi (str);
-				if (port >= 0)
+				if (port > 0)
 					g_object_set (s_proxy, NM_SETTING_PROXY_SSL_PORT, port, NULL);
 				g_free (str);
 
@@ -222,7 +222,7 @@ nm_proxy_config_create_setting (const NMProxyConfig *config)
 				tmp = strchr (tmp, ':') + 1;
 				str = g_strndup (tmp, strchr (tmp, '/') - tmp);
 				port = (guint32) atoi (str);
-				if (port >= 0)
+				if (port > 0)
 					g_object_set (s_proxy, NM_SETTING_PROXY_FTP_PORT, port, NULL);
 				g_free (str);
 
@@ -240,7 +240,7 @@ nm_proxy_config_create_setting (const NMProxyConfig *config)
 				tmp = strchr (tmp, ':') + 1;
 				str = g_strndup (tmp, strchr (tmp, '/') - tmp);
 				port = (guint32) atoi (str);
-				if (port >= 0)
+				if (port > 0)
 					g_object_set (s_proxy, NM_SETTING_PROXY_SOCKS_PORT, port, NULL);
 				g_free (str);
 			}
