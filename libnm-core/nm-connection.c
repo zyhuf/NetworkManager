@@ -756,14 +756,6 @@ _normalize_ip_config (NMConnection *self, GHashTable *parameters)
 		 * to fail. But if no IP4 setting was specified, assume the caller was just
 		 * being lazy.
 		 */
-		if (!s_proxy) {
-			setting = nm_setting_proxy_new ();
-
-			g_object_set (setting,
-			              NM_SETTING_PROXY_METHOD, NM_SETTING_PROXY_METHOD_NONE,
-			              NULL);
-			nm_connection_add_setting (self, setting);
-		}
 		if (!s_ip4) {
 			setting = nm_setting_ip4_config_new ();
 
