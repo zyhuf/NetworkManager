@@ -616,6 +616,7 @@ global:
 	nm_setting_pppoe_get_type;
 	nm_setting_pppoe_get_username;
 	nm_setting_pppoe_new;
+	nm_setting_proxy_method_get_type;
 	nm_setting_secret_flags_get_type;
 	nm_setting_serial_get_baud;
 	nm_setting_serial_get_bits;
