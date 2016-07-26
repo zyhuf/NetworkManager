@@ -1999,7 +1999,7 @@ write_proxy_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 
 	s_proxy = nm_connection_get_setting_proxy (connection);
 	if (!s_proxy)
-		return FALSE;
+		return TRUE;
 
 	svSetValue (ifcfg, "HTTP_PROXY", NULL, FALSE);
 	svSetValue (ifcfg, "HTTP_PORT", NULL, FALSE);
