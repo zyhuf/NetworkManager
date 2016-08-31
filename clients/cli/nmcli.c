@@ -206,18 +206,18 @@ usage (void)
 }
 
 static const NMCCommand nmcli_cmds[] = {
-	{ "general",    do_general,     NULL },
-	{ "monitor",    do_monitor,     NULL },
-	{ "networking", do_networking,  NULL },
-	{ "radio",      do_radio,       NULL },
-	{ "connection", do_connections, NULL },
-	{ "device",     do_devices,     NULL },
-	{ "agent",      do_agent,       NULL },
-	{ NULL,         do_overview,    usage }
+	{ "general",     do_general,      NULL,   FALSE },
+	{ "monitor",     do_monitor,      NULL,   FALSE },
+	{ "networking",  do_networking,   NULL,   FALSE },
+	{ "radio",       do_radio,        NULL,   FALSE },
+	{ "connection",  do_connections,  NULL,   FALSE },
+	{ "device",      do_devices,      NULL,   FALSE },
+	{ "agent",       do_agent,        NULL,   FALSE },
+	{ NULL,          do_overview,     usage,  FALSE },
 };
 
-static NMCResultCode
-parse_command_line (NmCli *nmc, int argc, char **argv)
+static gboolean
+process_command_line (NmCli *nmc, int argc, char **argv)
 {
 	char *base;
 
@@ -258,12 +258,12 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			if (nmc->print_output == NMC_PRINT_TERSE) {
 				g_string_printf (nmc->return_text, _("Error: Option '--terse' is specified the second time."));
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			else if (nmc->print_output == NMC_PRINT_PRETTY) {
 				g_string_printf (nmc->return_text, _("Error: Option '--terse' is mutually exclusive with '--pretty'."));
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			else
 				nmc->print_output = NMC_PRINT_TERSE;
@@ -271,12 +271,12 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			if (nmc->print_output == NMC_PRINT_PRETTY) {
 				g_string_printf (nmc->return_text, _("Error: Option '--pretty' is specified the second time."));
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			else if (nmc->print_output == NMC_PRINT_TERSE) {
 				g_string_printf (nmc->return_text, _("Error: Option '--pretty' is mutually exclusive with '--terse'."));
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			else
 				nmc->print_output = NMC_PRINT_PRETTY;
@@ -285,7 +285,7 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			if (next_arg (&argc, &argv) != 0) {
 		 		g_string_printf (nmc->return_text, _("Error: missing argument for '%s' option."), opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			if (argc == 1 && nmc->complete)
 				nmc_complete_strings (argv[0], "tabular", "multiline", NULL);
@@ -296,13 +296,13 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			else {
 		 		g_string_printf (nmc->return_text, _("Error: '%s' is not valid argument for '%s' option."), argv[0], opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 		} else if (matches (opt, "-colors") == 0) {
 			if (next_arg (&argc, &argv) != 0) {
 		 		g_string_printf (nmc->return_text, _("Error: missing argument for '%s' option."), opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			if (argc == 1 && nmc->complete)
 				nmc_complete_strings (argv[0], "yes", "no", "auto", NULL);
@@ -315,13 +315,13 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			else {
 		 		g_string_printf (nmc->return_text, _("Error: '%s' is not valid argument for '%s' option."), argv[0], opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 		} else if (matches (opt, "-escape") == 0) {
 			if (next_arg (&argc, &argv) != 0) {
 		 		g_string_printf (nmc->return_text, _("Error: missing argument for '%s' option."), opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			if (argc == 1 && nmc->complete)
 				nmc_complete_strings (argv[0], "yes", "no", NULL);
@@ -332,13 +332,13 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			else {
 		 		g_string_printf (nmc->return_text, _("Error: '%s' is not valid argument for '%s' option."), argv[0], opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 		} else if (matches (opt, "-fields") == 0) {
 			if (next_arg (&argc, &argv) != 0) {
 		 		g_string_printf (nmc->return_text, _("Error: fields for '%s' options are missing."), opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			if (argc == 1 && nmc->complete)
 				complete_fields (argv[0]);
@@ -354,13 +354,13 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 			if (next_arg (&argc, &argv) != 0) {
 		 		g_string_printf (nmc->return_text, _("Error: missing argument for '%s' option."), opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			if (!nmc_string_to_uint (argv[0], TRUE, 0, G_MAXINT, &timeout)) {
 		 		g_string_printf (nmc->return_text, _("Error: '%s' is not a valid timeout for '%s' option."),
 				                 argv[0], opt);
 				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return nmc->return_value;
+				return FALSE;
 			}
 			nmc->timeout = (int) timeout;
 		} else if (matches (opt, "-version") == 0) {
@@ -374,14 +374,16 @@ parse_command_line (NmCli *nmc, int argc, char **argv)
 		} else {
 			g_string_printf (nmc->return_text, _("Error: Option '%s' is unknown, try 'nmcli -help'."), opt);
 			nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-			return nmc->return_value;
+			return FALSE;
 		}
 		argc--;
 		argv++;
 	}
 
 	/* Now run the requested command */
-	return nmc_do_cmd (nmc, nmcli_cmds, *argv, argc, argv);
+	nmc_do_cmd (nmc, nmcli_cmds, *argv, argc, argv);
+
+	return TRUE;
 }
 
 static gboolean nmcli_sigint = FALSE;
@@ -662,24 +664,9 @@ nmc_cleanup (NmCli *nmc)
 	nmc_polkit_agent_fini (nmc);
 }
 
-static gboolean
-start (gpointer data)
-{
-	ArgsInfo *info = (ArgsInfo *) data;
-	info->nmc->return_value = parse_command_line (info->nmc, info->argc, info->argv);
-
-	if (!info->nmc->should_wait)
-		g_main_loop_quit (loop);
-
-	return FALSE;
-}
-
-
 int
 main (int argc, char *argv[])
 {
-	ArgsInfo args_info = { &nm_cli, argc, argv };
-
 	/* Set up unix signal handling */
 	if (!setup_signals ())
 		exit (NMC_RESULT_ERROR_UNKNOWN);
@@ -709,10 +696,10 @@ main (int argc, char *argv[])
 	nmc_value_transforms_register ();
 
 	nmc_init (&nm_cli);
-	g_idle_add (start, &args_info);
-
-	loop = g_main_loop_new (NULL, FALSE);  /* create main loop */
-	g_main_loop_run (loop);                /* run main loop */
+	if (process_command_line (&nm_cli, argc, argv)) {
+		loop = g_main_loop_new (NULL, FALSE);  /* create main loop */
+		g_main_loop_run (loop);                /* run main loop */
+	}
 
 	if (nm_cli.complete) {
 		/* Remove error statuses from command completion runs. */
