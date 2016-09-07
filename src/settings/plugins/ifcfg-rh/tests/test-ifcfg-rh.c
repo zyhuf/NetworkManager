@@ -8828,6 +8828,36 @@ test_read_vlan_trailing_spaces (void)
 	g_object_unref (connection);
 }
 
+static void
+test_read_variables_comments (void)
+{
+	const char *testfile = TEST_IFCFG_DIR"/network-scripts/ifcfg-test-variables-comments";
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wireless;
+	GBytes *ssid;
+	const char *expected_ssid = "Corner Pub";
+
+	connection = _connection_from_file (testfile, NULL, TYPE_WIRELESS, NULL);
+
+	/* ===== CONNECTION SETTING ===== */
+	s_con = nm_connection_get_setting_connection (connection);
+	g_assert (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "My connection #3");
+	g_assert_cmpstr (nm_setting_connection_get_zone (s_con), ==, "secure-zone#4");
+	g_assert (nm_setting_connection_get_autoconnect (s_con) == FALSE);
+
+	/* ===== WIRELESS SETTING ===== */
+	s_wireless = nm_connection_get_setting_wireless (connection);
+	g_assert (s_wireless);
+	g_assert_cmpint (nm_setting_wireless_get_channel (s_wireless), ==, 11);
+	ssid = nm_setting_wireless_get_ssid (s_wireless);
+	g_assert (ssid);
+	g_assert_cmpmem (g_bytes_get_data (ssid, NULL), g_bytes_get_size (ssid), expected_ssid, strlen (expected_ssid));
+
+	g_object_unref (connection);
+}
+
 /*****************************************************************************/
 
 static void
@@ -8859,6 +8889,7 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "svUnescape", test_svUnescape);
 	g_test_add_func (TPATH "vlan-trailing-spaces", test_read_vlan_trailing_spaces);
+	g_test_add_func (TPATH "variables-comments", test_read_variables_comments);
 
 	g_test_add_func (TPATH "unmanaged", test_read_unmanaged);
 	g_test_add_func (TPATH "unmanaged-unrecognized", test_read_unmanaged_unrecognized);

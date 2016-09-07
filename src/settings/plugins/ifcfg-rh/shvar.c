@@ -246,6 +246,36 @@ svEscape (const char *s, char **to_free)
 	return new;
 }
 
+/* Remove comment from the string s (in place).
+ * A comment is everything after '#' character, but only if '#' is not inside
+ * quotes or double-qoutes. And a space or tab has to be before '#'.
+ * Returns: TRUE - if comment is found. The comment is removed (s is modified).
+ *          FALSE - if no comment is detected (s is not modified).
+ */
+static gboolean
+remove_comment (char *s)
+{
+	char *p, *quote_end;
+
+	quote_end = s;
+	if (s[0] == '"' || s[0] == '\'') {
+		do {
+			quote_end = strchr (quote_end + 1, s[0]);
+		} while (quote_end && *(quote_end-1) == '\\');
+		if (!quote_end)
+			return FALSE; /* no closing quote */
+	}
+
+	p = strchr (quote_end ? quote_end : s, '#');
+	if (!p)
+		return FALSE;  /* # not found */
+	if (p > s && *(p-1) != ' ' && *(p-1) != '\t')
+		return FALSE;  /* # not preceeded with a space or tab */
+
+	*(p-1) = '\0';
+	return TRUE;
+}
+
 /* Get the value associated with the key, and leave the current pointer
  * pointing at the line containing the value.  The char* returned MUST
  * be freed by the caller.
@@ -281,8 +311,11 @@ svGetValueFull (shvarFile *s, const char *key, gboolean verbatim)
 	for (s->current = s->lineList; s->current; s->current = s->current->next) {
 		line = s->current->data;
 		if (!strncmp (key, line, len) && line[len] == '=') {
+			value = g_strdup (line + len + 1);
+			/* Remove a possible comment from the value */
+			remove_comment (value);
 			/* Strip trailing spaces before unescaping to preserve spaces quoted whitespace */
-			value = g_strchomp (g_strdup (line + len + 1));
+			g_strchomp (value);
 			if (!verbatim)
 				svUnescape (value);
 			break;

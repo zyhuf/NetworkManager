@@ -1,0 +1,19 @@
+TYPE=Wireless
+DEVICE=eth2
+HWADDR=00:16:41:11:22:33
+NM_CONTROLLED=yes
+BOOTPROTO=dhcp
+CHANNEL=11  # use channel 11 to avoid interference
+MODE=Managed
+RATE=auto
+
+ESSID=Corner Pub #7     # everything after " #7" will be removed as a comment because it is not protected with quotes
+
+# the #3 inside quotes will be preserved
+NAME="My connection #3"  # name of the connection 
+
+ONBOOT=no	# do not autostart
+
+# the #4 will be preserved
+ZONE=secure-zone#4
+

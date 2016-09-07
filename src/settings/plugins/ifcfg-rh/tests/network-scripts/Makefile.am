@@ -139,6 +139,7 @@ EXTRA_DIST = \
 	ifcfg-test-team-port-2 \
 	ifcfg-test-team-port-empty-config \
 	ifcfg-test-vlan-trailing-spaces \
+	ifcfg-test-variables-comments \
 	ifcfg-test-dns-options \
 	ifcfg-test-wired-wake-on-lan \
 	ifcfg-test-wired-ipv6-only-1
