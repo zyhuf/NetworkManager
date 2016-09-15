@@ -261,7 +261,7 @@ remove_comment (char *s)
 	if (s[0] == '"' || s[0] == '\'') {
 		do {
 			quote_end = strchr (quote_end + 1, s[0]);
-		} while (quote_end && *(quote_end-1) == '\\');
+		} while (quote_end && *(quote_end-1) == '\\' && s[0] == '"');
 		if (!quote_end)
 			return FALSE; /* no closing quote */
 	}
