@@ -322,7 +322,7 @@ static void
 start (NMRDisc *rdisc)
 {
 	NMLndpRDiscPrivate *priv = NM_LNDP_RDISC_GET_PRIVATE ((NMLndpRDisc *) rdisc);
-	int fd = ndp_get_eventfd (priv->ndp);
+	int fd = ndp_get_eventfd (priv->ndp), reg;
 
 	priv->event_channel = g_io_channel_unix_new (fd);
 	priv->event_id = g_io_add_watch (priv->event_channel, G_IO_IN, (GIOFunc) event_ready, rdisc);
@@ -330,7 +330,17 @@ start (NMRDisc *rdisc)
 	/* Flush any pending messages to avoid using obsolete information */
 	event_ready (priv->event_channel, 0, rdisc);
 
-	ndp_msgrcv_handler_register (priv->ndp, receive_ra, NDP_MSG_RA, nm_rdisc_get_ifindex (rdisc), rdisc);
+	reg = ndp_msgrcv_handler_register (priv->ndp, receive_ra, NDP_MSG_RA, nm_rdisc_get_ifindex (rdisc), rdisc);
+
+	if (reg < 0) {
+		_LOGW ("(%s:%d): MSG_RA handler registration failed (%d)",
+		       nm_rdisc_get_ifname (rdisc),
+		       nm_rdisc_get_ifindex (rdisc), reg);
+	} else {
+		_LOGD ("(%s:%d): MSG_RA handler registered",
+		       nm_rdisc_get_ifname (rdisc),
+		       nm_rdisc_get_ifindex (rdisc));
+	}
 }
 
 /*****************************************************************************/
