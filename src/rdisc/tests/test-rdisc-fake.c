@@ -402,7 +402,7 @@ test_dns_solicit_loop_rs_sent (NMFakeRDisc *rdisc, TestData *data)
 		if (data->rs_counter == 1) {
 			data->first_solicit = now;
 			/* Kill the test after 10 seconds if it hasn't failed yet */
-			data->timeout_id = g_timeout_add_seconds (10, (GSourceFunc) success_timeout, data);
+			data->timeout_id = g_timeout_add_seconds (30, (GSourceFunc) success_timeout, data);
 		}
 
 		/* On all but the first solicitation, which should be triggered by the
@@ -411,7 +411,7 @@ test_dns_solicit_loop_rs_sent (NMFakeRDisc *rdisc, TestData *data)
 		 */
 		id = nm_fake_rdisc_add_ra (rdisc, 0, NM_RDISC_DHCP_LEVEL_NONE, 4, 1500);
 		g_assert (id);
-		nm_fake_rdisc_add_gateway (rdisc, id, "fe80::1", now, 10, NM_RDISC_PREFERENCE_MEDIUM);
+		nm_fake_rdisc_add_gateway (rdisc, id, "fe80::1", now, 30, NM_RDISC_PREFERENCE_MEDIUM);
 
 		nm_fake_rdisc_emit_new_ras (rdisc);
 	} else if (data->rs_counter >= 6) {
@@ -440,7 +440,7 @@ test_dns_solicit_loop (void)
 
 	id = nm_fake_rdisc_add_ra (rdisc, 1, NM_RDISC_DHCP_LEVEL_NONE, 4, 1500);
 	g_assert (id);
-	nm_fake_rdisc_add_gateway (rdisc, id, "fe80::1", now, 10, NM_RDISC_PREFERENCE_LOW);
+	nm_fake_rdisc_add_gateway (rdisc, id, "fe80::1", now, 30, NM_RDISC_PREFERENCE_LOW);
 	nm_fake_rdisc_add_dns_server (rdisc, id, "2001:db8:c:c::1", now, 6);
 
 	g_signal_connect (rdisc,
