@@ -2446,6 +2446,23 @@ error:
 	return success;
 }
 
+static void
+write_ip6_setting_dhcp_hostname (NMSettingIPConfig *s_ip6, shvarFile *ifcfg)
+{
+	const char *hostname;
+
+	hostname = nm_setting_ip_config_get_dhcp_hostname (s_ip6);
+	svSetValueString (ifcfg, "DHCPV6_HOSTNAME", hostname);
+
+	/* Missing DHCPV6_SEND_HOSTNAME means TRUE, and we prefer not write it
+	 * explicitly in that case, because it is NM-specific variable
+	 */
+	if (nm_setting_ip_config_get_dhcp_send_hostname (s_ip6))
+		svUnsetValue (ifcfg, "DHCPV6_SEND_HOSTNAME");
+	else
+		svSetValueString (ifcfg, "DHCPV6_SEND_HOSTNAME", "no");
+}
+
 static gboolean
 write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 {
@@ -2473,6 +2490,8 @@ write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		svUnsetValue (ifcfg, "IPV6INIT");
 		svUnsetValue (ifcfg, "IPV6_AUTOCONF");
 		svUnsetValue (ifcfg, "DHCPV6C");
+		svUnsetValue (ifcfg, "DHCPV6_HOSTNAME");
+		svUnsetValue (ifcfg, "DHCPV6_SEND_HOSTNAME");
 		svUnsetValue (ifcfg, "IPV6_DEFROUTE");
 		svUnsetValue (ifcfg, "IPV6_PEERDNS");
 		svUnsetValue (ifcfg, "IPV6_PEERROUTES");
@@ -2492,14 +2511,12 @@ write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		svSetValueString (ifcfg, "IPV6INIT", "yes");
 		svSetValueString (ifcfg, "IPV6_AUTOCONF", "yes");
 		svUnsetValue (ifcfg, "DHCPV6C");
+		write_ip6_setting_dhcp_hostname (s_ip6, ifcfg);
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DHCP)) {
-		const char *hostname;
 		svSetValueString (ifcfg, "IPV6INIT", "yes");
 		svSetValueString (ifcfg, "IPV6_AUTOCONF", "no");
 		svSetValueString (ifcfg, "DHCPV6C", "yes");
-		hostname = nm_setting_ip_config_get_dhcp_hostname (s_ip6);
-		if (hostname)
-			svSetValueString (ifcfg, "DHCP_HOSTNAME", hostname);
+		write_ip6_setting_dhcp_hostname (s_ip6, ifcfg);
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_MANUAL)) {
 		svSetValueString (ifcfg, "IPV6INIT", "yes");
 		svSetValueString (ifcfg, "IPV6_AUTOCONF", "no");
@@ -2569,6 +2586,7 @@ write_ip6_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		g_string_free (searches, TRUE);
 		g_free (ip4_domains);
 	}
+
 
 	/* handle IPV6_DEFROUTE */
 	/* IPV6_DEFROUTE has the opposite meaning from 'never-default' */

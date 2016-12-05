@@ -1511,10 +1511,19 @@ make_ip6_setting (shvarFile *ifcfg,
 	if (   !strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO)
 	    || !strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_DHCP)) {
 		/* METHOD_AUTO may trigger DHCPv6, so save the hostname to send to DHCP */
-		value = svGetValueString (ifcfg, "DHCP_HOSTNAME");
-		if (value && value[0])
+		value = svGetValueString (ifcfg, "DHCPV6_HOSTNAME");
+		if (!value) {
+			/* Use DHCP_HOSTNAME as fallback if it is a FQDN to support old ifcfg files */
+			value = svGetValueString (ifcfg, "DHCP_HOSTNAME");
+			if (value && !strchr (value, '.'))
+				g_clear_pointer (&value, g_free);
+		}
+		if (value)
 			g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, value, NULL);
 		g_free (value);
+
+		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME,
+		              svGetValueBoolean (ifcfg, "DHCPV6_SEND_HOSTNAME", TRUE), NULL);
 	}
 
 	/* Read static IP addresses.
