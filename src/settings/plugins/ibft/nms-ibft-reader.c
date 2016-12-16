@@ -292,16 +292,14 @@ ip4_setting_add_from_block (const GPtrArray *block,
 
 	if (!g_ascii_strcasecmp (s_method, "dhcp")) {
 		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO, NULL);
-		goto success;
-	} else if (g_ascii_strcasecmp (s_method, "static") != 0) {
+	} else if (!g_ascii_strcasecmp (s_method, "static")) {
+		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL, NULL);
+	} else {
 		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
 		             "iBFT: malformed iscsiadm record: unknown " ISCSI_BOOTPROTO_TAG " '%s'.",
 		             s_method);
 		goto error;
 	}
-
-	/* Static configuration stuff */
-	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL, NULL);
 
 	/* IP address */
 	if (!s_ipaddr || !nm_utils_ipaddr_valid (AF_INET, s_ipaddr)) {
@@ -357,7 +355,6 @@ ip4_setting_add_from_block (const GPtrArray *block,
 	if (s_dns2)
 		nm_setting_ip_config_add_dns (s_ip4, s_dns2);
 
-success:
 	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
 	return TRUE;
 
