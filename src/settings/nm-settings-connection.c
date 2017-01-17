@@ -1004,8 +1004,12 @@ get_secrets_done_cb (NMAgentManager *manager,
 	priv->get_secret_requests = g_slist_remove (priv->get_secret_requests, info);
 
 	if (error) {
-		_LOGD ("(%s:%p) secrets request error: %s",
-		       setting_name, info, error->message);
+		if (flags & NM_SECRET_AGENT_GET_SECRETS_FLAG_NO_ERRORS) {
+			_LOGD ("(%s:%p) ignoring secrets request error: %s", setting_name, info, error->message);
+			error = NULL;
+		} else {
+			_LOGD ("(%s:%p) secrets request error: %s", setting_name, info, error->message);
+		}
 
 		_get_secrets_info_callback (info, NULL, setting_name, error);
 		goto out;
