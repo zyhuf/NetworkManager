@@ -987,7 +987,7 @@ get_secrets_done_cb (NMAgentManager *manager,
 	NMSettingsConnectionPrivate *priv;
 	NMConnection *applied_connection;
 	gs_free_error GError *local = NULL;
-	GVariant *dict;
+	GVariant *system_secrets_dict;
 	gboolean agent_had_system = FALSE;
 	ForEachSecretFlags cmp_flags = { NM_SETTING_SECRET_FLAG_NONE, NM_SETTING_SECRET_FLAG_NONE };
 
@@ -1050,11 +1050,11 @@ get_secrets_done_cb (NMAgentManager *manager,
 	       setting_name,
 	       info);
 
-	dict = nm_connection_to_dbus (priv->system_secrets, NM_CONNECTION_SERIALIZE_ONLY_SECRETS);
+	system_secrets_dict = nm_connection_to_dbus (priv->system_secrets, NM_CONNECTION_SERIALIZE_ONLY_SECRETS);
 
 	/* Update the connection with our existing secrets from backing storage */
 	nm_connection_clear_secrets (NM_CONNECTION (self));
-	if (!dict || nm_connection_update_secrets (NM_CONNECTION (self), setting_name, dict, &local)) {
+	if (!system_secrets_dict || nm_connection_update_secrets (NM_CONNECTION (self), setting_name, system_secrets_dict, &local)) {
 		GVariant *filtered_secrets;
 
 		/* Update the connection with the agent's secrets; by this point if any
@@ -1116,7 +1116,7 @@ get_secrets_done_cb (NMAgentManager *manager,
 
 		nm_connection_clear_secrets (applied_connection);
 
-		if (!dict || nm_connection_update_secrets (applied_connection, setting_name, dict, NULL)) {
+		if (!system_secrets_dict || nm_connection_update_secrets (applied_connection, setting_name, system_secrets_dict, NULL)) {
 			GVariant *filtered_secrets;
 
 			filtered_secrets = for_each_secret (applied_connection, secrets, TRUE, validate_secret_flags, &cmp_flags);
@@ -1127,8 +1127,8 @@ get_secrets_done_cb (NMAgentManager *manager,
 
 	_get_secrets_info_callback (info, agent_username, setting_name, local);
 	g_clear_error (&local);
-	if (dict)
-		g_variant_unref (dict);
+	if (system_secrets_dict)
+		g_variant_unref (system_secrets_dict);
 
 out:
 	_get_secrets_info_free (info);
