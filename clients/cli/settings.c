@@ -8254,6 +8254,17 @@ nmc_setting_get_property_parsable (NMSetting *setting, const char *prop, GError 
 	return get_property_val (setting, prop, NMC_PROPERTY_GET_PARSABLE, error);
 }
 
+gboolean
+nmc_setting_property_is_secret (NMSetting *setting, const char *prop)
+{
+	GParamSpec *param_spec;
+
+	param_spec = g_object_class_find_property (G_OBJECT_GET_CLASS (G_OBJECT (setting)), prop);
+	if (param_spec)
+		return !!(param_spec->flags & NM_SETTING_PARAM_SECRET);
+	return FALSE;
+}
+
 /*
  * Generic function for setting property value.
  *

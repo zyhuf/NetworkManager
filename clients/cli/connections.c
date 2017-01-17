@@ -1716,6 +1716,11 @@ get_connection (NmCli *nmc, int *argc, char ***argv, int *pos, GError **error)
 		             _("unknown connection '%s'"), **argv);
 	}
 
+	/* This connection has no secrets until we update it with ones. */
+	g_object_set (NM_REMOTE_CONNECTION (connection),
+	              NM_REMOTE_CONNECTION_SERIALIZE_FLAGS, NM_CONNECTION_SERIALIZE_NO_SECRETS,
+	              NULL);
+
 	/* If the caller wants multiple results (pos is set) and there are any,
 	 * don't switch to next argument.
 	 */
@@ -3632,6 +3637,32 @@ reset_options (void)
 	}
 }
 
+/*
+ * If the connection is a remote connection, update it with secrets. Set a flag to
+ * indicate we're serializing the secrets if we commit the connection.
+ */
+static void
+ensure_remote_secrets (NMConnection *connection)
+{
+	NMConnectionSerializationFlags serialize_flags;
+
+	/* If this is not a remote connection, it is thought to always
+	 * have secrets. */
+	if (!NM_IS_REMOTE_CONNECTION (connection))
+		return;
+
+	g_object_get (connection,
+	              NM_REMOTE_CONNECTION_SERIALIZE_FLAGS, &serialize_flags,
+	              NULL);
+
+	if (serialize_flags == NM_CONNECTION_SERIALIZE_NO_SECRETS)
+		update_secrets_in_connection (NM_REMOTE_CONNECTION (connection), connection);
+
+	g_object_set (connection,
+	              NM_REMOTE_CONNECTION_SERIALIZE_FLAGS, NM_CONNECTION_SERIALIZE_ALL,
+	              NULL);
+}
+
 static gboolean
 set_property (NMConnection *connection,
               const char *setting_name, const char *property, const char *value,
@@ -3663,6 +3694,11 @@ set_property (NMConnection *connection,
 		g_clear_error (&local);
 		return FALSE;
 	}
+
+	/* If we're setting a secret, we better make sure we are aware of the
+	 * other secrets too. */
+	if (nmc_setting_property_is_secret (setting, property_name))
+		ensure_remote_secrets (connection);
 
 	if (modifier != '-') {
 		/* Set/add value */
