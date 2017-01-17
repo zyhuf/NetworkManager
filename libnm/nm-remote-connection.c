@@ -51,6 +51,7 @@ enum {
 	PROP_0,
 	PROP_UNSAVED,
 	PROP_VISIBLE,
+	PROP_SERIALIZE_FLAGS,
 
 	LAST_PROP
 };
@@ -58,8 +59,8 @@ enum {
 typedef struct {
 	NMDBusSettingsConnection *proxy;
 
+	NMConnectionSerializationFlags serialize_flags;
 	gboolean unsaved;
-
 	gboolean visible;
 } NMRemoteConnectionPrivate;
 
@@ -94,7 +95,7 @@ nm_remote_connection_commit_changes (NMRemoteConnection *connection,
 
 	priv = NM_REMOTE_CONNECTION_GET_PRIVATE (connection);
 
-	settings = nm_connection_to_dbus (NM_CONNECTION (connection), NM_CONNECTION_SERIALIZE_ALL);
+	settings = nm_connection_to_dbus (NM_CONNECTION (connection), priv->serialize_flags);
 	if (save_to_disk) {
 		ret = nmdbus_settings_connection_call_update_sync (priv->proxy,
 		                                                   settings,
@@ -158,7 +159,7 @@ nm_remote_connection_commit_changes_async (NMRemoteConnection *connection,
 	simple = g_simple_async_result_new (G_OBJECT (connection), callback, user_data,
 	                                    nm_remote_connection_commit_changes_async);
 
-	settings = nm_connection_to_dbus (NM_CONNECTION (connection), NM_CONNECTION_SERIALIZE_ALL);
+	settings = nm_connection_to_dbus (NM_CONNECTION (connection), priv->serialize_flags);
 	if (save_to_disk) {
 		g_object_set_data (G_OBJECT (simple), "finish_func",
 		                   nmdbus_settings_connection_call_update_finish);
@@ -744,15 +745,36 @@ nm_remote_connection_init (NMRemoteConnection *self)
 }
 
 static void
+set_property (GObject *object, guint prop_id,
+              const GValue *value, GParamSpec *pspec)
+{
+	NMRemoteConnectionPrivate *priv = NM_REMOTE_CONNECTION_GET_PRIVATE (object);
+
+	switch (prop_id) {
+	case PROP_SERIALIZE_FLAGS:
+		priv->serialize_flags = g_value_get_uint (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 get_property (GObject *object, guint prop_id,
               GValue *value, GParamSpec *pspec)
 {
+	NMRemoteConnectionPrivate *priv = NM_REMOTE_CONNECTION_GET_PRIVATE (object);
+
 	switch (prop_id) {
 	case PROP_UNSAVED:
-		g_value_set_boolean (value, NM_REMOTE_CONNECTION_GET_PRIVATE (object)->unsaved);
+		g_value_set_boolean (value, priv->unsaved);
 		break;
 	case PROP_VISIBLE:
-		g_value_set_boolean (value, NM_REMOTE_CONNECTION_GET_PRIVATE (object)->visible);
+		g_value_set_boolean (value, priv->visible);
+		break;
+	case PROP_SERIALIZE_FLAGS:
+		g_value_set_uint (value, priv->serialize_flags);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -787,6 +809,7 @@ nm_remote_connection_class_init (NMRemoteConnectionClass *remote_class)
 
 	/* virtual methods */
 	object_class->constructed = constructed;
+	object_class->set_property = set_property;
 	object_class->get_property = get_property;
 	object_class->dispose = dispose;
 
@@ -823,6 +846,20 @@ nm_remote_connection_class_init (NMRemoteConnectionClass *remote_class)
 		                       FALSE,
 		                       G_PARAM_READABLE |
 		                       G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMRemoteConnection:serialize-flags:
+	 *
+	 * XXX
+	 */
+	g_object_class_install_property
+		(object_class, PROP_SERIALIZE_FLAGS,
+		 g_param_spec_uint (NM_REMOTE_CONNECTION_SERIALIZE_FLAGS, "", "",
+		                    NM_CONNECTION_SERIALIZE_ALL,
+		                    NM_CONNECTION_SERIALIZE_ONLY_SECRETS,
+		                    NM_CONNECTION_SERIALIZE_ALL,
+		                    G_PARAM_READWRITE |
+		                    G_PARAM_STATIC_STRINGS));
 }
 
 static void
