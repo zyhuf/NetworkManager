@@ -126,6 +126,7 @@ NMSetting  *_nm_setting_new_from_dbus (GType setting_type,
                                        GVariant *setting_dict,
                                        GVariant *connection_dict,
                                        NMSettingParseFlags parse_flags,
+	                               gboolean *has_secrets,
                                        GError **error);
 
 typedef GVariant * (*NMSettingPropertyGetFunc)    (NMSetting     *setting,

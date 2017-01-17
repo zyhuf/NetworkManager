@@ -775,6 +775,7 @@ _nm_setting_to_dbus (NMSetting *setting, NMConnection *connection, NMConnectionS
  * @connection_dict: the #GVariant containing an %NM_VARIANT_TYPE_CONNECTION
  *   dictionary mapping setting names to dictionaries.
  * @parse_flags: flags to determine behavior during parsing.
+ * @has_secrets: XXX
  * @error: location to store error, or %NULL
  *
  * Creates a new #NMSetting object and populates that object with the properties
@@ -792,6 +793,7 @@ _nm_setting_new_from_dbus (GType setting_type,
                            GVariant *setting_dict,
                            GVariant *connection_dict,
                            NMSettingParseFlags parse_flags,
+                           gboolean *has_secrets,
                            GError **error)
 {
 	gs_unref_object NMSetting *setting = NULL;
@@ -852,8 +854,12 @@ _nm_setting_new_from_dbus (GType setting_type,
 
 		value = g_variant_lookup_value (setting_dict, property->name, NULL);
 
-		if (value && keys)
-			g_hash_table_remove (keys, property->name);
+		if (value) {
+			if (keys)
+				g_hash_table_remove (keys, property->name);
+			if (has_secrets && property->param_spec && (property->param_spec->flags & NM_SETTING_PARAM_SECRET))
+				*has_secrets = TRUE;
+		}
 
 		if (value && property->set_func) {
 

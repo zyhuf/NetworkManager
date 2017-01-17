@@ -274,7 +274,7 @@ verify_request (NMSecretAgentOld *self,
 
 	/* Make sure the given connection is valid */
 	g_assert (out_connection);
-	connection = _nm_simple_connection_new_from_dbus (connection_dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, &local);
+	connection = _nm_simple_connection_new_from_dbus (connection_dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, NULL, &local);
 	if (connection) {
 		nm_connection_set_path (connection, connection_path);
 		*out_connection = connection;

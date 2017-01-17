@@ -77,7 +77,7 @@ G_STATIC_ASSERT (sizeof (bool) <= sizeof (int));
 static NMConnection *
 _connection_new_from_dbus (GVariant *dict, GError **error)
 {
-	return _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_NORMALIZE, error);
+	return _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_NORMALIZE, NULL, error);
 }
 
 static void
@@ -1026,20 +1026,47 @@ test_setting_new_from_dbus (void)
 {
 	NMSettingWirelessSecurity *s_wsec;
 	GVariant *dict;
+	gboolean has_secrets;
 
 	s_wsec = make_test_wsec_setting ("setting-new-from-dbus");
 	dict = _nm_setting_to_dbus (NM_SETTING (s_wsec), NULL, NM_CONNECTION_SERIALIZE_ALL);
 	g_object_unref (s_wsec);
 
-	s_wsec = (NMSettingWirelessSecurity *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRELESS_SECURITY, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, NULL);
+	s_wsec = (NMSettingWirelessSecurity *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRELESS_SECURITY, dict, NULL,
+	                                                                  NM_SETTING_PARSE_FLAGS_NONE, &has_secrets, NULL);
 	g_variant_unref (dict);
 
 	g_assert (s_wsec);
+	g_assert (has_secrets);
 	g_assert_cmpstr (nm_setting_wireless_security_get_key_mgmt (s_wsec), ==, "wpa-psk");
 	g_assert_cmpstr (nm_setting_wireless_security_get_leap_username (s_wsec), ==, "foobarbaz");
 	g_assert_cmpstr (nm_setting_wireless_security_get_psk (s_wsec), ==, "random psk");
 	g_object_unref (s_wsec);
 }
+
+static void
+test_setting_new_from_dbus_no_secrets (void)
+{
+	NMSettingWirelessSecurity *s_wsec;
+	GVariant *dict;
+	gboolean has_secrets;
+
+	s_wsec = make_test_wsec_setting ("setting-new-from-dbus");
+	dict = _nm_setting_to_dbus (NM_SETTING (s_wsec), NULL, NM_CONNECTION_SERIALIZE_NO_SECRETS);
+	g_object_unref (s_wsec);
+
+	s_wsec = (NMSettingWirelessSecurity *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRELESS_SECURITY, dict, NULL,
+	                                                                  NM_SETTING_PARSE_FLAGS_NONE, &has_secrets, NULL);
+	g_variant_unref (dict);
+
+	g_assert (s_wsec);
+	g_assert (!has_secrets);
+	g_assert_cmpstr (nm_setting_wireless_security_get_key_mgmt (s_wsec), ==, "wpa-psk");
+	g_assert_cmpstr (nm_setting_wireless_security_get_leap_username (s_wsec), ==, "foobarbaz");
+	g_assert_cmpstr (nm_setting_wireless_security_get_psk (s_wsec), ==, NULL);
+	g_object_unref (s_wsec);
+}
+
 
 static void
 test_setting_new_from_dbus_transform (void)
@@ -1060,7 +1087,7 @@ test_setting_new_from_dbus_transform (void)
 	                                                  dbus_mac_address, ETH_ALEN, 1));
 	dict = g_variant_builder_end (&builder);
 
-	s_wired = _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRED, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, &error);
+	s_wired = _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRED, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, NULL, &error);
 	g_assert_no_error (error);
 
 	g_assert_cmpstr (nm_setting_wired_get_mac_address (NM_SETTING_WIRED (s_wired)), ==, test_mac_address);
@@ -1086,7 +1113,8 @@ test_setting_new_from_dbus_enum (void)
 	                       g_variant_new_int32 (NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_TEMP_ADDR));
 	dict = g_variant_builder_end (&builder);
 
-	s_ip6 = (NMSettingIP6Config *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_IP6_CONFIG, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, &error);
+	s_ip6 = (NMSettingIP6Config *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_IP6_CONFIG, dict, NULL,
+	                                                          NM_SETTING_PARSE_FLAGS_NONE, NULL, &error);
 	g_assert_no_error (error);
 
 	g_assert_cmpint (nm_setting_ip6_config_get_ip6_privacy (s_ip6), ==, NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_TEMP_ADDR);
@@ -1105,7 +1133,8 @@ test_setting_new_from_dbus_enum (void)
 	                                             NM_SETTING_SECRET_FLAG_NOT_SAVED));
 	dict = g_variant_builder_end (&builder);
 
-	s_wsec = (NMSettingWirelessSecurity *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRELESS_SECURITY, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, &error);
+	s_wsec = (NMSettingWirelessSecurity *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_WIRELESS_SECURITY, dict, NULL,
+	                                                                  NM_SETTING_PARSE_FLAGS_NONE, NULL, &error);
 	g_assert_no_error (error);
 
 	g_assert_cmpint (nm_setting_wireless_security_get_wep_key_type (s_wsec), ==, NM_WEP_KEY_TYPE_KEY);
@@ -1122,7 +1151,8 @@ test_setting_new_from_dbus_enum (void)
 	                       g_variant_new_byte ('E'));
 	dict = g_variant_builder_end (&builder);
 
-	s_serial = (NMSettingSerial *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_SERIAL, dict, NULL, NM_SETTING_PARSE_FLAGS_NONE, &error);
+	s_serial = (NMSettingSerial *) _nm_setting_new_from_dbus (NM_TYPE_SETTING_SERIAL, dict, NULL,
+	                                                          NM_SETTING_PARSE_FLAGS_NONE, NULL, &error);
 	g_assert_no_error (error);
 
 	g_assert_cmpint (nm_setting_serial_get_parity (s_serial), ==, NM_SETTING_SERIAL_PARITY_EVEN);
@@ -5491,6 +5521,7 @@ int main (int argc, char **argv)
 	g_test_add_func ("/core/general/test_connection_to_dbus_setting_name", test_connection_to_dbus_setting_name);
 	g_test_add_func ("/core/general/test_connection_to_dbus_deprecated_props", test_connection_to_dbus_deprecated_props);
 	g_test_add_func ("/core/general/test_setting_new_from_dbus", test_setting_new_from_dbus);
+	g_test_add_func ("/core/general/test_setting_new_from_dbus_no_secrets", test_setting_new_from_dbus_no_secrets);
 	g_test_add_func ("/core/general/test_setting_new_from_dbus_transform", test_setting_new_from_dbus_transform);
 	g_test_add_func ("/core/general/test_setting_new_from_dbus_enum", test_setting_new_from_dbus_enum);
 	g_test_add_func ("/core/general/test_setting_new_from_dbus_bad", test_setting_new_from_dbus_bad);

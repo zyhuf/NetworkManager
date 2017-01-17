@@ -8666,6 +8666,7 @@ impl_device_reapply (NMDevice *self,
 		connection = _nm_simple_connection_new_from_dbus (settings,
 		                                                    NM_SETTING_PARSE_FLAGS_STRICT
 		                                                  | NM_SETTING_PARSE_FLAGS_NORMALIZE,
+		                                                  NULL,
 		                                                  &error);
 		if (!connection) {
 			g_prefix_error (&error, "The settings specified are invalid: ");

@@ -53,6 +53,7 @@ nm_simple_connection_new (void)
 /**
  * _nm_simple_connection_new_from_dbus:
  * @dict: a #GVariant of type %NM_VARIANT_TYPE_CONNECTION describing the connection
+ * @has_secrets: XXX
  * @error: on unsuccessful return, an error
  *
  * Creates a new #NMSimpleConnection from a hash table describing the
@@ -64,7 +65,8 @@ nm_simple_connection_new (void)
  * an error.
  **/
 NMConnection *
-_nm_simple_connection_new_from_dbus (GVariant *dict, NMSettingParseFlags parse_flags, GError **error)
+_nm_simple_connection_new_from_dbus (GVariant *dict, NMSettingParseFlags parse_flags,
+                                     gboolean *has_secrets, GError **error)
 {
 	NMConnection *connection;
 
@@ -74,7 +76,7 @@ _nm_simple_connection_new_from_dbus (GVariant *dict, NMSettingParseFlags parse_f
 	g_return_val_if_fail (!NM_FLAGS_ALL (parse_flags, NM_SETTING_PARSE_FLAGS_STRICT | NM_SETTING_PARSE_FLAGS_BEST_EFFORT), NULL);
 
 	connection = nm_simple_connection_new ();
-	if (!_nm_connection_replace_settings (connection, dict, parse_flags, error))
+	if (!_nm_connection_replace_settings (connection, dict, parse_flags, has_secrets, error))
 		g_clear_object (&connection);
 	return connection;
 }
@@ -97,6 +99,7 @@ nm_simple_connection_new_from_dbus (GVariant *dict, GError **error)
 {
 	return _nm_simple_connection_new_from_dbus (dict,
 	                                            NM_SETTING_PARSE_FLAGS_NORMALIZE,
+	                                            NULL,
 	                                            error);
 }
 

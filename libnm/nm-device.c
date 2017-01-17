@@ -2215,7 +2215,7 @@ nm_device_get_applied_connection (NMDevice *device,
 		return NULL;
 	}
 
-	connection = _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, error);
+	connection = _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, NULL, error);
 	if (!connection)
 		return NULL;
 
@@ -2257,7 +2257,7 @@ device_get_applied_connection_cb (GObject *proxy,
 		goto out;
 	}
 
-	connection = _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, &error);
+	connection = _nm_simple_connection_new_from_dbus (dict, NM_SETTING_PARSE_FLAGS_BEST_EFFORT, NULL, &error);
 	if (!connection) {
 		g_simple_async_result_take_error (simple, error);
 		goto out;

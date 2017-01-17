@@ -1542,6 +1542,7 @@ typedef struct {
 	NMAuthSubject *subject;
 	NMConnection *new_settings;
 	gboolean save_to_disk;
+	gboolean has_secrets;
 	char *audit_args;
 } UpdateInfo;
 
@@ -1549,38 +1550,6 @@ typedef struct {
 	GDBusMethodInvocation *context;
 	NMAuthSubject *subject;
 } CallbackInfo;
-
-static void
-has_some_secrets_cb (NMSetting *setting,
-                     const char *key,
-                     const GValue *value,
-                     GParamFlags flags,
-                     gpointer user_data)
-{
-	GParamSpec *pspec;
-
-	if (NM_IS_SETTING_VPN (setting)) {
-		if (nm_setting_vpn_get_num_secrets (NM_SETTING_VPN(setting)))
-			*((gboolean *) user_data) = TRUE;
-		return;
-	}
-
-	pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (G_OBJECT (setting)), key);
-	if (pspec) {
-		if (   (flags & NM_SETTING_PARAM_SECRET)
-		    && !g_param_value_defaults (pspec, (GValue *)value))
-			*((gboolean *) user_data) = TRUE;
-	}
-}
-
-static gboolean
-any_secrets_present (NMConnection *self)
-{
-	gboolean has_secrets = FALSE;
-
-	nm_connection_for_each_setting_value (self, has_some_secrets_cb, &has_secrets);
-	return has_secrets;
-}
 
 static void
 cached_secrets_to_connection (NMSettingsConnection *self, NMConnection *connection)
@@ -1710,18 +1679,18 @@ update_auth_cb (NMSettingsConnection *self,
 		return;
 	}
 
-	if (!any_secrets_present (info->new_settings)) {
-		/* If the new connection has no secrets, we do not want to remove all
-		 * secrets, rather we keep all the existing ones. Do that by merging
-		 * them in to the new connection.
-		 */
-		cached_secrets_to_connection (self, info->new_settings);
-	} else {
+	if (info->has_secrets) {
 		/* Cache the new secrets from the agent, as stuff like inotify-triggered
 		 * changes to connection's backing config files will blow them away if
 		 * they're in the main connection.
 		 */
 		update_agent_secrets_cache (self, info->new_settings);
+	} else {
+		/* If the new connection has no secrets, we do not want to remove all
+		 * secrets, rather we keep all the existing ones. Do that by merging
+		 * them in to the new connection.
+		 */
+		cached_secrets_to_connection (self, info->new_settings);
 	}
 
 	if (nm_audit_manager_audit_enabled (nm_audit_manager_get ()))
@@ -1779,6 +1748,7 @@ settings_connection_update_helper (NMSettingsConnection *self,
 	UpdateInfo *info;
 	const char *permission;
 	char *error_desc = NULL;
+	gboolean has_secrets = FALSE;
 
 	g_assert (new_settings != NULL || save_to_disk == TRUE);
 
@@ -1794,6 +1764,7 @@ settings_connection_update_helper (NMSettingsConnection *self,
 		tmp = _nm_simple_connection_new_from_dbus (new_settings,
 		                                             NM_SETTING_PARSE_FLAGS_STRICT
 		                                           | NM_SETTING_PARSE_FLAGS_NORMALIZE,
+		                                           &has_secrets,
 		                                           &error);
 		if (!tmp)
 			goto error;
@@ -1823,6 +1794,7 @@ settings_connection_update_helper (NMSettingsConnection *self,
 	info->subject = subject;
 	info->save_to_disk = save_to_disk;
 	info->new_settings = tmp;
+	info->has_secrets = has_secrets;
 
 	permission = get_update_modify_permission (NM_CONNECTION (self),
 	                                           tmp ? tmp : NM_CONNECTION (self));

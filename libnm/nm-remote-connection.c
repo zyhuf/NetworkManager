@@ -568,6 +568,7 @@ replace_settings (NMRemoteConnection *self, GVariant *new_settings)
 	if (!_nm_connection_replace_settings ((NMConnection *) self,
 	                                      new_settings,
 	                                      NM_SETTING_PARSE_FLAGS_BEST_EFFORT,
+	                                      NULL,
 	                                      &error))
 		g_clear_error (&error);
 }

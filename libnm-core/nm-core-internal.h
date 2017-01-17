@@ -115,10 +115,12 @@ typedef enum { /*< skip >*/
 gboolean _nm_connection_replace_settings (NMConnection *connection,
                                           GVariant *new_settings,
                                           NMSettingParseFlags parse_flags,
+                                          gboolean *has_secrets,
                                           GError **error);
 
 NMConnection *_nm_simple_connection_new_from_dbus (GVariant      *dict,
                                                    NMSettingParseFlags parse_flags,
+                                                   gboolean      *has_secrets,
                                                    GError       **error);
 
 guint32 _nm_setting_get_setting_priority (NMSetting *setting);

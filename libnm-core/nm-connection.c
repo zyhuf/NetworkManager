@@ -238,6 +238,7 @@ validate_permissions_type (GVariant *variant, GError **error)
  * @connection: a #NMConnection
  * @new_settings: a #GVariant of type %NM_VARIANT_TYPE_CONNECTION, with the new settings
  * @parse_flags: flags.
+ * @has_secrets: XXX
  * @error: location to store error, or %NULL
  *
  * Replaces @connection's settings with @new_settings (which must be
@@ -254,6 +255,7 @@ gboolean
 _nm_connection_replace_settings (NMConnection *connection,
                                  GVariant *new_settings,
                                  NMSettingParseFlags parse_flags,
+                                 gboolean *has_secrets,
                                  GError **error)
 {
 	NMConnectionPrivate *priv;
@@ -316,7 +318,8 @@ _nm_connection_replace_settings (NMConnection *connection,
 			}
 		}
 
-		setting = _nm_setting_new_from_dbus (type, setting_dict, new_settings, parse_flags, &local);
+		setting = _nm_setting_new_from_dbus (type, setting_dict, new_settings,
+		                                     parse_flags, has_secrets, &local);
 
 		if (!setting) {
 			if (NM_FLAGS_HAS (parse_flags, NM_SETTING_PARSE_FLAGS_BEST_EFFORT))
@@ -378,7 +381,7 @@ nm_connection_replace_settings (NMConnection *connection,
                                 GVariant *new_settings,
                                 GError **error)
 {
-	return _nm_connection_replace_settings (connection, new_settings, NM_SETTING_PARSE_FLAGS_NONE, error);
+	return _nm_connection_replace_settings (connection, new_settings, NM_SETTING_PARSE_FLAGS_NONE, NULL, error);
 }
 
 /**
