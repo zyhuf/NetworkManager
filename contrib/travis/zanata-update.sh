@@ -1,5 +1,6 @@
 #!/bin/bash
 
+TRAVIS_BRANCH=master
 if echo "$TRAVIS_BRANCH" |egrep -q '^master$|^nm-[0-9]*-[0-9]*$'; then
 	wget -O zanata-cli-4.0.0.tar.gz 'http://search.maven.org/remotecontent?filepath=org/zanata/zanata-cli/4.0.0/zanata-cli-4.0.0-dist.tar.gz'
 	tar xzf zanata-cli-4.0.0.tar.gz
