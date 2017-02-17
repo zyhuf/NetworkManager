@@ -411,15 +411,46 @@ settings_set_hostname_cb (const char *hostname,
 		nm_dispatcher_call (DISPATCHER_ACTION_HOSTNAME, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
+#define HOST_NAME_BUFSIZE (HOST_NAME_MAX + 2)
+
+static const char *
+_get_hostname_impl (char *buf)
+{
+	if (gethostname (buf, HOST_NAME_BUFSIZE -1) != 0) {
+		int errsv = errno;
+
+		_LOGT (LOGD_DNS, "gethostname: couldn't get the system hostname: (%d) %s",
+		       errsv, g_strerror (errsv));
+		buf[0] = '\0';
+		return NULL;
+	}
+
+	/* the name may be truncated... */
+	buf[HOST_NAME_BUFSIZE - 1] = '\0';
+	if (strlen (buf) >= HOST_NAME_BUFSIZE -1) {
+		_LOGT (LOGD_DNS, "gethostname: system hostname too long: \"%s\"", buf);
+		buf[0] = '\0';
+		return NULL;
+	}
+
+	_LOGT (LOGD_DNS, "gethostname: \"%s\"", buf);
+	return buf;
+}
+
+#define _get_hostname(buf) \
+	({ \
+		G_STATIC_ASSERT (G_N_ELEMENTS (buf) == sizeof (buf) && sizeof (buf) == HOST_NAME_BUFSIZE); \
+		_get_hostname_impl (buf); \
+	})
+
 static void
 _set_hostname (NMPolicy *self,
                const char *new_hostname,
                const char *msg)
 {
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (self);
-	char old_hostname[HOST_NAME_MAX + 1];
+	char old_hostname[HOST_NAME_BUFSIZE];
 	const char *name;
-	int ret;
 
 	/* The incoming hostname *can* be NULL, which will get translated to
 	 * 'localhost.localdomain' or such in the hostname policy code, but we
@@ -463,17 +494,10 @@ _set_hostname (NMPolicy *self,
 	} else
 		name = new_hostname;
 
-	old_hostname[HOST_NAME_MAX] = '\0';
-	errno = 0;
-	ret = gethostname (old_hostname, HOST_NAME_MAX);
-	if (ret != 0) {
-		_LOGW (LOGD_DNS, "couldn't get the system hostname: (%d) %s",
-		       errno, strerror (errno));
-	} else {
-		/* Don't set the hostname if it isn't actually changing */
-		if (nm_streq (name, old_hostname))
+	/* Don't set the hostname if it isn't actually changing */
+	if (   _get_hostname (old_hostname)
+	    && (nm_streq (name, old_hostname)))
 			return;
-	}
 
 	_LOGI (LOGD_DNS, "setting system hostname to '%s' (%s)", name, msg);
 
@@ -2166,13 +2190,12 @@ constructed (GObject *object)
 {
 	NMPolicy *self = NM_POLICY (object);
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (self);
-	char hostname[HOST_NAME_MAX + 2];
+	char hostname[HOST_NAME_BUFSIZE];
 
 	/* Grab hostname on startup and use that if nothing provides one */
-	memset (hostname, 0, sizeof (hostname));
-	if (gethostname (&hostname[0], HOST_NAME_MAX) == 0) {
+	if (_get_hostname (hostname)) {
 		/* only cache it if it's a valid hostname */
-		if (*hostname && nm_utils_is_specific_hostname (hostname))
+		if (nm_utils_is_specific_hostname (hostname))
 			priv->orig_hostname = g_strdup (hostname);
 	}
 
