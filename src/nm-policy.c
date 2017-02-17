@@ -87,6 +87,7 @@ typedef struct {
 
 	char *orig_hostname; /* hostname at NM start time */
 	char *cur_hostname;  /* hostname we want to assign */
+	char *last_hostname; /* last hostname NM set (to detect if someone else changed it in the meanwhile) */
 	gboolean hostname_changed;  /* TRUE if NM ever set the hostname */
 
 	GArray *ip6_prefix_delegations; /* pool of ip6 prefixes delegated to all devices */
@@ -499,6 +500,10 @@ _set_hostname (NMPolicy *self,
 	    && (nm_streq (name, old_hostname)))
 			return;
 
+	/* Keep track of the last set hostname */
+	g_free (priv->last_hostname);
+	priv->last_hostname = g_strdup (name);
+
 	_LOGI (LOGD_DNS, "setting system hostname to '%s' (%s)", name, msg);
 
 	/* Ask NMSettings to update the transient hostname using its
@@ -541,9 +546,11 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 {
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (self);
 	char *configured_hostname = NULL;
+	char temp_hostname[HOST_NAME_BUFSIZE];
 	const char *dhcp_hostname, *p;
 	NMIP4Config *ip4_config;
 	NMIP6Config *ip6_config;
+	gboolean external_hostname = FALSE;
 
 	g_return_if_fail (self != NULL);
 
@@ -552,11 +559,27 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 		g_clear_object (&priv->lookup_cancellable);
 	}
 
+	/* Check if the hostname was set externally to NM, so that in that case
+	 * we can avoid to fallback to the one we got when we started */
+	if (   _get_hostname (temp_hostname)
+	    && nm_utils_is_specific_hostname (temp_hostname)
+	    && !nm_streq0 (temp_hostname, priv->last_hostname)) {
+		external_hostname = TRUE;
+		_LOGI (LOGD_DNS, "current hostname was changed outside NetworkManager: '%s'",
+		       temp_hostname);
+
+		if (!nm_streq0 (temp_hostname, priv->orig_hostname)) {
+			/* Update original (fallback) hostname */
+			g_free (priv->orig_hostname);
+			priv->orig_hostname = g_strdup (temp_hostname);
+		}
+	}
+
 	/* Hostname precedence order:
 	 *
 	 * 1) a configured hostname (from settings)
 	 * 2) automatic hostname from the default device's config (DHCP, VPN, etc)
-	 * 3) the original hostname when NM started
+	 * 3) the last hostname set outside NM
 	 * 4) reverse-DNS of the best device's IPv4 address
 	 *
 	 */
@@ -577,8 +600,12 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 		best6 = get_best_ip6_device (self, TRUE);
 
 	if (!best4 && !best6) {
-		/* No best device; fall back to original hostname or if there wasn't
-		 * one, 'localhost.localdomain'
+		/* If the hostname was set outside NM, keep it and return */
+		if (external_hostname)
+			return;
+
+		/* No best device; fall back to the last hostname set externally
+		 * to NM or if there wasn't one, 'localhost.localdomain'
 		 */
 		_set_hostname (self, priv->orig_hostname, "no default device");
 		return;
@@ -624,11 +651,12 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 		}
 	}
 
-	/* If no automatically-configured hostname, try using the hostname from
-	 * when NM started up.
+	/* If no automatically-configured hostname, try using the last hostname
+	 * set externally to NM
 	 */
 	if (priv->orig_hostname) {
-		_set_hostname (self, priv->orig_hostname, "from system startup");
+		if (!external_hostname)
+			_set_hostname (self, priv->orig_hostname, "from system startup");
 		return;
 	}
 
@@ -1985,6 +2013,13 @@ dns_config_changed (NMDnsManager *dns_manager, gpointer user_data)
 	/* Re-start the hostname lookup thread if we don't have hostname yet. */
 	if (priv->lookup_addr) {
 		char *str = NULL;
+		char hostname[HOST_NAME_BUFSIZE];
+
+		/* Check if the hostname was externally set */
+		if (   _get_hostname (hostname)
+		    && nm_utils_is_specific_hostname(hostname)
+		    && !nm_streq0 (hostname, priv->last_hostname))
+			return;
 
 		_LOGD (LOGD_DNS, "restarting reverse-lookup thread for address %s",
 		       (str = g_inet_address_to_string (priv->lookup_addr)));
@@ -2197,6 +2232,8 @@ constructed (GObject *object)
 		/* only cache it if it's a valid hostname */
 		if (nm_utils_is_specific_hostname (hostname))
 			priv->orig_hostname = g_strdup (hostname);
+		/* init last_hostname */
+		priv->last_hostname = g_strdup (hostname);
 	}
 
 	priv->firewall_manager = g_object_ref (nm_firewall_manager_get ());
@@ -2289,6 +2326,7 @@ dispose (GObject *object)
 
 	g_clear_pointer (&priv->orig_hostname, g_free);
 	g_clear_pointer (&priv->cur_hostname, g_free);
+	g_clear_pointer (&priv->last_hostname, g_free);
 
 	if (priv->settings) {
 		g_signal_handlers_disconnect_by_data (priv->settings, priv);
