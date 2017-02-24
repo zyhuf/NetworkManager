@@ -15473,7 +15473,8 @@ _get_cloned_mac_address_setting (NMDevice *self, NMConnection *connection, gbool
 		                                               : NM_CON_DEFAULT ("ethernet.cloned-mac-address"),
 		                                           self);
 
-		addr = NM_CLONED_MAC_PRESERVE;
+		/* RHEL patches the default to permanent (rh#1413312) */
+		addr = NM_CLONED_MAC_PERMANENT;
 
 		if (!a) {
 			if (is_wifi) {
