@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#include <gio/gunixfdlist.h>
 
 #include "nm-act-request.h"
 #include "nm-device-private.h"
@@ -33,6 +37,7 @@
 #include "nm-device-factory.h"
 #include "nm-setting-tun.h"
 #include "nm-core-internal.h"
+#include "nm-common-macros.h"
 
 #include "introspection/org.freedesktop.NetworkManager.Device.Tun.h"
 
@@ -390,6 +395,63 @@ set_property (GObject *object, guint prop_id,
 /*****************************************************************************/
 
 static void
+get_fd_cb (NMDevice *device,
+           GDBusMethodInvocation *context,
+           NMAuthSubject *subject,
+           GError *error,
+           gpointer user_data)
+{
+	NMDeviceTun *self = NM_DEVICE_TUN (device);
+	NMDeviceTunPrivate *priv = NM_DEVICE_TUN_GET_PRIVATE (self);
+	int fd;
+
+	if (error) {
+		g_dbus_method_invocation_return_gerror (context, error);
+		return;
+	}
+
+	fd = nm_platform_link_tun_set_iff (NM_PLATFORM_GET,
+	                                   nm_device_get_iface (NM_DEVICE (self)),
+	                                   tun_mode_from_string (priv->mode),
+	                                   priv->props.owner, priv->props.group,
+	                                   priv->props.no_pi,
+	                                   priv->props.vnet_hdr,
+	                                   priv->props.multi_queue);
+
+	if (fcntl (fd, F_SETFD, FD_CLOEXEC) < -1) {
+		fd = -1;
+		close (fd);
+	}
+
+	if (fd < 0) {
+		g_dbus_method_invocation_return_error_literal (context,
+		                                               NM_DEVICE_ERROR,
+		                                               NM_DEVICE_ERROR_FAILED,
+		                                               "Failed to obtain a file descriptor");
+		return;
+	}
+
+	g_dbus_method_invocation_return_value_with_unix_fd_list (context,
+	                                                         g_variant_new ("(h)", 0),
+	                                                         g_unix_fd_list_new_from_array (&fd, 1));
+}
+
+static void
+impl_device_tun_get_fd (NMDeviceTun *self, GDBusMethodInvocation *context, GVariant *options)
+{
+	g_signal_emit_by_name (self,
+	                       NM_DEVICE_AUTH_REQUEST,
+	                       context,
+	                       NULL,
+	                       NM_AUTH_PERMISSION_NETWORK_CONTROL,
+	                       TRUE,
+	                       get_fd_cb,
+	                       NULL);
+}
+
+/*****************************************************************************/
+
+static void
 nm_device_tun_init (NMDeviceTun *self)
 {
 }
@@ -451,6 +513,7 @@ nm_device_tun_class_init (NMDeviceTunClass *klass)
 
 	nm_exported_object_class_add_interface (NM_EXPORTED_OBJECT_CLASS (klass),
 	                                        NMDBUS_TYPE_DEVICE_TUN_SKELETON,
+	                                       "GetFd", impl_device_tun_get_fd,
 	                                        NULL);
 }
 

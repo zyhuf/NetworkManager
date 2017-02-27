@@ -3,6 +3,16 @@
   <interface name="org.freedesktop.NetworkManager.Device.Tun">
 
     <!--
+        GetFd:
+        @fd: returned file descriptor
+
+        Get the data queue file descriptor.
+    -->
+    <method name="GetFd">
+        <arg name="fd" type="h" direction="out"/>
+    </method>
+
+    <!--
         Owner:
 
         The uid of the tunnel owner, or -1 if it has no owner.
