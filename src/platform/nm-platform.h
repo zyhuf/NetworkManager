@@ -622,6 +622,8 @@ typedef struct {
 	gboolean (*infiniband_partition_add) (NMPlatform *, int parent, int p_key, const NMPlatformLink **out_link);
 	gboolean (*infiniband_partition_delete) (NMPlatform *, int parent, int p_key);
 
+	int (*tun_set_iff) (NMPlatform *platform, const char *name, gboolean tap, gint64 owner, gint64 group, gboolean pi,
+	                    gboolean vnet_hdr, gboolean multi_queue);
 	gboolean (*tun_add) (NMPlatform *platform, const char *name, gboolean tap, gint64 owner, gint64 group, gboolean pi,
 	                     gboolean vnet_hdr, gboolean multi_queue, const NMPlatformLink **out_link);
 
@@ -870,6 +872,14 @@ NMPlatformError nm_platform_link_vxlan_add (NMPlatform *self,
                                             const NMPlatformLnkVxlan *props,
                                             const NMPlatformLink **out_link);
 
+int nm_platform_link_tun_set_iff (NMPlatform *self,
+                                  const char *name,
+                                  gboolean tap,
+                                  gint64 owner,
+                                  gint64 group,
+                                  gboolean pi,
+                                  gboolean vnet_hdr,
+                                  gboolean multi_queue);
 NMPlatformError nm_platform_link_tun_add (NMPlatform *self,
                                           const char *name,
                                           gboolean tap,

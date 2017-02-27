@@ -5286,16 +5286,12 @@ link_vlan_change (NMPlatform *platform,
 }
 
 static int
-tun_add (NMPlatform *platform, const char *name, gboolean tap,
-         gint64 owner, gint64 group, gboolean pi, gboolean vnet_hdr,
-         gboolean multi_queue, const NMPlatformLink **out_link)
+tun_set_iff (NMPlatform *platform, const char *name, gboolean tap,
+             gint64 owner, gint64 group, gboolean pi, gboolean vnet_hdr,
+             gboolean multi_queue)
 {
-	const NMPObject *obj;
 	struct ifreq ifr = { };
 	int fd;
-
-	_LOGD ("link: add %s '%s' owner %" G_GINT64_FORMAT " group %" G_GINT64_FORMAT,
-	       tap ? "tap" : "tun", name, owner, group);
 
 	fd = open ("/dev/net/tun", O_RDWR | O_CLOEXEC);
 	if (fd < 0)
@@ -5313,22 +5309,40 @@ tun_add (NMPlatform *platform, const char *name, gboolean tap,
 
 	if (ioctl (fd, TUNSETIFF, &ifr)) {
 		close (fd);
-		return FALSE;
+		return -1;
 	}
 
 	if (owner >= 0 && owner < G_MAXINT32) {
 		if (ioctl (fd, TUNSETOWNER, (uid_t) owner)) {
 			close (fd);
-			return FALSE;
+			return -1;
 		}
 	}
 
 	if (group >= 0 && group < G_MAXINT32) {
 		if (ioctl (fd, TUNSETGROUP, (gid_t) group)) {
 			close (fd);
-			return FALSE;
+			return -1;
 		}
 	}
+
+	return fd;
+}
+
+static int
+tun_add (NMPlatform *platform, const char *name, gboolean tap,
+         gint64 owner, gint64 group, gboolean pi, gboolean vnet_hdr,
+         gboolean multi_queue, const NMPlatformLink **out_link)
+{
+	const NMPObject *obj;
+	int fd;
+
+	_LOGD ("link: add %s '%s' owner %" G_GINT64_FORMAT " group %" G_GINT64_FORMAT,
+	       tap ? "tap" : "tun", name, owner, group);
+
+	fd = tun_set_iff (platform, name, tap, owner, group, pi, vnet_hdr, multi_queue);
+	if (fd < 0)
+		return FALSE;
 
 	if (ioctl (fd, TUNSETPERSIST, 1)) {
 		close (fd);
@@ -6764,6 +6778,7 @@ nm_linux_platform_class_init (NMLinuxPlatformClass *klass)
 	platform_class->link_vlan_change = link_vlan_change;
 	platform_class->link_vxlan_add = link_vxlan_add;
 
+	platform_class->tun_set_iff = tun_set_iff;
 	platform_class->tun_add = tun_add;
 
 	platform_class->infiniband_partition_add = infiniband_partition_add;

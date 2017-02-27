@@ -1687,6 +1687,40 @@ nm_platform_link_vxlan_add (NMPlatform *self,
 }
 
 /**
+ * nm_platform_link_set_iff:
+ * @self: platform instance
+ * @name: new interface name
+ * @tap: whether the interface is a TAP
+ * @owner: interface owner or -1
+ * @group: interface group or -1
+ * @pi: whether to clear the IFF_NO_PI flag
+ * @vnet_hdr: whether to set the IFF_VNET_HDR flag
+ * @multi_queue: whether to set the IFF_MULTI_QUEUE flag
+ *
+ * Get a file descriptor ofr a TUN or TAP interface.
+ *
+ * Returns: -1 on error, a non-negative file descriptor on success
+ */
+int
+nm_platform_link_tun_set_iff (NMPlatform *self,
+                              const char *name,
+                              gboolean tap,
+                              gint64 owner,
+                              gint64 group,
+                              gboolean pi,
+                              gboolean vnet_hdr,
+                              gboolean multi_queue)
+{
+	_CHECK_SELF (self, klass, NM_PLATFORM_ERROR_BUG);
+
+	g_return_val_if_fail (name, NM_PLATFORM_ERROR_BUG);
+
+	_LOGD ("link: gettin fd for %s '%s' owner %" G_GINT64_FORMAT " group %" G_GINT64_FORMAT,
+	       tap ? "tap" : "tun", name, owner, group);
+	return klass->tun_set_iff (self, name, tap, owner, group, pi, vnet_hdr, multi_queue);
+}
+
+/**
  * nm_platform_link_tun_add:
  * @self: platform instance
  * @name: new interface name
