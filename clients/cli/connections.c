@@ -2162,6 +2162,39 @@ active_connection_state_reason_to_string (NMActiveConnectionStateReason reason)
 	g_return_val_if_reached (_("Invalid reason"));
 }
 
+#if SYSTEMD_JOURNAL
+static void
+active_connection_hint (NmCli *nmc, NMActiveConnection *active)
+{
+	NMRemoteConnection *connection;
+	GString *hint;
+	const GPtrArray *devices;
+	int i;
+
+	connection = nm_active_connection_get_connection (active);
+	g_return_if_fail (connection);
+
+	hint = g_string_new ("journalctl -xe ");
+	g_string_append_printf (hint, "NM_CONNECTION=%s",
+	                        nm_connection_get_uuid (NM_CONNECTION (connection)));
+
+	devices = nm_active_connection_get_devices (active);
+	for (i = 0; i < devices->len; i++) {
+		g_string_append_printf (hint, " + NM_DEVICE=%s",
+		                        nm_device_get_iface (NM_DEVICE (g_ptr_array_index (devices, i))));
+	}
+
+	g_string_append (nmc->return_text, "\n");
+	g_string_append_printf (nmc->return_text, _("Hint: use '%s' to get more details."), hint->str);
+	g_string_free (hint, TRUE);
+}
+#else
+static void
+active_connection_hint (NmCli *nmc, NMActiveConnection *active)
+{
+}
+#endif
+
 static void
 check_activated (ActivateConnectionInfo *info)
 {
@@ -2192,6 +2225,7 @@ check_activated (ActivateConnectionInfo *info)
 			if (dev_state == NM_DEVICE_STATE_FAILED || dev_state == NM_DEVICE_STATE_DISCONNECTED) {
 				g_string_printf (nmc->return_text, _("Error: Connection activation failed: %s"),
 				                 nmc_device_reason_to_string (dev_reason));
+				active_connection_hint (nmc, active);
 				nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
 				activate_connection_info_finish (info);
 			} else {
@@ -2201,6 +2235,7 @@ check_activated (ActivateConnectionInfo *info)
 		} else {
 			g_string_printf (nmc->return_text, _("Error: Connection activation failed: %s"),
 			                 active_connection_state_reason_to_string (ac_reason));
+			active_connection_hint (nmc, active);
 			nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
 			activate_connection_info_finish (info);
 		}
@@ -2337,6 +2372,7 @@ activate_connection_cb (GObject *client, GAsyncResult *result, gpointer user_dat
 		g_string_printf (nmc->return_text, _("Error: Connection activation failed: %s"),
 		                 error->message);
 		g_error_free (error);
+		active_connection_hint (nmc, active);
 		nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
 		activate_connection_info_finish (info);
 	} else {
