@@ -340,6 +340,7 @@ typedef struct _NMDevicePrivate {
 		NMPlatformIP6Route v6;
 	} default_route;
 	bool v4_has_shadowed_routes;
+	const char *ip4_rp_filter;
 
 	/* DHCPv4 tracking */
 	struct {
@@ -2413,7 +2414,10 @@ ip4_rp_filter_update (NMDevice *self)
 		ip4_rp_filter = NULL;
 	}
 
-	nm_device_ipv4_sysctl_set (self, "rp_filter", ip4_rp_filter);
+	if (ip4_rp_filter != priv->ip4_rp_filter) {
+		nm_device_ipv4_sysctl_set (self, "rp_filter", ip4_rp_filter);
+		priv->ip4_rp_filter = ip4_rp_filter;
+	}
 }
 
 static void
