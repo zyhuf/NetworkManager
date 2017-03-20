@@ -1034,6 +1034,7 @@ src_cppflags = \
 	$(GUDEV_CFLAGS) \
 	$(LIBNL_CFLAGS) \
 	$(LIBNDP_CFLAGS) \
+	$(LIBPSL_CFLAGS) \
 	$(LIBSOUP_CFLAGS) \
 	$(SELINUX_CFLAGS) \
 	$(LIBAUDIT_CFLAGS) \
@@ -1470,7 +1471,9 @@ src_libNetworkManager_la_LIBADD = \
 	$(LIBM) \
 	$(SELINUX_LIBS) \
 	$(LIBAUDIT_LIBS) \
+	$(LIBPSL_LIBS) \
 	$(LIBSOUP_LIBS)
+	$(LIBCURL_LIBS)
 
 ###############################################################################
 
