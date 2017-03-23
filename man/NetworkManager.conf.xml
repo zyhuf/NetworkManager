@@ -299,6 +299,10 @@ no-auto-default=*
           the hostname is reset to the last hostname set outside NetworkManager or
           'localhost' if none valid is there.
           </para>
+          <para><literal>dhcp-sticky</literal>: NetworkManager will behave the same as
+          in <literal>dhcp</literal> mode, but will never reset the hostname also if the
+          related DHCP connection is deactivated.
+          </para>
           <para><literal>none</literal>: NetworkManager will not manage the transient
           hostname and will never set it.
           </para>

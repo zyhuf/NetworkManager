@@ -698,6 +698,9 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6, const 
 	if (external_hostname)
 		return;
 
+	if (priv->hostname_mode == NM_POLICY_HOSTNAME_MODE_DHCP_STICKY)
+		return;
+
 	if (priv->hostname_mode == NM_POLICY_HOSTNAME_MODE_DHCP) {
 		/* In dhcp hostname-mode, the hostname is updated only if it comes from
 		 * a DHCP host-name option: if last set was from a host-name option and
@@ -2297,6 +2300,8 @@ nm_policy_init (NMPolicy *self)
 		priv->hostname_mode = NM_POLICY_HOSTNAME_MODE_NONE;
 	else if (nm_streq0 (hostname_mode, "dhcp"))
 		priv->hostname_mode = NM_POLICY_HOSTNAME_MODE_DHCP;
+	else if (nm_streq0 (hostname_mode, "dhcp-sticky"))
+		priv->hostname_mode = NM_POLICY_HOSTNAME_MODE_DHCP_STICKY;
 	else /* default - full mode */
 		priv->hostname_mode = NM_POLICY_HOSTNAME_MODE_FULL;
 
