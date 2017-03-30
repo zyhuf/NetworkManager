@@ -45,21 +45,61 @@ parse_global_arg (NmCli *nmc, const char *arg)
 
 	return TRUE;
 }
-
+/**
+ * next_arg:
+ * @nmc: NmCli data
+ * @*argc: pointer to left number of arguments to parse
+ * @***argv: pointer to const char *array of arguments still to parse
+ * @...: a %NULL terminated list of cmd options to match (e.g., "--active")
+ *
+ * Takes care of autocompleting options when needed and performs
+ * match against passed options while moving forward the pointer
+ * to the remaining arguments.
+ *
+ * Returns: the number of the matched option  if a match is found against
+ * one of the custom options passed; 0 if no custom option matched and still
+ * some args need to be processed or autocompletion has been performed;
+ * -1 otherwise (no more args).
+ */
 int
-next_arg (NmCli *nmc, int *argc, char ***argv)
+next_arg (NmCli *nmc, int *argc, char ***argv, ...)
 {
+	va_list args;
 	int arg_num = *argc;
+	const char *cmd_option;
 
 	do {
+		int cmd_option_pos = 1;
+
+		va_start (args, argv);
+
 		if (arg_num > 0) {
 			(*argc)--;
 			(*argv)++;
 		}
-		if (nmc && nmc->complete && *argc == 1 && ***argv == '-')
+		if (nmc && nmc->complete && *argc == 1 && ***argv == '-') {
+			while ((cmd_option = va_arg (args, const char *)))
+				nmc_complete_strings (**argv, cmd_option, NULL);
+
 			nmc_complete_strings (**argv, "--ask", "--show-secrets", NULL);
+			va_end (args);
+			return 0;
+		}
+
+		/* Check command dependent options first */
+		while ((cmd_option = va_arg (args, const char *))) {
+			/* strip heading "--" form cmd_option */
+			if (nmc_arg_is_option (**argv, cmd_option + 2)) {
+				va_end (args);
+				return cmd_option_pos;
+			}
+			cmd_option_pos++;
+		}
+		va_end (args);
+
 		if (arg_num <= 1)
 			return -1;
+
 	} while (nmc && parse_global_arg (nmc, **argv));
 
 	return 0;
@@ -164,7 +204,7 @@ nmc_parse_args (nmc_arg_t *arg_arr, gboolean last, int *argc, char ***argv, GErr
 			return FALSE;
 		}
 
-		next_arg (NULL, argc, argv);
+		next_arg (NULL, argc, argv, NULL);
 	}
 
 	return TRUE;
