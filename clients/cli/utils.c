@@ -65,23 +65,30 @@ int
 next_arg (NmCli *nmc, int *argc, char ***argv, ...)
 {
 	va_list args;
-	int arg_num = *argc;
 	const char *cmd_option;
+
+	g_assert (*argc >= 0);
 
 	do {
 		int cmd_option_pos = 1;
 
-		va_start (args, argv);
-
-		if (arg_num > 0) {
+		if (*argc > 0) {
 			(*argc)--;
 			(*argv)++;
 		}
-		if (nmc && nmc->complete && *argc == 1 && ***argv == '-') {
+		if (*argc == 0)
+			return -1;
+
+
+		va_start (args, argv);
+
+		if (nmc && nmc->complete && *argc == 1) {
 			while ((cmd_option = va_arg (args, const char *)))
 				nmc_complete_strings (**argv, cmd_option, NULL);
 
-			nmc_complete_strings (**argv, "--ask", "--show-secrets", NULL);
+			if (***argv == '-')
+				nmc_complete_strings (**argv, "--ask", "--show-secrets", NULL);
+
 			va_end (args);
 			return 0;
 		}
@@ -95,10 +102,8 @@ next_arg (NmCli *nmc, int *argc, char ***argv, ...)
 			}
 			cmd_option_pos++;
 		}
-		va_end (args);
 
-		if (arg_num <= 1)
-			return -1;
+		va_end (args);
 
 	} while (nmc && parse_global_arg (nmc, **argv));
 
