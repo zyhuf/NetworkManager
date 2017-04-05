@@ -517,114 +517,6 @@ get_max_rate_ht_40 (int mcs)
 	return 0;
 }
 
-static guint32
-get_max_rate_vht_80_ss1 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 29300000;
-	case 1:  return 58500000;
-	case 2:  return 87800000;
-	case 3:  return 117000000;
-	case 4:  return 175500000;
-	case 5:  return 234000000;
-	case 6:  return 263300000;
-	case 7:  return 292500000;
-	case 8:  return 351000000;
-	case 9:  return 390000000;
-	}
-	return 0;
-}
-
-static guint32
-get_max_rate_vht_80_ss2 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 58500000;
-	case 1:  return 117000000;
-	case 2:  return 175500000;
-	case 3:  return 234000000;
-	case 4:  return 351000000;
-	case 5:  return 468000000;
-	case 6:  return 526500000;
-	case 7:  return 585000000;
-	case 8:  return 702000000;
-	case 9:  return 780000000;
-	}
-	return 0;
-}
-
-static guint32
-get_max_rate_vht_80_ss3 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 87800000;
-	case 1:  return 175500000;
-	case 2:  return 263300000;
-	case 3:  return 351000000;
-	case 4:  return 526500000;
-	case 5:  return 702000000;
-	case 6:  return 0;
-	case 7:  return 877500000;
-	case 8:  return 105300000;
-	case 9:  return 117000000;
-	}
-	return 0;
-}
-
-static guint32
-get_max_rate_vht_160_ss1 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 58500000;
-	case 1:  return 117000000;
-	case 2:  return 175500000;
-	case 3:  return 234000000;
-	case 4:  return 351000000;
-	case 5:  return 468000000;
-	case 6:  return 526500000;
-	case 7:  return 585000000;
-	case 8:  return 702000000;
-	case 9:  return 780000000;
-	}
-	return 0;
-}
-
-static guint32
-get_max_rate_vht_160_ss2 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 117000000;
-	case 1:  return 234000000;
-	case 2:  return 351000000;
-	case 3:  return 468000000;
-	case 4:  return 702000000;
-	case 5:  return 936000000;
-	case 6:  return 1053000000;
-	case 7:  return 1170000000;
-	case 8:  return 1404000000;
-	case 9:  return 1560000000;
-	}
-	return 0;
-}
-
-static guint32
-get_max_rate_vht_160_ss3 (int mcs)
-{
-	switch (mcs) {
-	case 0:  return 175500000;
-	case 1:  return 351000000;
-	case 2:  return 526500000;
-	case 3:  return 702000000;
-	case 4:  return 1053000000;
-	case 5:  return 1404000000;
-	case 6:  return 1579500000;
-	case 7:  return 1755000000;
-	case 8:  return 2106000000;
-	case 9:  return 0;
-	}
-	return 0;
-}
-
 static gboolean
 get_max_rate_ht (const guint8 *bytes, guint len, guint32 *out_maxrate)
 {
@@ -668,8 +560,7 @@ get_max_rate_ht (const guint8 *bytes, guint len, guint32 *out_maxrate)
 static gboolean
 get_max_rate_vht (const guint8 *bytes, guint len, guint32 *out_maxrate)
 {
-	guint32 mcs, m;
-	guint8 vht_cap, tx_map;
+	guint16 tx_rate;
 
 	/* https://tda802dot11.blogspot.it/2014/10/vht-capabilities-element-vht.html
 	 * http://chimera.labs.oreilly.com/books/1234000001739/ch03.html#management_frames */
@@ -677,36 +568,11 @@ get_max_rate_vht (const guint8 *bytes, guint len, guint32 *out_maxrate)
 	if (len != 12)
 		return FALSE;
 
-	vht_cap = bytes[0];
-	tx_map = bytes[8];
+	tx_rate = bytes[10] | (bytes[11] << 8);
+	tx_rate = (tx_rate & 0x1fff) * 1000000;
 
-	/* Check for mcs rates 8 and 9 support */
-	if (tx_map & 0x2a)
-		mcs = 9;
-	else if (tx_map & 0x15)
-		mcs = 8;
-	else
-		mcs = 7;
+	*out_maxrate = tx_rate;
 
-	/* Check for 160Mhz wide channel support and
-	 * spatial stream support */
-	if (vht_cap & (1 << 2)) {
-		if (tx_map & 0x30)
-			m = get_max_rate_vht_160_ss3 (mcs);
-		else if (tx_map & 0x0C)
-			m = get_max_rate_vht_160_ss2 (mcs);
-		else
-			m = get_max_rate_vht_160_ss1 (mcs);
-	} else {
-		if (tx_map & 0x30)
-			m = get_max_rate_vht_80_ss3 (mcs);
-		else if (tx_map & 0x0C)
-			m = get_max_rate_vht_80_ss2 (mcs);
-		else
-			m = get_max_rate_vht_80_ss1 (mcs);
-	}
-
-	*out_maxrate = m;
 	return TRUE;
 }
 
