@@ -133,7 +133,7 @@ test_client_meta_check (void)
 		for (p = 0; p < info->properties_num; p++) {
 			const NMMetaPropertyInfo *pi = info->properties[p];
 
-			g_assert (nm_meta_setting_info_editor_get_property_info (info, pi->property_name) == pi);
+			g_assert (nm_meta_setting_info_editor_get_property_info (info, pi->property_name, FALSE) == pi);
 			g_assert (nm_meta_property_info_find_by_name (info->general->setting_name, pi->property_name) == pi);
 		}
 	}

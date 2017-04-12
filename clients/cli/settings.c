@@ -646,37 +646,6 @@ nmc_setting_remove_property_option (NMSetting *setting,
 	return TRUE;
 }
 
-/*
- * Get valid property names for a setting.
- *
- * Returns: string array with the properties or NULL on failure.
- *          The returned value should be freed with g_strfreev()
- */
-char **
-nmc_setting_get_valid_properties (NMSetting *setting)
-{
-	char **valid_props = NULL;
-	GParamSpec **props, **iter;
-	guint num;
-	int i;
-
-	/* Iterate through properties */
-	i = 0;
-	props = g_object_class_list_properties (G_OBJECT_GET_CLASS (G_OBJECT (setting)), &num);
-	valid_props = g_malloc0 (sizeof (char*) * (num + 1));
-	for (iter = props; iter && *iter; iter++) {
-		const char *key_name = g_param_spec_get_name (*iter);
-
-		/* Add all properties except for "name" that is non-editable */
-		if (g_strcmp0 (key_name, "name") != 0)
-			valid_props[i++] = g_strdup (key_name);
-	}
-	valid_props[i] = NULL;
-	g_free (props);
-
-	return valid_props;
-}
-
 const char *const*
 nmc_setting_get_property_allowed_values (NMSetting *setting, const char *prop, char ***out_to_free)
 {

@@ -7545,11 +7545,214 @@ _meta_type_property_info_complete_fcn (const NMMetaAbstractInfo *abstract_info,
 	return NULL;
 }
 
+static void
+_meta_type_setting_info_get_property_names (const NMMetaAbstractInfo *abstract_info,
+                                            gpointer target,
+                                            NMMetaAccessorGetPropertyNamesFlags get_property_names_flags,
+                                            GPtrArray *result)
+{
+	const NMMetaSettingInfoEditor *setting_info = (NMMetaSettingInfoEditor *) abstract_info;
+	NMSetting *setting = NM_SETTING (target);
+	guint i, j;
+
+	nm_assert (   !setting
+	           || (   NM_IS_SETTING (setting)
+	               && G_TYPE_CHECK_INSTANCE_TYPE (setting, setting_info->general->get_setting_gtype ())));
+
+	if (!setting_info->properties_num)
+		return;
+
+	for (i = 0; i < setting_info->properties_num; i++) {
+		const NMMetaPropertyInfo *pi = setting_info->properties[i];
+		const NMMetaPropertyTypDataNested *nested_data;
+
+		if (NM_FLAGS_HAS (get_property_names_flags, NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL))
+			g_ptr_array_add (result, g_strdup (pi->property_name));
+
+		if (   NM_FLAGS_HAS (get_property_names_flags, NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_TOPLEVEL_LEVEL)
+		    && pi->property_alias)
+			g_ptr_array_add (result, g_strdup (pi->property_alias));
+
+		if (   pi->property_typ_data
+		    && (nested_data = pi->property_typ_data->nested)) {
+			for (j = 0; j < nested_data->nested_len; j++) {
+				const NMMetaNestedPropertyInfo *n_pi = &nested_data->nested[j];
+
+				if (n_pi->base.property_name) {
+					/* the field-name itself is a valid property name and a top-level
+					 * alias. */
+					if (NM_FLAGS_HAS (get_property_names_flags, NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_TOPLEVEL_LEVEL))
+						g_ptr_array_add (result, g_strdup (n_pi->base.property_name));
+				}
+			}
+		}
+	}
+}
+
+static const NMMetaSettingValidPartItem *
+_valid_part_item_find (const NMMetaSettingValidPartItem *const*items, const NMMetaSettingInfoEditor *setting_info)
+{
+	if (items) {
+		for (; *items; items++) {
+			if ((*items)->setting_info == setting_info)
+				return *items;
+		}
+	}
+	return NULL;
+}
+
+static void
+_meta_type_connection_info_get_property_names (const NMMetaAbstractInfo *abstract_info,
+                                               gpointer target,
+                                               NMMetaAccessorGetPropertyNamesFlags get_property_names_flags,
+                                               GPtrArray *result)
+{
+	NMConnection *connection = NM_CONNECTION (target);
+	guint s;
+	const NMMetaSettingValidPartItem *const*setting_info_type = NULL;
+	const NMMetaSettingValidPartItem *const*setting_info_slave = NULL;
+	const NMMetaSettingInfoEditor *setting_info;
+
+	nm_assert (!connection || NM_IS_CONNECTION (connection));
+
+	if (connection) {
+		NMSettingConnection *s_con;
+
+		s_con = nm_connection_get_setting_connection (connection);
+		setting_info_type = nm_meta_setting_info_valid_parts_default;
+		if (s_con) {
+			const char *c_type = nm_setting_connection_get_connection_type (s_con);
+			const char *s_type = nm_setting_connection_get_slave_type (s_con);
+
+			if (c_type) {
+				setting_info = nm_meta_setting_info_editor_find_by_name (c_type, FALSE);
+				if (!setting_info || setting_info->valid_parts)
+					setting_info_type = setting_info->valid_parts;
+			}
+			setting_info_slave = nm_meta_setting_info_valid_parts_for_slave_type (s_type, NULL);
+		}
+	}
+
+	for (s = 0; s < _NM_META_SETTING_TYPE_NUM; s++) {
+		NMSetting *setting = NULL;
+
+		setting_info = &nm_meta_setting_infos_editor[s];
+
+		if (connection) {
+			setting = nm_connection_get_setting_by_name (connection, setting_info->general->setting_name);
+			if (   !setting
+			    && !_valid_part_item_find (setting_info_type, setting_info)
+			    && !_valid_part_item_find (setting_info_slave, setting_info))
+				continue;
+		}
+
+		g_ptr_array_add (result, g_strdup (setting_info->general->setting_name));
+
+		_meta_type_setting_info_get_property_names ((const NMMetaAbstractInfo *) setting_info,
+		                                            setting,
+		                                            NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_TOPLEVEL_LEVEL,
+		                                            result);
+	}
+}
+
+static gboolean
+_meta_type_connection_info_set_property (const NMMetaAbstractInfo *abstract_info,
+                                         gpointer target,
+                                         const char *property_name,
+                                         const char *value,
+                                         GError **error)
+{
+#if 0
+	NMConnection *connection = NM_CONNECTION (target);
+	const char *const property_name_orig = property_name;
+	gs_free char *parsed_name_tmp = NULL;
+	const char *nested_name;
+	NMMetaPropertyNameModifier modifier;
+	const NMMetaSettingInfoEditor *setting_info = NULL;
+	const NMMetaPropertyInfo *property_info = NULL;
+
+	g_return_val_if_fail (NM_IS_CONNECTION (connection), FALSE);
+
+	_parse_name (property_name,
+	             &property_name,
+	             &nested_name,
+	             &modifier,
+	             &parsed_name_tmp);
+
+	if (property_name || !property_name[0])
+		goto out_invalid_toplevel_name;
+
+	{
+		gboolean unique_match;
+
+		setting_info = nm_meta_setting_info_editor_find_by_fuzzyname (property_name, TRUE, TRUE, &unique_match);
+		if (!unique_match)
+			goto out_invalid_toplevel_name;
+	}
+
+	if (setting_info) {
+		if (!nested_name) {
+			gs_strfreev char **v = NULL;
+			gs_free char *t = NULL;
+
+			v = nm_meta_abstract_info_get_property_names ((const NMMetaAbstractInfo *) setting_info,
+			                                              nm_connection_get_setting_by_name (connection, setting_info->general->setting_name),
+			                                              NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL);
+			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+			             _("invalid property name \"%s\". Requires a property name like [%s]"),
+			             property_name_orig, (t = g_strjoinv (",", v)));
+			return FALSE;
+		}
+
+		property_info = nm_meta_setting_info_editor_get_property_info (setting_info,
+		                                                               nested_name,
+		                                                               TRUE);
+		if (!property_info) {
+			gs_strfreev char **v = NULL;
+			gs_free char *t = NULL;
+
+			v = nm_meta_abstract_info_get_property_names ((const NMMetaAbstractInfo *) setting_info,
+			                                              nm_connection_get_setting_by_name (connection, setting_info->general->setting_name),
+			                                              NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL);
+			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+			             _("invalid property name \"%s\". Requires a property name like [%s]"),
+			             property_name_orig, (t = g_strjoinv (",", v)));
+			return FALSE;
+		}
+
+	} else {
+		if (nested_name)
+			goto out_invalid_toplevel_name;
+
+		/* lookup the property name by toplevel alias. */
+	}
+
+	return abstract_info->meta_type->set_property (abstract_info,
+	                                               target,
+	                                               property_name,
+	                                               value,
+	                                               error);
+
+out_invalid_toplevel_name:
+	{
+		gs_free char *t = NULL;
+
+		g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+		             _("invalid property name \"%s\". Valid names are [%s]"),
+		             property_name_orig, (t = g_strjoinv (",", nm_meta_abstract_info_get_property_names (abstract_info, connection, 0))));
+	}
+#endif
+	return FALSE;
+}
+
+/*****************************************************************************/
+
 const NMMetaType nm_meta_type_setting_info_editor = {
 	.type_name =         "setting_info_editor",
 	.get_name =          _meta_type_setting_info_editor_get_name,
 	.get_nested =        _meta_type_setting_info_editor_get_nested,
 	.get_fcn =           _meta_type_setting_info_editor_get_fcn,
+	.get_property_names = _meta_type_setting_info_get_property_names,
 };
 
 const NMMetaType nm_meta_type_property_info = {
@@ -7563,3 +7766,17 @@ const NMMetaType nm_meta_type_property_info = {
 const NMMetaType nm_meta_type_nested_property_info = {
 	.type_name =        "nested_property_info",
 };
+
+static const NMMetaType meta_type_connection_info = {
+	.type_name =        "connection_info",
+	.get_property_names = _meta_type_connection_info_get_property_names,
+	.set_property =     _meta_type_connection_info_set_property,
+};
+
+/*****************************************************************************/
+
+const NMMetaAbstractInfo nm_meta_connection_info = {
+	.meta_type =        &meta_type_connection_info,
+};
+
+/*****************************************************************************/

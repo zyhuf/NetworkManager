@@ -33,7 +33,6 @@ void nmc_setting_proxy_connect_handlers (NMSettingProxy *setting);
 void nmc_setting_wireless_connect_handlers (NMSettingWireless *setting);
 void nmc_setting_connection_connect_handlers (NMSettingConnection *setting, NMConnection *connection);
 
-char      **nmc_setting_get_valid_properties (NMSetting *setting);
 char       *nmc_setting_get_property_desc (NMSetting *setting, const char *prop);
 const char *const*nmc_setting_get_property_allowed_values (NMSetting *setting, const char *prop, char ***out_to_free);
 char       *nmc_setting_get_property (NMSetting *setting,

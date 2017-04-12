@@ -21,36 +21,67 @@
 
 #include "nm-meta-setting-access.h"
 
+#include <NetworkManager.h>
+
 /*****************************************************************************/
 
 const NMMetaSettingInfoEditor *
-nm_meta_setting_info_editor_find_by_name (const char *setting_name, gboolean use_alias)
+nm_meta_setting_info_editor_find_by_fuzzyname (const char *setting_name, gboolean use_alias,
+                                               gboolean fuzzy_match, gboolean *out_unique)
 {
-	const NMMetaSettingInfo *meta_setting_info;
-	const NMMetaSettingInfoEditor *setting_info;
+	const NMMetaSettingInfoEditor *best_match = NULL;
+	guint found = 0;
+	gsize l;
 	guint i;
 
 	g_return_val_if_fail (setting_name, NULL);
 
-	meta_setting_info = nm_meta_setting_infos_by_name (setting_name);
-	setting_info = NULL;
-	if (meta_setting_info) {
-		nm_assert (nm_streq0 (meta_setting_info->setting_name, setting_name));
-		if (meta_setting_info->meta_type < G_N_ELEMENTS (nm_meta_setting_infos_editor)) {
-			setting_info = &nm_meta_setting_infos_editor[meta_setting_info->meta_type];
-			nm_assert (setting_info->general == meta_setting_info);
+	if (!*setting_name)
+		goto out;
+
+	l = strlen (setting_name);
+
+	for (i = 0; i < _NM_META_SETTING_TYPE_NUM; i++) {
+		const NMMetaSettingInfoEditor *si = &nm_meta_setting_infos_editor[i];
+
+		if (nm_streq (si->general->setting_name, setting_name)) {
+			NM_SET_OUT (out_unique, TRUE);
+			return si;
 		}
-	}
-	if (!setting_info && use_alias) {
-		for (i = 0; i < _NM_META_SETTING_TYPE_NUM; i++) {
-			if (nm_streq0 (nm_meta_setting_infos_editor[i].alias, setting_name)) {
-				setting_info = &nm_meta_setting_infos_editor[i];
-				break;
-			}
+		if (   fuzzy_match
+		    && g_ascii_strncasecmp (si->general->setting_name, setting_name, l))
+			goto found_fuzzy;
+
+		if (use_alias) {
+			if (nm_streq0 (si->alias, setting_name))
+				goto found_fuzzy;
+			if (   fuzzy_match
+			    && g_ascii_strncasecmp (si->alias, setting_name, l))
+				goto found_fuzzy;
 		}
+
+		continue;
+found_fuzzy:
+		if (!best_match)
+			best_match = si;
+		found++;
+		if (found >= 2)
+			break;
 	}
 
-	return setting_info;
+out:
+	/* a non-unique match may not seem interesting at first. It is however
+	 * because we need to distinguish between no setting-for-the-name
+	 * (and search the property-aliases), or have-a-non-unique-match (and
+	 * don't check proerty-aliases). */
+	NM_SET_OUT (out_unique, found <= 1);
+	return best_match;
+}
+
+const NMMetaSettingInfoEditor *
+nm_meta_setting_info_editor_find_by_name (const char *setting_name, gboolean use_alias)
+{
+	return nm_meta_setting_info_editor_find_by_fuzzyname (setting_name, use_alias, FALSE, NULL);
 }
 
 const NMMetaSettingInfoEditor *
@@ -93,21 +124,46 @@ nm_meta_setting_info_editor_find_by_setting (NMSetting *setting)
 }
 
 const NMMetaPropertyInfo *
-nm_meta_setting_info_editor_get_property_info (const NMMetaSettingInfoEditor *setting_info, const char *property_name)
+nm_meta_setting_info_editor_get_property_info (const NMMetaSettingInfoEditor *setting_info,
+                                               const char *property_name,
+                                               gboolean fuzzy_match)
 {
+	const NMMetaPropertyInfo *best_match = NULL;
+	gsize l;
 	guint i;
 
 	g_return_val_if_fail (setting_info, NULL);
 	g_return_val_if_fail (property_name, NULL);
 
-	for (i = 0; i < setting_info->properties_num; i++) {
-		nm_assert (setting_info->properties[i]->property_name);
-		nm_assert (setting_info->properties[i]->setting_info == setting_info);
-		if (nm_streq (setting_info->properties[i]->property_name, property_name))
-			return setting_info->properties[i];
+	if (!property_name)
+		return NULL;
+
+	if (setting_info->get_property_info) {
+		return setting_info->get_property_info (setting_info,
+		                                        property_name,
+		                                        fuzzy_match);
 	}
 
-	return NULL;
+	l = strlen (property_name);
+
+	for (i = 0; i < setting_info->properties_num; i++) {
+		const NMMetaPropertyInfo *si = setting_info->properties[i];
+
+		nm_assert (si->property_name);
+		nm_assert (si->setting_info == setting_info);
+
+		if (nm_streq (si->property_name, property_name))
+			return si;
+
+		if (   fuzzy_match
+		    && g_ascii_strncasecmp (si->property_name, property_name, l)) {
+			if (best_match)
+				return NULL;
+			best_match = si;
+		}
+	}
+
+	return best_match;
 }
 
 const NMMetaPropertyInfo *
@@ -120,7 +176,7 @@ nm_meta_property_info_find_by_name (const char *setting_name, const char *proper
 	if (!setting_info)
 		return NULL;
 
-	property_info = nm_meta_setting_info_editor_get_property_info (setting_info, property_name);
+	property_info = nm_meta_setting_info_editor_get_property_info (setting_info, property_name, FALSE);
 	if (!property_info)
 		return NULL;
 
@@ -138,7 +194,7 @@ nm_meta_property_info_find_by_setting (NMSetting *setting, const char *property_
 	setting_info = nm_meta_setting_info_editor_find_by_setting (setting);
 	if (!setting_info)
 		return NULL;
-	property_info = nm_meta_setting_info_editor_get_property_info (setting_info, property_name);
+	property_info = nm_meta_setting_info_editor_get_property_info (setting_info, property_name, FALSE);
 	if (!property_info)
 		return NULL;
 
@@ -325,6 +381,73 @@ nm_meta_abstract_info_complete (const NMMetaAbstractInfo *abstract_info,
 	}
 }
 
+/**
+ * nm_meta_abstract_info_get_property_names:
+ * @abstract_info: the meta data
+ * @target: (allow none): an optional target instance. The result
+ *   of property names may or may not depend on the target.
+ *   If present, @target must be valid for @abstract_info.
+ * @get_property_names_flags: flags argument to control the result.
+ *
+ * Returns: (transfer full): the list of valid property names for target.
+ *   For most setting types, this is just the static list of GObject property
+ *   names.
+ *   For some types this may be a type dependent list of properties (bond.options).
+ *   For other types, it may even be a list of properties that are generated based
+ *   on the current @setting (user.data). */
+char **
+nm_meta_abstract_info_get_property_names (const NMMetaAbstractInfo *abstract_info,
+                                          gpointer target,
+                                          NMMetaAccessorGetPropertyNamesFlags get_property_names_flags)
+{
+	GPtrArray *result;
+
+	g_return_val_if_fail (abstract_info, NULL);
+
+	if (!abstract_info->meta_type->get_property_names)
+		return NULL;
+
+	if (!NM_FLAGS_ANY (get_property_names_flags,
+	                     NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL
+	                   | NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_TOPLEVEL_LEVEL))
+		get_property_names_flags |= NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL;
+
+	result = g_ptr_array_new ();
+	abstract_info->meta_type->get_property_names (abstract_info,
+	                                              target,
+	                                              get_property_names_flags,
+	                                              result);
+	if (!result->len) {
+		g_ptr_array_free (result, TRUE);
+		return NULL;
+	}
+
+	g_ptr_array_sort (result, nm_strcmp_p);
+	g_ptr_array_add (result, NULL);
+	return _nm_utils_strv_cleanup ((char **) g_ptr_array_free (result, FALSE),
+	                               FALSE, FALSE, TRUE);
+}
+
+gboolean
+nm_meta_abstract_info_set_property (const NMMetaAbstractInfo *abstract_info,
+                                    gpointer target,
+                                    const char *property_name,
+                                    const char *value,
+                                    GError **error)
+{
+	g_return_val_if_fail (target, FALSE);
+	g_return_val_if_fail (property_name, FALSE);
+	g_return_val_if_fail (!error || !*error, FALSE);
+	g_return_val_if_fail (abstract_info, FALSE);
+	g_return_val_if_fail (abstract_info->meta_type->set_property, FALSE);
+
+	return abstract_info->meta_type->set_property (abstract_info,
+	                                               target,
+	                                               property_name,
+	                                               value,
+	                                               error);
+}
+
 /*****************************************************************************/
 
 char *
@@ -372,6 +495,45 @@ nm_meta_abstract_infos_get_names_str (const NMMetaAbstractInfo *const*fields_arr
 }
 
 /*****************************************************************************/
+
+static void
+_parse_name (const char *name,
+             const char **out_toplevel,
+             const char **out_nested,
+             NMMetaPropertyNameModifier *out_modifier,
+             char **out_to_free)
+{
+	const char *toplevel = NULL;
+	const char *nested = NULL;
+	NMMetaPropertyNameModifier modifier = NM_META_PROPERTY_NAME_MODIFIER_NONE;
+	const char *s;
+	char *t;
+
+	if (name) {
+		if (NM_IN_SET (name[0], '+', '-')) {
+			modifier = name[0] == '+'
+			           ? NM_META_PROPERTY_NAME_MODIFIER_PLUS
+			           : NM_META_PROPERTY_NAME_MODIFIER_MINUS;
+			name++;
+		}
+
+		s = strchr (name, '.');
+		if (!s)
+			toplevel = name;
+		else {
+			t = g_strdup (name);
+			*out_to_free = t;
+			toplevel = t;
+			t = &t[s - name];
+			*t = '\0';
+			nested = t+1;
+		}
+	}
+
+	*out_toplevel = toplevel;
+	*out_nested = nested;
+	*out_modifier = modifier;
+}
 
 typedef struct {
 	guint idx;
@@ -619,3 +781,85 @@ nm_meta_selection_create_parse_list (const NMMetaAbstractInfo *const* fields_arr
 
 	return _output_selection_pack (fields_array, array, str);
 }
+
+NMMetaSelectionResultList *
+nm_meta_selection_parse_connection_property_name (NMConnection *connection,
+                                                  const char *property_name,
+                                                  GError **error)
+{
+	const char *const property_name_orig = property_name;
+	gs_free char *parsed_name_tmp = NULL;
+	const char *nested_name;
+	NMMetaPropertyNameModifier modifier;
+	const NMMetaSettingInfoEditor *setting_info = NULL;
+	const NMMetaPropertyInfo *property_info = NULL;
+
+	g_return_val_if_fail (NM_IS_CONNECTION (connection), NULL);
+
+	_parse_name (property_name,
+	             &property_name,
+	             &nested_name,
+	             &modifier,
+	             &parsed_name_tmp);
+
+	if (property_name || !property_name[0])
+		goto out_invalid_toplevel_name;
+
+	{
+		gboolean unique_match;
+
+		setting_info = nm_meta_setting_info_editor_find_by_fuzzyname (property_name, TRUE, TRUE, &unique_match);
+		if (!unique_match)
+			goto out_invalid_toplevel_name;
+	}
+
+	if (setting_info) {
+		if (!nested_name) {
+			gs_strfreev char **v = NULL;
+			gs_free char *t = NULL;
+
+			v = nm_meta_abstract_info_get_property_names ((const NMMetaAbstractInfo *) setting_info,
+			                                              nm_connection_get_setting_by_name (connection, setting_info->general->setting_name),
+			                                              NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL);
+			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+			             _("invalid property name \"%s\". Requires a property name like [%s]"),
+			             property_name_orig, (t = g_strjoinv (",", v)));
+			return FALSE;
+		}
+
+		property_info = nm_meta_setting_info_editor_get_property_info (setting_info,
+		                                                               nested_name,
+		                                                               TRUE);
+		if (!property_info) {
+			gs_strfreev char **v = NULL;
+			gs_free char *t = NULL;
+
+			v = nm_meta_abstract_info_get_property_names ((const NMMetaAbstractInfo *) setting_info,
+			                                              nm_connection_get_setting_by_name (connection, setting_info->general->setting_name),
+			                                              NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL);
+			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+			             _("invalid property name \"%s\". \"%s\" requires a property name like [%s]"),
+			             property_name_orig, setting_info->general->setting_name,
+			             (t = g_strjoinv (",", v)));
+			return FALSE;
+		}
+
+	} else {
+		if (nested_name)
+			goto out_invalid_toplevel_name;
+
+		/* lookup the property name by toplevel alias. */
+	}
+
+out_invalid_toplevel_name:
+	{
+		gs_free char *t = NULL;
+
+		g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
+		             _("invalid property name \"%s\". Valid names are [%s]"),
+		             property_name_orig, (t = g_strjoinv (",", nm_meta_abstract_info_get_property_names (&nm_meta_connection_info, connection, 0))));
+	}
+	return FALSE;
+}
+
+

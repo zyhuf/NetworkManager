@@ -103,6 +103,12 @@ typedef enum {
 } NMMetaTermFormat;
 
 typedef enum {
+	NM_META_PROPERTY_NAME_MODIFIER_NONE,
+	NM_META_PROPERTY_NAME_MODIFIER_PLUS,
+	NM_META_PROPERTY_NAME_MODIFIER_MINUS,
+} NMMetaPropertyNameModifier;
+
+typedef enum {
 	NM_META_ACCESSOR_GET_TYPE_PRETTY,
 	NM_META_ACCESSOR_GET_TYPE_PARSABLE,
 	NM_META_ACCESSOR_GET_TYPE_TERMFORMAT,
@@ -149,6 +155,21 @@ typedef enum {
 	NM_META_ACCESSOR_GET_OUT_FLAGS_NONE                                     = 0,
 	NM_META_ACCESSOR_GET_OUT_FLAGS_STRV                                     = (1LL <<  0),
 } NMMetaAccessorGetOutFlags;
+
+typedef enum {
+	NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_NONE                          = 0,
+
+	/* the name is valid on this level. For example, "stable-id" is a valid
+	 * name for NMSettingConnection. Such a name has to be qualified by
+	 * the parent to make "connection.stable-id". */
+	NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_THIS_LEVEL               = (1LL <<  0),
+
+	/* the name is valid on the top level. For example, "name" is an alias
+	 * for "connection.id" and is valid unqualified at the top-level.
+	 * The name may still be invalid on the top level if it conflicts
+	 * with other aliases or setting names. */
+	NM_META_ACCESSOR_GET_PROPERTY_NAMES_FLAGS_WITH_TOPLEVEL_LEVEL           = (1LL <<  1),
+} NMMetaAccessorGetPropertyNamesFlags;
 
 typedef enum {
 	NM_META_PROPERTY_TYP_FLAG_ENUM_GET_PRETTY_NUMERIC                       = (1LL <<  0),
@@ -315,6 +336,11 @@ struct _NMMetaSettingInfoEditor {
 	void (*setting_init_fcn) (const NMMetaSettingInfoEditor *setting_info,
 	                          NMSetting *setting,
 	                          NMMetaAccessorSettingInitType init_type);
+
+	const NMMetaPropertyInfo *(*get_property_info) (const NMMetaSettingInfoEditor *setting_info,
+	                                                const char *property_name,
+	                                                gboolean fuzzy_match);
+
 };
 
 struct _NMMetaType {
@@ -338,6 +364,17 @@ struct _NMMetaType {
 	                                   const NMMetaOperationContext *operation_context,
 	                                   const char *text,
 	                                   char ***out_to_free);
+	void (*get_property_names) (const NMMetaAbstractInfo *abstract_info,
+	                            gpointer target,
+	                            NMMetaAccessorGetPropertyNamesFlags get_property_names_flags,
+	                            GPtrArray *result);
+
+	gboolean (*set_property) (const NMMetaAbstractInfo *abstract_info,
+	                          gpointer target,
+	                          const char *property_name,
+	                          const char *value,
+	                          GError **error);
+
 };
 
 struct _NMMetaAbstractInfo {
@@ -404,6 +441,10 @@ struct _NMMetaPropertyTypDataNested  {
 };
 
 const NMMetaPropertyTypDataNested nm_meta_property_typ_data_bond;
+
+/*****************************************************************************/
+
+extern const NMMetaAbstractInfo nm_meta_connection_info;
 
 /*****************************************************************************/
 

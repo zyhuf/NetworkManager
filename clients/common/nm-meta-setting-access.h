@@ -29,11 +29,14 @@ NMSetting *nm_meta_setting_info_editor_new_setting (const NMMetaSettingInfoEdito
                                                     NMMetaAccessorSettingInitType init_type);
 
 const NMMetaSettingInfoEditor *nm_meta_setting_info_editor_find_by_name (const char *setting_name, gboolean use_alias);
+const NMMetaSettingInfoEditor *nm_meta_setting_info_editor_find_by_fuzzyname (const char *setting_name, gboolean use_alias,
+                                                                              gboolean fuzzy_match, gboolean *out_unique);
 const NMMetaSettingInfoEditor *nm_meta_setting_info_editor_find_by_gtype (GType gtype);
 const NMMetaSettingInfoEditor *nm_meta_setting_info_editor_find_by_setting (NMSetting *setting);
 
 const NMMetaPropertyInfo *nm_meta_setting_info_editor_get_property_info (const NMMetaSettingInfoEditor *setting_info,
-                                                                         const char *property_name);
+                                                                         const char *property_name,
+                                                                         gboolean fuzzy_match);
 const NMMetaPropertyInfo *nm_meta_property_info_find_by_name (const char *setting_name,
                                                               const char *property_name);
 const NMMetaPropertyInfo *nm_meta_property_info_find_by_setting (NMSetting *setting,
@@ -67,6 +70,16 @@ const char *const*nm_meta_abstract_info_complete (const NMMetaAbstractInfo *abst
                                                   const char *text,
                                                   char ***out_to_free);
 
+char **nm_meta_abstract_info_get_property_names (const NMMetaAbstractInfo *abstract_info,
+                                                 gpointer target,
+                                                 NMMetaAccessorGetPropertyNamesFlags get_property_names_flags);
+
+gboolean nm_meta_abstract_info_set_property (const NMMetaAbstractInfo *abstract_info,
+                                             gpointer target,
+                                             const char *property_name,
+                                             const char *value,
+                                             GError **error);
+
 /*****************************************************************************/
 
 char *nm_meta_abstract_info_get_nested_names_str (const NMMetaAbstractInfo *abstract_info, const char *name_prefix);
@@ -97,5 +110,9 @@ NMMetaSelectionResultList *nm_meta_selection_create_parse_list (const NMMetaAbst
                                                                 const char *fields_str,
                                                                 gboolean validate_nested,
                                                                 GError **error);
+
+NMMetaSelectionResultList *nm_meta_selection_parse_connection_property_name (NMConnection *connection,
+                                                                             const char *property_name,
+                                                                             GError **error);
 
 #endif /* _NM_META_SETTING_ACCESS_H__ */

@@ -3214,6 +3214,31 @@ is_setting_valid (NMConnection *connection, const NMMetaSettingValidPartItem *co
 	return nm_connection_get_setting_by_name (connection, setting_name);
 }
 
+static char **
+_get_valid_properties (NMSetting *setting)
+{
+	char **valid_props = NULL;
+	GParamSpec **props, **iter;
+	guint num;
+	int i;
+
+	/* Iterate through properties */
+	i = 0;
+	props = g_object_class_list_properties (G_OBJECT_GET_CLASS (G_OBJECT (setting)), &num);
+	valid_props = g_malloc0 (sizeof (char*) * (num + 1));
+	for (iter = props; iter && *iter; iter++) {
+		const char *key_name = g_param_spec_get_name (*iter);
+
+		/* Add all properties except for "name" that is non-editable */
+		if (g_strcmp0 (key_name, "name") != 0)
+			valid_props[i++] = g_strdup (key_name);
+	}
+	valid_props[i] = NULL;
+	g_free (props);
+
+	return valid_props;
+}
+
 static char *
 is_property_valid (NMSetting *setting, const char *property, GError **error)
 {
@@ -3221,7 +3246,7 @@ is_property_valid (NMSetting *setting, const char *property, GError **error)
 	const char *prop_name;
 	char *ret;
 
-	valid_props = nmc_setting_get_valid_properties (setting);
+	valid_props = _get_valid_properties (setting);
 	prop_name = nmc_string_is_valid (property, (const char **) valid_props, error);
 	ret = g_strdup (prop_name);
 	g_strfreev (valid_props);
@@ -5052,7 +5077,7 @@ gen_property_names (const char *text, int state)
 	}
 
 	if (setting) {
-		valid_props = nmc_setting_get_valid_properties (setting);
+		valid_props = _get_valid_properties (setting);
 		ret = nmc_rl_gen_func_basic (text, state, (const char **) valid_props);
 	}
 
@@ -6222,7 +6247,7 @@ print_setting_description (NMSetting *setting)
 	char **all_props;
 	int i;
 
-	all_props = nmc_setting_get_valid_properties (setting);
+	all_props = _get_valid_properties (setting);
 	g_print (("<<< %s >>>\n"), nm_setting_get_name (setting));
 	for (i = 0; all_props && all_props[i]; i++)
 		print_property_description (setting, all_props[i]);
@@ -6695,7 +6720,7 @@ menu_switch_to_level1 (NmcColorOption color_option,
 	                                      "nmcli %s> ", setting_name);
 	menu_ctx->curr_setting = setting;
 	g_strfreev (menu_ctx->valid_props);
-	menu_ctx->valid_props = nmc_setting_get_valid_properties (menu_ctx->curr_setting);
+	menu_ctx->valid_props = _get_valid_properties (menu_ctx->curr_setting);
 	g_free (menu_ctx->valid_props_str);
 	menu_ctx->valid_props_str = g_strjoinv (", ", menu_ctx->valid_props);
 }
