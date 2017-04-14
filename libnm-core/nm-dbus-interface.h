@@ -14,7 +14,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright 2004 - 2014 Red Hat, Inc.
+ * Copyright 2004 - 2017 Red Hat, Inc.
  */
 
 /* Definitions related to NetworkManager's D-Bus interfaces.
@@ -335,6 +335,32 @@ typedef enum { /*< underscore_name=nm_802_11_ap_security_flags, flags >*/
 	NM_802_11_AP_SEC_KEY_MGMT_PSK    = 0x00000100,
 	NM_802_11_AP_SEC_KEY_MGMT_802_1X = 0x00000200,
 } NM80211ApSecurityFlags;
+
+
+/**
+ * NM80211WpsFlags:
+ * @NM_802_11_WPS_UNRECOGNIZED: WPS is available but the method was not recognized.
+ * @NM_802_11_WPS_AUTO: Use of WPS can be attempted. If an AP has this value
+ *   it means that WPS is available but not particular method was set up. This
+ *   typically mean WPS PBS can be attempted but the button was not pressed yet.
+ * @NM_802_11_WPS_DISABLED: WPS can not be used.
+ * @NM_802_11_WPS_PBC: PBC is available and the button was possibly pressed.
+ * @NM_802_11_WPS_PIN: PIN method is available
+ *
+ * Wi-Fi Protected Setup capabilities. These are used both to discover the WPS
+ * capabilities of an Access Point as well to configure the use of WPS by a
+ * connection while it activates.
+ *
+ * Since: 1.10
+ **/
+typedef enum { /*< underscore_name=nm_802_11_wps_flags, flags >*/
+	NM_802_11_WPS_UNRECOGNIZED  = -1,
+	NM_802_11_WPS_AUTO          = 0,
+	NM_802_11_WPS_DISABLED      = 1,
+	NM_802_11_WPS_PBC           = 2,
+	NM_802_11_WPS_PIN           = 4,
+} NM80211WpsFlags;
+
 
 /**
  * NM80211Mode:
