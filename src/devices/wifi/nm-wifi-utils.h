@@ -15,7 +15,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301 USA.
  *
- * (C) Copyright 2011 Red Hat, Inc.
+ * (C) Copyright 2011,2017 Red Hat, Inc.
  */
 
 #ifndef __NM_WIFI_UTILS_H__
@@ -33,6 +33,7 @@ gboolean nm_wifi_utils_complete_connection (const GByteArray *ssid,
                                             guint32 flags,
                                             guint32 wpa_flags,
                                             guint32 rsn_flags,
+                                            NM80211WpsFlags wps_flags,
                                             NMConnection *connection,
                                             gboolean lock_bssid,
                                             GError **error);

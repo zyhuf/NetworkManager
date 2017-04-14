@@ -15,7 +15,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301 USA.
  *
- * (C) Copyright 2011 Red Hat, Inc.
+ * (C) Copyright 2011,2017 Red Hat, Inc.
  */
 
 #include "nm-default.h"
@@ -531,6 +531,7 @@ nm_wifi_utils_complete_connection (const GByteArray *ap_ssid,
                                    guint32 ap_flags,
                                    guint32 ap_wpa_flags,
                                    guint32 ap_rsn_flags,
+                                   NM80211WpsFlags wps_flags,
                                    NMConnection *connection,
                                    gboolean lock_bssid,
                                    GError **error)
@@ -541,6 +542,7 @@ nm_wifi_utils_complete_connection (const GByteArray *ap_ssid,
 	GBytes *ssid, *ap_ssid_bytes;
 	const char *mode, *key_mgmt, *auth_alg, *leap_username;
 	gboolean adhoc = FALSE;
+	NM80211WpsFlags wps = NM_802_11_WPS_AUTO;
 
 	s_wifi = nm_connection_get_setting_wireless (connection);
 	g_assert (s_wifi);
@@ -624,6 +626,14 @@ nm_wifi_utils_complete_connection (const GByteArray *ap_ssid,
 	if (!s_wsec) {
 		s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
 		nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+	}
+
+	/* Map AP WPS capabilities to the methods the connection will use upon activation. */
+	wps = nm_setting_wireless_security_get_wps (s_wsec);
+	if (wps == NM_802_11_WPS_AUTO) {
+		if (wps_flags != NM_802_11_WPS_UNRECOGNIZED)
+			wps = wps_flags;
+		g_object_set (G_OBJECT (s_wsec), NM_SETTING_WIRELESS_SECURITY_WPS, (gint) wps, NULL);
 	}
 
 	key_mgmt = nm_setting_wireless_security_get_key_mgmt (s_wsec);

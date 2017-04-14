@@ -1135,6 +1135,7 @@ nm_wifi_ap_complete_connection (NMWifiAP *self,
 	                                          priv->flags,
 	                                          priv->wpa_flags,
 	                                          priv->rsn_flags,
+	                                          priv->wps_flags,
 	                                          connection,
 	                                          lock_bssid,
 	                                          error);
