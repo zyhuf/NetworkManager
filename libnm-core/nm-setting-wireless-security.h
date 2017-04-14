@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301 USA.
  *
- * Copyright 2007 - 2014 Red Hat, Inc.
+ * Copyright 2007 - 2017 Red Hat, Inc.
  * Copyright 2007 - 2008 Novell, Inc.
  */
 
@@ -107,6 +107,7 @@ typedef enum {
 #define NM_SETTING_WIRELESS_SECURITY_PSK_FLAGS "psk-flags"
 #define NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD "leap-password"
 #define NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD_FLAGS "leap-password-flags"
+#define NM_SETTING_WIRELESS_SECURITY_WPS "wps"
 
 /**
  * NMSettingWirelessSecurity:
@@ -168,6 +169,9 @@ const char *nm_setting_wireless_security_get_auth_alg      (NMSettingWirelessSec
 
 NMSettingSecretFlags nm_setting_wireless_security_get_wep_key_flags (NMSettingWirelessSecurity *setting);
 NMWepKeyType nm_setting_wireless_security_get_wep_key_type (NMSettingWirelessSecurity *setting);
+
+NM_AVAILABLE_IN_1_10
+NM80211WpsFlags      nm_setting_wireless_security_get_wps           (NMSettingWirelessSecurity *setting);
 
 G_END_DECLS
 
