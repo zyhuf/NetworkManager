@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2004 - 2011 Red Hat, Inc.
+ * Copyright (C) 2004 - 2017 Red Hat, Inc.
  * Copyright (C) 2006 - 2008 Novell, Inc.
  */
 
@@ -36,6 +36,7 @@
 #define NM_WIFI_AP_FLAGS                "flags"
 #define NM_WIFI_AP_WPA_FLAGS            "wpa-flags"
 #define NM_WIFI_AP_RSN_FLAGS            "rsn-flags"
+#define NM_WIFI_AP_WPS_FLAGS            "wps-flags"
 #define NM_WIFI_AP_SSID                 "ssid"
 #define NM_WIFI_AP_FREQUENCY            "frequency"
 #define NM_WIFI_AP_HW_ADDRESS           "hw-address"

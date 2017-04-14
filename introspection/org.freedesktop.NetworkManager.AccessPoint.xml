@@ -37,6 +37,21 @@
     <property name="RsnFlags" type="u" access="read"/>
 
     <!--
+        WpsFlags:
+
+        Flags describing the WPS method supported by this access point.
+        Note that the access point may not indicate NM_802_11_WPS_PBC until
+        the button is pushed and indicate NM_802_11_WPS_AUTO instead.
+        If WPS is not supported at all the AP will just indicate
+        NM_802_11_WPS_DISABLED.
+
+        Since: 1.10
+
+        Returns: <link linkend="NM80211WpsFlags">NM80211WpsFlags</link>
+    -->
+    <property name="WpsFlags" type="i" access="read"/>
+
+    <!--
         Ssid:
 
         The Service Set Identifier identifying the access point.

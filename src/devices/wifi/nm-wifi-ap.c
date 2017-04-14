@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2004 - 2011 Red Hat, Inc.
+ * Copyright (C) 2004 - 2017 Red Hat, Inc.
  * Copyright (C) 2006 - 2008 Novell, Inc.
  */
 
@@ -44,6 +44,7 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMWifiAP,
 	PROP_FLAGS,
 	PROP_WPA_FLAGS,
 	PROP_RSN_FLAGS,
+	PROP_WPS_FLAGS,
 	PROP_SSID,
 	PROP_FREQUENCY,
 	PROP_HW_ADDRESS,
@@ -67,6 +68,7 @@ typedef struct {
 	NM80211ApFlags         flags;      /* General flags */
 	NM80211ApSecurityFlags wpa_flags;  /* WPA-related flags */
 	NM80211ApSecurityFlags rsn_flags;  /* RSN (WPA2) -related flags */
+	NM80211WpsFlags      wps_flags;  /* WPS-related flags */
 
 	/* Non-scanned attributes */
 	bool                fake:1;       /* Whether or not the AP is from a scan */
@@ -197,6 +199,22 @@ nm_wifi_ap_set_rsn_flags (NMWifiAP *ap, NM80211ApSecurityFlags flags)
 	if (priv->rsn_flags != flags) {
 		priv->rsn_flags = flags;
 		_notify (ap, PROP_RSN_FLAGS);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static gboolean
+nm_wifi_ap_set_wps_flags (NMWifiAP *ap, NM80211WpsFlags flags)
+{
+	NMWifiAPPrivate *priv;
+
+	g_return_val_if_fail (NM_IS_WIFI_AP (ap), FALSE);
+
+	priv = NM_WIFI_AP_GET_PRIVATE (ap);
+	if (priv->wps_flags != flags) {
+		priv->wps_flags = flags;
+		_notify (ap, PROP_WPS_FLAGS);
 		return TRUE;
 	}
 	return FALSE;
@@ -430,6 +448,28 @@ security_from_vardict (GVariant *security)
 			flags |= NM_802_11_AP_SEC_GROUP_TKIP;
 		if (strcmp (tmp, "ccmp") == 0)
 			flags |= NM_802_11_AP_SEC_GROUP_CCMP;
+	}
+
+	return flags;
+}
+
+static NM80211WpsFlags
+wps_from_vardict (GVariant *wps)
+{
+	NM80211WpsFlags flags = NM_802_11_WPS_DISABLED;
+	const char *tmp;
+
+	g_return_val_if_fail (g_variant_is_of_type (wps, G_VARIANT_TYPE_VARDICT), flags);
+
+	if (g_variant_lookup (wps, "Type", "&s", &tmp)) {
+		if (strcmp (tmp, "") == 0)
+			flags = NM_802_11_WPS_AUTO;
+		else if (strcmp (tmp, "pbc") == 0)
+			flags = NM_802_11_WPS_PBC;
+		else if (strcmp (tmp, "pin") == 0)
+			flags = NM_802_11_WPS_PIN;
+		else
+			flags = NM_802_11_WPS_UNRECOGNIZED;
 	}
 
 	return flags;
@@ -849,6 +889,12 @@ nm_wifi_ap_update_from_properties (NMWifiAP *ap,
 		g_variant_unref (v);
 	}
 
+	v = g_variant_lookup_value (properties, "WPS", G_VARIANT_TYPE_VARDICT);
+	if (v) {
+		changed |= nm_wifi_ap_set_wps_flags (ap, wps_from_vardict (v));
+		g_variant_unref (v);
+	}
+
 	if (!priv->supplicant_path) {
 		priv->supplicant_path = g_strdup (supplicant_path);
 		changed = TRUE;
@@ -964,7 +1010,7 @@ nm_wifi_ap_to_string (const NMWifiAP *self,
 		export_path = "/";
 
 	g_snprintf (str_buf, buf_len,
-	            "%17s %-32s [ %c %3u %3u%% %c W:%04X R:%04X ] %3us sup:%s [nm:%s]",
+	            "%17s %-32s [ %c %3u %3u%% %c WPA:%04X RSN:%04X WPS:%04X ] %3us sup:%s [nm:%s]",
 	            priv->address ?: "(none)",
 	            nm_sprintf_buf (b1, "%s%s%s",
 	                            NM_PRINT_FMT_QUOTED (priv->ssid, "\"", nm_utils_escape_ssid (priv->ssid->data, priv->ssid->len), "\"", "(none)")),
@@ -980,6 +1026,7 @@ nm_wifi_ap_to_string (const NMWifiAP *self,
 	            priv->flags & NM_802_11_AP_FLAGS_PRIVACY ? 'P' : '_',
 	            priv->wpa_flags & 0xFFFF,
 	            priv->rsn_flags & 0xFFFF,
+	            priv->wps_flags & 0xFFFF,
 	            priv->last_seen > 0 ? ((now_s > 0 ? now_s : nm_utils_get_monotonic_timestamp_s ()) - priv->last_seen) : -1,
 	            supplicant_id,
 	            export_path);
@@ -1112,6 +1159,9 @@ get_property (GObject *object, guint prop_id,
 	case PROP_RSN_FLAGS:
 		g_value_set_uint (value, priv->rsn_flags);
 		break;
+	case PROP_WPS_FLAGS:
+		g_value_set_int (value, priv->wps_flags);
+		break;
 	case PROP_SSID:
 		if (priv->ssid) {
 			ssid = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE,
@@ -1158,6 +1208,7 @@ nm_wifi_ap_init (NMWifiAP *ap)
 	priv->flags = NM_802_11_AP_FLAGS_NONE;
 	priv->wpa_flags = NM_802_11_AP_SEC_NONE;
 	priv->rsn_flags = NM_802_11_AP_SEC_NONE;
+	priv->wps_flags = NM_802_11_WPS_AUTO;
 	priv->last_seen = -1;
 }
 
@@ -1366,6 +1417,13 @@ nm_wifi_ap_class_init (NMWifiAPClass *ap_class)
 	                       ALL_SEC_FLAGS,
 	                       NM_802_11_AP_SEC_NONE,
 	                       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+
+	obj_properties[PROP_WPS_FLAGS] =
+	    g_param_spec_int (NM_WIFI_AP_WPS_FLAGS, "", "",
+	                      NM_802_11_WPS_AUTO,
+	                      NM_802_11_WPS_PIN,
+	                      NM_802_11_WPS_AUTO,
+	                      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
 
 	obj_properties[PROP_SSID] =
 	    g_param_spec_variant (NM_WIFI_AP_SSID, "", "",
