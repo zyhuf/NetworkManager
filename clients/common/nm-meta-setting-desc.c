@@ -6572,7 +6572,6 @@ static const NMMetaPropertyInfo *const property_infos_WIRELESS_SECURITY[] = {
 		),
 	),
 	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_SECURITY_WPS_PIN,
-		.is_secret =                    TRUE,
 		.property_type =                &_pt_gobject_string,
 	),
 	NULL

@@ -9,7 +9,7 @@
 <!--
   nmcli(1) manual page
 
-  Copyright 2010 - 2016 Red Hat, Inc.
+  Copyright 2010 - 2017 Red Hat, Inc.
 
   Permission is granted to copy, distribute and/or modify this document
   under the terms of the GNU Free Documentation License, Version 1.1
@@ -1395,6 +1395,7 @@
           <command>connect</command>
           <arg choice='plain'><replaceable>(B)SSID</replaceable></arg>
           <arg><option>password</option> <replaceable>password</replaceable></arg>
+          <arg><option>pin</option> <replaceable>pin</replaceable></arg>
           <arg>
             <option>wep-key-type</option>
             <group choice='req'>
@@ -1442,6 +1443,17 @@
               <term><option>password</option></term>
               <listitem>
                 <para>password for secured networks (WEP or WPA).</para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><option>pin</option></term>
+              <listitem>
+                <para>PIN for WPA Protected Setup. If this option is set, the PIN will be
+                stored in the connection profile and a PIN-based WPS enrollment will be
+                attempted in case the PSK is required.</para>
+                <para>Please note that there is known security flaw in the PIN based method
+                that makes the PIN easy to guess. Enabling it on your router introduces a
+                substantial risk that unauthorized nodes will join the wireless network.</para>
               </listitem>
             </varlistentry>
             <varlistentry>

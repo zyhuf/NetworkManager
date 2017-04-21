@@ -14,7 +14,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright 2010 - 2014 Red Hat, Inc.
+ * Copyright 2010 - 2017 Red Hat, Inc.
  */
 
 #include "nm-default.h"
@@ -2814,12 +2814,13 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 	NMConnection *connection = NULL;
 	NMSettingConnection *s_con;
 	NMSettingWireless *s_wifi;
-	NMSettingWirelessSecurity *s_wsec;
+	NMSettingWirelessSecurity *s_wsec = NULL;
 	AddAndActivateInfo *info;
 	const char *param_user = NULL;
 	const char *ifname = NULL;
 	const char *bssid = NULL;
 	const char *password = NULL;
+	const char *pin = NULL;
 	const char *con_name = NULL;
 	gboolean private = FALSE;
 	gboolean hidden = FALSE;
@@ -2867,7 +2868,7 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 	while (argc > 0) {
 		if (argc == 1 && nmc->complete) {
 			nmc_complete_strings (*argv, "ifname", "bssid", "password", "wep-key-type",
-			                      "name", "private", "hidden", NULL);
+			                      "name", "private", "hidden", "pin", NULL);
 		}
 
 		if (strcmp (*argv, "ifname") == 0) {
@@ -2974,6 +2975,15 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 				g_clear_error (&err_tmp);
 				goto finish;
 			}
+		} else if (strcmp (*argv, "pin") == 0) {
+			argc--;
+			argv++;
+			if (!argc) {
+				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
+				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+				goto finish;
+			}
+			pin = *argv;
 		} else if (!nmc->complete) {
 			g_printerr (_("Unknown parameter: %s\n"), *argv);
 		}
@@ -3061,7 +3071,7 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 
 	/* If there are some connection data from user, create a connection and
 	 * fill them into proper settings. */
-	if (con_name || private || bssid2_arr || password || hidden)
+	if (con_name || private || bssid2_arr || password || hidden || pin)
 		connection = nm_simple_connection_new ();
 
 	if (con_name || private) {
@@ -3107,17 +3117,19 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 	ap_rsn_flags = nm_access_point_get_rsn_flags (ap);
 
 	/* Set password for WEP or WPA-PSK. */
-	if (ap_flags & NM_802_11_AP_FLAGS_PRIVACY) {
+	if (ap_flags & NM_802_11_AP_FLAGS_PRIVACY || pin) {
 		/* Ask for missing password when one is expected and '--ask' is used */
 		if (!password && nmc->ask)
 			password = passwd_ask = nmc_readline_echo (nmc->nmc_config.show_secrets, _("Password: "));
 
-		if (password) {
+		if (password || pin) {
 			if (!connection)
 				connection = nm_simple_connection_new ();
 			s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
 			nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+		}
 
+		if (password) {
 			if (ap_wpa_flags == NM_802_11_AP_SEC_NONE && ap_rsn_flags == NM_802_11_AP_SEC_NONE) {
 				/* WEP */
 				nm_setting_wireless_security_set_wep_key (s_wsec, 0, password);
@@ -3131,6 +3143,9 @@ do_device_wifi_connect_network (NmCli *nmc, int argc, char **argv)
 				g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_PSK, password, NULL);
 			}
 		}
+
+		if (pin)
+			g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_WPS_PIN, pin, NULL);
 	}
 	// FIXME: WPA-Enterprise is not supported yet.
 	// We are not able to determine and fill all the parameters for
