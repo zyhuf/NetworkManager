@@ -1930,8 +1930,12 @@ nm_setting_wireless_security_class_init (NMSettingWirelessSecurityClass *setting
 	 *
 	 * The PIN used for WPS.
 	 *
-	 * NetworkManager will automatically disable WPS and unset this property
-	 * after a successful WPS enrollment.
+	 * Please note that this property is not handled as a secret and will be
+	 * visible to the users of the machine. Aside from that, there's a known
+	 * security flaw in the PIN based method that makes the PIN easy to guess.
+	 *
+	 * Enabling PIN method it on your router introduces a substantial risk that
+	 * unauthorized nodes will join the wireless network.
 	 *
 	 * Since: 1.10
 	 **/
