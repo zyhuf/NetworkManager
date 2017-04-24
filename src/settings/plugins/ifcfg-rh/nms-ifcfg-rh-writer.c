@@ -587,6 +587,7 @@ write_wireless_security_setting (NMConnection *connection,
 		svUnsetValue (ifcfg, "WPS_METHOD");
 	else
 		svSetValueEnum (ifcfg, "WPS_METHOD", nm_setting_wireless_security_wps_method_get_type (), wps_method);
+	svSetValueStr (ifcfg, "WPS_PIN", nm_setting_wireless_security_get_wps_pin (s_wsec));
 
 	/* WEP keys */
 

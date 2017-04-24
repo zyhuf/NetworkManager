@@ -3325,7 +3325,7 @@ make_wpa_setting (shvarFile *ifcfg,
                   GError **error)
 {
 	NMSettingWirelessSecurity *wsec;
-	char *value, *psk, *lower;
+	char *value, *psk, *lower, *wps_pin;
 	gboolean wpa_psk = FALSE, wpa_eap = FALSE, ieee8021x = FALSE;
 	int i_val;
 	GError *local = NULL;
@@ -3345,9 +3345,12 @@ make_wpa_setting (shvarFile *ifcfg,
 	                     nm_setting_wireless_security_wps_method_get_type (),
 	                     &i_val, error))
 		goto error;
+	wps_pin = svGetValueStr_cp (ifcfg, "WPS_PIN");
 	g_object_set (wsec,
 	              NM_SETTING_WIRELESS_SECURITY_WPS_METHOD, i_val,
+	              NM_SETTING_WIRELESS_SECURITY_WPS_PIN, wps_pin,
 	              NULL);
+	g_free (wps_pin);
 
 	/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
 	if (wpa_psk || wpa_eap) {
