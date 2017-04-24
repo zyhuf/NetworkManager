@@ -1935,6 +1935,13 @@ nm_setting_wireless_security_class_init (NMSettingWirelessSecurityClass *setting
 	 *
 	 * Since: 1.10
 	 **/
+	/* ---ifcfg-rh---
+	 * property: wps-pin
+	 * variable: WPS_PIN
+	 * description: The PIN used for the PIN WPS method
+	 * example: WPS_PIN=12345670
+	 * ---end---
+	 */
 	g_object_class_install_property
 		(object_class, PROP_WPS_PIN,
 		 g_param_spec_string (NM_SETTING_WIRELESS_SECURITY_WPS_PIN, "", "",
