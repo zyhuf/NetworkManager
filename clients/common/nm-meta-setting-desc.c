@@ -1034,7 +1034,6 @@ fail:
 				max = property_info->property_typ_data->subtype.gobject_enum.max;
 			}
 		}
-
 		valid_all = nm_utils_enum_get_values (gtype, min, max);
 		valid_str = g_strjoinv (",", (char **) valid_all);
 		g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
@@ -6993,6 +6992,20 @@ static const NMMetaPropertyInfo *const property_infos_WIRELESS_SECURITY[] = {
 	),
 	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD_FLAGS,
 		.property_type =                &_pt_gobject_secret_flags,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_SECURITY_WPS,
+		.property_type =                &_pt_gobject_enum,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			PROPERTY_TYP_DATA_SUBTYPE (gobject_enum,
+				.get_gtype =            nm_802_11_wps_flags_get_type,
+				.min =                  NM_802_11_WPS_AUTO,
+				.max =                  G_MAXINT,
+			),
+		),
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRELESS_SECURITY_WPS_PIN,
+		.is_secret =                    TRUE,
+		.property_type =                &_pt_gobject_string,
 	),
 	NULL
 };
