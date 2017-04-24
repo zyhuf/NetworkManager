@@ -1184,4 +1184,5 @@ global:
 	nm_setting_wireless_security_get_pmf;
 	nm_setting_wireless_security_get_wps;
 	nm_setting_wireless_security_pmf_get_type;
+	nm_setting_wireless_security_get_wps_pin;
 } libnm_1_8_0;

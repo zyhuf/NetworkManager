@@ -87,6 +87,7 @@ typedef struct {
 
 	/* WPS */
 	NM80211WpsFlags wps;
+	char *wps_pin;
 } NMSettingWirelessSecurityPrivate;
 
 enum {
@@ -110,6 +111,7 @@ enum {
 	PROP_LEAP_PASSWORD,
 	PROP_LEAP_PASSWORD_FLAGS,
 	PROP_WPS,
+	PROP_WPS_PIN,
 
 	LAST_PROP
 };
@@ -881,6 +883,22 @@ no_secrets:
 	return NULL;
 }
 
+/**
+ * nm_setting_wireless_security_get_wps_pin:
+ * @setting: the #NMSettingWirelessSecurity
+ *
+ * Returns: the #NMSettingWirelessSecurity:wps-pin property of the setting
+ *
+ * Since: 1.10
+ **/
+const char *
+nm_setting_wireless_security_get_wps_pin (NMSettingWirelessSecurity *setting)
+{
+	g_return_val_if_fail (NM_IS_SETTING_WIRELESS_SECURITY (setting), NULL);
+
+	return NM_SETTING_WIRELESS_SECURITY_GET_PRIVATE (setting)->wps_pin;
+}
+
 static gboolean
 verify (NMSetting *setting, NMConnection *connection, GError **error)
 {
@@ -891,6 +909,8 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	const char *valid_protos[] = { "wpa", "rsn", NULL };
 	const char *valid_pairwise[] = { "tkip", "ccmp", NULL };
 	const char *valid_groups[] = { "wep40", "wep104", "tkip", "ccmp", NULL };
+	guint wps_csum = 0;
+	int i;
 
 	if (!priv->key_mgmt) {
 		g_set_error_literal (error,
@@ -1093,6 +1113,39 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		                     _("can't be simultaneously disabled and enabled"));
 		g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRELESS_SECURITY_SETTING_NAME, NM_SETTING_WIRELESS_SECURITY_WPS);
 		return FALSE;
+	}
+
+	if (priv->wps_pin) {
+		if (strlen (priv->wps_pin) != 8) {
+			g_set_error_literal (error,
+			                     NM_CONNECTION_ERROR,
+			                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+			                     _("WPS PIN needs to be 8 digits long"));
+			g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRELESS_SECURITY_SETTING_NAME, NM_SETTING_WIRELESS_SECURITY_WPS_PIN);
+			return FALSE;
+		}
+
+		for (i = 0; i < 8; i++) {
+			if (g_ascii_isdigit (priv->wps_pin[i]))
+				continue;
+			g_set_error_literal (error,
+			                     NM_CONNECTION_ERROR,
+			                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+			                     _("WPS PIN can only contain digits"));
+			g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRELESS_SECURITY_SETTING_NAME, NM_SETTING_WIRELESS_SECURITY_WPS_PIN);
+			return FALSE;
+		}
+
+		for (i = 6; i >= 0; i--)
+			wps_csum += (i % 2 ? 1 : 3) * g_ascii_digit_value (priv->wps_pin[i]);
+		if (g_ascii_digit_value (priv->wps_pin[7]) != (10 - wps_csum % 10) % 10) {
+			g_set_error_literal (error,
+			                     NM_CONNECTION_ERROR,
+			                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+			                     _("WPS PIN is not valid"));
+			g_prefix_error (error, "%s.%s: ", NM_SETTING_WIRELESS_SECURITY_SETTING_NAME, NM_SETTING_WIRELESS_SECURITY_WPS_PIN);
+			return FALSE;
+		}
 	}
 
 	return TRUE;
@@ -1326,6 +1379,10 @@ set_property (GObject *object, guint prop_id,
 	case PROP_WPS:
 		priv->wps = g_value_get_int (value);
 		break;
+	case PROP_WPS_PIN:
+		g_free (priv->wps_pin);
+		priv->wps_pin = g_value_dup_string (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -1396,6 +1453,9 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_WPS:
 		g_value_set_int (value, priv->wps);
+		break;
+	case PROP_WPS_PIN:
+		g_value_set_string (value, priv->wps_pin);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1855,4 +1915,21 @@ nm_setting_wireless_security_class_init (NMSettingWirelessSecurityClass *setting
 		                   NM_SETTING_PARAM_FUZZY_IGNORE |
 		                   G_PARAM_STATIC_STRINGS));
 
+	/**
+	 * NMSettingWirelessSecurity:wps-pin:
+	 *
+	 * The PIN used for WPS.
+	 *
+	 * NetworkManager will automatically disable WPS and unset this property
+	 * after a successful WPS enrollment.
+	 *
+	 * Since: 1.10
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_WPS_PIN,
+		 g_param_spec_string (NM_SETTING_WIRELESS_SECURITY_WPS_PIN, "", "",
+		                      NULL,
+		                      G_PARAM_READWRITE |
+		                      NM_SETTING_PARAM_FUZZY_IGNORE |
+		                      G_PARAM_STATIC_STRINGS));
 }
