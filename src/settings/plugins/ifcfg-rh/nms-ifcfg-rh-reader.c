@@ -3276,12 +3276,29 @@ make_wpa_setting (shvarFile *ifcfg,
                   GError **error)
 {
 	NMSettingWirelessSecurity *wsec;
-	char *value, *psk, *lower;
+	char *value, *psk, *lower, *wps_pin;
 	gboolean wpa_psk = FALSE, wpa_eap = FALSE, ieee8021x = FALSE;
+	NM80211WpsFlags wps = NM_802_11_WPS_AUTO;
 	int i_val;
 	GError *local = NULL;
 
 	wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
+
+	/* WPS */
+	value = svGetValueStr_cp (ifcfg, "WPS");
+	if (value) {
+		char *token;
+
+		if (!nm_utils_enum_from_str (nm_802_11_wps_flags_get_type (), value, (int *) &wps, &token)) {
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+			             "Invalid WPS setting '%s'", token);
+			g_free (token);
+			g_free (value);
+			goto error;
+		}
+		g_free (value);
+		value = NULL;
+	}
 
 	value = svGetValueStr_cp (ifcfg, "KEY_MGMT");
 	wpa_psk = !g_strcmp0 (value, "WPA-PSK");
@@ -3289,6 +3306,13 @@ make_wpa_setting (shvarFile *ifcfg,
 	ieee8021x = !g_strcmp0 (value, "IEEE8021X");
 	if (!wpa_psk && !wpa_eap && !ieee8021x)
 		goto error; /* Not WPA or Dynamic WEP */
+
+	wps_pin = svGetValueStr_cp (ifcfg, "WPS_PIN");
+	g_object_set (wsec,
+	              NM_SETTING_WIRELESS_SECURITY_WPS, (gint) wps,
+	              NM_SETTING_WIRELESS_SECURITY_WPS_PIN, wps_pin,
+	              NULL);
+	g_free (wps_pin);
 
 	/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
 	if (wpa_psk || wpa_eap) {

@@ -1906,6 +1906,15 @@ nm_setting_wireless_security_class_init (NMSettingWirelessSecurityClass *setting
 	 *
 	 * Since: 1.10
 	 **/
+	/* ---ifcfg-rh---
+	 * property: wps
+	 * variable: WPS
+	 * description: Used to control the WPS methods to be used
+	 *    Valid values are "disabled", "pin" and "pbc".
+	 *    If ommited, whatver the AP announces is used.
+	 * example: WPS=disabled, WPS="pin pbc"
+	 * ---end---
+	 */
 	g_object_class_install_property
 		(object_class, PROP_WPS,
 		 g_param_spec_int (NM_SETTING_WIRELESS_SECURITY_WPS, "", "",
@@ -1925,6 +1934,13 @@ nm_setting_wireless_security_class_init (NMSettingWirelessSecurityClass *setting
 	 *
 	 * Since: 1.10
 	 **/
+	/* ---ifcfg-rh---
+	 * property: wps-pin
+	 * variable: WPS_PIN
+	 * description: The PIN used for the PIN WPS method
+	 * example: WPS_PIN=12345670
+	 * ---end---
+	 */
 	g_object_class_install_property
 		(object_class, PROP_WPS_PIN,
 		 g_param_spec_string (NM_SETTING_WIRELESS_SECURITY_WPS_PIN, "", "",
