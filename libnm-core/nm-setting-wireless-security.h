@@ -128,6 +128,7 @@ typedef enum {
 #define NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD "leap-password"
 #define NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD_FLAGS "leap-password-flags"
 #define NM_SETTING_WIRELESS_SECURITY_WPS_METHOD "wps-method"
+#define NM_SETTING_WIRELESS_SECURITY_WPS_PIN "wps-pin"
 
 /**
  * NMSettingWirelessSecurity:
@@ -192,6 +193,8 @@ NMWepKeyType nm_setting_wireless_security_get_wep_key_type (NMSettingWirelessSec
 
 NM_AVAILABLE_IN_1_10
 NMSettingWirelessSecurityWpsMethod nm_setting_wireless_security_get_wps_method (NMSettingWirelessSecurity *setting);
+NM_AVAILABLE_IN_1_10
+const char                        *nm_setting_wireless_security_get_wps_pin    (NMSettingWirelessSecurity *setting);
 
 G_END_DECLS
 
