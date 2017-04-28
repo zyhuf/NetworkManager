@@ -2320,6 +2320,7 @@ handle_auth_or_fail (NMDeviceWifi *self,
 	NM80211ApFlags ap_flags;
 	NMSettingWirelessSecurityWpsMethod wps_method;
 	const char *type;
+	const char *pin;
 	NMSecretAgentGetSecretsFlags get_secret_flags = NM_SECRET_AGENT_GET_SECRETS_FLAG_ALLOW_INTERACTION;
 
 	g_return_val_if_fail (NM_IS_DEVICE_WIFI (self), FALSE);
@@ -2339,6 +2340,7 @@ handle_auth_or_fail (NMDeviceWifi *self,
 
 	s_wsec = nm_connection_get_setting_wireless_security (applied_connection);
 	wps_method = nm_setting_wireless_security_get_wps_method (s_wsec);
+	pin = nm_setting_wireless_security_get_wps_pin (s_wsec);
 
 	/* Negotiate the WPS method */
 	if (wps_method == NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_DEFAULT)
@@ -2360,19 +2362,23 @@ handle_auth_or_fail (NMDeviceWifi *self,
 		}
 	}
 
-	if (wps_method & NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_PBC) {
+	if (wps_method & NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_PIN && pin) {
 		get_secret_flags |= NM_SECRET_AGENT_GET_SECRETS_FLAG_WPS_PBC_ACTIVE;
+		type = "pin";
+	} else if (wps_method & NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_PBC) {
 		type = "pbc";
 	} else if (wps_method & NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_PIN) {
+		get_secret_flags |= NM_SECRET_AGENT_GET_SECRETS_FLAG_WPS_PBC_ACTIVE;
 		type = "pin";
-	} else
+	} else {
 		type = NULL;
+	}
 
 	if (type) {
 		priv->wps_timeout_id = g_timeout_add_seconds (30, wps_timeout_cb, self);
 		if (priv->current_ap)
 			bssid = nm_wifi_ap_get_address (priv->current_ap);
-		nm_supplicant_interface_enroll_wps (priv->sup_iface, type, bssid, NULL);
+		nm_supplicant_interface_enroll_wps (priv->sup_iface, type, bssid, pin);
 	}
 
 	nm_act_request_clear_secrets (req);
