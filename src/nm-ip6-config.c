@@ -1420,6 +1420,16 @@ nm_ip6_config_del_address (NMIP6Config *config, guint i)
 	notify_addresses (config);
 }
 
+void
+nm_ip6_config_search_and_del_address (NMIP6Config *config, const NMPlatformIP6Address *needle)
+{
+	gint idx;
+
+	idx = _addresses_get_index (config, needle);
+	if (idx >= 0)
+		nm_ip6_config_del_address (config, idx);
+}
+
 guint
 nm_ip6_config_get_num_addresses (const NMIP6Config *config)
 {

@@ -88,6 +88,7 @@ gint64 nm_ip6_config_get_route_metric (const NMIP6Config *config);
 void nm_ip6_config_reset_addresses (NMIP6Config *config);
 void nm_ip6_config_add_address (NMIP6Config *config, const NMPlatformIP6Address *address);
 void nm_ip6_config_del_address (NMIP6Config *config, guint i);
+void nm_ip6_config_search_and_del_address (NMIP6Config *config, const NMPlatformIP6Address *needle);
 guint nm_ip6_config_get_num_addresses (const NMIP6Config *config);
 const NMPlatformIP6Address *nm_ip6_config_get_address (const NMIP6Config *config, guint i);
 const NMPlatformIP6Address *nm_ip6_config_get_address_first_nontentative (const NMIP6Config *config, gboolean linklocal);
