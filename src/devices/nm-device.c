@@ -6955,6 +6955,9 @@ check_and_add_ipv6ll_addr (NMDevice *self)
 			if (   IN6_IS_ADDR_LINKLOCAL (&addr->address)
 			    && !(addr->n_ifa_flags & IFA_F_DADFAILED)) {
 				/* Already have an LL address, nothing to do */
+				_LOGD (LOGD_IP6,
+				       "linklocal6: IPv6LL address already present: %s",
+				       nm_utils_inet6_ntop (&addr->address, NULL));
 				return;
 			}
 		}
