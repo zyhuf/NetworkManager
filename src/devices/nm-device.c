@@ -10919,10 +10919,13 @@ device_ipx_changed (NMPlatform *platform,
 			priv->dad6_failed_addrs = g_slist_append (priv->dad6_failed_addrs,
 			                                          g_memdup (addr, sizeof (NMPlatformIP6Address)));
 		}
-		/* We should remove addresses we generated also if the device has become
-		 * unmanaged: this is required in order to avoid races when the device is
-		 * quickly set back to managed */
-		if ((change_type == NM_PLATFORM_SIGNAL_REMOVED) && priv->ip6_config)
+		/* We should remove addresses we generated also if the device is no more
+		 * managed: this is required in order to avoid races when the device is
+		 * assigned an IPv6 address and while it is still tentative it is quickly
+		 * set back to managed */
+		if (   (priv->state < NM_DEVICE_STATE_PREPARE)
+		    && (change_type == NM_PLATFORM_SIGNAL_REMOVED)
+		    && priv->ip6_config)
 			nm_ip6_config_search_and_del_address (priv->ip6_config, addr);
 		/* fall through */
 	case NMP_OBJECT_TYPE_IP6_ROUTE:
