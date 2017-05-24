@@ -61,6 +61,7 @@ typedef struct {
 	GHashTable *s390_options;
 	NMSettingWiredWakeOnLan wol;
 	char *wol_password;
+	gint32 num_vfs;
 } NMSettingWiredPrivate;
 
 enum {
@@ -79,6 +80,7 @@ enum {
 	PROP_S390_OPTIONS,
 	PROP_WAKE_ON_LAN,
 	PROP_WAKE_ON_LAN_PASSWORD,
+	PROP_NUM_VFS,
 
 	LAST_PROP
 };
@@ -616,6 +618,25 @@ nm_setting_wired_get_wake_on_lan_password (NMSettingWired *setting)
 	return NM_SETTING_WIRED_GET_PRIVATE (setting)->wol_password;
 }
 
+/**
+ * nm_setting_wired_get_num_vfs
+ * @setting: the #NMSettingWired
+ *
+ * Gets the number of confifugred SR-IOV virtual functions for
+ * the physical function device.
+ *
+ * Returns: number of configured virtual functions
+ *
+ * Since: 1.10
+ */
+guint32
+nm_setting_wired_get_num_vfs (NMSettingWired *setting)
+{
+	g_return_val_if_fail (NM_IS_SETTING_WIRED (setting), NM_SETTING_WIRED_WAKE_ON_LAN_NONE);
+
+	return NM_SETTING_WIRED_GET_PRIVATE (setting)->num_vfs;
+}
+
 static gboolean
 verify (NMSetting *setting, NMConnection *connection, GError **error)
 {
@@ -931,6 +952,9 @@ set_property (GObject *object, guint prop_id,
 		g_free (priv->wol_password);
 		priv->wol_password = g_value_dup_string (value);
 		break;
+	case PROP_NUM_VFS:
+		priv->num_vfs = g_value_get_int (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -986,6 +1010,9 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_WAKE_ON_LAN_PASSWORD:
 		g_value_set_string (value, priv->wol_password);
+		break;
+	case PROP_NUM_VFS:
+		g_value_set_int (value, nm_setting_wired_get_num_vfs (setting));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1427,4 +1454,19 @@ nm_setting_wired_class_init (NMSettingWiredClass *setting_wired_class)
 		                      NULL,
 		                      G_PARAM_READWRITE |
 		                      G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMSettingWired:num-vfs:
+	 *
+	 * Number of virtual functions for a SR-IOV capable hardware.
+	 *
+	 * Since: 1.10
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_NUM_VFS,
+		 g_param_spec_int (NM_SETTING_WIRED_NUM_VFS, "", "",
+		                   -1, G_MAXINT32, -1,
+		                   G_PARAM_CONSTRUCT |
+		                   G_PARAM_READWRITE |
+		                   G_PARAM_STATIC_STRINGS));
 }

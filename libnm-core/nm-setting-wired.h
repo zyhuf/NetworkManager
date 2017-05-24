@@ -92,7 +92,9 @@ typedef enum { /*< flags >*/
 #define NM_SETTING_WIRED_S390_NETTYPE "s390-nettype"
 #define NM_SETTING_WIRED_S390_OPTIONS "s390-options"
 #define NM_SETTING_WIRED_WAKE_ON_LAN "wake-on-lan"
+#define NM_SETTING_WIRED_WAKE_ON_LAN "wake-on-lan"
 #define NM_SETTING_WIRED_WAKE_ON_LAN_PASSWORD "wake-on-lan-password"
+#define NM_SETTING_WIRED_NUM_VFS "num-vfs"
 
 /**
  * NMSettingWired:
@@ -156,6 +158,9 @@ const char **     nm_setting_wired_get_valid_s390_options (NMSettingWired *setti
 
 NMSettingWiredWakeOnLan  nm_setting_wired_get_wake_on_lan          (NMSettingWired *setting);
 const char *             nm_setting_wired_get_wake_on_lan_password (NMSettingWired *setting);
+
+NM_AVAILABLE_IN_1_10
+guint32           nm_setting_wired_get_num_vfs (NMSettingWired *setting);
 
 G_END_DECLS
 
