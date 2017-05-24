@@ -1462,6 +1462,13 @@ nm_setting_wired_class_init (NMSettingWiredClass *setting_wired_class)
 	 *
 	 * Since: 1.10
 	 **/
+	/* ---ifcfg-rh---
+	 * property: num-vfs
+	 * variable: NUM_VFS
+	 * description: Number of virtual functions for a SR-IOV capable hardware.
+	 * example: NUM_VFS=4
+	 * ---end---
+	 */
 	g_object_class_install_property
 		(object_class, PROP_NUM_VFS,
 		 g_param_spec_int (NM_SETTING_WIRED_NUM_VFS, "", "",

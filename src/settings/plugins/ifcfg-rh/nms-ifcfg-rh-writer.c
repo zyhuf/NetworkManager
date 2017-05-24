@@ -991,6 +991,7 @@ write_wired_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 	gboolean auto_negotiate;
 	NMSettingWiredWakeOnLan wol;
 	const char *wol_password;
+	gint32 num_vfs;
 
 	s_wired = nm_connection_get_setting_wired (connection);
 	if (!s_wired) {
@@ -1138,6 +1139,12 @@ write_wired_setting (NMConnection *connection, shvarFile *ifcfg, GError **error)
 		g_string_free (str, TRUE);
 	}
 	/* End ETHTOOL_OPT stuffing */
+
+	num_vfs = nm_setting_wired_get_num_vfs (s_wired);
+	if (num_vfs == -1)
+		svUnsetValue (ifcfg, "NUM_VFS");
+	else
+		svSetValueInt64 (ifcfg, "NUM_VFS", num_vfs);
 
 	svSetValueStr (ifcfg, "TYPE", TYPE_ETHERNET);
 

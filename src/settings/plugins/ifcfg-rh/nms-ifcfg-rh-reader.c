@@ -4198,6 +4198,11 @@ make_wired_setting (shvarFile *ifcfg,
 	                       svGetValue (ifcfg, "ETHTOOL_OPTS", &value));
 	nm_clear_g_free (&value);
 
+	g_object_set (s_wired,
+	              NM_SETTING_WIRED_NUM_VFS,
+	              (gint) svGetValueInt64 (ifcfg, "NUM_VFS", 10, -1, G_MAXINT32, -1),
+	              NULL);
+
 	return (NMSetting *) g_steal_pointer (&s_wired);
 }
 
