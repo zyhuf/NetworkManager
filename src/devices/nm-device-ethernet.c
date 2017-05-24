@@ -879,15 +879,32 @@ act_stage1_prepare (NMDevice *dev, NMDeviceStateReason *out_failure_reason)
 {
 	NMDeviceEthernet *self = NM_DEVICE_ETHERNET (dev);
 	NMDeviceEthernetPrivate *priv = NM_DEVICE_ETHERNET_GET_PRIVATE (self);
+	NMConnection *connection;
+	NMSettingWired *s_wired;
+	guint32 num_vfs = -1;
 	NMActStageReturn ret;
 
 	ret = NM_DEVICE_CLASS (nm_device_ethernet_parent_class)->act_stage1_prepare (dev, out_failure_reason);
 	if (ret != NM_ACT_STAGE_RETURN_SUCCESS)
 		return ret;
 
+	connection = nm_device_get_applied_connection (NM_DEVICE (self));
+	g_return_val_if_fail (connection, NM_ACT_STAGE_RETURN_FAILURE);
+
+	s_wired = nm_connection_get_setting_wired (connection);
+	if (s_wired)
+		num_vfs = nm_setting_wired_get_num_vfs (s_wired);
+	if (num_vfs != -1) {
+		if (!nm_platform_link_set_sriov_num_vfs (nm_device_get_platform (dev),
+		                                         nm_device_get_ifindex (dev),
+		                                         num_vfs)) {
+			return NM_ACT_STAGE_RETURN_FAILURE;
+		}
+	}
+
 	link_negotiation_set (dev);
 
-	if (!nm_device_hw_addr_set_cloned (dev, nm_device_get_applied_connection (dev), FALSE))
+	if (!nm_device_hw_addr_set_cloned (dev, connection, FALSE))
 		return NM_ACT_STAGE_RETURN_FAILURE;
 
 	/* If we're re-activating a PPPoE connection a short while after
@@ -899,7 +916,7 @@ act_stage1_prepare (NMDevice *dev, NMDeviceStateReason *out_failure_reason)
 		gint32 delay = nm_utils_get_monotonic_timestamp_s () - priv->last_pppoe_time;
 
 		if (   delay < PPPOE_RECONNECT_DELAY
-		    && nm_device_get_applied_setting (dev, NM_TYPE_SETTING_PPPOE)) {
+		    && nm_connection_get_setting_pppoe (connection)) {
 			_LOGI (LOGD_DEVICE, "delaying PPPoE reconnect for %d seconds to ensure peer is ready...",
 			       delay);
 			g_assert (!priv->pppoe_wait_id);
