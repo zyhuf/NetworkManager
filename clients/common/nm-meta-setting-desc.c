@@ -6304,6 +6304,9 @@ static const NMMetaPropertyInfo *const property_infos_WIRED[] = {
 	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRED_WAKE_ON_LAN_PASSWORD,
 		.property_type =                &_pt_gobject_mac,
 	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_WIRED_NUM_VFS,
+		.property_type =                &_pt_gobject_int,
+	),
 	NULL
 };
 
