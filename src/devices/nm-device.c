@@ -10840,6 +10840,10 @@ device_ipx_changed (NMPlatform *platform,
 
 	priv = NM_DEVICE_GET_PRIVATE (self);
 
+	/* don't update the state of removed devices */
+	if (priv->sys_iface_state == NM_DEVICE_SYS_IFACE_STATE_REMOVED)
+		return;
+
 	switch (obj_type) {
 	case NMP_OBJECT_TYPE_IP4_ADDRESS:
 	case NMP_OBJECT_TYPE_IP4_ROUTE:
