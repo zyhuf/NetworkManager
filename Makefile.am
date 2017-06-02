@@ -1427,6 +1427,8 @@ src_libNetworkManager_la_SOURCES = \
 	src/settings/nm-agent-manager.h \
 	src/settings/nm-inotify-helper.c \
 	src/settings/nm-inotify-helper.h \
+	src/settings/nm-agent.c \
+	src/settings/nm-agent.h \
 	src/settings/nm-secret-agent.c \
 	src/settings/nm-secret-agent.h \
 	src/settings/nm-settings-connection.c \
