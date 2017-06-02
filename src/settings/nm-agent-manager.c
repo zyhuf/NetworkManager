@@ -29,6 +29,7 @@
 #include "nm-dbus-interface.h"
 #include "nm-agent.h"
 #include "nm-secret-agent.h"
+#include "nm-sd-password-agent.h"
 #include "nm-auth-utils.h"
 #include "nm-setting-vpn.h"
 #include "nm-auth-manager.h"
@@ -421,7 +422,7 @@ impl_agent_manager_register_with_capabilities (NMAgentManager *self,
 		                             "Failed to initialize the agent");
 		goto done;
 	}
-	g_signal_connect (agent, NM_SECRET_AGENT_DISCONNECTED,
+	g_signal_connect (agent, NM_AGENT_DISCONNECTED,
 	                  G_CALLBACK (agent_disconnected_cb), self);
 
 	_LOGD (agent, "requesting permissions");
@@ -1558,9 +1559,13 @@ static void
 nm_agent_manager_init (NMAgentManager *self)
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
+	NMSdPasswordAgent *sd_agent;
 
 	c_list_init (&priv->requests);
 	priv->agents = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+
+	sd_agent = nm_sd_password_agent_new ();
+	g_hash_table_insert (priv->agents, g_strdup (nm_agent_get_dbus_owner (NM_AGENT (sd_agent))), sd_agent);
 }
 
 static void
