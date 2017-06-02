@@ -4193,6 +4193,43 @@ nm_utils_get_reverse_dns_domains_ip6 (const struct in6_addr *ip, guint8 plen, GP
 #undef N_SHIFT
 }
 
+gboolean
+nm_utils_fd_set_contents (int fd,
+                          const gchar *contents,
+                          gssize length,
+                          GError **error)
+{
+	int errsv;
+	gssize s;
+
+	g_return_val_if_fail (fd, FALSE);
+	g_return_val_if_fail (contents || !length, FALSE);
+	g_return_val_if_fail (!error || !*error, FALSE);
+	g_return_val_if_fail (length >= -1, FALSE);
+
+	while (length > 0) {
+		s = write (fd, contents, length);
+		if (s < 0) {
+			errsv = errno;
+			if (errsv == EINTR)
+				continue;
+
+			g_set_error_literal (error,
+			                     G_FILE_ERROR,
+			                     g_file_error_from_errno (errsv),
+			                     g_strerror (errsv));
+			return FALSE;
+		}
+
+		g_assert (s <= length);
+
+		contents += s;
+		length -= s;
+	}
+
+	return TRUE;
+}
+
 /**
  * Copied from GLib's g_file_set_contents() et al., but allows
  * specifying a mode for the new file.
@@ -4207,7 +4244,6 @@ nm_utils_file_set_contents (const gchar *filename,
 	gs_free char *tmp_name = NULL;
 	struct stat statbuf;
 	int errsv;
-	gssize s;
 	int fd;
 
 	g_return_val_if_fail (filename, FALSE);
@@ -4231,29 +4267,11 @@ nm_utils_file_set_contents (const gchar *filename,
 		return FALSE;
 	}
 
-	while (length > 0) {
-		s = write (fd, contents, length);
-		if (s < 0) {
-			errsv = errno;
-			if (errsv == EINTR)
-				continue;
-
-			close (fd);
-			unlink (tmp_name);
-
-			g_set_error (error,
-			             G_FILE_ERROR,
-			             g_file_error_from_errno (errsv),
-			             "failed to write to file %s: %s",
-			             tmp_name,
-			             g_strerror (errsv));
-			return FALSE;
-		}
-
-		g_assert (s <= length);
-
-		contents += s;
-		length -= s;
+	if (!nm_utils_fd_set_contents (fd, contents, length, error)) {
+		g_prefix_error (error, "failed to write to file %s: ", tmp_name);
+		close (fd);
+		unlink (tmp_name);
+		return FALSE;
 	}
 
 	/* If the final destination exists and is > 0 bytes, we want to sync the

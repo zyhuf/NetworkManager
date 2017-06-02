@@ -289,6 +289,11 @@ int nm_utils_file_get_contents (int dirfd,
                                 gsize *length,
                                 GError **error);
 
+gboolean nm_utils_fd_set_contents (int fd,
+                                   const gchar *contents,
+                                   gssize length,
+                                   GError **error);
+
 gboolean nm_utils_file_set_contents (const gchar *filename,
                                      const gchar *contents,
                                      gssize length,
