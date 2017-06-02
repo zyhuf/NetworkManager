@@ -411,9 +411,9 @@ nm_settings_connection_check_permission (NMSettingsConnection *self,
 		 * either.
 		 */
 		if (nm_setting_connection_get_permission (s_con, i, NULL, &puser, NULL)) {
-			NMSecretAgent *agent = nm_agent_manager_get_agent_by_user (priv->agent_mgr, puser);
+			NMAgent *agent = nm_agent_manager_get_agent_by_user (priv->agent_mgr, puser);
 
-			if (agent && nm_secret_agent_has_permission (agent, permission))
+			if (agent && nm_agent_has_permission (agent, permission))
 				return TRUE;
 		}
 	}

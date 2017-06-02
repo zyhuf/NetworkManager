@@ -197,7 +197,6 @@ typedef enum {
 
 /* settings */
 typedef struct _NMAgentManager       NMAgentManager;
-typedef struct _NMSecretAgent        NMSecretAgent;
 typedef struct _NMSettings           NMSettings;
 typedef struct _NMSettingsConnection NMSettingsConnection;
 

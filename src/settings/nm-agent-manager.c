@@ -15,7 +15,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2010 - 2013 Red Hat, Inc.
+ * Copyright (C) 2010 - 2017 Red Hat, Inc.
  */
 
 #include "nm-default.h"
@@ -27,6 +27,7 @@
 
 #include "nm-common-macros.h"
 #include "nm-dbus-interface.h"
+#include "nm-agent.h"
 #include "nm-secret-agent.h"
 #include "nm-auth-utils.h"
 #include "nm-setting-vpn.h"
@@ -90,7 +91,7 @@ NM_DEFINE_SINGLETON_GETTER (NMAgentManager, nm_agent_manager_get, NM_TYPE_AGENT_
         if (nm_logging_enabled ((level), (_NMLOG_DOMAIN))) { \
             char __prefix1[32]; \
             char __prefix2[128]; \
-            NMSecretAgent *__agent = (agent); \
+            NMAgent *__agent = (agent); \
             \
             if (!(self)) \
                 g_snprintf (__prefix1, sizeof (__prefix1), "%s%s", ""_NMLOG_PREFIX_NAME"", "[]"); \
@@ -102,7 +103,7 @@ NM_DEFINE_SINGLETON_GETTER (NMAgentManager, nm_agent_manager_get, NM_TYPE_AGENT_
                 g_snprintf (__prefix2, sizeof (__prefix2), \
                             ": req[%p, %s]", \
                             __agent, \
-                            nm_secret_agent_get_description (__agent)); \
+                            nm_agent_get_description (__agent)); \
             } else \
                 __prefix2[0] = '\0'; \
             _nm_log ((level), (_NMLOG_DOMAIN), 0, NULL, NULL, \
@@ -123,9 +124,9 @@ NM_DEFINE_SINGLETON_GETTER (NMAgentManager, nm_agent_manager_get, NM_TYPE_AGENT_
 
 typedef struct _NMAgentManagerCallId Request;
 
-static void request_add_agent (Request *req, NMSecretAgent *agent);
+static void request_add_agent (Request *req, NMAgent *agent);
 
-static void request_remove_agent (Request *req, NMSecretAgent *agent);
+static void request_remove_agent (Request *req, NMAgent *agent);
 
 static void request_next_agent (Request *req);
 
@@ -169,10 +170,10 @@ struct _NMAgentManagerCallId {
 	NMAuthSubject *subject;
 
 	/* Current agent being asked for secrets */
-	NMSecretAgent *current;
-	NMSecretAgentCallId current_call_id;
+	NMAgent *current;
+	NMAgentCallId current_call_id;
 
-	/* Stores the sorted list of NMSecretAgents which will be asked for secrets */
+	/* Stores the sorted list of NMAgents which will be asked for secrets */
 	GSList *pending;
 
 	guint idle_id;
@@ -211,7 +212,7 @@ static gboolean
 remove_agent (NMAgentManager *self, const char *owner)
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
-	NMSecretAgent *agent;
+	NMAgent *agent;
 	CList *iter, *safe;
 
 	g_return_val_if_fail (owner != NULL, FALSE);
@@ -234,13 +235,13 @@ remove_agent (NMAgentManager *self, const char *owner)
 
 /* Call this *after* calling request_next_agent() */
 static void
-maybe_remove_agent_on_error (NMSecretAgent *agent,
+maybe_remove_agent_on_error (NMAgent *agent,
                              GError *error)
 {
 	if (   g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CLOSED)
 	    || g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_DISCONNECTED)
 	    || g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_NAME_HAS_NO_OWNER))
-		remove_agent (nm_agent_manager_get (), nm_secret_agent_get_dbus_owner (agent));
+		remove_agent (nm_agent_manager_get (), nm_agent_get_dbus_owner (agent));
 }
 
 /*****************************************************************************/
@@ -308,7 +309,7 @@ agent_register_permissions_done (NMAuthChain *chain,
 {
 	NMAgentManager *self = NM_AGENT_MANAGER (user_data);
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
-	NMSecretAgent *agent;
+	NMAgent *agent;
 	const char *sender;
 	GError *local = NULL;
 	NMAuthCallResult result;
@@ -330,13 +331,13 @@ agent_register_permissions_done (NMAuthChain *chain,
 
 		result = nm_auth_chain_get_result (chain, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED);
 		if (result == NM_AUTH_CALL_RESULT_YES)
-			nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, TRUE);
+			nm_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, TRUE);
 
 		result = nm_auth_chain_get_result (chain, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN);
 		if (result == NM_AUTH_CALL_RESULT_YES)
-			nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, TRUE);
+			nm_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, TRUE);
 
-		sender = nm_secret_agent_get_dbus_owner (agent);
+		sender = nm_agent_get_dbus_owner (agent);
 		g_hash_table_insert (priv->agents, g_strdup (sender), agent);
 		_LOGD (agent, "agent registered");
 		g_dbus_method_invocation_return_value (context, NULL);
@@ -352,30 +353,30 @@ agent_register_permissions_done (NMAuthChain *chain,
 	nm_auth_chain_unref (chain);
 }
 
-static NMSecretAgent *
+static NMAgent *
 find_agent_by_identifier_and_uid (NMAgentManager *self,
                                   const char *identifier,
                                   gulong sender_uid)
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
 	GHashTableIter iter;
-	NMSecretAgent *agent;
+	NMAgent *agent;
 
 	g_hash_table_iter_init (&iter, priv->agents);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer) &agent)) {
-		if (   g_strcmp0 (nm_secret_agent_get_identifier (agent), identifier) == 0
-		    && nm_secret_agent_get_owner_uid (agent) == sender_uid)
+		if (   g_strcmp0 (nm_agent_get_identifier (agent), identifier) == 0
+		    && nm_agent_get_owner_uid (agent) == sender_uid)
 			return agent;
 	}
 	return NULL;
 }
 
 static void
-agent_disconnected_cb (NMSecretAgent *agent, gpointer user_data)
+agent_disconnected_cb (NMAgent *agent, gpointer user_data)
 {
 	/* The agent quit, so remove it and let interested clients know */
 	remove_agent (NM_AGENT_MANAGER (user_data),
-	              nm_secret_agent_get_dbus_owner (agent));
+	              nm_agent_get_dbus_owner (agent));
 }
 
 static void
@@ -388,7 +389,7 @@ impl_agent_manager_register_with_capabilities (NMAgentManager *self,
 	NMAuthSubject *subject;
 	gulong sender_uid = G_MAXULONG;
 	GError *error = NULL;
-	NMSecretAgent *agent;
+	NMAgent *agent;
 	NMAuthChain *chain;
 
 	subject = nm_auth_subject_new_unix_process_from_context (context);
@@ -413,7 +414,7 @@ impl_agent_manager_register_with_capabilities (NMAgentManager *self,
 	}
 
 	/* Success, add the new agent */
-	agent = nm_secret_agent_new (context, subject, identifier, capabilities);
+	agent = NM_AGENT (nm_secret_agent_new (context, subject, identifier, capabilities));
 	if (!agent) {
 		error = g_error_new_literal (NM_AGENT_MANAGER_ERROR,
 		                             NM_AGENT_MANAGER_ERROR_FAILED,
@@ -536,7 +537,7 @@ request_free (Request *req)
 		/* cancel-secrets invokes the done-callback synchronously -- in which case
 		 * the handler just return.
 		 * Hence, we can proceed to free @req... */
-		nm_secret_agent_cancel_secrets (req->current, req->current_call_id);
+		nm_agent_cancel_secrets (req->current, req->current_call_id);
 	}
 
 	g_object_unref (req->subject);
@@ -623,8 +624,8 @@ req_complete_error (Request *req, GError *error)
 static gint
 agent_compare_func (gconstpointer aa, gconstpointer bb, gpointer user_data)
 {
-	NMSecretAgent *a = (NMSecretAgent *)aa;
-	NMSecretAgent *b = (NMSecretAgent *)bb;
+	NMAgent *a = (NMAgent *)aa;
+	NMAgent *b = (NMAgent *)bb;
 	Request *req = user_data;
 	NMSessionMonitor *sm;
 	gboolean a_active, b_active;
@@ -633,8 +634,8 @@ agent_compare_func (gconstpointer aa, gconstpointer bb, gpointer user_data)
 	/* Prefer agents in the process the request came from */
 	if (nm_auth_subject_is_unix_process (req->subject)) {
 		requester = nm_auth_subject_get_unix_process_pid (req->subject);
-		a_pid = nm_secret_agent_get_pid (a);
-		b_pid = nm_secret_agent_get_pid (b);
+		a_pid = nm_agent_get_pid (a);
+		b_pid = nm_agent_get_pid (b);
 
 		if (a_pid != b_pid) {
 			if (a_pid == requester)
@@ -646,8 +647,8 @@ agent_compare_func (gconstpointer aa, gconstpointer bb, gpointer user_data)
 
 	/* Prefer agents in active sessions */
 	sm = NM_AGENT_MANAGER_GET_PRIVATE (req->self)->session_monitor;
-	a_active = nm_session_monitor_session_exists (sm, nm_secret_agent_get_owner_uid (a), TRUE);
-	b_active = nm_session_monitor_session_exists (sm, nm_secret_agent_get_owner_uid (b), TRUE);
+	a_active = nm_session_monitor_session_exists (sm, nm_agent_get_owner_uid (a), TRUE);
+	b_active = nm_session_monitor_session_exists (sm, nm_agent_get_owner_uid (b), TRUE);
 	if (a_active && !b_active)
 		return -1;
 	else if (a_active == b_active)
@@ -659,7 +660,7 @@ agent_compare_func (gconstpointer aa, gconstpointer bb, gpointer user_data)
 }
 
 static void
-request_add_agent (Request *req, NMSecretAgent *agent)
+request_add_agent (Request *req, NMAgent *agent)
 {
 	NMAgentManager *self;
 
@@ -669,7 +670,7 @@ request_add_agent (Request *req, NMSecretAgent *agent)
 	self = req->self;
 
 	if (req->request_type == REQUEST_TYPE_CON_GET) {
-		NMAuthSubject *subject = nm_secret_agent_get_subject (agent);
+		NMAuthSubject *subject = nm_agent_get_subject (agent);
 
 		/* Ensure the caller's username exists in the connection's permissions,
 		 * or that the permissions is empty (ie, visible by everyone).
@@ -686,7 +687,7 @@ request_add_agent (Request *req, NMSecretAgent *agent)
 	if (nm_auth_subject_is_unix_process (req->subject)) {
 		uid_t agent_uid, subject_uid;
 
-		agent_uid = nm_secret_agent_get_owner_uid (agent);
+		agent_uid = nm_agent_get_owner_uid (agent);
 		subject_uid = nm_auth_subject_get_unix_process_uid (req->subject);
 		if (agent_uid != subject_uid) {
 			_LOGD (agent, "agent ignored for secrets request "LOG_REQ_FMT" "
@@ -716,7 +717,7 @@ request_add_agents (NMAgentManager *self, Request *req)
 
 	g_hash_table_iter_init (&iter, priv->agents);
 	while (g_hash_table_iter_next (&iter, NULL, &data))
-		request_add_agent (req, NM_SECRET_AGENT (data));
+		request_add_agent (req, NM_AGENT (data));
 }
 
 static void
@@ -729,7 +730,7 @@ request_next_agent (Request *req)
 
 	if (req->current) {
 		if (req->current_call_id)
-			nm_secret_agent_cancel_secrets (req->current, req->current_call_id);
+			nm_agent_cancel_secrets (req->current, req->current_call_id);
 		g_clear_object (&req->current);
 	}
 	nm_assert (!req->current_call_id);
@@ -767,7 +768,7 @@ request_next_agent (Request *req)
 }
 
 static void
-request_remove_agent (Request *req, NMSecretAgent *agent)
+request_remove_agent (Request *req, NMAgent *agent)
 {
 	NMAgentManager *self;
 
@@ -831,8 +832,8 @@ out:
 /*****************************************************************************/
 
 static void
-_con_get_request_done (NMSecretAgent *agent,
-                       NMSecretAgentCallId call_id,
+_con_get_request_done (NMAgent *agent,
+                       NMAgentCallId call_id,
                        GVariant *secrets,
                        GError *error,
                        gpointer user_data)
@@ -872,7 +873,7 @@ _con_get_request_done (NMSecretAgent *agent,
 		} else {
 			if (req->current_call_id) {
 				/* Tell the failed agent we're no longer interested. */
-				nm_secret_agent_cancel_secrets (req->current, req->current_call_id);
+				nm_agent_cancel_secrets (req->current, req->current_call_id);
 			}
 
 			/* Try the next agent */
@@ -896,14 +897,14 @@ _con_get_request_done (NMSecretAgent *agent,
 	       LOG_REQ_ARG (req));
 
 	/* Get the agent's username */
-	pw = getpwuid (nm_secret_agent_get_owner_uid (agent));
+	pw = getpwuid (nm_agent_get_owner_uid (agent));
 	if (pw && strlen (pw->pw_name)) {
 		/* Needs to be UTF-8 valid since it may be pushed through D-Bus */
 		if (g_utf8_validate (pw->pw_name, -1, NULL))
 			agent_uname = g_strdup (pw->pw_name);
 	}
 
-	agent_dbus_owner = nm_secret_agent_get_dbus_owner (agent);
+	agent_dbus_owner = nm_agent_get_dbus_owner (agent);
 	req_complete (req, secrets, agent_dbus_owner, agent_uname, NULL);
 	g_free (agent_uname);
 }
@@ -970,7 +971,7 @@ _con_get_request_start_proceed (Request *req, gboolean include_system_secrets)
 			set_secrets_not_required (tmp, req->con.get.existing_secrets);
 	}
 
-	req->current_call_id = nm_secret_agent_get_secrets (req->current,
+	req->current_call_id = nm_agent_get_secrets (req->current,
 	                                                    req->con.path,
 	                                                    tmp,
 	                                                    req->con.get.setting_name,
@@ -1082,7 +1083,7 @@ _con_get_request_start (Request *req)
 
 	req->con.current_has_modify = FALSE;
 
-	agent_dbus_owner = nm_secret_agent_get_dbus_owner (req->current);
+	agent_dbus_owner = nm_agent_get_dbus_owner (req->current);
 
 	/* If the request flags allow user interaction, and there are existing
 	 * system secrets (or blank secrets that are supposed to be system-owned),
@@ -1095,7 +1096,7 @@ _con_get_request_start (Request *req)
 		_LOGD (NULL, "("LOG_REQ_FMT") request has system secrets; checking agent %s for MODIFY",
 		       LOG_REQ_ARG (req), agent_dbus_owner);
 
-		req->con.chain = nm_auth_chain_new_subject (nm_secret_agent_get_subject (req->current),
+		req->con.chain = nm_auth_chain_new_subject (nm_agent_get_subject (req->current),
 		                                            NULL,
 		                                            _con_get_request_start_validated,
 		                                            req);
@@ -1275,8 +1276,8 @@ nm_agent_manager_cancel_secrets (NMAgentManager *self,
 /*****************************************************************************/
 
 static void
-_con_save_request_done (NMSecretAgent *agent,
-                        NMSecretAgentCallId call_id,
+_con_save_request_done (NMAgent *agent,
+                        NMAgentCallId call_id,
                         GVariant *secrets,
                         GError *error,
                         gpointer user_data)
@@ -1311,14 +1312,14 @@ _con_save_request_done (NMSecretAgent *agent,
 	_LOGD (agent, "agent saved secrets for request "LOG_REQ_FMT,
 	       LOG_REQ_ARG (req));
 
-	agent_dbus_owner = nm_secret_agent_get_dbus_owner (agent);
+	agent_dbus_owner = nm_agent_get_dbus_owner (agent);
 	req_complete (req, NULL, NULL, agent_dbus_owner, NULL);
 }
 
 static void
 _con_save_request_start (Request *req)
 {
-	req->current_call_id = nm_secret_agent_save_secrets (req->current,
+	req->current_call_id = nm_agent_save_secrets (req->current,
 	                                                     req->con.path,
 	                                                     req->con.connection,
 	                                                     _con_save_request_done,
@@ -1361,8 +1362,8 @@ nm_agent_manager_save_secrets (NMAgentManager *self,
 /*****************************************************************************/
 
 static void
-_con_del_request_done (NMSecretAgent *agent,
-                       NMSecretAgentCallId call_id,
+_con_del_request_done (NMAgent *agent,
+                       NMAgentCallId call_id,
                        GVariant *secrets,
                        GError *error,
                        gpointer user_data)
@@ -1401,7 +1402,7 @@ _con_del_request_done (NMSecretAgent *agent,
 static void
 _con_del_request_start (Request *req)
 {
-	req->current_call_id = nm_secret_agent_delete_secrets (req->current,
+	req->current_call_id = nm_agent_delete_secrets (req->current,
 	                                                       req->con.path,
 	                                                       req->con.connection,
 	                                                       _con_del_request_done,
@@ -1445,16 +1446,16 @@ nm_agent_manager_delete_secrets (NMAgentManager *self,
 
 /*****************************************************************************/
 
-NMSecretAgent *
+NMAgent *
 nm_agent_manager_get_agent_by_user (NMAgentManager *self, const char *username)
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
 	GHashTableIter iter;
-	NMSecretAgent *agent;
+	NMAgent *agent;
 
 	g_hash_table_iter_init (&iter, priv->agents);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer) &agent)) {
-		if (g_strcmp0 (nm_secret_agent_get_owner_username (agent), username) == 0)
+		if (g_strcmp0 (nm_agent_get_owner_username (agent), username) == 0)
 			return agent;
 	}
 
@@ -1470,17 +1471,17 @@ nm_agent_manager_all_agents_have_capability (NMAgentManager *manager,
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (manager);
 	GHashTableIter iter;
-	NMSecretAgent *agent;
+	NMAgent *agent;
 	gboolean subject_is_unix_process = nm_auth_subject_is_unix_process (subject);
 	gulong subject_uid = subject_is_unix_process ? nm_auth_subject_get_unix_process_uid (subject) : 0;
 
 	g_hash_table_iter_init (&iter, priv->agents);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer) &agent)) {
 		if (   subject_is_unix_process
-		    && nm_secret_agent_get_owner_uid (agent) != subject_uid)
+		    && nm_agent_get_owner_uid (agent) != subject_uid)
 			continue;
 
-		if (!(nm_secret_agent_get_capabilities (agent) & capability))
+		if (!(nm_agent_get_capabilities (agent) & capability))
 			return FALSE;
 	}
 
@@ -1497,7 +1498,7 @@ agent_permissions_changed_done (NMAuthChain *chain,
 {
 	NMAgentManager *self = NM_AGENT_MANAGER (user_data);
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
-	NMSecretAgent *agent;
+	NMAgent *agent;
 	gboolean share_protected = FALSE, share_open = FALSE;
 
 	priv->chains = g_slist_remove (priv->chains, chain);
@@ -1516,8 +1517,8 @@ agent_permissions_changed_done (NMAuthChain *chain,
 			share_open = TRUE;
 	}
 
-	nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, share_protected);
-	nm_secret_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, share_open);
+	nm_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, share_protected);
+	nm_agent_add_permission (agent, NM_AUTH_PERMISSION_WIFI_SHARE_OPEN, share_open);
 
 	nm_auth_chain_unref (chain);
 }
@@ -1527,7 +1528,7 @@ authority_changed_cb (NMAuthManager *auth_manager, NMAgentManager *self)
 {
 	NMAgentManagerPrivate *priv = NM_AGENT_MANAGER_GET_PRIVATE (self);
 	GHashTableIter iter;
-	NMSecretAgent *agent;
+	NMAgent *agent;
 
 	/* Recheck the permissions of all secret agents */
 	g_hash_table_iter_init (&iter, priv->agents);
@@ -1535,7 +1536,7 @@ authority_changed_cb (NMAuthManager *auth_manager, NMAgentManager *self)
 		NMAuthChain *chain;
 
 		/* Kick off permissions requests for this agent */
-		chain = nm_auth_chain_new_subject (nm_secret_agent_get_subject (agent),
+		chain = nm_auth_chain_new_subject (nm_agent_get_subject (agent),
 		                                   NULL,
 		                                   agent_permissions_changed_done,
 		                                   self);

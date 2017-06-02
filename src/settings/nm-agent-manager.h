@@ -76,8 +76,8 @@ void nm_agent_manager_delete_secrets (NMAgentManager *manager,
                                       const char *path,
                                       NMConnection *connection);
 
-NMSecretAgent *nm_agent_manager_get_agent_by_user (NMAgentManager *manager,
-                                                   const char *username);
+NMAgent *nm_agent_manager_get_agent_by_user (NMAgentManager *manager,
+                                             const char *username);
 
 gboolean nm_agent_manager_all_agents_have_capability (NMAgentManager *manager,
                                                       NMAuthSubject *subject,
