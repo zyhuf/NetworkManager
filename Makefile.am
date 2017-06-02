@@ -1431,6 +1431,8 @@ src_libNetworkManager_la_SOURCES = \
 	src/settings/nm-agent.h \
 	src/settings/nm-secret-agent.c \
 	src/settings/nm-secret-agent.h \
+	src/settings/nm-sd-password-agent.c \
+	src/settings/nm-sd-password-agent.h \
 	src/settings/nm-settings-connection.c \
 	src/settings/nm-settings-connection.h \
 	src/settings/nm-settings-plugin.c \
