@@ -6946,6 +6946,14 @@ check_and_add_ipv6ll_addr (NMDevice *self)
 	if (priv->nm_ipv6ll == FALSE)
 		return;
 
+	/* IPv6 address update pending: do it now as we need up-to-date state
+	 * before checking if we need a brand new linklocal IPv6 address */
+	if (priv->queued_ip6_config_id) {
+		_LOGT (LOGD_IP6, "linklocal6: align IPv6 config");
+		nm_clear_g_source (&priv->queued_ip6_config_id);
+		queued_ip6_config_change (self);
+	}
+
 	if (priv->ip6_config) {
 		n = nm_ip6_config_get_num_addresses (priv->ip6_config);
 		for (i = 0; i < n; i++) {
