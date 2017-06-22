@@ -42,6 +42,7 @@ NMConnectivity *nm_connectivity_get (void);
 const char *nm_connectivity_state_to_string (NMConnectivityState state);
 
 void                 nm_connectivity_check_async  (NMConnectivity       *self,
+                                                   int                   ifindex,
                                                    const char           *iface,
                                                    GAsyncReadyCallback   callback,
                                                    gpointer              user_data);

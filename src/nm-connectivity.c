@@ -27,6 +27,7 @@
 #include <string.h>
 #include <curl/curl.h>
 
+#include "nm-bus-manager.h"
 #include "nm-config.h"
 #include "NetworkManagerUtils.h"
 
@@ -40,6 +41,8 @@ typedef struct {
 	guint periodic_check_id;
 	CURLM *curl_mhandle;
 	guint curl_timer;
+	GDBusProxy *resolve;
+	GCancellable *init_cancellable;
 } NMConnectivityPrivate;
 
 struct _NMConnectivity {
@@ -105,8 +108,12 @@ typedef struct {
 	size_t msg_size;
 	char *msg;
 	struct curl_slist *request_headers;
+	struct curl_slist *hosts;
 	guint timeout_id;
 	char *ifspec;
+	char *host;
+	char *port;
+	GCancellable *cancellable;
 } ConCheckCbData;
 
 static void
@@ -123,8 +130,12 @@ finish_cb_data (ConCheckCbData *cb_data, NMConnectivityState new_state)
 	g_simple_async_result_complete (cb_data->simple);
 	g_object_unref (cb_data->simple);
 	curl_slist_free_all (cb_data->request_headers);
+	curl_slist_free_all (cb_data->hosts);
 	g_free (cb_data->response);
 	g_source_remove (cb_data->timeout_id);
+	g_free (cb_data->host);
+	g_free (cb_data->port);
+	nm_clear_g_cancellable (&cb_data->cancellable);
 	g_slice_free (ConCheckCbData, cb_data);
 }
 
@@ -326,8 +337,126 @@ timeout_cb (gpointer user_data)
 	return G_SOURCE_REMOVE;
 }
 
+static void
+resolve_cb (GObject *object, GAsyncResult *res, gpointer user_data)
+{
+	ConCheckCbData *cb_data = user_data;
+	NMConnectivity *self;
+	NMConnectivityPrivate *priv;
+	GVariant *result;
+	GVariant *addresses;
+	gsize no_addresses;
+	int ifindex;
+	int family;
+	GVariant *address = NULL;
+	const guchar *address_buf;
+	gsize len = 0;
+	char str[INET6_ADDRSTRLEN + 1] = { 0, };
+	char *host;
+	int i;
+	gs_free_error GError *error = NULL;
+
+	result = g_dbus_proxy_call_finish (G_DBUS_PROXY (object), res, &error);
+	if (!result) {
+		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+			return;
+		} else {
+			/* Never mind. Just let do curl do its own resolving. */
+			_LOGD ("can't resolve a name via systemd-resolved: %s", error->message);
+		}
+	}
+
+	self = NM_CONNECTIVITY (g_async_result_get_source_object (G_ASYNC_RESULT (cb_data->simple)));
+	priv = NM_CONNECTIVITY_GET_PRIVATE (self);
+
+	g_clear_object (&cb_data->cancellable);
+
+	if (result) {
+		addresses = g_variant_get_child_value (result, 0);
+		no_addresses = g_variant_n_children (addresses);
+		g_variant_unref (result);
+	} else {
+		addresses = NULL;
+		no_addresses = 0;
+	}
+
+	for (i = 0; i < no_addresses; i++) {
+		g_variant_get_child (addresses, i, "(ii@ay)", &ifindex, &family, &address);
+		address_buf = g_variant_get_fixed_array (address, &len, 1);
+
+		if (   (family == AF_INET && len == sizeof (struct in_addr))
+		    || (family == AF_INET6 && len == sizeof (struct in6_addr))) {
+			inet_ntop (family, address_buf, str, sizeof (str));
+			host = g_strdup_printf ("%s:%s:%s", cb_data->host,
+			                        cb_data->port ? cb_data->port : "80", str);
+			cb_data->hosts = curl_slist_append (cb_data->hosts, host);
+			_LOGT ("adding '%s' to curl resolve list", host);
+			g_free (host);
+		}
+
+		g_variant_unref (address);
+	}
+
+	if (addresses)
+		g_variant_unref (addresses);
+
+	curl_easy_setopt (cb_data->curl_ehandle, CURLOPT_RESOLVE, cb_data->hosts);
+	curl_multi_add_handle (priv->curl_mhandle, cb_data->curl_ehandle);
+}
+
+static gboolean
+host_and_port_from_uri (const char *uri, char **host, char **port)
+{
+	const char *p = uri;
+	const char *host_begin = NULL;
+	size_t host_len = 0;
+	const char *port_begin = NULL;
+	size_t port_len = 0;
+
+	/* scheme */
+	while (*p != ':' && *p != '/') {
+		if (!*p++)
+			return FALSE;
+	}
+
+	/* :// */
+	if (*p++ != ':')
+		return FALSE;
+	if (*p++ != '/')
+		return FALSE;
+	if (*p++ != '/')
+		return FALSE;
+	/* host */
+	if (*p == '[')
+		return FALSE;
+	host_begin = p;
+	while (*p && *p != ':' && *p != '/') {
+		host_len++;
+		p++;
+	}
+	if (host_len == 0)
+		return FALSE;
+	*host = strndup (host_begin, host_len);
+
+	/* port */
+	if (*p++ == ':') {
+		port_begin = p;
+		while (*p && *p != '/') {
+			port_len++;
+			p++;
+		}
+		if (port_len)
+			*port = strndup (port_begin, port_len);
+	}
+
+	return TRUE;
+}
+
+#define SD_RESOLVED_DNS 1
+
 void
 nm_connectivity_check_async (NMConnectivity      *self,
+                             int                  ifindex,
                              const char          *iface,
                              GAsyncReadyCallback  callback,
                              gpointer             user_data)
@@ -365,11 +494,29 @@ nm_connectivity_check_async (NMConnectivity      *self,
 		curl_easy_setopt (ehandle, CURLOPT_PRIVATE, cb_data);
 		curl_easy_setopt (ehandle, CURLOPT_HTTPHEADER, cb_data->request_headers);
 		curl_easy_setopt (ehandle, CURLOPT_INTERFACE, cb_data->ifspec);
-		curl_multi_add_handle (priv->curl_mhandle, ehandle);
+
+		if (priv->resolve && host_and_port_from_uri (priv->uri, &cb_data->host, &cb_data->port)) {
+			cb_data->cancellable = g_cancellable_new ();
+			g_dbus_proxy_call (priv->resolve,
+			                   "ResolveHostname",
+			                   g_variant_new ("(isit)",
+			                                  ifindex,
+			                                  cb_data->host,
+			                                  (gint32) AF_UNSPEC,
+			                                  (guint64) SD_RESOLVED_DNS),
+			                   G_DBUS_CALL_FLAGS_NONE,
+			                   -1,
+			                   cb_data->cancellable,
+			                   resolve_cb,
+			                   cb_data);
+			_LOG2D ("resolving '%s' for '%s' using systemd-resolved", cb_data->host, priv->uri);
+		} else {
+			/* Not using systemd-resolved -- just fire the request right away. */
+			curl_multi_add_handle (priv->curl_mhandle, cb_data->curl_ehandle);
+			_LOG2D ("sending request to '%s', not using systemd-resolved", priv->uri);
+		}
 
 		cb_data->timeout_id = g_timeout_add_seconds (30, timeout_cb, cb_data);
-
-		_LOG2D ("sending request to '%s'", priv->uri);
 		return;
 	} else {
 		_LOGD ("(%s) faking request. Connectivity check disabled", iface);
@@ -481,10 +628,43 @@ config_changed_cb (NMConfig *config,
 }
 
 static void
+resolved_proxy_created (GObject *object, GAsyncResult *res, gpointer user_data)
+{
+	NMConnectivity *self;
+	NMConnectivityPrivate *priv;
+	gs_free_error GError *error = NULL;
+	GDBusProxy *resolve;
+
+	resolve = g_dbus_proxy_new_finish (res, &error);
+	if (!resolve) {
+		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+			return;
+		} else {
+			/* Log a warning, but still proceed without systemd-resolved */
+			_LOGW ("failed to connect to resolved via DBus: %s", error->message);
+		}
+	}
+
+	self = NM_CONNECTIVITY (user_data);
+	priv = NM_CONNECTIVITY_GET_PRIVATE (self);
+	priv->resolve = resolve;
+	g_clear_object (&priv->init_cancellable);
+
+	priv->config = g_object_ref (nm_config_get ());
+	update_config (self, nm_config_get_data (priv->config));
+	g_signal_connect (G_OBJECT (priv->config),
+	                  NM_CONFIG_SIGNAL_CONFIG_CHANGED,
+	                  G_CALLBACK (config_changed_cb),
+	                  self);
+}
+
+static void
 nm_connectivity_init (NMConnectivity *self)
 {
 	NMConnectivityPrivate *priv = NM_CONNECTIVITY_GET_PRIVATE (self);
 	CURLcode retv;
+	NMBusManager *dbus_mgr;
+	GDBusConnection *connection;
 
 	retv = curl_global_init (CURL_GLOBAL_ALL);
 	if (retv == CURLE_OK)
@@ -500,14 +680,23 @@ nm_connectivity_init (NMConnectivity *self)
 		curl_multi_setopt (priv->curl_mhandle, CURLOPT_VERBOSE, 1);
 	}
 
-	priv->config = g_object_ref (nm_config_get ());
+	dbus_mgr = nm_bus_manager_get ();
+	g_return_if_fail (dbus_mgr);
 
-	update_config (self, nm_config_get_data (priv->config));
-	g_signal_connect (G_OBJECT (priv->config),
-	                  NM_CONFIG_SIGNAL_CONFIG_CHANGED,
-	                  G_CALLBACK (config_changed_cb),
+	connection = nm_bus_manager_get_connection (dbus_mgr);
+	g_return_if_fail (connection);
+
+	priv->init_cancellable = g_cancellable_new ();
+	g_dbus_proxy_new (connection,
+	                  G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES |
+	                  G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS,
+	                  NULL,
+	                  "org.freedesktop.resolve1",
+	                  "/org/freedesktop/resolve1",
+	                  "org.freedesktop.resolve1.Manager",
+	                  priv->init_cancellable,
+	                  resolved_proxy_created,
 	                  self);
-
 }
 
 static void
@@ -527,6 +716,8 @@ dispose (GObject *object)
 	curl_multi_cleanup (priv->curl_mhandle);
 	curl_global_cleanup ();
 	nm_clear_g_source (&priv->periodic_check_id);
+	nm_clear_g_cancellable (&priv->init_cancellable);
+	g_clear_object (&priv->resolve);
 
 	G_OBJECT_CLASS (nm_connectivity_parent_class)->dispose (object);
 }
