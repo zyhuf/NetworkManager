@@ -217,8 +217,10 @@ nm_config_data_get_value_boolean (const NMConfigData *self, const char *group, c
 	return value;
 }
 
-char **
-nm_config_data_get_plugins (const NMConfigData *self, gboolean allow_default)
+static char **
+get_string_list (const NMConfigData *self,
+                 const char *group, const char *key, const char *dfl,
+                 gboolean allow_default)
 {
 	const NMConfigDataPrivate *priv;
 	char **list;
@@ -227,15 +229,22 @@ nm_config_data_get_plugins (const NMConfigData *self, gboolean allow_default)
 
 	priv = NM_CONFIG_DATA_GET_PRIVATE (self);
 
-	list = g_key_file_get_string_list (priv->keyfile, NM_CONFIG_KEYFILE_GROUP_MAIN, "plugins", NULL, NULL);
+	list = g_key_file_get_string_list (priv->keyfile, group, key, NULL, NULL);
 	if (!list && allow_default) {
 		gs_unref_keyfile GKeyFile *kf = nm_config_create_keyfile ();
 
 		/* let keyfile split the default string according to it's own escaping rules. */
-		g_key_file_set_value (kf, NM_CONFIG_KEYFILE_GROUP_MAIN, "plugins", NM_CONFIG_DEFAULT_MAIN_PLUGINS);
-		list = g_key_file_get_string_list (kf, NM_CONFIG_KEYFILE_GROUP_MAIN, "plugins", NULL, NULL);
+		g_key_file_set_value (kf, group, key, dfl);
+		list = g_key_file_get_string_list (kf, group, key, NULL, NULL);
 	}
 	return _nm_utils_strv_cleanup (list, TRUE, TRUE, TRUE);
+}
+
+char **
+nm_config_data_get_plugins (const NMConfigData *self, gboolean allow_default)
+{
+	return get_string_list (self, NM_CONFIG_KEYFILE_GROUP_MAIN, "plugins",
+	                        NM_CONFIG_DEFAULT_MAIN_PLUGINS, allow_default);
 }
 
 const char *
@@ -283,12 +292,11 @@ nm_config_data_get_no_auto_default_for_device (const NMConfigData *self, NMDevic
 	       || nm_device_spec_match_list (device, priv->no_auto_default.specs_config);
 }
 
-const char *
+char **
 nm_config_data_get_dns_mode (const NMConfigData *self)
 {
-	g_return_val_if_fail (self, NULL);
-
-	return NM_CONFIG_DATA_GET_PRIVATE (self)->dns_mode;
+	return get_string_list (self, NM_CONFIG_KEYFILE_GROUP_MAIN, "dns",
+	                        NM_CONFIG_DEFAULT_MAIN_DNS, TRUE);
 }
 
 const char *
@@ -574,6 +582,7 @@ static const struct {
 	const char *value;
 } default_values[] = {
 	{ NM_CONFIG_KEYFILE_GROUP_MAIN,    "plugins",                              NM_CONFIG_DEFAULT_MAIN_PLUGINS },
+	{ NM_CONFIG_KEYFILE_GROUP_MAIN,    "dns",                                  NM_CONFIG_DEFAULT_MAIN_DNS },
 	{ NM_CONFIG_KEYFILE_GROUP_MAIN,    "rc-manager",                           NM_CONFIG_DEFAULT_MAIN_RC_MANAGER },
 	{ NM_CONFIG_KEYFILE_GROUP_MAIN,    NM_CONFIG_KEYFILE_KEY_MAIN_AUTH_POLKIT, NM_CONFIG_DEFAULT_MAIN_AUTH_POLKIT },
 	{ NM_CONFIG_KEYFILE_GROUP_MAIN,    NM_CONFIG_KEYFILE_KEY_MAIN_DHCP,        NM_CONFIG_DEFAULT_MAIN_DHCP },
@@ -1363,6 +1372,8 @@ nm_config_data_diff (NMConfigData *old_data, NMConfigData *new_data)
 {
 	NMConfigChangeFlags changes = NM_CONFIG_CHANGE_NONE;
 	NMConfigDataPrivate *priv_old, *priv_new;
+	gs_strfreev char **dns_mode_old = NULL;
+	gs_strfreev char **dns_mode_new = NULL;
 
 	g_return_val_if_fail (NM_IS_CONFIG_DATA (old_data), NM_CONFIG_CHANGE_NONE);
 	g_return_val_if_fail (NM_IS_CONFIG_DATA (new_data), NM_CONFIG_CHANGE_NONE);
@@ -1389,7 +1400,9 @@ nm_config_data_diff (NMConfigData *old_data, NMConfigData *new_data)
 	    || !_slist_str_equals (priv_old->no_auto_default.specs_config, priv_new->no_auto_default.specs_config))
 		changes |= NM_CONFIG_CHANGE_NO_AUTO_DEFAULT;
 
-	if (g_strcmp0 (nm_config_data_get_dns_mode (old_data), nm_config_data_get_dns_mode (new_data)))
+	dns_mode_old = nm_config_data_get_dns_mode (old_data);
+	dns_mode_new = nm_config_data_get_dns_mode (new_data);
+	if (!_nm_utils_strv_equal (dns_mode_old, dns_mode_new))
 		changes |= NM_CONFIG_CHANGE_DNS_MODE;
 
 	if (g_strcmp0 (nm_config_data_get_rc_manager (old_data), nm_config_data_get_rc_manager (new_data)))

@@ -636,6 +636,7 @@ _setting_is_string_list (const char *group, const char *key)
 {
 	return    _IS (NM_CONFIG_KEYFILE_GROUP_MAIN, "plugins")
 	       || _IS (NM_CONFIG_KEYFILE_GROUP_MAIN, NM_CONFIG_KEYFILE_KEY_MAIN_DEBUG)
+	       || _IS (NM_CONFIG_KEYFILE_GROUP_MAIN, "dns")
 	       || _IS (NM_CONFIG_KEYFILE_GROUP_LOGGING, "domains")
 	       || g_str_has_prefix (group, NM_CONFIG_KEYFILE_GROUPPREFIX_TEST_APPEND_STRINGLIST);
 #undef _IS

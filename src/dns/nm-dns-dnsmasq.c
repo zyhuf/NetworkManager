@@ -552,7 +552,7 @@ start_dnsmasq (NMDnsDnsmasq *self)
 	                  self);
 }
 
-static gboolean
+static void
 update (NMDnsPlugin *plugin,
         const GPtrArray *configs,
         const NMGlobalDnsConfig *global_config,
@@ -585,8 +585,6 @@ update (NMDnsPlugin *plugin,
 	priv->set_server_ex_args = g_variant_ref_sink (g_variant_new ("(aas)", &servers));
 
 	send_dnsmasq_update (self);
-
-	return TRUE;
 }
 
 /*****************************************************************************/

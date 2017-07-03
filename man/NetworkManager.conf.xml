@@ -309,24 +309,15 @@ no-auto-default=*
       </varlistentry>
       <varlistentry>
         <term><varname>dns</varname></term>
-        <listitem><para>Set the DNS (<filename>resolv.conf</filename>) processing mode.
-        If the key is unspecified, <literal>default</literal> is used,
-        unless <filename>/etc/resolv.conf</filename> is a symlink to
-        <filename>/run/systemd/resolve/resolv.conf</filename>,
-        <filename>/lib/systemd/resolv.conf</filename> or
-        <filename>/usr/lib/systemd/resolv.conf</filename>.
-        In that case, <literal>systemd-resolved</literal> is chosen automatically.
-        </para>
-        <para><literal>default</literal>: NetworkManager will update
-        <filename>/etc/resolv.conf</filename> to reflect the nameservers
-        provided by currently active connections.</para>
+        <listitem><para>Set the list of DNS (<filename>resolv.conf</filename>) handlers.
+        The available options are:</para>
+        <para><literal>default</literal>: NetworkManager will update the resolver
+        to use the nameservers provided by currently active connections.</para>
         <para><literal>dnsmasq</literal>: NetworkManager will run
         dnsmasq as a local caching nameserver, using a "split DNS"
-        configuration if you are connected to a VPN, and then update
-        <filename>resolv.conf</filename> to point to the local
-        nameserver. It is possible to pass custom options to the
-        dnsmasq instance by adding them to files in the
-        "<filename>&sysconfdir;/NetworkManager/dnsmasq.d/</filename>"
+        configuration if you are connected to a VPN. It is possible to pass custom
+        options to the dnsmasq instance by adding them to files in the
+        <filename>&sysconfdir;/NetworkManager/dnsmasq.d/</filename>
         directory. Note that when multiple upstream servers are
         available, dnsmasq will initially contact them in parallel and
         then use the fastest to respond, probing again other servers
@@ -342,6 +333,11 @@ no-auto-default=*
         <para><literal>none</literal>: NetworkManager will not
         modify resolv.conf. This implies
         <literal>rc-manager</literal>&nbsp;<literal>unmanaged</literal></para>
+        <para>If the first or only entry in the list is a local caching DNS forwarder,
+        the resolver will be configured to use it. If the key is unspecified,
+        <literal>default,systemd-resolved</literal> is used, which means that the resolver
+        will be configured to use the discovered DNS servers directly, while
+        systemd-resolved will be updated as well if it is available.</para>
         </listitem>
       </varlistentry>
 

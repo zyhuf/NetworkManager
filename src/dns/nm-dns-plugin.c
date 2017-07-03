@@ -82,7 +82,7 @@ G_DEFINE_TYPE_EXTENDED (NMDnsPlugin, nm_dns_plugin, G_TYPE_OBJECT, G_TYPE_FLAG_A
 
 /*****************************************************************************/
 
-gboolean
+void
 nm_dns_plugin_update (NMDnsPlugin *self,
                       const GPtrArray *configs,
                       const NMGlobalDnsConfig *global_config,
@@ -90,14 +90,14 @@ nm_dns_plugin_update (NMDnsPlugin *self,
 {
 	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
 
-	g_return_val_if_fail (NM_DNS_PLUGIN_GET_CLASS (self)->update != NULL, FALSE);
+	g_return_if_fail (NM_DNS_PLUGIN_GET_CLASS (self)->update != NULL);
 
 	nm_clear_g_source (&priv->plugin_ratelimit.timer);
 
-	return NM_DNS_PLUGIN_GET_CLASS (self)->update (self,
-	                                               configs,
-	                                               global_config,
-	                                               hostname);
+	NM_DNS_PLUGIN_GET_CLASS (self)->update (self,
+	                                        configs,
+	                                        global_config,
+	                                        hostname);
 }
 
 const char *

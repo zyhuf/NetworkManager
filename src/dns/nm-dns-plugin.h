@@ -48,10 +48,10 @@ typedef struct {
 	 * 'global_config' is the optional global DNS
 	 * configuration.
 	 */
-	gboolean (*update) (NMDnsPlugin *self,
-	                    const GPtrArray *configs,
-	                    const NMGlobalDnsConfig *global_config,
-	                    const char *hostname);
+	void (*update) (NMDnsPlugin *self,
+	                const GPtrArray *configs,
+	                const NMGlobalDnsConfig *global_config,
+	                const char *hostname);
 
 	/* Subclasses should override this and return their plugin name */
 	const char *(*get_name) (NMDnsPlugin *self);
@@ -76,10 +76,10 @@ const char *nm_dns_plugin_get_name (NMDnsPlugin *self);
 NMDnsPluginState nm_dns_plugin_get_state (NMDnsPlugin *self);
 void             nm_dns_plugin_set_state (NMDnsPlugin *self, NMDnsPluginState state);
 
-gboolean nm_dns_plugin_update (NMDnsPlugin *self,
-                               const GPtrArray *configs,
-                               const NMGlobalDnsConfig *global_config,
-                               const char *hostname);
+void nm_dns_plugin_update (NMDnsPlugin *self,
+                           const GPtrArray *configs,
+                           const NMGlobalDnsConfig *global_config,
+                           const char *hostname);
 
 void nm_dns_plugin_stop (NMDnsPlugin *self);
 

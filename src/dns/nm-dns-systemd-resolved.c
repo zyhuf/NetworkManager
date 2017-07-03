@@ -288,7 +288,7 @@ send_updates (NMDnsSystemdResolved *self)
 	}
 }
 
-static gboolean
+static void
 update (NMDnsPlugin *plugin,
         const GPtrArray *configs,
         const NMGlobalDnsConfig *global_config,
@@ -322,8 +322,6 @@ update (NMDnsPlugin *plugin,
 	g_array_free (interfaces, TRUE);
 
 	send_updates (self);
-
-	return TRUE;
 }
 
 /*****************************************************************************/

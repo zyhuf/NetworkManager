@@ -120,6 +120,7 @@ typedef struct {
 	bool need_sort:1;
 	bool dns_touched:1;
 	bool is_stopped:1;
+	bool use_local_plugin:1;
 
 	char *hostname;
 	guint updates_queue;
@@ -129,7 +130,7 @@ typedef struct {
 
 	NMDnsManagerResolvConfManager rc_manager;
 	char *mode;
-	NMDnsPlugin *plugin;
+	GSList *plugins;
 
 	NMConfig *config;
 } NMDnsManagerPrivate;
@@ -1074,7 +1075,7 @@ _collect_resolv_conf_data (NMDnsManager *self, /* only for logging context, no o
 
 static gboolean
 update_dns (NMDnsManager *self,
-            gboolean no_caching,
+            NMDnsPlugin *plugin,
             GError **error)
 {
 	NMDnsManagerPrivate *priv;
@@ -1088,6 +1089,7 @@ update_dns (NMDnsManager *self,
 	SpawnResult result = SR_ERROR;
 	NMConfigData *data;
 	NMGlobalDnsConfig *global_config;
+	GSList *iter;
 
 	g_return_val_if_fail (!error || !*error, FALSE);
 
@@ -1121,35 +1123,39 @@ update_dns (NMDnsManager *self,
 	_collect_resolv_conf_data (self, global_config, priv->configs, priv->hostname,
 	                           &searches, &options, &nameservers, &nis_servers, &nis_domain);
 
-	/* Let any plugins do their thing first */
-	if (priv->plugin) {
-		NMDnsPlugin *plugin = priv->plugin;
-		const char *plugin_name = nm_dns_plugin_get_name (plugin);
-
-		if (no_caching) {
-			_LOGD ("update-dns: plugin %s ignored (caching disabled)",
-			       plugin_name);
-			goto skip;
+	if (plugin) {
+		if (nm_dns_plugin_get_state (plugin) == NM_DNS_PLUGIN_STATE_STOPPED) {
+			/* We're reviving a stopped plugin. The failed plugins have to wait until
+			 * the next update. */
+			_LOGD ("update-dns: restarting plugin %s", nm_dns_plugin_get_name (plugin));
+			g_signal_handlers_block_by_func (plugin, plugin_state_changed, self);
+			nm_dns_plugin_update (plugin,
+			                      priv->configs,
+			                      global_config,
+			                      priv->hostname);
+			g_signal_handlers_unblock_by_func (plugin, plugin_state_changed, self);
 		}
-		caching = TRUE;
+	}
 
-		_LOGD ("update-dns: updating plugin %s", plugin_name);
-		g_signal_handlers_block_by_func (plugin, plugin_state_changed, self);
-		if (!nm_dns_plugin_update (plugin,
-		                           priv->configs,
-		                           global_config,
-		                           priv->hostname)) {
-			_LOGW ("update-dns: plugin %s update failed", plugin_name);
+	for (iter = priv->plugins; iter; iter = iter->next) {
+		NMDnsPlugin *this_plugin = NM_DNS_PLUGIN (iter->data);
 
-			/* If the plugin failed to update, we shouldn't write out a local
-			 * caching DNS configuration to resolv.conf.
-			 */
-			caching = FALSE;
+		g_signal_handlers_block_by_func (this_plugin, plugin_state_changed, self);
+		if (!plugin) {
+			/* No specific plugin was passed. Update all. */
+			_LOGD ("update-dns: updating plugin %s", nm_dns_plugin_get_name (this_plugin));
+			g_signal_handlers_block_by_func (this_plugin, plugin_state_changed, self);
+			nm_dns_plugin_update (this_plugin,
+			                      priv->configs,
+			                      global_config,
+			                      priv->hostname);
+			g_signal_handlers_unblock_by_func (this_plugin, plugin_state_changed, self);
 		}
-		g_signal_handlers_unblock_by_func (plugin, plugin_state_changed, self);
+		g_signal_handlers_unblock_by_func (this_plugin, plugin_state_changed, self);
 
-	skip:
-		;
+		if (   priv->use_local_plugin
+		    && nm_dns_plugin_get_state (this_plugin) != NM_DNS_PLUGIN_STATE_FAILED)
+			caching = TRUE;
 	}
 
 	/* If caching was successful, we only send 127.0.0.1 to /etc/resolv.conf
@@ -1217,20 +1223,20 @@ plugin_state_changed (NMDnsPlugin *plugin, GParamSpec *pspec, gpointer user_data
 	switch (nm_dns_plugin_get_state (plugin)) {
 	case NM_DNS_PLUGIN_STATE_STOPPED:
 		_LOGI ("dns: plugin %s stopped, restarting it", plugin_name);
-		if (!update_dns (self, FALSE, &error)) {
-			_LOGW ("could not commit DNS changes: %s", error->message);
-			g_clear_error (&error);
-		}
 		break;
 	case NM_DNS_PLUGIN_STATE_FAILED:
 		_LOGW ("dns: plugin %s failed", plugin_name);
-		if (!update_dns (self, TRUE, &error)) {
-			_LOGW ("could not commit DNS changes: %s", error->message);
-			g_clear_error (&error);
-		}
 		break;
 	default:
 		return;
+	}
+
+	/* Retry the DNS update, so that a stopped plugin could be restarted or
+	 * nameserver configuration reverted to a non-caching mode if no plugins
+	 * are non-failed. */
+	if (!update_dns (self, plugin, &error)) {
+		_LOGW ("could not commit DNS changes: %s", error->message);
+		g_clear_error (&error);
 	}
 }
 
@@ -1309,7 +1315,7 @@ nm_dns_manager_add_ip_config (NMDnsManager *self,
 		}
 	}
 
-	if (!priv->updates_queue && !update_dns (self, FALSE, &error)) {
+	if (!priv->updates_queue && !update_dns (self, NULL, &error)) {
 		_LOGW ("could not commit DNS changes: %s", error->message);
 		g_clear_error (&error);
 	}
@@ -1355,7 +1361,7 @@ nm_dns_manager_remove_ip_config (NMDnsManager *self, gpointer config)
 			forget_data (self, data);
 			g_ptr_array_remove_index (priv->configs, i);
 
-			if (!priv->updates_queue && !update_dns (self, FALSE, &error)) {
+			if (!priv->updates_queue && !update_dns (self, NULL, &error)) {
 				_LOGW ("could not commit DNS changes: %s", error->message);
 				g_clear_error (&error);
 			}
@@ -1414,7 +1420,7 @@ nm_dns_manager_set_hostname (NMDnsManager *self,
 
 	if (skip_update)
 		return;
-	if (!priv->updates_queue && !update_dns (self, FALSE, &error)) {
+	if (!priv->updates_queue && !update_dns (self, NULL, &error)) {
 		_LOGW ("could not commit DNS changes: %s", error->message);
 		g_clear_error (&error);
 	}
@@ -1431,7 +1437,7 @@ nm_dns_manager_get_resolv_conf_explicit (NMDnsManager *self)
 
 	if (   NM_IN_SET (priv->rc_manager, NM_DNS_MANAGER_RESOLV_CONF_MAN_UNMANAGED,
 	                                    NM_DNS_MANAGER_RESOLV_CONF_MAN_IMMUTABLE)
-	    || priv->plugin)
+	    || priv->plugins)
 		return FALSE;
 
 	return TRUE;
@@ -1484,7 +1490,7 @@ nm_dns_manager_end_updates (NMDnsManager *self, const char *func)
 
 	/* Commit all the outstanding changes */
 	_LOGD ("(%s): committing DNS changes (%d)", func, priv->updates_queue);
-	if (!update_dns (self, FALSE, &error)) {
+	if (!update_dns (self, NULL, &error)) {
 		_LOGW ("could not commit DNS changes: %s", error->message);
 		g_clear_error (&error);
 	}
@@ -1492,49 +1498,23 @@ nm_dns_manager_end_updates (NMDnsManager *self, const char *func)
 	memset (priv->prev_hash, 0, sizeof (priv->prev_hash));
 }
 
-void
-nm_dns_manager_stop (NMDnsManager *self)
-{
-	NMDnsManagerPrivate *priv;
-	GError *error = NULL;
-
-	priv = NM_DNS_MANAGER_GET_PRIVATE (self);
-
-	if (priv->is_stopped)
-		g_return_if_reached ();
-
-	_LOGT ("stopping...");
-
-	/* If we're quitting, leave a valid resolv.conf in place, not one
-	 * pointing to 127.0.0.1 if any plugins were active.  Thus update
-	 * DNS after disposing of all plugins.  But if we haven't done any
-	 * DNS updates yet, there's no reason to touch resolv.conf on shutdown.
-	 */
-	if (priv->dns_touched) {
-		if (!update_dns (self, TRUE, &error)) {
-			_LOGW ("could not commit DNS changes on shutdown: %s", error->message);
-			g_clear_error (&error);
-		}
-		priv->dns_touched = FALSE;
-	}
-
-	priv->is_stopped = TRUE;
-}
-
 /*****************************************************************************/
 
-static gboolean
-_clear_plugin (NMDnsManager *self)
+static void
+_clear_plugins (NMDnsManager *self)
 {
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+	GSList *iter;
 
-	if (priv->plugin) {
-		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_state_changed, self);
-		nm_dns_plugin_stop (priv->plugin);
-		g_clear_object (&priv->plugin);
-		return TRUE;
+	for (iter = priv->plugins; iter; iter = iter->next) {
+		NMDnsPlugin *plugin = NM_DNS_PLUGIN (iter->data);
+
+		g_signal_handlers_disconnect_by_func (plugin, plugin_state_changed, self);
+		nm_dns_plugin_stop (plugin);
 	}
-	return FALSE;
+	g_slist_free (priv->plugins);
+	priv->plugins = NULL;
+	priv->use_local_plugin = FALSE;
 }
 
 static NMDnsManagerResolvConfManager
@@ -1586,86 +1566,53 @@ _check_resconf_immutable (NMDnsManagerResolvConfManager rc_manager)
 	}
 }
 
-static gboolean
-_resolvconf_resolved_managed (void)
-{
-	static const char *const RESOLVED_PATHS[] = {
-		"/run/systemd/resolve/resolv.conf",
-		"/lib/systemd/resolv.conf",
-		"/usr/lib/systemd/resolv.conf",
-	};
-	struct stat st, st_test;
-	guint i;
-
-	if (lstat (_PATH_RESCONF, &st) != 0)
-		return FALSE;
-
-	if (S_ISLNK (st.st_mode)) {
-		gs_free char *full_path = NULL;
-		nm_auto_free char *real_path = NULL;
-
-		/* see if resolv.conf is a symlink with a target that is
-		 * exactly like one of the candidates.
-		 *
-		 * This check will work for symlinks, even if the target
-		 * does not exist and realpath() cannot resolve anything.
-		 *
-		 * We want to handle that, because systemd-resolved might not
-		 * have started yet. */
-		full_path = g_file_read_link (_PATH_RESCONF, NULL);
-		if (nm_utils_strv_find_first ((char **) RESOLVED_PATHS,
-		                              G_N_ELEMENTS (RESOLVED_PATHS),
-		                              full_path) >= 0)
-			return TRUE;
-
-		/* see if resolv.conf is a symlink that resolves exactly one
-		 * of the candidate paths.
-		 *
-		 * This check will work for symlinks that can be resolved
-		 * to a realpath, but the actual file might not exist.
-		 *
-		 * We want to handle that, because systemd-resolved might not
-		 * have started yet. */
-		real_path = realpath (_PATH_RESCONF, NULL);
-		if (nm_utils_strv_find_first ((char **) RESOLVED_PATHS,
-		                              G_N_ELEMENTS (RESOLVED_PATHS),
-		                              real_path) >= 0)
-			return TRUE;
-
-		/* fall-through and resolve the symlink, to check the file
-		 * it points to (below).
-		 *
-		 * This check is the most reliable, but it only works if
-		 * systemd-resolved already started and created the file. */
-		if (stat (_PATH_RESCONF, &st) != 0)
-			return FALSE;
-	}
-
-	/* see if resolv.conf resolves to one of the candidate
-	 * paths (or whether it is hard-linked). */
-	for (i = 0; i < G_N_ELEMENTS (RESOLVED_PATHS); i++) {
-		if (   stat (RESOLVED_PATHS[i], &st_test) == 0
-		    && st.st_dev == st_test.st_dev
-		    && st.st_ino == st_test.st_ino)
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
 static void
-init_resolv_conf_mode (NMDnsManager *self, gboolean force_reload_plugin)
+init_resolv_conf_mode (NMDnsManager *self, gboolean reload_dns_mode)
 {
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
-	NMDnsManagerResolvConfManager rc_manager;
-	const char *mode;
-	gboolean param_changed = FALSE, plugin_changed = FALSE;
+	NMDnsManagerResolvConfManager rc_manager = NM_DNS_MANAGER_RESOLV_CONF_MAN_UNKNOWN;
+	gs_strfreev char **mode = NULL;
+	gboolean rc_manager_changed = FALSE;
+	int i;
 
-	mode = nm_config_data_get_dns_mode (nm_config_get_data (priv->config));
+	if (reload_dns_mode) {
+		mode = nm_config_data_get_dns_mode (nm_config_get_data (priv->config));
 
-	if (nm_streq0 (mode, "none"))
-		rc_manager = NM_DNS_MANAGER_RESOLV_CONF_MAN_UNMANAGED;
-	else {
+		_clear_plugins (self);
+		for (i = 0; mode[i]; i++) {
+			NMDnsPlugin *plugin = NULL;
+
+			if (nm_streq0 (mode[i], "systemd-resolved")) {
+				plugin = nm_dns_systemd_resolved_new ();
+			} else if (nm_streq0 (mode[i], "dnsmasq")) {
+				plugin = nm_dns_dnsmasq_new ();
+			} else if (nm_streq0 (mode[i], "unbound")) {
+				plugin = nm_dns_unbound_new ();
+			} else if (nm_streq0 (mode[i], "none")) {
+				rc_manager = NM_DNS_MANAGER_RESOLV_CONF_MAN_UNMANAGED;
+			} else if (!nm_streq0 (mode[i], "default")) {
+				_LOGW ("init: unknown dns mode '%s'", mode[i]);
+			}
+
+			if (plugin) {
+				_LOGI ("init: dns=%s%s%s%s",
+				       mode[i], NM_PRINT_FMT_QUOTED (plugin, ", plugin=",
+				       nm_dns_plugin_get_name (plugin), "", ""));
+
+				g_signal_connect (plugin,
+				                  "notify::" NM_DNS_PLUGIN_STATE,
+				                  G_CALLBACK (plugin_state_changed),
+				                  self);
+				priv->plugins = g_slist_append (priv->plugins, plugin);
+			}
+
+			/* Prefer the local plugin only if it's first in the list. */
+			if (i == 0)
+				priv->use_local_plugin = (plugin != NULL);
+		}
+	}
+
+	if (rc_manager == NM_DNS_MANAGER_RESOLV_CONF_MAN_UNKNOWN) {
 		const char *man;
 
 		rc_manager = NM_DNS_MANAGER_RESOLV_CONF_MAN_UNKNOWN;
@@ -1698,61 +1645,23 @@ again:
 
 	rc_manager = _check_resconf_immutable (rc_manager);
 
-	if (   (!mode && _resolvconf_resolved_managed ())
-	    || nm_streq0 (mode, "systemd-resolved")) {
-		if (   force_reload_plugin
-		    || !NM_IS_DNS_SYSTEMD_RESOLVED (priv->plugin)) {
-			_clear_plugin (self);
-			priv->plugin = nm_dns_systemd_resolved_new ();
-			plugin_changed = TRUE;
-		}
-		mode = "systemd-resolved";
-	} else if (nm_streq0 (mode, "dnsmasq")) {
-		if (force_reload_plugin || !NM_IS_DNS_DNSMASQ (priv->plugin)) {
-			_clear_plugin (self);
-			priv->plugin = nm_dns_dnsmasq_new ();
-			plugin_changed = TRUE;
-		}
-	} else if (nm_streq0 (mode, "unbound")) {
-		if (force_reload_plugin || !NM_IS_DNS_UNBOUND (priv->plugin)) {
-			_clear_plugin (self);
-			priv->plugin = nm_dns_unbound_new ();
-			plugin_changed = TRUE;
-		}
-	} else {
-		if (!NM_IN_STRSET (mode, "none", "default")) {
-			if (mode)
-				_LOGW ("init: unknown dns mode '%s'", mode);
-			mode = "default";
-		}
-		if (_clear_plugin (self))
-			plugin_changed = TRUE;
-	}
-
-	if (plugin_changed && priv->plugin)
-		g_signal_connect (priv->plugin, "notify::" NM_DNS_PLUGIN_STATE, G_CALLBACK (plugin_state_changed), self);
-
 	g_object_freeze_notify (G_OBJECT (self));
 
-	if (!nm_streq0 (priv->mode, mode)) {
+	if (!nm_streq0 (priv->mode, mode[0])) {
 		g_free (priv->mode);
-		priv->mode = g_strdup (mode);
-		param_changed = TRUE;
+		priv->mode = g_strdup (mode[0]);
+		rc_manager_changed = TRUE;
 		_notify (self, PROP_MODE);
 	}
 
 	if (priv->rc_manager != rc_manager) {
 		priv->rc_manager = rc_manager;
-		param_changed = TRUE;
+		rc_manager_changed = TRUE;
 		_notify (self, PROP_RC_MANAGER);
 	}
 
-	if (param_changed || plugin_changed) {
-		_LOGI ("init: dns=%s, rc-manager=%s%s%s%s",
-		       mode, _rc_manager_to_string (rc_manager),
-		       NM_PRINT_FMT_QUOTED (priv->plugin, ", plugin=",
-		                            nm_dns_plugin_get_name (priv->plugin), "", ""));
-	}
+	if (rc_manager_changed)
+		_LOGI ("init: rc-manager=%s", _rc_manager_to_string (rc_manager));
 
 	g_object_thaw_notify (G_OBJECT (self));
 }
@@ -1775,7 +1684,8 @@ config_changed_cb (NMConfig *config,
 		 * is immutable, thus, without the configuration changing, we always want to
 		 * re-configure the mode. */
 		init_resolv_conf_mode (self,
-		                       NM_FLAGS_ANY (changes,   NM_CONFIG_CHANGE_CAUSE_SIGHUP
+		                       NM_FLAGS_ANY (changes,   NM_CONFIG_CHANGE_DNS_MODE
+		                                              | NM_CONFIG_CHANGE_CAUSE_SIGHUP
 		                                              | NM_CONFIG_CHANGE_CAUSE_DNS_FULL));
 	}
 
@@ -1786,7 +1696,7 @@ config_changed_cb (NMConfig *config,
 	                           NM_CONFIG_CHANGE_DNS_MODE |
 	                           NM_CONFIG_CHANGE_RC_MANAGER |
 	                           NM_CONFIG_CHANGE_GLOBAL_DNS_CONFIG)) {
-		if (!update_dns (self, FALSE, &error)) {
+		if (!update_dns (self, NULL, &error)) {
 			_LOGW ("could not commit DNS changes: %s", error->message);
 			g_clear_error (&error);
 		}
@@ -2028,6 +1938,39 @@ nm_dns_manager_init (NMDnsManager *self)
 	init_resolv_conf_mode (self, TRUE);
 }
 
+void
+nm_dns_manager_stop (NMDnsManager *self)
+{
+	NMDnsManagerPrivate *priv;
+	GError *error = NULL;
+
+	priv = NM_DNS_MANAGER_GET_PRIVATE (self);
+
+	if (priv->is_stopped)
+		g_return_if_reached ();
+
+	_LOGT ("stopping...");
+
+	/* Clear plugins first so that subsequent update_dns reverts to a
+	 * non-caching configuration. */
+	_clear_plugins (self);
+
+	/* If we're quitting, leave a valid resolv.conf in place, not one
+	 * pointing to 127.0.0.1 if any plugins were active.  Thus update
+	 * DNS after disposing of all plugins.  But if we haven't done any
+	 * DNS updates yet, there's no reason to touch resolv.conf on shutdown.
+	 */
+	if (priv->dns_touched) {
+		if (!update_dns (self, NULL, &error)) {
+			_LOGW ("could not commit DNS changes on shutdown: %s", error->message);
+			g_clear_error (&error);
+		}
+		priv->dns_touched = FALSE;
+	}
+
+	priv->is_stopped = TRUE;
+}
+
 static void
 dispose (GObject *object)
 {
@@ -2040,8 +1983,6 @@ dispose (GObject *object)
 
 	if (!priv->is_stopped)
 		nm_dns_manager_stop (self);
-
-	_clear_plugin (self);
 
 	if (priv->config) {
 		g_signal_handlers_disconnect_by_func (priv->config, config_changed_cb, self);

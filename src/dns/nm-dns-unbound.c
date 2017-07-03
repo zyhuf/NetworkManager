@@ -37,7 +37,7 @@ G_DEFINE_TYPE (NMDnsUnbound, nm_dns_unbound, NM_TYPE_DNS_PLUGIN)
 
 /*****************************************************************************/
 
-static gboolean
+static void
 update (NMDnsPlugin *plugin,
         const GPtrArray *configs,
         const NMGlobalDnsConfig *global_config,
@@ -63,8 +63,6 @@ update (NMDnsPlugin *plugin,
 
 	nm_dns_plugin_set_state (plugin,
 	                         success ? NM_DNS_PLUGIN_STATE_RUNNING : NM_DNS_PLUGIN_STATE_FAILED);
-
-	return success;
 }
 
 static const char *
