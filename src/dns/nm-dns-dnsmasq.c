@@ -589,7 +589,7 @@ update (NMDnsPlugin *plugin,
 
 /*****************************************************************************/
 
-static void
+static gboolean
 child_quit (NMDnsPlugin *plugin, gint status)
 {
 	NMDnsDnsmasq *self = NM_DNS_DNSMASQ (plugin);
@@ -615,11 +615,8 @@ child_quit (NMDnsPlugin *plugin, gint status)
 
 	priv->running = FALSE;
 
-	if (failed)
-		g_signal_emit_by_name (self, NM_DNS_PLUGIN_FAILED);
+	return failed;
 }
-
-/*****************************************************************************/
 
 static const char *
 get_name (NMDnsPlugin *plugin)

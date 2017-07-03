@@ -32,6 +32,10 @@
 
 /*****************************************************************************/
 
+#define PLUGIN_RATELIMIT_INTERVAL    30
+#define PLUGIN_RATELIMIT_BURST       5
+#define PLUGIN_RATELIMIT_DELAY       300
+
 enum {
 	FAILED,
 	CHILD_QUIT,
@@ -45,6 +49,12 @@ typedef struct _NMDnsPluginPrivate {
 	guint watch_id;
 	char *progname;
 	char *pidfile;
+
+	struct {
+		guint64 ts;
+		guint num_restarts;
+		guint timer;
+	} plugin_ratelimit;
 } NMDnsPluginPrivate;
 
 G_DEFINE_TYPE_EXTENDED (NMDnsPlugin, nm_dns_plugin, G_TYPE_OBJECT, G_TYPE_FLAG_ABSTRACT, {})
@@ -81,7 +91,11 @@ nm_dns_plugin_update (NMDnsPlugin *self,
                       const NMGlobalDnsConfig *global_config,
                       const char *hostname)
 {
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
 	g_return_val_if_fail (NM_DNS_PLUGIN_GET_CLASS (self)->update != NULL, FALSE);
+
+	nm_clear_g_source (&priv->plugin_ratelimit.timer);
 
 	return NM_DNS_PLUGIN_GET_CLASS (self)->update (self,
 	                                               configs,
@@ -154,19 +168,57 @@ out:
 	unlink (pidfile);
 }
 
+static gboolean
+emit_ratelimited_child_quit (gpointer user_data)
+{
+	NMDnsPlugin *self = NM_DNS_PLUGIN (user_data);
+
+	g_signal_emit (self, signals[CHILD_QUIT], 0);
+
+	return G_SOURCE_REMOVE;
+}
+
 static void
 watch_cb (GPid pid, gint status, gpointer user_data)
 {
 	NMDnsPlugin *self = NM_DNS_PLUGIN (user_data);
 	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+	NMDnsPluginClass *klass = NM_DNS_PLUGIN_GET_CLASS (self);
+	gint64 ts = nm_utils_get_monotonic_timestamp_ms ();
+	gboolean failed = FALSE;
 
 	priv->pid = 0;
 	priv->watch_id = 0;
 	g_clear_pointer (&priv->progname, g_free);
 	_clear_pidfile (self);
 
-	g_signal_emit (self, signals[CHILD_QUIT], 0, status);
+	if (klass->child_quit)
+		failed = klass->child_quit (self, status);
+
+	if (   !priv->plugin_ratelimit.ts
+	    || (ts - priv->plugin_ratelimit.ts) / 1000 > PLUGIN_RATELIMIT_INTERVAL
+	    || failed) {
+	        priv->plugin_ratelimit.ts = ts;
+	        priv->plugin_ratelimit.num_restarts = 0;
+	} else {
+		priv->plugin_ratelimit.num_restarts++;
+		if (priv->plugin_ratelimit.num_restarts > PLUGIN_RATELIMIT_BURST) {
+			_LOGW ("plugin %s child respawning too fast, delaying update for %u seconds",
+			       nm_dns_plugin_get_name (self), PLUGIN_RATELIMIT_DELAY);
+			priv->plugin_ratelimit.timer = g_timeout_add_seconds (PLUGIN_RATELIMIT_DELAY,
+			                                                      emit_ratelimited_child_quit,
+			                                                      self);
+			return;
+		}
+	}
+
+	if (failed)
+		g_signal_emit (self, signals[FAILED], 0);
+	else
+		g_signal_emit (self, signals[CHILD_QUIT], 0);
 }
+
+/*****************************************************************************/
 
 GPid
 nm_dns_plugin_child_pid (NMDnsPlugin *self)
@@ -233,6 +285,8 @@ nm_dns_plugin_child_kill (NMDnsPlugin *self)
 {
 	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
 
+	priv->plugin_ratelimit.ts = 0;
+	nm_clear_g_source (&priv->plugin_ratelimit.timer);
 	nm_clear_g_source (&priv->watch_id);
 	if (priv->pid) {
 		nm_utils_kill_child_sync (priv->pid, SIGTERM, _NMLOG_DOMAIN,
@@ -295,8 +349,7 @@ nm_dns_plugin_class_init (NMDnsPluginClass *plugin_class)
 	    g_signal_new (NM_DNS_PLUGIN_CHILD_QUIT,
 	                  G_OBJECT_CLASS_TYPE (object_class),
 	                  G_SIGNAL_RUN_FIRST,
-	                  G_STRUCT_OFFSET (NMDnsPluginClass, child_quit),
-	                  NULL, NULL,
-	                  g_cclosure_marshal_VOID__INT,
-	                  G_TYPE_NONE, 1, G_TYPE_INT);
+	                  0, NULL, NULL,
+	                  g_cclosure_marshal_VOID__VOID,
+	                  G_TYPE_NONE, 0);
 }

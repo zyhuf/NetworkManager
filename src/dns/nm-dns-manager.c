@@ -66,10 +66,6 @@
 #define NETCONFIG_PATH "/sbin/netconfig"
 #endif
 
-#define PLUGIN_RATELIMIT_INTERVAL    30
-#define PLUGIN_RATELIMIT_BURST       5
-#define PLUGIN_RATELIMIT_DELAY       300
-
 enum {
 	CONFIG_CHANGED,
 
@@ -136,12 +132,6 @@ typedef struct {
 	NMDnsPlugin *plugin;
 
 	NMConfig *config;
-
-	struct {
-		guint64 ts;
-		guint num_restarts;
-		guint timer;
-	} plugin_ratelimit;
 } NMDnsManagerPrivate;
 
 struct _NMDnsManager {
@@ -1106,8 +1096,6 @@ update_dns (NMDnsManager *self,
 		return TRUE;
 	}
 
-	nm_clear_g_source (&priv->plugin_ratelimit.timer);
-
 	if (NM_IN_SET (priv->rc_manager, NM_DNS_MANAGER_RESOLV_CONF_MAN_UNMANAGED,
 	                                 NM_DNS_MANAGER_RESOLV_CONF_MAN_IMMUTABLE)) {
 		update = FALSE;
@@ -1228,47 +1216,17 @@ plugin_failed (NMDnsPlugin *plugin, gpointer user_data)
 	}
 }
 
-static gboolean
-plugin_child_quit_update_dns (gpointer user_data)
+static void
+plugin_child_quit (NMDnsPlugin *plugin, gpointer user_data)
 {
-	GError *error = NULL;
 	NMDnsManager *self = NM_DNS_MANAGER (user_data);
+	GError *error = NULL;
 
 	/* Let the plugin try to spawn the child again */
 	if (!update_dns (self, FALSE, &error)) {
 		_LOGW ("could not commit DNS changes: %s", error->message);
 		g_clear_error (&error);
 	}
-
-	return G_SOURCE_REMOVE;
-}
-
-static void
-plugin_child_quit (NMDnsPlugin *plugin, int exit_status, gpointer user_data)
-{
-	NMDnsManager *self = NM_DNS_MANAGER (user_data);
-	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
-	gint64 ts = nm_utils_get_monotonic_timestamp_ms ();
-
-	_LOGW ("plugin %s child quit unexpectedly", nm_dns_plugin_get_name (plugin));
-
-	if (   !priv->plugin_ratelimit.ts
-	    || (ts - priv->plugin_ratelimit.ts) / 1000 > PLUGIN_RATELIMIT_INTERVAL) {
-		priv->plugin_ratelimit.ts = ts;
-		priv->plugin_ratelimit.num_restarts = 0;
-	} else {
-		priv->plugin_ratelimit.num_restarts++;
-		if (priv->plugin_ratelimit.num_restarts > PLUGIN_RATELIMIT_BURST) {
-			_LOGW ("plugin %s child respawning too fast, delaying update for %u seconds",
-			        nm_dns_plugin_get_name (plugin), PLUGIN_RATELIMIT_DELAY);
-			priv->plugin_ratelimit.timer = g_timeout_add_seconds (PLUGIN_RATELIMIT_DELAY,
-			                                                      plugin_child_quit_update_dns,
-			                                                      self);
-			return;
-		}
-	}
-
-	plugin_child_quit_update_dns (self);
 }
 
 static void
@@ -1572,8 +1530,6 @@ _clear_plugin (NMDnsManager *self)
 		g_clear_object (&priv->plugin);
 		return TRUE;
 	}
-	priv->plugin_ratelimit.ts = 0;
-	nm_clear_g_source (&priv->plugin_ratelimit.timer);
 	return FALSE;
 }
 
@@ -2098,8 +2054,6 @@ dispose (GObject *object)
 		g_ptr_array_free (priv->configs, TRUE);
 		priv->configs = NULL;
 	}
-
-	nm_clear_g_source (&priv->plugin_ratelimit.timer);
 
 	G_OBJECT_CLASS (nm_dns_manager_parent_class)->dispose (object);
 }

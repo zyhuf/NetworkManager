@@ -57,14 +57,11 @@ typedef struct {
 	/* Subclasses should override this and return their plugin name */
 	const char *(*get_name) (NMDnsPlugin *self);
 
-	/* Signals */
-
-	/* Emitted by the plugin base class when the nameserver subprocess
-	 * quits.  This signal is consumed by the plugin subclasses and not
-	 * by NMDnsManager.  If the subclass decides the exit status (as returned
-	 * by waitpid(2)) is fatal it should then emit the 'failed' signal.
+	/* Lets the subclass know when the nameserver subprocess
+	 * quits. If the subclass decides the exit status (as returned
+	 * by waitpid(2)) is fatal it returns TRUE.
 	 */
-	void (*child_quit) (NMDnsPlugin *self, gint status);
+	gboolean (*child_quit) (NMDnsPlugin *self, gint status);
 } NMDnsPluginClass;
 
 GType nm_dns_plugin_get_type (void);
