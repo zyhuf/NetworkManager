@@ -1136,14 +1136,12 @@ update_dns (NMDnsManager *self,
 		NMDnsPlugin *plugin = priv->plugin;
 		const char *plugin_name = nm_dns_plugin_get_name (plugin);
 
-		if (nm_dns_plugin_is_caching (plugin)) {
-			if (no_caching) {
-				_LOGD ("update-dns: plugin %s ignored (caching disabled)",
-				       plugin_name);
-				goto skip;
-			}
-			caching = TRUE;
+		if (no_caching) {
+			_LOGD ("update-dns: plugin %s ignored (caching disabled)",
+			       plugin_name);
+			goto skip;
 		}
+		caching = TRUE;
 
 		_LOGD ("update-dns: updating plugin %s", plugin_name);
 		if (!nm_dns_plugin_update (plugin,
@@ -1222,10 +1220,6 @@ plugin_failed (NMDnsPlugin *plugin, gpointer user_data)
 {
 	NMDnsManager *self = NM_DNS_MANAGER (user_data);
 	GError *error = NULL;
-
-	/* Errors with non-caching plugins aren't fatal */
-	if (!nm_dns_plugin_is_caching (plugin))
-		return;
 
 	/* Disable caching until the next DNS update */
 	if (!update_dns (self, TRUE, &error)) {
