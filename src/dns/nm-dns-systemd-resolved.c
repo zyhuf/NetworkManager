@@ -353,10 +353,11 @@ resolved_proxy_created (GObject *source, GAsyncResult *r, gpointer user_data)
 	g_clear_object (&priv->init_cancellable);
 	if (!resolve) {
 		_LOGW ("failed to connect to resolved via DBus: %s", error->message);
-		g_signal_emit_by_name (self, NM_DNS_PLUGIN_FAILED);
+		nm_dns_plugin_set_state (NM_DNS_PLUGIN (self), NM_DNS_PLUGIN_STATE_FAILED);
 		return;
 	}
 
+	nm_dns_plugin_set_state (NM_DNS_PLUGIN (self), NM_DNS_PLUGIN_STATE_RUNNING);
 	priv->resolve = resolve;
 	send_updates (self);
 }

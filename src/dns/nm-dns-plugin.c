@@ -36,19 +36,16 @@
 #define PLUGIN_RATELIMIT_BURST       5
 #define PLUGIN_RATELIMIT_DELAY       300
 
-enum {
-	FAILED,
-	CHILD_QUIT,
-	LAST_SIGNAL,
-};
-
-static guint signals[LAST_SIGNAL] = { 0 };
+NM_GOBJECT_PROPERTIES_DEFINE (NMDnsPlugin,
+	PROP_STATE,
+);
 
 typedef struct _NMDnsPluginPrivate {
 	GPid pid;
 	guint watch_id;
 	char *progname;
 	char *pidfile;
+	NMDnsPluginState state;
 
 	struct {
 		guint64 ts;
@@ -173,7 +170,7 @@ emit_ratelimited_child_quit (gpointer user_data)
 {
 	NMDnsPlugin *self = NM_DNS_PLUGIN (user_data);
 
-	g_signal_emit (self, signals[CHILD_QUIT], 0);
+	nm_dns_plugin_set_state (self, NM_DNS_PLUGIN_STATE_STOPPED);
 
 	return G_SOURCE_REMOVE;
 }
@@ -213,9 +210,9 @@ watch_cb (GPid pid, gint status, gpointer user_data)
 	}
 
 	if (failed)
-		g_signal_emit (self, signals[FAILED], 0);
+		nm_dns_plugin_set_state (self, NM_DNS_PLUGIN_STATE_FAILED);
 	else
-		g_signal_emit (self, signals[CHILD_QUIT], 0);
+		nm_dns_plugin_set_state (self, NM_DNS_PLUGIN_STATE_STOPPED);
 }
 
 /*****************************************************************************/
@@ -307,6 +304,64 @@ nm_dns_plugin_stop (NMDnsPlugin *self)
 
 /*****************************************************************************/
 
+NMDnsPluginState
+nm_dns_plugin_get_state (NMDnsPlugin *self)
+{
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	return priv->state;
+}
+
+void
+nm_dns_plugin_set_state (NMDnsPlugin *self, NMDnsPluginState state)
+{
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	if (priv->state == state)
+		return;
+
+	priv->state = state;
+	_notify (self, PROP_STATE);
+}
+
+/*****************************************************************************/
+
+static void
+get_property (GObject *object, guint prop_id,
+              GValue *value, GParamSpec *pspec)
+{
+	NMDnsPlugin *self = NM_DNS_PLUGIN (object);
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	switch (prop_id) {
+	case PROP_STATE:
+		g_value_set_uint (value, priv->state);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+set_property (GObject *object, guint prop_id,
+              const GValue *value, GParamSpec *pspec)
+{
+	NMDnsPlugin *self = NM_DNS_PLUGIN (object);
+	NMDnsPluginPrivate *priv = NM_DNS_PLUGIN_GET_PRIVATE (self);
+
+	switch (prop_id) {
+	case PROP_STATE:
+		priv->state = g_value_get_uint (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+/*****************************************************************************/
+
 static void
 nm_dns_plugin_init (NMDnsPlugin *self)
 {
@@ -330,26 +385,17 @@ nm_dns_plugin_class_init (NMDnsPluginClass *plugin_class)
 
 	g_type_class_add_private (plugin_class, sizeof (NMDnsPluginPrivate));
 
+	object_class->get_property = get_property;
+	object_class->set_property = set_property;
 	object_class->dispose = dispose;
 
-	/* Emitted by the plugin and consumed by NMDnsManager when
-	 * some error happens with the nameserver subprocess.  Causes NM to fall
-	 * back to writing out a non-local-caching resolv.conf until the next
-	 * DNS update.
-	 */
-	signals[FAILED] =
-	    g_signal_new (NM_DNS_PLUGIN_FAILED,
-	                  G_OBJECT_CLASS_TYPE (object_class),
-	                  G_SIGNAL_RUN_FIRST,
-	                  0, NULL, NULL,
-	                  g_cclosure_marshal_VOID__VOID,
-	                  G_TYPE_NONE, 0);
+	obj_properties[PROP_STATE] =
+	    g_param_spec_uint (NM_DNS_PLUGIN_STATE, "", "",
+	                       NM_DNS_PLUGIN_STATE_STOPPED,
+	                       NM_DNS_PLUGIN_STATE_FAILED,
+	                       NM_DNS_PLUGIN_STATE_STOPPED,
+	                       G_PARAM_READABLE
+	                         | G_PARAM_STATIC_STRINGS);
 
-	signals[CHILD_QUIT] =
-	    g_signal_new (NM_DNS_PLUGIN_CHILD_QUIT,
-	                  G_OBJECT_CLASS_TYPE (object_class),
-	                  G_SIGNAL_RUN_FIRST,
-	                  0, NULL, NULL,
-	                  g_cclosure_marshal_VOID__VOID,
-	                  G_TYPE_NONE, 0);
+	g_object_class_install_properties (object_class, _PROPERTY_ENUMS_LAST, obj_properties);
 }

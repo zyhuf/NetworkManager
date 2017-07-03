@@ -430,8 +430,10 @@ name_owner_changed (GObject    *object,
 	} else {
 		_LOGI ("dnsmasq disappeared");
 		priv->running = FALSE;
-		g_signal_emit_by_name (self, NM_DNS_PLUGIN_FAILED);
 	}
+
+	nm_dns_plugin_set_state (NM_DNS_PLUGIN (self),
+	                         priv->running ? NM_DNS_PLUGIN_STATE_RUNNING : NM_DNS_PLUGIN_STATE_FAILED);
 }
 
 static void
@@ -452,7 +454,7 @@ dnsmasq_proxy_cb (GObject *source, GAsyncResult *res, gpointer user_data)
 
 	if (!proxy) {
 		_LOGW ("failed to connect to dnsmasq via DBus: %s", error->message);
-		g_signal_emit_by_name (self, NM_DNS_PLUGIN_FAILED);
+		nm_dns_plugin_set_state (NM_DNS_PLUGIN (self), NM_DNS_PLUGIN_STATE_FAILED);
 		return;
 	}
 

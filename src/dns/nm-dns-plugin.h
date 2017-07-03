@@ -29,8 +29,7 @@
 #define NM_IS_DNS_PLUGIN_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), NM_TYPE_DNS_PLUGIN))
 #define NM_DNS_PLUGIN_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_DNS_PLUGIN, NMDnsPluginClass))
 
-#define NM_DNS_PLUGIN_FAILED "failed"
-#define NM_DNS_PLUGIN_CHILD_QUIT "child-quit"
+#define NM_DNS_PLUGIN_STATE "state"
 
 struct _NMDnsPluginPrivate;
 
@@ -64,9 +63,18 @@ typedef struct {
 	gboolean (*child_quit) (NMDnsPlugin *self, gint status);
 } NMDnsPluginClass;
 
+typedef enum {
+	NM_DNS_PLUGIN_STATE_STOPPED,
+	NM_DNS_PLUGIN_STATE_RUNNING,
+	NM_DNS_PLUGIN_STATE_FAILED,
+} NMDnsPluginState;
+
 GType nm_dns_plugin_get_type (void);
 
 const char *nm_dns_plugin_get_name (NMDnsPlugin *self);
+
+NMDnsPluginState nm_dns_plugin_get_state (NMDnsPlugin *self);
+void             nm_dns_plugin_set_state (NMDnsPlugin *self, NMDnsPluginState state);
 
 gboolean nm_dns_plugin_update (NMDnsPlugin *self,
                                const GPtrArray *configs,

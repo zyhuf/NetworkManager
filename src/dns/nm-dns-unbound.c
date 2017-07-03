@@ -45,6 +45,7 @@ update (NMDnsPlugin *plugin,
 {
 	char *argv[] = { DNSSEC_TRIGGER_SCRIPT, "--async", "--update", NULL };
 	int status;
+	gboolean success;
 
 	/* TODO: We currently call a script installed with the dnssec-trigger
 	 * package that queries all information itself. Later, the dependency
@@ -56,8 +57,14 @@ update (NMDnsPlugin *plugin,
 	 * may be eventually merged into NetworkManager.
 	 */
 	if (!g_spawn_sync ("/", argv, NULL, 0, NULL, NULL, NULL, NULL, &status, NULL))
-		return FALSE;
-	return (status == 0);
+		success = FALSE;
+	else
+		success = (status == 0);
+
+	nm_dns_plugin_set_state (plugin,
+	                         success ? NM_DNS_PLUGIN_STATE_RUNNING : NM_DNS_PLUGIN_STATE_FAILED);
+
+	return success;
 }
 
 static const char *

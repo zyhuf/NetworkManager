@@ -147,6 +147,8 @@ G_DEFINE_TYPE (NMDnsManager, nm_dns_manager, NM_TYPE_EXPORTED_OBJECT)
 
 #define NM_DNS_MANAGER_GET_PRIVATE(self) _NM_GET_PRIVATE(self, NMDnsManager, NM_IS_DNS_MANAGER)
 
+static void plugin_state_changed (NMDnsPlugin *plugin, GParamSpec *pspec, gpointer user_data);
+
 static gboolean
 domain_is_valid (const gchar *domain)
 {
@@ -1132,6 +1134,7 @@ update_dns (NMDnsManager *self,
 		caching = TRUE;
 
 		_LOGD ("update-dns: updating plugin %s", plugin_name);
+		g_signal_handlers_block_by_func (plugin, plugin_state_changed, self);
 		if (!nm_dns_plugin_update (plugin,
 		                           priv->configs,
 		                           global_config,
@@ -1143,6 +1146,7 @@ update_dns (NMDnsManager *self,
 			 */
 			caching = FALSE;
 		}
+		g_signal_handlers_unblock_by_func (plugin, plugin_state_changed, self);
 
 	skip:
 		;
@@ -1204,28 +1208,29 @@ update_dns (NMDnsManager *self,
 }
 
 static void
-plugin_failed (NMDnsPlugin *plugin, gpointer user_data)
+plugin_state_changed (NMDnsPlugin *plugin, GParamSpec *pspec, gpointer user_data)
 {
 	NMDnsManager *self = NM_DNS_MANAGER (user_data);
 	GError *error = NULL;
+	const char *plugin_name = nm_dns_plugin_get_name (plugin);
 
-	/* Disable caching until the next DNS update */
-	if (!update_dns (self, TRUE, &error)) {
-		_LOGW ("could not commit DNS changes: %s", error->message);
-		g_clear_error (&error);
-	}
-}
-
-static void
-plugin_child_quit (NMDnsPlugin *plugin, gpointer user_data)
-{
-	NMDnsManager *self = NM_DNS_MANAGER (user_data);
-	GError *error = NULL;
-
-	/* Let the plugin try to spawn the child again */
-	if (!update_dns (self, FALSE, &error)) {
-		_LOGW ("could not commit DNS changes: %s", error->message);
-		g_clear_error (&error);
+	switch (nm_dns_plugin_get_state (plugin)) {
+	case NM_DNS_PLUGIN_STATE_STOPPED:
+		_LOGI ("dns: plugin %s stopped, restarting it", plugin_name);
+		if (!update_dns (self, FALSE, &error)) {
+			_LOGW ("could not commit DNS changes: %s", error->message);
+			g_clear_error (&error);
+		}
+		break;
+	case NM_DNS_PLUGIN_STATE_FAILED:
+		_LOGW ("dns: plugin %s failed", plugin_name);
+		if (!update_dns (self, TRUE, &error)) {
+			_LOGW ("could not commit DNS changes: %s", error->message);
+			g_clear_error (&error);
+		}
+		break;
+	default:
+		return;
 	}
 }
 
@@ -1524,8 +1529,7 @@ _clear_plugin (NMDnsManager *self)
 	NMDnsManagerPrivate *priv = NM_DNS_MANAGER_GET_PRIVATE (self);
 
 	if (priv->plugin) {
-		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_failed, self);
-		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_child_quit, self);
+		g_signal_handlers_disconnect_by_func (priv->plugin, plugin_state_changed, self);
 		nm_dns_plugin_stop (priv->plugin);
 		g_clear_object (&priv->plugin);
 		return TRUE;
@@ -1725,10 +1729,8 @@ again:
 			plugin_changed = TRUE;
 	}
 
-	if (plugin_changed && priv->plugin) {
-		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_FAILED, G_CALLBACK (plugin_failed), self);
-		g_signal_connect (priv->plugin, NM_DNS_PLUGIN_CHILD_QUIT, G_CALLBACK (plugin_child_quit), self);
-	}
+	if (plugin_changed && priv->plugin)
+		g_signal_connect (priv->plugin, "notify::" NM_DNS_PLUGIN_STATE, G_CALLBACK (plugin_state_changed), self);
 
 	g_object_freeze_notify (G_OBJECT (self));
 
