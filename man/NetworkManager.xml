@@ -234,7 +234,7 @@
           <listitem><para>
             The IPv4 address in the format "address/prefix gateway", where N is a number
             from 0 to (# IPv4 addresses - 1). gateway item in this variable is deprecated,
-            use IP4_GATEWAY instead.
+            use <varname>IP4_GATEWAY</varname> instead.
           </para></listitem>
         </varlistentry>
         <varlistentry>
@@ -279,14 +279,15 @@
           <listitem><para>
             If the connection used DHCP for address configuration, the received DHCP
             configuration is passed in the environment using standard DHCP
-            option names, prefixed with "DHCP4_", like "DHCP4_HOST_NAME=foobar".
+            option names, prefixed with <varname>DHCP4_</varname>, like
+            <varname>DHCP4_HOST_NAME</varname>.
           </para></listitem>
         </varlistentry>
         <varlistentry>
           <term><varname>IP6_&lt;name&gt; and DHCP6_&lt;name&gt;</varname></term>
           <listitem><para>
-            The same variables as for IPv4 are available for IPv6, but the prefixes are IP6_
-            and DHCP6_ instead.
+            The same variables as for IPv4 are available for IPv6, but the prefixes are
+            <varname>IP6_</varname> and <varname>DHCP6_</varname> instead.
           </para></listitem>
         </varlistentry>
         <varlistentry>
@@ -301,8 +302,10 @@
       </variablelist>
     </para>
     <para>
-      In case of VPN, VPN_IP_IFACE is set, and IP4_*, IP6_* variables with VPN prefix are
-      exported too, like VPN_IP4_ADDRESS_0, VPN_IP4_NUM_ADDRESSES.
+      In case of <varname>VPN</varname>, <varname>VPN_IP_IFACE</varname> is set, and
+      <varname>IP4_*</varname>, <varname>IP6_*</varname> variables with
+      <varname>VPN_</varname> prefix are exported too, like
+      <varname>VPN_IP4_ADDRESS_0</varname>, <varname>VPN_IP4_NUM_ADDRESSES</varname>.
     </para>
     <para>
       Dispatcher scripts are run one at a time, but asynchronously from the main
