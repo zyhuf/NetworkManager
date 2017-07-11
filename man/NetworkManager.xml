@@ -9,7 +9,7 @@
 <!--
   NetworkManager(8) manual page
 
-  Copyright 2005 - 2016 Red Hat, Inc.
+  Copyright 2005 - 2017 Red Hat, Inc.
   Copyright 2005 - 2009 Novell, Inc.
   Copyright 2005 Robert Love
 
@@ -230,6 +230,25 @@
           </para></listitem>
         </varlistentry>
         <varlistentry>
+          <term><varname>CONNECTIVITY_STATE</varname></term>
+          <listitem><para>The network connectivity state, which can
+          take the values defined by the NMConnectivityState type,
+          from the org.freedesktop.NetworkManager D-Bus API: unknown,
+          none, portal, limited or full. Note: this variable will only
+          be set for connectivity-change actions.
+          </para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><varname>IP4_CONNECTIVITY_STATE</varname></term>
+          <listitem><para>Reult of the last connectivity check using IPv4.
+          See <varname>CONNECTIVITY_STATE</varname> for details.
+          </para>
+          <para>For connectivity-change actions this variable will indicate the
+          state of overall connectivity (all devices considered), otherwise it's
+          relevant to the device specified by <varname>DEVICE_IFACE</varname>.
+          </para></listitem>
+        </varlistentry>
+        <varlistentry>
           <term><varname>IP4_ADDRESS_N</varname></term>
           <listitem><para>
             The IPv4 address in the format "address/prefix gateway", where N is a number
@@ -288,15 +307,6 @@
           <listitem><para>
             The same variables as for IPv4 are available for IPv6, but the prefixes are
             <varname>IP6_</varname> and <varname>DHCP6_</varname> instead.
-          </para></listitem>
-        </varlistentry>
-        <varlistentry>
-          <term><varname>CONNECTIVITY_STATE</varname></term>
-          <listitem><para> The network connectivity state, which can
-          take the values defined by the NMConnectivityState type,
-          from the org.freedesktop.NetworkManager D-Bus API: unknown,
-          none, portal, limited or full. Note: this variable will only
-          be set for connectivity-change actions.
           </para></listitem>
         </varlistentry>
       </variablelist>

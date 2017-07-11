@@ -368,6 +368,8 @@ nm_dispatcher_utils_construct_envp (const char *action,
                                     GVariant *device_ip6_props,
                                     GVariant *device_dhcp4_props,
                                     GVariant *device_dhcp6_props,
+                                    const char *connectivity_state4,
+                                    const char *connectivity_state6,
                                     const char *connectivity_state,
                                     const char *vpn_ip_iface,
                                     GVariant *vpn_proxy_props,
@@ -515,6 +517,10 @@ nm_dispatcher_utils_construct_envp (const char *action,
 	/* The connectivity_state value will only be meaningful for 'connectivity-change' events
 	 * (otherwise it will be "UNKNOWN"), so we only set the environment variable in those cases.
 	 */
+	if (connectivity_state4 && strcmp(connectivity_state4, "UNKNOWN"))
+		items = g_slist_prepend (items, g_strdup_printf ("IP4_CONNECTIVITY_STATE=%s", connectivity_state));
+	if (connectivity_state6 && strcmp(connectivity_state6, "UNKNOWN"))
+		items = g_slist_prepend (items, g_strdup_printf ("IP6_CONNECTIVITY_STATE=%s", connectivity_state));
 	if (connectivity_state && strcmp(connectivity_state, "UNKNOWN"))
 		items = g_slist_prepend (items, g_strdup_printf ("CONNECTIVITY_STATE=%s", connectivity_state));
 

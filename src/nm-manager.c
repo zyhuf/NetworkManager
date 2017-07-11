@@ -2060,7 +2060,10 @@ device_connectivity_changed (NMManager *self)
 
 	_notify (self, PROP_CONNECTIVITY);
 	nm_manager_update_state (self);
-	nm_dispatcher_call_connectivity (priv->connectivity_state, NULL, NULL, NULL);
+	nm_dispatcher_call_connectivity (priv->connectivity_state4,
+	                                 priv->connectivity_state6,
+	                                 priv->connectivity_state,
+	                                 NULL, NULL, NULL);
 }
 
 static void

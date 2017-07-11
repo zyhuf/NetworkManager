@@ -493,7 +493,7 @@ test_generic (const char *file, const char *override_vpn_ip_iface)
 	gs_unref_variant GVariant *device_ip6_props = NULL;
 	gs_unref_variant GVariant *device_dhcp4_props = NULL;
 	gs_unref_variant GVariant *device_dhcp6_props = NULL;
-	gs_free char *connectivity_change = NULL;
+	gs_free char *connectivity_state = NULL;
 	gs_free char *vpn_ip_iface = NULL;
 	gs_unref_variant GVariant *vpn_proxy_props = NULL;
 	gs_unref_variant GVariant *vpn_ip4_props = NULL;
@@ -520,7 +520,7 @@ test_generic (const char *file, const char *override_vpn_ip_iface)
 	                               &device_ip6_props,
 	                               &device_dhcp4_props,
 	                               &device_dhcp6_props,
-	                               &connectivity_change,
+	                               &connectivity_state,
 	                               &vpn_ip_iface,
 	                               &vpn_proxy_props,
 	                               &vpn_ip4_props,
@@ -543,7 +543,7 @@ test_generic (const char *file, const char *override_vpn_ip_iface)
 	                                           device_ip6_props,
 	                                           device_dhcp4_props,
 	                                           device_dhcp6_props,
-	                                           connectivity_change,
+	                                           connectivity_state, connectivity_state, connectivity_state,
 	                                           override_vpn_ip_iface ? override_vpn_ip_iface : vpn_ip_iface,
 	                                           vpn_proxy_props,
 	                                           vpn_ip4_props,

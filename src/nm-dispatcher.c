@@ -480,6 +480,8 @@ _dispatcher_call (NMDispatcherAction action,
                   NMSettingsConnection *settings_connection,
                   NMConnection *applied_connection,
                   gboolean activation_type_external,
+                  NMConnectivityState connectivity_state4,
+                  NMConnectivityState connectivity_state6,
                   NMConnectivityState connectivity_state,
                   const char *vpn_iface,
                   NMProxyConfig *vpn_proxy_config,
@@ -505,7 +507,10 @@ _dispatcher_call (NMDispatcherAction action,
 	GError *error = NULL;
 	static guint request_counter = 0;
 	guint reqid = ++request_counter;
+	const char *connectivity_state4_string = "UNKNOWN";
+	const char *connectivity_state6_string = "UNKNOWN";
 	const char *connectivity_state_string = "UNKNOWN";
+	GVariant *action_argument;
 
 	if (!dispatcher_proxy)
 		return FALSE;
@@ -617,7 +622,28 @@ _dispatcher_call (NMDispatcherAction action,
 
 #if WITH_CONCHECK
 	connectivity_state_string = nm_connectivity_state_to_string (connectivity_state);
+	connectivity_state4_string = nm_connectivity_state_to_string (connectivity_state4);
+	connectivity_state6_string = nm_connectivity_state_to_string (connectivity_state6);
 #endif
+
+	action_argument = g_variant_new ("(s@a{sa{sv}}a{sv}a{sv}a{sv}a{sv}a{sv}@a{sv}@a{sv}ssssa{sv}a{sv}a{sv}b)",
+		                         action_to_string (action),
+		                         connection_dict,
+		                         &connection_props,
+		                         &device_props,
+		                         &device_proxy_props,
+		                         &device_ip4_props,
+		                         &device_ip6_props,
+		                         device_dhcp4_props,
+		                         device_dhcp6_props,
+		                         connectivity_state4_string,
+		                         connectivity_state6_string,
+		                         connectivity_state_string,
+		                         vpn_iface ? vpn_iface : "",
+		                         &vpn_proxy_props,
+		                         &vpn_ip4_props,
+		                         &vpn_ip6_props,
+		                         nm_logging_enabled (LOGL_DEBUG, LOGD_DISPATCH));
 
 	/* Send the action to the dispatcher */
 	if (blocking) {
@@ -625,22 +651,7 @@ _dispatcher_call (NMDispatcherAction action,
 		GVariantIter *results;
 
 		ret = _nm_dbus_proxy_call_sync (dispatcher_proxy, "Action",
-		                                g_variant_new ("(s@a{sa{sv}}a{sv}a{sv}a{sv}a{sv}a{sv}@a{sv}@a{sv}ssa{sv}a{sv}a{sv}b)",
-		                                               action_to_string (action),
-		                                               connection_dict,
-		                                               &connection_props,
-		                                               &device_props,
-		                                               &device_proxy_props,
-		                                               &device_ip4_props,
-		                                               &device_ip6_props,
-		                                               device_dhcp4_props,
-		                                               device_dhcp6_props,
-		                                               connectivity_state_string,
-		                                               vpn_iface ? vpn_iface : "",
-		                                               &vpn_proxy_props,
-		                                               &vpn_ip4_props,
-		                                               &vpn_ip6_props,
-		                                               nm_logging_enabled (LOGL_DEBUG, LOGD_DISPATCH)),
+		                                action_argument,
 		                                G_VARIANT_TYPE ("(a(sus))"),
 		                                G_DBUS_CALL_FLAGS_NONE, CALL_TIMEOUT,
 		                                NULL, &error);
@@ -663,22 +674,7 @@ _dispatcher_call (NMDispatcherAction action,
 		info->callback = callback;
 		info->user_data = user_data;
 		g_dbus_proxy_call (dispatcher_proxy, "Action",
-		                   g_variant_new ("(s@a{sa{sv}}a{sv}a{sv}a{sv}a{sv}a{sv}@a{sv}@a{sv}ssa{sv}a{sv}a{sv}b)",
-		                                  action_to_string (action),
-		                                  connection_dict,
-		                                  &connection_props,
-		                                  &device_props,
-		                                  &device_proxy_props,
-		                                  &device_ip4_props,
-		                                  &device_ip6_props,
-		                                  device_dhcp4_props,
-		                                  device_dhcp6_props,
-		                                  connectivity_state_string,
-		                                  vpn_iface ? vpn_iface : "",
-		                                  &vpn_proxy_props,
-		                                  &vpn_ip4_props,
-		                                  &vpn_ip6_props,
-		                                  nm_logging_enabled (LOGL_DEBUG, LOGD_DISPATCH)),
+		                   action_argument,
 		                   G_DBUS_CALL_FLAGS_NONE, CALL_TIMEOUT,
 		                   NULL, dispatcher_done_cb, info);
 		success = TRUE;
@@ -717,6 +713,8 @@ nm_dispatcher_call_hostname (NMDispatcherFunc callback,
 {
 	return _dispatcher_call (NM_DISPATCHER_ACTION_HOSTNAME, FALSE,
 	                         NULL, NULL, NULL, FALSE,
+	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
 	                         NM_CONNECTIVITY_UNKNOWN,
 	                         NULL, NULL, NULL, NULL,
 	                         callback, user_data, out_call_id);
@@ -758,6 +756,8 @@ nm_dispatcher_call_device (NMDispatcherAction action,
 	                         nm_act_request_get_settings_connection (act_request),
 	                         nm_act_request_get_applied_connection (act_request),
 	                         nm_active_connection_get_activation_type (NM_ACTIVE_CONNECTION (act_request)) == NM_ACTIVATION_TYPE_EXTERNAL,
+	                         nm_device_get_ip4_connectivity_state (device),
+	                         nm_device_get_ip6_connectivity_state (device),
 	                         NM_CONNECTIVITY_UNKNOWN,
 	                         NULL, NULL, NULL, NULL,
 	                         callback, user_data, out_call_id);
@@ -792,6 +792,8 @@ nm_dispatcher_call_device_sync (NMDispatcherAction action,
 	                         nm_act_request_get_settings_connection (act_request),
 	                         nm_act_request_get_applied_connection (act_request),
 	                         nm_active_connection_get_activation_type (NM_ACTIVE_CONNECTION (act_request)) == NM_ACTIVATION_TYPE_EXTERNAL,
+	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
 	                         NM_CONNECTIVITY_UNKNOWN,
 	                         NULL, NULL, NULL, NULL,
 	                         NULL, NULL, NULL);
@@ -836,6 +838,8 @@ nm_dispatcher_call_vpn (NMDispatcherAction action,
 	                         applied_connection,
 	                         FALSE,
 	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
 	                         vpn_iface, vpn_proxy_config, vpn_ip4_config, vpn_ip6_config,
 	                         callback, user_data, out_call_id);
 }
@@ -872,6 +876,8 @@ nm_dispatcher_call_vpn_sync (NMDispatcherAction action,
 	                         applied_connection,
 	                         FALSE,
 	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
+	                         NM_CONNECTIVITY_UNKNOWN,
 	                         vpn_iface, vpn_proxy_config, vpn_ip4_config, vpn_ip6_config,
 	                         NULL, NULL, NULL);
 }
@@ -889,13 +895,17 @@ nm_dispatcher_call_vpn_sync (NMDispatcherAction action,
  * Returns: %TRUE if the action was dispatched, %FALSE on failure
  */
 gboolean
-nm_dispatcher_call_connectivity (NMConnectivityState connectivity_state,
+nm_dispatcher_call_connectivity (NMConnectivityState connectivity_state4,
+                                 NMConnectivityState connectivity_state6,
+                                 NMConnectivityState connectivity_state,
                                  NMDispatcherFunc callback,
                                  gpointer user_data,
                                  guint *out_call_id)
 {
 	return _dispatcher_call (NM_DISPATCHER_ACTION_CONNECTIVITY_CHANGE, FALSE,
 	                         NULL, NULL, NULL, FALSE,
+	                         connectivity_state4,
+	                         connectivity_state6,
 	                         connectivity_state,
 	                         NULL, NULL, NULL, NULL,
 	                         callback, user_data, out_call_id);

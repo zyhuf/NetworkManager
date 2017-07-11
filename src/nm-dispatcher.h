@@ -77,7 +77,9 @@ gboolean nm_dispatcher_call_vpn_sync (NMDispatcherAction action,
                                       NMIP4Config *vpn_ip4_config,
                                       NMIP6Config *vpn_ip6_config);
 
-gboolean nm_dispatcher_call_connectivity (NMConnectivityState state,
+gboolean nm_dispatcher_call_connectivity (NMConnectivityState state4,
+                                          NMConnectivityState state6,
+                                          NMConnectivityState state,
                                           NMDispatcherFunc callback,
                                           gpointer user_data,
                                           guint *out_call_id);
