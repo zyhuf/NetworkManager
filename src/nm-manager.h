@@ -44,6 +44,8 @@
 #define NM_MANAGER_WIMAX_ENABLED "wimax-enabled"
 #define NM_MANAGER_WIMAX_HARDWARE_ENABLED "wimax-hardware-enabled"
 #define NM_MANAGER_ACTIVE_CONNECTIONS "active-connections"
+#define NM_MANAGER_IP4_CONNECTIVITY "ip4-connectivity"
+#define NM_MANAGER_IP6_CONNECTIVITY "ip6-connectivity"
 #define NM_MANAGER_CONNECTIVITY "connectivity"
 #define NM_MANAGER_PRIMARY_CONNECTION "primary-connection"
 #define NM_MANAGER_PRIMARY_CONNECTION_TYPE "primary-connection-type"

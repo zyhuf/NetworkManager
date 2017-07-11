@@ -203,7 +203,8 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMDevice,
 	PROP_REFRESH_RATE_MS,
 	PROP_TX_BYTES,
 	PROP_RX_BYTES,
-	PROP_CONNECTIVITY,
+	PROP_IP4_CONNECTIVITY,
+	PROP_IP6_CONNECTIVITY,
 );
 
 typedef struct _NMDevicePrivate {
@@ -465,8 +466,8 @@ typedef struct _NMDevicePrivate {
 	NMNetns *netns;
 
 	NMLldpListener *lldp_listener;
-	NMConnectivityState connectivity_state;
-	guint concheck_periodic_id;
+	NMConnectivityState connectivity_state4;
+	NMConnectivityState connectivity_state6;
 	guint64 concheck_seq;
 
 	guint check_delete_unrealized_id;
@@ -1582,16 +1583,24 @@ nm_device_get_priority (NMDevice *self)
 }
 
 static guint32
-route_metric_with_penalty (NMDevice *self, guint32 metric)
+route_metric_with_penalty (NMDevice *self, guint32 metric, int family)
 {
 #if WITH_CONCHECK
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	const guint32 PENALTY = 20000;
+	NMConnectivityState connectivity_state;
 
 	/* Beware: for IPv6, a metric of 0 effectively means 1024.
 	 * Only pass a normalized IPv6 metric (nm_utils_ip6_route_metric_normalize). */
 
-	if (   priv->connectivity_state != NM_CONNECTIVITY_FULL
+	if (family == AF_INET)
+		connectivity_state = priv->connectivity_state4;
+	else if (family == AF_INET6)
+		connectivity_state = priv->connectivity_state6;
+	else
+		g_return_val_if_reached (metric);
+
+	if (   connectivity_state != NM_CONNECTIVITY_FULL
 	    && nm_connectivity_check_enabled (nm_connectivity_get ())) {
 		if (metric >= G_MAXUINT32 - PENALTY)
 			return G_MAXUINT32;
@@ -1825,41 +1834,62 @@ nm_device_get_physical_port_id (NMDevice *self)
 /*****************************************************************************/
 
 static void
-update_connectivity_state (NMDevice *self, NMConnectivityState state)
+update_connectivity_state (NMDevice *self, int family, NMConnectivityState state)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 
 	/* If the connectivity check is disabled, make an optimistic guess. */
 	if (state == NM_CONNECTIVITY_UNKNOWN) {
 		if (priv->state == NM_DEVICE_STATE_ACTIVATED) {
-			if (priv->default_route.v4_has || priv->default_route.v6_has)
+			if (   (family == AF_INET && priv->default_route.v4_has)
+			    || (family == AF_INET6 && priv->default_route.v6_has)) {
 				state = NM_CONNECTIVITY_FULL;
-			else
+			} else {
 				state = NM_CONNECTIVITY_LIMITED;
+			}
 		} else {
 			state = NM_CONNECTIVITY_NONE;
 		}
 	}
 
-	if (priv->connectivity_state != state) {
+	if (family == AF_INET) {
+		if (priv->connectivity_state4 == state)
+			return;
+
 #if WITH_CONCHECK
-		_LOGD (LOGD_CONCHECK, "state changed from %s to %s",
-		       nm_connectivity_state_to_string (priv->connectivity_state),
+		_LOGD (LOGD_CONCHECK, "IPv4 state changed from %s to %s",
+		       nm_connectivity_state_to_string (priv->connectivity_state4),
 		       nm_connectivity_state_to_string (state));
 #endif
-		priv->connectivity_state = state;
-		_notify (self, PROP_CONNECTIVITY);
+		priv->connectivity_state4 = state;
+		_notify (self, PROP_IP4_CONNECTIVITY);
 
 		if (   priv->state == NM_DEVICE_STATE_ACTIVATED
-		    && !nm_device_sys_iface_state_is_external (self)) {
-			if (   priv->default_route.v4_has
-			    && !ip4_config_merge_and_apply (self, NULL, TRUE))
-				_LOGW (LOGD_IP4, "Failed to update IPv4 default route metric");
-			if (   priv->default_route.v6_has
-			    && !ip6_config_merge_and_apply (self, TRUE))
-				_LOGW (LOGD_IP6, "Failed to update IPv6 default route metric");
+		    && priv->default_route.v4_has
+		    && !nm_device_sys_iface_state_is_external (self)
+		    && !ip4_config_merge_and_apply (self, NULL, TRUE)) {
+			_LOGW (LOGD_IP4, "Failed to update IPv4 default route metric");
 		}
-	}
+	} else if (family == AF_INET6) {
+		if (priv->connectivity_state6 == state)
+			return;
+
+#if WITH_CONCHECK
+		_LOGD (LOGD_CONCHECK, "IPv6 state changed from %s to %s",
+		       nm_connectivity_state_to_string (priv->connectivity_state6),
+		       nm_connectivity_state_to_string (state));
+#endif
+		priv->connectivity_state6 = state;
+		_notify (self, PROP_IP6_CONNECTIVITY);
+
+		if (   priv->state == NM_DEVICE_STATE_ACTIVATED
+		    && priv->default_route.v6_has
+		    && !nm_device_sys_iface_state_is_external (self)
+		    && !ip6_config_merge_and_apply (self, TRUE)) {
+			_LOGW (LOGD_IP6, "Failed to update IPv6 default route metric");
+		}
+	} else
+		g_return_if_reached ();
 }
 
 typedef struct {
@@ -1867,6 +1897,7 @@ typedef struct {
 	NMDeviceConnectivityCallback callback;
 	gpointer user_data;
 	guint64 seq;
+	int family;
 } ConnectivityCheckData;
 
 static void
@@ -1874,10 +1905,18 @@ concheck_done (ConnectivityCheckData *data)
 {
 	NMDevice *self = data->self;
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+	NMConnectivityState connectivity_state;
+
+	if (data->family == AF_INET)
+		connectivity_state = priv->connectivity_state4;
+	else if (data->family == AF_INET6)
+		connectivity_state = priv->connectivity_state6;
+	else
+		g_return_if_reached ();
 
 	/* The unsolicited connectivity checks don't hook a callback. */
 	if (data->callback)
-		data->callback (data->self, priv->connectivity_state, data->user_data);
+		data->callback (data->self, connectivity_state, data->user_data);
 	g_object_unref (data->self);
 	g_slice_free (ConnectivityCheckData, data);
 }
@@ -1901,7 +1940,7 @@ concheck_cb (GObject *source_object, GAsyncResult *result, gpointer user_data)
 	}
 
 	if (data->seq == priv->concheck_seq)
-		update_connectivity_state (data->self, state);
+		update_connectivity_state (data->self, data->family, state);
 	concheck_done (data);
 }
 #endif /* WITH_CONCHECK */
@@ -1917,11 +1956,13 @@ no_concheck (gpointer user_data)
 
 void
 nm_device_check_connectivity (NMDevice *self,
+                              int family,
                               NMDeviceConnectivityCallback callback,
                               gpointer user_data)
 {
 	ConnectivityCheckData *data;
 #if WITH_CONCHECK
+	gboolean has_default_route;
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 #endif
 
@@ -1929,14 +1970,19 @@ nm_device_check_connectivity (NMDevice *self,
 	data->self = g_object_ref (self);
 	data->callback = callback;
 	data->user_data = user_data;
+	data->family = family;
 
 #if WITH_CONCHECK
-	if (priv->concheck_periodic_id) {
+	has_default_route = (   (family == AF_INET && priv->default_route.v4_has)
+	                     || (family == AF_INET6 && priv->default_route.v6_has));
+
+	if (has_default_route && priv->state == NM_DEVICE_STATE_ACTIVATED) {
 		data->seq = ++priv->concheck_seq;
 
 		/* Kick off a real connectivity check. */
 		nm_connectivity_check_async (nm_connectivity_get (),
 		                             nm_device_get_ip_iface (self),
+		                             family,
 		                             concheck_cb,
 		                             data);
 		return;
@@ -1948,50 +1994,29 @@ nm_device_check_connectivity (NMDevice *self,
 }
 
 NMConnectivityState
-nm_device_get_connectivity_state (NMDevice *self)
+nm_device_get_ip4_connectivity_state (NMDevice *self)
 {
 	g_return_val_if_fail (NM_IS_DEVICE (self), NM_CONNECTIVITY_UNKNOWN);
 
-	return NM_DEVICE_GET_PRIVATE (self)->connectivity_state;
+	return NM_DEVICE_GET_PRIVATE (self)->connectivity_state4;
+}
+
+NMConnectivityState
+nm_device_get_ip6_connectivity_state (NMDevice *self)
+{
+	g_return_val_if_fail (NM_IS_DEVICE (self), NM_CONNECTIVITY_UNKNOWN);
+
+	return NM_DEVICE_GET_PRIVATE (self)->connectivity_state6;
 }
 
 #if WITH_CONCHECK
 static void
 concheck_periodic (NMConnectivity *connectivity, NMDevice *self)
 {
-	nm_device_check_connectivity (self, NULL, NULL);
+	nm_device_check_connectivity (self, AF_INET, NULL, NULL);
+	nm_device_check_connectivity (self, AF_INET6, NULL, NULL);
 }
 #endif
-
-static void
-concheck_periodic_update (NMDevice *self)
-{
-#if WITH_CONCHECK
-	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
-	gboolean check_enable;
-
-	check_enable =    (priv->state == NM_DEVICE_STATE_ACTIVATED)
-	               && (priv->default_route.v4_has || priv->default_route.v6_has);
-
-	if (check_enable && !priv->concheck_periodic_id) {
-		/* We just gained a default route. Enable periodic checking. */
-		priv->concheck_periodic_id = g_signal_connect (nm_connectivity_get (),
-		                                               NM_CONNECTIVITY_PERIODIC_CHECK,
-		                                               G_CALLBACK (concheck_periodic), self);
-		/* Also kick off a check right away. */
-		nm_device_check_connectivity (self, NULL, NULL);
-	} else if (!check_enable && priv->concheck_periodic_id) {
-		/* The default route has gone off, and so has connectivity. */
-		g_signal_handler_disconnect (nm_connectivity_get (), priv->concheck_periodic_id);
-		priv->concheck_periodic_id = 0;
-		update_connectivity_state (self, NM_CONNECTIVITY_NONE);
-	}
-#else
-	/* update_connectivity_state() figures out how to lie about
-	 * connectivity state if the actual state is not really known. */
-	update_connectivity_state (self, NM_CONNECTIVITY_UNKNOWN);
-#endif
-}
 
 /*****************************************************************************/
 
@@ -5682,7 +5707,7 @@ ip4_config_merge_and_apply (NMDevice *self,
 	memset (&priv->default_route.v4, 0, sizeof (priv->default_route.v4));
 	priv->default_route.v4.rt_source = NM_IP_CONFIG_SOURCE_USER;
 	priv->default_route.v4.gateway = gateway;
-	priv->default_route.v4.metric = route_metric_with_penalty (self, default_route_metric);
+	priv->default_route.v4.metric = route_metric_with_penalty (self, default_route_metric, AF_INET);
 	priv->default_route.v4.mss = nm_ip4_config_get_mss (composite);
 
 	if (!has_direct_route) {
@@ -6424,7 +6449,8 @@ ip6_config_merge_and_apply (NMDevice *self,
 	priv->default_route.v6.rt_source = NM_IP_CONFIG_SOURCE_USER;
 	priv->default_route.v6.gateway = *gateway;
 	priv->default_route.v6.metric = route_metric_with_penalty (self,
-	                                                           nm_device_get_ip6_route_metric (self));
+	                                                           nm_device_get_ip6_route_metric (self),
+	                                                           AF_INET6);
 	priv->default_route.v6.mss = nm_ip6_config_get_mss (composite);
 
 	if (!has_direct_route) {
@@ -9889,7 +9915,7 @@ nm_device_set_ip4_config (NMDevice *self,
 	}
 
 	def_route_changed = nm_default_route_manager_ip4_update_default_route (nm_netns_get_default_route_manager (priv->netns), self);
-	concheck_periodic_update (self);
+	nm_device_check_connectivity (self, AF_INET, NULL, NULL);
 
 	if (!nm_device_sys_iface_state_is_external_or_assume (self))
 		ip4_rp_filter_update (self);
@@ -12682,6 +12708,13 @@ _set_state_full (NMDevice *self,
 		}
 		break;
 	case NM_DEVICE_STATE_DEACTIVATING:
+
+		g_signal_handlers_disconnect_by_func (nm_connectivity_get (),
+		                                      G_CALLBACK (concheck_periodic),
+		                                      self);
+		update_connectivity_state (self, AF_INET, NM_CONNECTIVITY_NONE);
+		update_connectivity_state (self, AF_INET6, NM_CONNECTIVITY_NONE);
+
 		_cancel_activation (self);
 
 		/* We cache the ignore_carrier state to not react on config-reloads while the connection
@@ -12721,6 +12754,15 @@ _set_state_full (NMDevice *self,
 		break;
 	case NM_DEVICE_STATE_ACTIVATED:
 		_LOGI (LOGD_DEVICE, "Activation: successful, device activated.");
+
+		update_connectivity_state (self, AF_INET, NM_CONNECTIVITY_UNKNOWN);
+		update_connectivity_state (self, AF_INET6, NM_CONNECTIVITY_UNKNOWN);
+		nm_device_check_connectivity (self, AF_INET, NULL, NULL);
+		nm_device_check_connectivity (self, AF_INET6, NULL, NULL);
+		g_signal_connect (nm_connectivity_get (),
+		                  NM_CONNECTIVITY_PERIODIC_CHECK,
+		                  G_CALLBACK (concheck_periodic), self);
+
 		nm_device_update_metered (self);
 		nm_dispatcher_call_device (NM_DISPATCHER_ACTION_UP,
 		                           self,
@@ -12812,8 +12854,6 @@ _set_state_full (NMDevice *self,
 	 */
 	if (ip_config_valid (old_state) && !ip_config_valid (state))
 	    notify_ip_properties (self);
-
-	concheck_periodic_update (self);
 
 	/* Dispose of the cached activation request */
 	if (req)
@@ -14249,8 +14289,11 @@ get_property (GObject *object, guint prop_id,
 	case PROP_RX_BYTES:
 		g_value_set_uint64 (value, priv->stats.rx_bytes);
 		break;
-	case PROP_CONNECTIVITY:
-		g_value_set_uint (value, priv->connectivity_state);
+	case PROP_IP4_CONNECTIVITY:
+		g_value_set_uint (value, priv->connectivity_state4);
+		break;
+	case PROP_IP6_CONNECTIVITY:
+		g_value_set_uint (value, priv->connectivity_state6);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -14517,8 +14560,13 @@ nm_device_class_init (NMDeviceClass *klass)
 	                         G_PARAM_STATIC_STRINGS);
 
 	/* Connectivity */
-	obj_properties[PROP_CONNECTIVITY] =
-	     g_param_spec_uint (NM_DEVICE_CONNECTIVITY, "", "",
+	obj_properties[PROP_IP4_CONNECTIVITY] =
+	     g_param_spec_uint (NM_DEVICE_IP4_CONNECTIVITY, "", "",
+	                        NM_CONNECTIVITY_UNKNOWN, NM_CONNECTIVITY_FULL, NM_CONNECTIVITY_UNKNOWN,
+	                        G_PARAM_READABLE |
+	                        G_PARAM_STATIC_STRINGS);
+	obj_properties[PROP_IP6_CONNECTIVITY] =
+	     g_param_spec_uint (NM_DEVICE_IP6_CONNECTIVITY, "", "",
 	                        NM_CONNECTIVITY_UNKNOWN, NM_CONNECTIVITY_FULL, NM_CONNECTIVITY_UNKNOWN,
 	                        G_PARAM_READABLE |
 	                        G_PARAM_STATIC_STRINGS);

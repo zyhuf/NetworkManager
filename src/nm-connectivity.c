@@ -329,6 +329,7 @@ timeout_cb (gpointer user_data)
 void
 nm_connectivity_check_async (NMConnectivity      *self,
                              const char          *iface,
+                             int                  family,
                              GAsyncReadyCallback  callback,
                              gpointer             user_data)
 {
@@ -365,6 +366,14 @@ nm_connectivity_check_async (NMConnectivity      *self,
 		curl_easy_setopt (ehandle, CURLOPT_PRIVATE, cb_data);
 		curl_easy_setopt (ehandle, CURLOPT_HTTPHEADER, cb_data->request_headers);
 		curl_easy_setopt (ehandle, CURLOPT_INTERFACE, cb_data->ifspec);
+
+		if (family == AF_INET)
+			curl_easy_setopt (ehandle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+		else if (family == AF_INET6)
+			curl_easy_setopt (ehandle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+		else
+			g_return_if_reached ();
+
 		curl_multi_add_handle (priv->curl_mhandle, ehandle);
 
 		cb_data->timeout_id = g_timeout_add_seconds (30, timeout_cb, cb_data);

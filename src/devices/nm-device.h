@@ -140,7 +140,8 @@ nm_device_state_reason_check (NMDeviceStateReason reason)
 #define NM_DEVICE_STATISTICS_TX_BYTES        "tx-bytes"
 #define NM_DEVICE_STATISTICS_RX_BYTES        "rx-bytes"
 
-#define NM_DEVICE_CONNECTIVITY               "connectivity"
+#define NM_DEVICE_IP4_CONNECTIVITY      "ip4-connectivity"
+#define NM_DEVICE_IP6_CONNECTIVITY      "ip6-connectivity"
 
 #define NM_TYPE_DEVICE            (nm_device_get_type ())
 #define NM_DEVICE(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_DEVICE, NMDevice))
@@ -735,9 +736,11 @@ typedef void (*NMDeviceConnectivityCallback) (NMDevice *self,
                                               NMConnectivityState state,
                                               gpointer user_data);
 void nm_device_check_connectivity (NMDevice *self,
+                                   int family,
                                    NMDeviceConnectivityCallback callback,
                                    gpointer user_data);
-NMConnectivityState nm_device_get_connectivity_state (NMDevice *self);
+NMConnectivityState nm_device_get_ip4_connectivity_state (NMDevice *self);
+NMConnectivityState nm_device_get_ip6_connectivity_state (NMDevice *self);
 
 typedef struct _NMBtVTableNetworkServer NMBtVTableNetworkServer;
 struct _NMBtVTableNetworkServer {

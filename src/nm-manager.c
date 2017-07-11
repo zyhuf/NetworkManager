@@ -120,6 +120,8 @@ typedef struct {
 	GSList *devices;
 	NMState state;
 	NMConfig *config;
+	NMConnectivityState connectivity_state4;
+	NMConnectivityState connectivity_state6;
 	NMConnectivityState connectivity_state;
 
 	NMPolicy *policy;
@@ -204,6 +206,8 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMManager,
 	PROP_WIMAX_ENABLED,
 	PROP_WIMAX_HARDWARE_ENABLED,
 	PROP_ACTIVE_CONNECTIONS,
+	PROP_IP4_CONNECTIVITY,
+	PROP_IP6_CONNECTIVITY,
 	PROP_CONNECTIVITY,
 	PROP_PRIMARY_CONNECTION,
 	PROP_PRIMARY_CONNECTION_TYPE,
@@ -2037,9 +2041,32 @@ device_realized (NMDevice *device,
 
 #if WITH_CONCHECK
 static void
-device_connectivity_changed (NMDevice *device,
-                             GParamSpec *pspec,
-                             NMManager *self)
+device_connectivity_changed (NMManager *self)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	NMConnectivityState best_state = NM_CONNECTIVITY_UNKNOWN;
+
+	best_state = priv->connectivity_state4;
+	if (priv->connectivity_state6 > best_state)
+		best_state = priv->connectivity_state6;
+
+	if (best_state == priv->connectivity_state)
+		return;
+
+	priv->connectivity_state = best_state;
+
+	_LOGD (LOGD_CORE, "Overall connectivity checking indicates %s",
+	       nm_connectivity_state_to_string (priv->connectivity_state));
+
+	_notify (self, PROP_CONNECTIVITY);
+	nm_manager_update_state (self);
+	nm_dispatcher_call_connectivity (priv->connectivity_state, NULL, NULL, NULL);
+}
+
+static void
+device_connectivity6_changed (NMDevice *device,
+                              GParamSpec *pspec,
+                              NMManager *self)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	NMConnectivityState best_state = NM_CONNECTIVITY_UNKNOWN;
@@ -2047,21 +2074,49 @@ device_connectivity_changed (NMDevice *device,
 	const GSList *devices;
 
 	for (devices = priv->devices; devices; devices = devices->next) {
-		state = nm_device_get_connectivity_state (NM_DEVICE (devices->data));
+		state = nm_device_get_ip6_connectivity_state (NM_DEVICE (devices->data));
 		if (state > best_state)
 			best_state = state;
 	}
 
-	if (best_state != priv->connectivity_state) {
-		priv->connectivity_state = best_state;
+	if (best_state == priv->connectivity_state6)
+		return;
 
-		_LOGD (LOGD_CORE, "connectivity checking indicates %s",
-		       nm_connectivity_state_to_string (priv->connectivity_state));
+	priv->connectivity_state6 = best_state;
 
-		nm_manager_update_state (self);
-		_notify (self, PROP_CONNECTIVITY);
-		nm_dispatcher_call_connectivity (priv->connectivity_state, NULL, NULL, NULL);
+	_LOGD (LOGD_CORE, "IPv6 connectivity checking indicates %s",
+	       nm_connectivity_state_to_string (priv->connectivity_state));
+
+	_notify (self, PROP_IP6_CONNECTIVITY);
+	device_connectivity_changed (self);
+}
+
+static void
+device_connectivity4_changed (NMDevice *device,
+                              GParamSpec *pspec,
+                              NMManager *self)
+{
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
+	NMConnectivityState best_state = NM_CONNECTIVITY_UNKNOWN;
+	NMConnectivityState state;
+	const GSList *devices;
+
+	for (devices = priv->devices; devices; devices = devices->next) {
+		state = nm_device_get_ip4_connectivity_state (NM_DEVICE (devices->data));
+		if (state > best_state)
+			best_state = state;
 	}
+
+	if (best_state == priv->connectivity_state4)
+		return;
+
+	priv->connectivity_state4 = best_state;
+
+	_LOGD (LOGD_CORE, "IPv4 connectivity checking indicates %s",
+	       nm_connectivity_state_to_string (priv->connectivity_state));
+
+	_notify (self, PROP_IP4_CONNECTIVITY);
+	device_connectivity_changed (self);
 }
 #endif
 
@@ -2171,8 +2226,11 @@ add_device (NMManager *self, NMDevice *device, GError **error)
 	                  self);
 
 #if WITH_CONCHECK
-	g_signal_connect (device, "notify::" NM_DEVICE_CONNECTIVITY,
-	                  G_CALLBACK (device_connectivity_changed),
+	g_signal_connect (device, "notify::" NM_DEVICE_IP4_CONNECTIVITY,
+	                  G_CALLBACK (device_connectivity4_changed),
+	                  self);
+	g_signal_connect (device, "notify::" NM_DEVICE_IP6_CONNECTIVITY,
+	                  G_CALLBACK (device_connectivity6_changed),
 	                  self);
 #endif
 
@@ -5008,6 +5066,12 @@ check_connectivity_auth_done_cb (NMAuthChain *chain,
 		for (devices = priv->devices; devices; devices = devices->next) {
 			data->remaining++;
 			nm_device_check_connectivity (NM_DEVICE (devices->data),
+			                              AF_INET,
+			                              device_connectivity_done,
+			                              data);
+			data->remaining++;
+			nm_device_check_connectivity (NM_DEVICE (devices->data),
+			                              AF_INET6,
 			                              device_connectivity_done,
 			                              data);
 		}
@@ -6233,6 +6297,12 @@ get_property (GObject *object, guint prop_id,
 	case PROP_ACTIVE_CONNECTIONS:
 		nm_utils_g_value_set_object_path_array (value, priv->active_connections, NULL, NULL);
 		break;
+	case PROP_IP4_CONNECTIVITY:
+		g_value_set_uint (value, priv->connectivity_state4);
+		break;
+	case PROP_IP6_CONNECTIVITY:
+		g_value_set_uint (value, priv->connectivity_state6);
+		break;
 	case PROP_CONNECTIVITY:
 		g_value_set_uint (value, priv->connectivity_state);
 		break;
@@ -6516,6 +6586,18 @@ nm_manager_class_init (NMManagerClass *manager_class)
 	                        G_TYPE_STRV,
 	                        G_PARAM_READABLE |
 	                        G_PARAM_STATIC_STRINGS);
+
+	obj_properties[PROP_IP4_CONNECTIVITY] =
+	    g_param_spec_uint (NM_MANAGER_IP4_CONNECTIVITY, "", "",
+	                       NM_CONNECTIVITY_UNKNOWN, NM_CONNECTIVITY_FULL, NM_CONNECTIVITY_UNKNOWN,
+	                       G_PARAM_READABLE |
+	                       G_PARAM_STATIC_STRINGS);
+
+	obj_properties[PROP_IP6_CONNECTIVITY] =
+	    g_param_spec_uint (NM_MANAGER_IP6_CONNECTIVITY, "", "",
+	                       NM_CONNECTIVITY_UNKNOWN, NM_CONNECTIVITY_FULL, NM_CONNECTIVITY_UNKNOWN,
+	                       G_PARAM_READABLE |
+	                       G_PARAM_STATIC_STRINGS);
 
 	obj_properties[PROP_CONNECTIVITY] =
 	    g_param_spec_uint (NM_MANAGER_CONNECTIVITY, "", "",
