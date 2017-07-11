@@ -444,6 +444,30 @@
     <property name="Connectivity" type="u" access="read"/>
 
     <!--
+        Ip4Connectivity:
+
+        The result of the last connectivity check using IPv4. See "Connectivity" property
+        for details.
+
+        Since: 1.10
+
+        Returns: <link linkend="NMConnectivityState">NMConnectivityState</link>
+    -->
+    <property name="Ip4Connectivity" type="u" access="read"/>
+
+    <!--
+        Ip6Connectivity:
+
+        The result of the last connectivity check using IPv4. See "Connectivity" property
+        for details.
+
+        Since: 1.10
+
+        Returns: <link linkend="NMConnectivityState">NMConnectivityState</link>
+    -->
+    <property name="Ip6Connectivity" type="u" access="read"/>
+
+    <!--
         GlobalDnsConfiguration:
 
         Dictionary of global DNS settings where the key is one of "searches",
