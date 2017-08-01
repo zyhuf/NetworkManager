@@ -1974,6 +1974,7 @@ nm_connection_is_virtual (NMConnection *connection)
 	    || !strcmp (type, NM_SETTING_IP_TUNNEL_SETTING_NAME)
 	    || !strcmp (type, NM_SETTING_MACSEC_SETTING_NAME)
 	    || !strcmp (type, NM_SETTING_MACVLAN_SETTING_NAME)
+	    || !strcmp (type, NM_SETTING_OVS_INTERFACE_SETTING_NAME)
 	    || !strcmp (type, NM_SETTING_VXLAN_SETTING_NAME))
 		return TRUE;
 
@@ -2324,6 +2325,22 @@ NMSettingOlpcMesh *
 nm_connection_get_setting_olpc_mesh (NMConnection *connection)
 {
 	return _connection_get_setting_check (connection, NM_TYPE_SETTING_OLPC_MESH);
+}
+
+/**
+ * nm_connection_get_setting_ovs_interface:
+ * @connection: the #NMConnection
+ *
+ * A shortcut to return any #NMSettingOvsInterface the connection might contain.
+ *
+ * Returns: (transfer none): an #NMSettingOvsInterface if the connection contains one, otherwise %NULL
+ *
+ * Since: 1.10
+ **/
+NMSettingOvsInterface *
+nm_connection_get_setting_ovs_interface (NMConnection *connection)
+{
+	return _connection_get_setting_check (connection, NM_TYPE_SETTING_OVS_INTERFACE);
 }
 
 /**
