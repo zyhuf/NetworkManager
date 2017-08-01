@@ -5078,6 +5078,7 @@ static const NMMetaPropertyInfo *const property_infos_CONNECTION[] = {
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
 			.values_static =            VALUES_STATIC (NM_SETTING_BOND_SETTING_NAME,
 			                                           NM_SETTING_BRIDGE_SETTING_NAME,
+			                                           NM_SETTING_OVS_BRIDGE_SETTING_NAME,
 			                                           NM_SETTING_OVS_PORT_SETTING_NAME,
 			                                           NM_SETTING_TEAM_SETTING_NAME),
 		),
@@ -6741,6 +6742,7 @@ _setting_init_fcn_wireless (ARGS_SETTING_INIT_FCN)
 #define SETTING_PRETTY_NAME_MACSEC              N_("MACsec connection")
 #define SETTING_PRETTY_NAME_MACVLAN             N_("macvlan connection")
 #define SETTING_PRETTY_NAME_OLPC_MESH           N_("OLPC Mesh connection")
+#define SETTING_PRETTY_NAME_OVS_BRIDGE          N_("OpenVSwitch bridge settings")
 #define SETTING_PRETTY_NAME_OVS_PORT            N_("OpenVSwitch port settings")
 #define SETTING_PRETTY_NAME_PPP                 N_("PPP settings")
 #define SETTING_PRETTY_NAME_PPPOE               N_("PPPoE")
@@ -6891,6 +6893,14 @@ const NMMetaSettingInfoEditor nm_meta_setting_infos_editor[] = {
 		),
 		.setting_init_fcn =             _setting_init_fcn_olpc_mesh,
 	),
+	SETTING_INFO_EMPTY (OVS_BRIDGE,
+		.valid_parts = NM_META_SETTING_VALID_PARTS (
+			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
+			NM_META_SETTING_VALID_PART_ITEM (OVS_BRIDGE,            TRUE),
+			NM_META_SETTING_VALID_PART_ITEM (OVS_PORT,              FALSE),
+			NM_META_SETTING_VALID_PART_ITEM (WIRED,                 FALSE),
+		),
+	),
 	SETTING_INFO_EMPTY (OVS_PORT,
 		.valid_parts = NM_META_SETTING_VALID_PARTS (
 			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
@@ -7024,7 +7034,8 @@ nm_meta_setting_info_valid_parts_for_slave_type (const char *slave_type, const c
 		NM_SET_OUT (out_slave_name, "bridge-slave");
 		return valid_settings_slave_bridge;
 	}
-	if (nm_streq (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME)) {
+	if (   nm_streq (slave_type, NM_SETTING_OVS_BRIDGE_SETTING_NAME)
+	    || nm_streq (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME)) {
 		NM_SET_OUT (out_slave_name, "ovs-slave");
 		return NM_PTRARRAY_EMPTY (const NMMetaSettingValidPartItem *);
 	}
