@@ -379,7 +379,8 @@ add_vpn_secret_helper (GPtrArray *secrets, NMSettingVpn *s_vpn, const char *name
 
 	flags = get_vpn_secret_flags (s_vpn, name);
 	if (   flags & NM_SETTING_SECRET_FLAG_AGENT_OWNED
-	    || flags & NM_SETTING_SECRET_FLAG_NOT_SAVED) {
+	    || flags & NM_SETTING_SECRET_FLAG_NOT_SAVED
+	    || g_str_has_prefix (name, "x-vpn-challenge")) {
 		secret = nm_secret_agent_simple_secret_new (ui_name,
 		                                            NM_SETTING (s_vpn),
 		                                            NM_SETTING_VPN_SECRETS,
