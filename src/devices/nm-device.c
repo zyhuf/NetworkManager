@@ -4383,8 +4383,8 @@ nm_device_check_connection_compatible (NMDevice *self, NMConnection *connection)
 	return NM_DEVICE_GET_CLASS (self)->check_connection_compatible (self, connection);
 }
 
-gboolean
-nm_device_check_slave_connection_compatible (NMDevice *self, NMConnection *slave)
+static gboolean
+check_slave_connection_compatible (NMDevice *self, NMConnection *slave)
 {
 	NMDevicePrivate *priv;
 	NMSettingConnection *s_con;
@@ -4394,9 +4394,6 @@ nm_device_check_slave_connection_compatible (NMDevice *self, NMConnection *slave
 	g_return_val_if_fail (NM_IS_CONNECTION (slave), FALSE);
 
 	priv = NM_DEVICE_GET_PRIVATE (self);
-
-	if (!nm_device_is_master (self))
-		return FALSE;
 
 	/* All masters should have connection type set */
 	connection_type = NM_DEVICE_GET_CLASS (self)->connection_type;
@@ -4409,6 +4406,18 @@ nm_device_check_slave_connection_compatible (NMDevice *self, NMConnection *slave
 		return FALSE;
 
 	return strcmp (connection_type, slave_type) == 0;
+}
+
+gboolean
+nm_device_check_slave_connection_compatible (NMDevice *self, NMConnection *connection)
+{
+	g_return_val_if_fail (NM_IS_DEVICE (self), FALSE);
+	g_return_val_if_fail (NM_IS_CONNECTION (connection), FALSE);
+
+	if (!nm_device_is_master (self))
+		return FALSE;
+
+	return NM_DEVICE_GET_CLASS (self)->check_slave_connection_compatible (self, connection);
 }
 
 /**
@@ -14209,6 +14218,7 @@ nm_device_class_init (NMDeviceClass *klass)
 	klass->get_autoconnect_allowed = get_autoconnect_allowed;
 	klass->can_auto_connect = can_auto_connect;
 	klass->check_connection_compatible = check_connection_compatible;
+	klass->check_slave_connection_compatible = check_slave_connection_compatible;
 	klass->check_connection_available = check_connection_available;
 	klass->can_unmanaged_external_down = can_unmanaged_external_down;
 	klass->realize_start_notify = realize_start_notify;
