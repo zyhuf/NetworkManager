@@ -1,4 +1,3 @@
-/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 /*
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,24 +27,21 @@
 
 /**
  * SECTION:nm-setting-ovs-interface
- * @short_description: Describes connection properties for OpenVSwitch ports.
+ * @short_description: Describes connection properties for OpenVSwitch interfaces.
  *
  * The #NMSettingOvsInterface object is a #NMSetting subclass that describes properties
- * necessary for OpenVSwitch ports.
+ * necessary for OpenVSwitch interfaces.
  **/
 
 /**
  * NMSettingOvsInterface:
  *
- * OvsInterface Link Settings
+ * OpenVSwitch Interface Settings
  */
 struct _NMSettingOvsInterface {
 	NMSetting parent;
 
-	char *fail_mode;
-	gboolean mcast_snooping_enable;
-	gboolean rstp_enable;
-	gboolean stp_enable;
+	char *type;
 };
 
 struct _NMSettingOvsInterfaceClass {
@@ -58,10 +54,7 @@ NM_SETTING_REGISTER_TYPE (NM_TYPE_SETTING_OVS_INTERFACE)
 
 enum {
 	PROP_0,
-	PROP_FAIL_MODE,
-	PROP_MCAST_SNOOPING_ENABLE,
-	PROP_RSTP_ENABLE,
-	PROP_STP_ENABLE,
+	PROP_TYPE,
 	LAST_PROP
 };
 
@@ -81,69 +74,20 @@ nm_setting_ovs_interface_new (void)
 }
 
 /**
- * nm_setting_ovs_interface_get_fail_mode:
+ * nm_setting_ovs_interface_get_interface_type:
  * @s_ovs_interface: the #NMSettingOvsInterface
  *
- * Returns: the #NMSettingOvsInterface:fail_mode property of the setting
+ * Returns: the #NMSettingOvsInterface:type property of the setting
  *
  * Since: 1.10
  **/
 const char *
-nm_setting_ovs_interface_get_fail_mode (NMSettingOvsInterface *s_ovs_interface)
+nm_setting_ovs_interface_get_interface_type (NMSettingOvsInterface *s_ovs_interface)
 {
 	g_return_val_if_fail (NM_IS_SETTING_OVS_INTERFACE (s_ovs_interface), NULL);
 
-	return s_ovs_interface->fail_mode;
+	return s_ovs_interface->type;
 }
-
-/**
- * nm_setting_ovs_interface_get_mcast_snooping_enable:
- * @s_ovs_interface: the #NMSettingOvsInterface
- *
- * Returns: the #NMSettingOvsInterface:mcast_snooping_enable property of the setting
- *
- * Since: 1.10
- **/
-gboolean
-nm_setting_ovs_interface_get_mcast_snooping_enable (NMSettingOvsInterface *s_ovs_interface)
-{
-	g_return_val_if_fail (NM_IS_SETTING_OVS_INTERFACE (s_ovs_interface), FALSE);
-
-	return s_ovs_interface->mcast_snooping_enable;
-}
-
-/**
- * nm_setting_ovs_interface_get_rstp_enable:
- * @s_ovs_interface: the #NMSettingOvsInterface
- *
- * Returns: the #NMSettingOvsInterface:rstp_enable property of the setting
- *
- * Since: 1.10
- **/
-gboolean
-nm_setting_ovs_interface_get_rstp_enable (NMSettingOvsInterface *s_ovs_interface)
-{
-	g_return_val_if_fail (NM_IS_SETTING_OVS_INTERFACE (s_ovs_interface), FALSE);
-
-	return s_ovs_interface->rstp_enable;
-}
-
-/**
- * nm_setting_ovs_interface_get_stp_enable:
- * @s_ovs_interface: the #NMSettingOvsInterface
- *
- * Returns: the #NMSettingOvsInterface:stp_enable property of the setting
- *
- * Since: 1.10
- **/
-gboolean
-nm_setting_ovs_interface_get_stp_enable (NMSettingOvsInterface *s_ovs_interface)
-{
-	g_return_val_if_fail (NM_IS_SETTING_OVS_INTERFACE (s_ovs_interface), FALSE);
-
-	return s_ovs_interface->stp_enable;
-}
-
 static void
 set_property (GObject *object, guint prop_id,
               const GValue *value, GParamSpec *pspec)
@@ -151,18 +95,9 @@ set_property (GObject *object, guint prop_id,
 	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
 
 	switch (prop_id) {
-	case PROP_FAIL_MODE:
-		g_free (s_ovs_interface->fail_mode);
-		s_ovs_interface->fail_mode = g_value_dup_string (value);
-		break;
-	case PROP_MCAST_SNOOPING_ENABLE:
-		s_ovs_interface->mcast_snooping_enable = g_value_get_boolean (value);
-		break;
-	case PROP_RSTP_ENABLE:
-		s_ovs_interface->rstp_enable = g_value_get_boolean (value);
-		break;
-	case PROP_STP_ENABLE:
-		s_ovs_interface->stp_enable = g_value_get_boolean (value);
+	case PROP_TYPE:
+		g_free (s_ovs_interface->type);
+		s_ovs_interface->type = g_value_dup_string (value);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -177,17 +112,8 @@ get_property (GObject *object, guint prop_id,
 	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
 
 	switch (prop_id) {
-	case PROP_FAIL_MODE:
-		g_value_set_string (value, s_ovs_interface->fail_mode);
-		break;
-	case PROP_MCAST_SNOOPING_ENABLE:
-		g_value_set_boolean (value, s_ovs_interface->mcast_snooping_enable);
-		break;
-	case PROP_RSTP_ENABLE:
-		g_value_set_boolean (value, s_ovs_interface->rstp_enable);
-		break;
-	case PROP_STP_ENABLE:
-		g_value_set_boolean (value, s_ovs_interface->stp_enable);
+	case PROP_TYPE:
+		g_value_set_string (value, s_ovs_interface->type);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -203,13 +129,13 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	if (!_nm_connection_verify_required_interface_name (connection, error))
 		return FALSE;
 
-	if (!NM_IN_STRSET (s_ovs_interface->fail_mode, "secure", "standalone", NULL)) {
+	if (!NM_IN_STRSET (s_ovs_interface->type, "internal", "system", "", NULL)) {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
-		             _("'%s' is not allowed in fail_mode"),
-		             s_ovs_interface->fail_mode);
-		g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_INTERFACE_SETTING_NAME, NM_SETTING_OVS_INTERFACE_FAIL_MODE);
+		             _("'%s' is not allowed in type"),
+		             s_ovs_interface->type);
+		g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_INTERFACE_SETTING_NAME, NM_SETTING_OVS_INTERFACE_TYPE);
 		return FALSE;
 	}
 
@@ -221,7 +147,7 @@ finalize (GObject *object)
 {
 	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
 
-	g_free (s_ovs_interface->fail_mode);
+	g_free (s_ovs_interface->type);
 
 	G_OBJECT_CLASS (nm_setting_ovs_interface_parent_class)->finalize (object);
 }
@@ -243,56 +169,16 @@ nm_setting_ovs_interface_class_init (NMSettingOvsInterfaceClass *setting_class)
 	parent_class->verify = verify;
 
 	/**
-	 * NMSettingOvsInterface:fail_mode:
+	 * NMSettingOvsInterface:type:
 	 *
-	 * The bridge failure mode. One of "secure", "standalone" or empty.
+	 * The interface type. Either "internal", or empty.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_FAIL_MODE,
-		 g_param_spec_string (NM_SETTING_OVS_INTERFACE_FAIL_MODE, "", "",
+		(object_class, PROP_TYPE,
+		 g_param_spec_string (NM_SETTING_OVS_INTERFACE_TYPE, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
 	                              NM_SETTING_PARAM_INFERRABLE |
 	                              G_PARAM_STATIC_STRINGS));
-
-	/**
-	 * NMSettingOvsInterface:mcast-snooping_enable:
-	 *
-	 * Enable or disable multicast snooping.
-	 **/
-	g_object_class_install_property
-	        (object_class, PROP_MCAST_SNOOPING_ENABLE,
-	         g_param_spec_boolean (NM_SETTING_OVS_INTERFACE_MCAST_SNOOPING_ENABLE, "", "",
-	                               FALSE,
-	                               G_PARAM_READWRITE |
-	                               G_PARAM_CONSTRUCT |
-	                               G_PARAM_STATIC_STRINGS));
-
-	/**
-	 * NMSettingOvsInterface:rstp-enable:
-	 *
-	 *
-	 * Enable or disable RSTP.
-	 **/
-	g_object_class_install_property
-	        (object_class, PROP_RSTP_ENABLE,
-	         g_param_spec_boolean (NM_SETTING_OVS_INTERFACE_RSTP_ENABLE, "", "",
-	                               FALSE,
-	                               G_PARAM_READWRITE |
-	                               G_PARAM_CONSTRUCT |
-	                               G_PARAM_STATIC_STRINGS));
-
-	/**
-	 * NMSettingOvsInterface:stp-enable:
-	 *
-	 * Enable or disable STP.
-	 **/
-	g_object_class_install_property
-	        (object_class, PROP_STP_ENABLE,
-	         g_param_spec_boolean (NM_SETTING_OVS_INTERFACE_STP_ENABLE, "", "",
-	                               FALSE,
-	                               G_PARAM_READWRITE |
-	                               G_PARAM_CONSTRUCT |
-	                               G_PARAM_STATIC_STRINGS));
 }

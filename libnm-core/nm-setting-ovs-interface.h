@@ -35,12 +35,9 @@ G_BEGIN_DECLS
 #define NM_IS_SETTING_OVS_INTERFACE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), NM_TYPE_SETTING_OVS_INTERFACE))
 #define NM_SETTING_OVS_INTERFACE_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NM_TYPE_SETTING_OVS_INTERFACE, NMSettingOvsInterfaceClass))
 
-#define NM_SETTING_OVS_INTERFACE_SETTING_NAME          "ovs-interface"
+#define NM_SETTING_OVS_INTERFACE_SETTING_NAME "ovs-interface"
 
-#define NM_SETTING_OVS_INTERFACE_FAIL_MODE             "fail-mode"
-#define NM_SETTING_OVS_INTERFACE_MCAST_SNOOPING_ENABLE "mcast-snooping-enable"
-#define NM_SETTING_OVS_INTERFACE_RSTP_ENABLE           "rstp-enable"
-#define NM_SETTING_OVS_INTERFACE_STP_ENABLE            "stp-enable"
+#define NM_SETTING_OVS_INTERFACE_TYPE         "type"
 
 typedef struct _NMSettingOvsInterfaceClass NMSettingOvsInterfaceClass;
 
@@ -50,13 +47,7 @@ NM_AVAILABLE_IN_1_10
 NMSetting *nm_setting_ovs_interface_new (void);
 
 NM_AVAILABLE_IN_1_10
-const char *nm_setting_ovs_interface_get_fail_mode             (NMSettingOvsInterface *s_ovs_interface);
-NM_AVAILABLE_IN_1_10
-gboolean    nm_setting_ovs_interface_get_mcast_snooping_enable (NMSettingOvsInterface *s_ovs_interface);
-NM_AVAILABLE_IN_1_10
-gboolean    nm_setting_ovs_interface_get_rstp_enable           (NMSettingOvsInterface *s_ovs_interface);
-NM_AVAILABLE_IN_1_10
-gboolean    nm_setting_ovs_interface_get_stp_enable            (NMSettingOvsInterface *s_ovs_interface);
+const char *nm_setting_ovs_interface_get_interface_type (NMSettingOvsInterface *s_ovs_interface);
 
 G_END_DECLS
 
