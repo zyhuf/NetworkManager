@@ -1622,6 +1622,7 @@ nm_device_get_priority (NMDevice *self)
 		return 750;
 	case NM_DEVICE_TYPE_OVS_INTERFACE:
 	case NM_DEVICE_TYPE_OVS_PORT:
+	case NM_DEVICE_TYPE_OVS_BRIDGE:
 		return 800;
 	case NM_DEVICE_TYPE_GENERIC:
 		return 950;

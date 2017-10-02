@@ -210,6 +210,8 @@ introspection_sources = \
 	introspection/org.freedesktop.NetworkManager.Device.OvsInterface.h \
 	introspection/org.freedesktop.NetworkManager.Device.OvsPort.c \
 	introspection/org.freedesktop.NetworkManager.Device.OvsPort.h \
+	introspection/org.freedesktop.NetworkManager.Device.OvsBridge.c \
+	introspection/org.freedesktop.NetworkManager.Device.OvsBridge.h \
 	introspection/org.freedesktop.NetworkManager.Device.Ppp.c \
 	introspection/org.freedesktop.NetworkManager.Device.Ppp.h \
 	introspection/org.freedesktop.NetworkManager.Device.Statistics.c \
@@ -287,6 +289,7 @@ DBUS_INTERFACE_DOCS = \
 	docs/api/dbus-org.freedesktop.NetworkManager.Device.OlpcMesh.xml \
 	docs/api/dbus-org.freedesktop.NetworkManager.Device.OvsInterface.xml \
 	docs/api/dbus-org.freedesktop.NetworkManager.Device.OvsPort.xml \
+	docs/api/dbus-org.freedesktop.NetworkManager.Device.OvsBridge.xml \
 	docs/api/dbus-org.freedesktop.NetworkManager.Device.Ppp.xml \
 	docs/api/dbus-org.freedesktop.NetworkManager.DHCP4Config.xml \
 	docs/api/dbus-org.freedesktop.NetworkManager.Device.Generic.xml \
@@ -337,6 +340,7 @@ dbusinterfaces_DATA = \
 	introspection/org.freedesktop.NetworkManager.Device.OlpcMesh.xml \
 	introspection/org.freedesktop.NetworkManager.Device.OvsInterface.xml \
 	introspection/org.freedesktop.NetworkManager.Device.OvsPort.xml \
+	introspection/org.freedesktop.NetworkManager.Device.OvsBridge.xml \
 	introspection/org.freedesktop.NetworkManager.Device.Ppp.xml \
 	introspection/org.freedesktop.NetworkManager.Device.Statistics.xml \
 	introspection/org.freedesktop.NetworkManager.Device.Team.xml \
@@ -741,6 +745,7 @@ libnm_lib_h_pub_real = \
 	libnm/nm-device-olpc-mesh.h \
 	libnm/nm-device-ovs-interface.h \
 	libnm/nm-device-ovs-port.h \
+	libnm/nm-device-ovs-bridge.h \
 	libnm/nm-device-ppp.h \
 	libnm/nm-device-team.h \
 	libnm/nm-device-tun.h \
@@ -796,6 +801,7 @@ libnm_lib_c_real = \
 	libnm/nm-device-olpc-mesh.c \
 	libnm/nm-device-ovs-interface.c \
 	libnm/nm-device-ovs-port.c \
+	libnm/nm-device-ovs-bridge.c \
 	libnm/nm-device-ppp.c \
 	libnm/nm-device-team.c \
 	libnm/nm-device-tun.c \
@@ -2777,7 +2783,9 @@ src_devices_openvswitch_libnm_device_plugin_openvswitch_la_SOURCES = \
 	src/devices/openvswitch/nm-device-ovs-interface.c \
 	src/devices/openvswitch/nm-device-ovs-interface.h \
 	src/devices/openvswitch/nm-device-ovs-port.c \
-	src/devices/openvswitch/nm-device-ovs-port.h
+	src/devices/openvswitch/nm-device-ovs-port.h \
+	src/devices/openvswitch/nm-device-ovs-bridge.c \
+	src/devices/openvswitch/nm-device-ovs-bridge.h
 
 src_devices_openvswitch_libnm_device_plugin_openvswitch_la_CPPFLAGS = \
 	-I$(srcdir)/src \
