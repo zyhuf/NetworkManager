@@ -46,7 +46,6 @@
 #define NM_DBUS_INTERFACE_DEVICE_WIRELESS    NM_DBUS_INTERFACE_DEVICE ".Wireless"
 #define NM_DBUS_INTERFACE_DEVICE_BLUETOOTH   NM_DBUS_INTERFACE_DEVICE ".Bluetooth"
 #define NM_DBUS_INTERFACE_DEVICE_OLPC_MESH   NM_DBUS_INTERFACE_DEVICE ".OlpcMesh"
-#define NM_DBUS_INTERFACE_DEVICE_OPENVSWITCH NM_DBUS_INTERFACE_DEVICE ".Openvswitch"
 #define NM_DBUS_PATH_ACCESS_POINT            NM_DBUS_PATH "/AccessPoint"
 #define NM_DBUS_INTERFACE_ACCESS_POINT       NM_DBUS_INTERFACE ".AccessPoint"
 #define NM_DBUS_INTERFACE_DEVICE_MODEM       NM_DBUS_INTERFACE_DEVICE ".Modem"
@@ -206,7 +205,6 @@ typedef enum {
  * @NM_DEVICE_TYPE_MACSEC: a MACsec interface
  * @NM_DEVICE_TYPE_DUMMY: a dummy interface
  * @NM_DEVICE_TYPE_PPP: a PPP interface
- * @NM_DEVICE_TYPE_OPENVSWITCH: a OpenVSwitch interface
  *
  * #NMDeviceType values indicate the type of hardware represented by a
  * device object.
@@ -236,7 +234,6 @@ typedef enum {
 	NM_DEVICE_TYPE_MACSEC      = 21,
 	NM_DEVICE_TYPE_DUMMY       = 22,
 	NM_DEVICE_TYPE_PPP         = 23,
-	NM_DEVICE_TYPE_OPENVSWITCH = 24,
 } NMDeviceType;
 
 /**

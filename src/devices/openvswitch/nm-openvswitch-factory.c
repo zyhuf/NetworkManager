@@ -20,7 +20,6 @@
 #include "nm-default.h"
 
 #include "nm-ovsdb.h"
-#include "nm-device-openvswitch.h"
 #include "platform/nm-platform.h"
 #include "nm-core-internal.h"
 #include "devices/nm-device-factory.h"
@@ -80,12 +79,7 @@ create_device (NMDeviceFactory *factory,
 	if (g_strcmp0 (iface, "ovs-system") == 0)
 		return NULL;
 
-	return (NMDevice *) g_object_new (NM_TYPE_DEVICE_OPENVSWITCH,
-	                                  NM_DEVICE_IFACE, iface,
-	                                  NM_DEVICE_TYPE_DESC, "OpenVSwitch",
-	                                  NM_DEVICE_DEVICE_TYPE, NM_DEVICE_TYPE_OPENVSWITCH,
-	                                  NM_DEVICE_LINK_TYPE, NM_LINK_TYPE_OPENVSWITCH,
-	                                  NULL);
+	return NULL;
 }
 
 static void

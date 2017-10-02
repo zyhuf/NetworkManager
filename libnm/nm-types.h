@@ -43,7 +43,6 @@ typedef struct _NMDeviceMacsec      NMDeviceMacsec;
 typedef struct _NMDeviceMacvlan     NMDeviceMacvlan;
 typedef struct _NMDeviceModem       NMDeviceModem;
 typedef struct _NMDeviceOlpcMesh    NMDeviceOlpcMesh;
-typedef struct _NMDeviceOpenvswitch NMDeviceOpenvswitch;
 typedef struct _NMDevicePpp         NMDevicePpp;
 typedef struct _NMDeviceTeam        NMDeviceTeam;
 typedef struct _NMDeviceTun         NMDeviceTun;

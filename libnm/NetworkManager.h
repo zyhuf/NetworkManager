@@ -41,7 +41,6 @@
 #include "nm-device-macvlan.h"
 #include "nm-device-modem.h"
 #include "nm-device-olpc-mesh.h"
-#include "nm-device-openvswitch.h"
 #include "nm-device-team.h"
 #include "nm-device-tun.h"
 #include "nm-device-vlan.h"
