@@ -27,6 +27,7 @@
 #include <gio/gunixsocketaddress.h>
 
 #include "devices/nm-device.h"
+//#include "nm-device-openvswitch.h"
 #include "platform/nm-platform.h"
 #include "nm-core-internal.h"
 

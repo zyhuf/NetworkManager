@@ -20,6 +20,7 @@
 #include "nm-default.h"
 
 #include "nm-ovsdb.h"
+#include "nm-device-ovs-interface.h"
 #include "platform/nm-platform.h"
 #include "nm-core-internal.h"
 #include "devices/nm-device-factory.h"
