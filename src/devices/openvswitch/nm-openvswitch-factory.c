@@ -55,9 +55,8 @@ G_DEFINE_TYPE (NMOpenvswitchFactory, nm_openvswitch_factory, NM_TYPE_DEVICE_FACT
 /*****************************************************************************/
 
 NM_DEVICE_FACTORY_DECLARE_TYPES (
-	NM_DEVICE_FACTORY_DECLARE_LINK_TYPES    (NM_LINK_TYPE_OPENVSWITCH)
-	NM_DEVICE_FACTORY_DECLARE_SETTING_TYPES (NM_SETTING_OVS_BRIDGE_SETTING_NAME,
-	                                         NM_SETTING_OVS_PORT_SETTING_NAME)
+//	NM_DEVICE_FACTORY_DECLARE_LINK_TYPES    (NM_LINK_TYPE_OPENVSWITCH)
+	NM_DEVICE_FACTORY_DECLARE_SETTING_TYPES (NM_SETTING_OVS_BRIDGE_SETTING_NAME)
 )
 
 G_MODULE_EXPORT NMDeviceFactory *
@@ -67,22 +66,83 @@ nm_device_factory_create (GError **error)
 }
 
 static void
-start (NMDeviceFactory *factory)
+ovsdb_device_added (NMOvsdb *ovsdb, const char *type, const char *name,
+                    NMDeviceFactory *self)
 {
-	nm_ovsdb_get ();
+	NMDevice *device = NULL;
+	g_printerr ("ADDED: [%s] %s\n", type, name);
+
+
+	if (g_strcmp0 (type, NM_SETTING_OVS_INTERFACE_SETTING_NAME) == 0) {
+		device = g_object_new (NM_TYPE_DEVICE_OVS_INTERFACE,
+		                       NM_DEVICE_IFACE, name,
+		                       NM_DEVICE_DRIVER, "openvswitch",
+		                       NM_DEVICE_TYPE_DESC, "OpenVSwitch Interface",
+		                       NM_DEVICE_DEVICE_TYPE, NM_TYPE_DEVICE_OVS_INTERFACE,
+		                       NULL);
+	} else if (g_strcmp0 (type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
+		device = g_object_new (NM_TYPE_DEVICE_OVS_PORT,
+		                       NM_DEVICE_IFACE, name,
+		                       NM_DEVICE_DRIVER, "openvswitch",
+		                       NM_DEVICE_TYPE_DESC, "OpenVSwitch Port",
+		                       NM_DEVICE_DEVICE_TYPE, NM_TYPE_DEVICE_OVS_PORT,
+		                       NULL);
+	} else if (g_strcmp0 (type, NM_SETTING_OVS_BRIDGE_SETTING_NAME) == 0) {
+		device = g_object_new (NM_TYPE_DEVICE_OVS_BRIDGE,
+		                       NM_DEVICE_IFACE, name,
+		                       NM_DEVICE_DRIVER, "openvswitch",
+		                       NM_DEVICE_TYPE_DESC, "OpenVSwitch Bridge",
+		                       NM_DEVICE_DEVICE_TYPE, NM_TYPE_DEVICE_OVS_BRIDGE,
+		                       NULL);
+	} else {
+		g_return_if_reached ();
+	}
+
+	g_signal_emit_by_name (self, NM_DEVICE_FACTORY_DEVICE_ADDED, device);
+	g_object_unref (device);
+}
+
+static void
+ovsdb_device_removed (NMOvsdb *ovsdb, const char *type, const char *name,
+                      NMDeviceFactory *self)
+{
+	g_printerr ("REMOVED: [%s] %s\n", type, name);
+}
+
+static void
+start (NMDeviceFactory *self)
+{
+	NMOvsdb *ovsdb;
+
+	ovsdb = nm_ovsdb_get ();
+
+	g_signal_connect (ovsdb, NM_OVSDB_DEVICE_ADDED, G_CALLBACK (ovsdb_device_added), self);
+	g_signal_connect (ovsdb, NM_OVSDB_DEVICE_REMOVED, G_CALLBACK (ovsdb_device_removed), self);
 }
 
 static NMDevice *
-create_device (NMDeviceFactory *factory,
+create_device (NMDeviceFactory *self,
                const char *iface,
                const NMPlatformLink *plink,
                NMConnection *connection,
                gboolean *out_ignore)
 {
+#if 0
 	if (g_strcmp0 (iface, "ovs-system") == 0)
 		return NULL;
 
+	return (NMDevice *) g_object_new (NM_TYPE_DEVICE_OPENVSWITCH,
+	                                  NM_DEVICE_IFACE, iface,
+	                                  NM_DEVICE_TYPE_DESC, "OpenVSwitch",
+	                                  NM_DEVICE_DEVICE_TYPE, NM_DEVICE_TYPE_OPENVSWITCH,
+	                                  NM_DEVICE_LINK_TYPE, NM_LINK_TYPE_OPENVSWITCH,
+	                                  NULL);
+#else
+	g_printerr ("CREATE DEVICE\n");
+
+
 	return NULL;
+#endif
 }
 
 static void

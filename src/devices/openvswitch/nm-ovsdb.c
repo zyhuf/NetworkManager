@@ -47,8 +47,20 @@ typedef struct {
 
 typedef struct {
 	char *name;
+	char *type;
 	char *connection_uuid;
 } OpenvswitchInterface;
+
+/*****************************************************************************/
+
+enum {
+	DEVICE_ADDED,
+	DEVICE_REMOVED,
+	DEVICE_CHANGED,
+	LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0 };
 
 typedef struct {
 	GSocketClient *client;
@@ -81,6 +93,10 @@ G_DEFINE_TYPE (NMOvsdb, nm_ovsdb, G_TYPE_OBJECT)
 
 #define _NMLOG_DOMAIN      LOGD_DEVICE
 #define _NMLOG(level, ...) __NMLOG_DEFAULT (level, _NMLOG_DOMAIN, "ovsdb", __VA_ARGS__)
+
+// XXX ///////
+#undef _LOGT
+#define _LOGT _LOGW
 
 NM_DEFINE_SINGLETON_GETTER (NMOvsdb, nm_ovsdb_get, NM_TYPE_OVSDB);
 
@@ -587,14 +603,14 @@ ovsdb_next_command (NMOvsdb *self)
 		msg = json_pack ("{s:i, s:s, s:[s, n, {"
 		                 "  s:[{s:[s, s, s]}],"
 		                 "  s:[{s:[s, s, s]}],"
-		                 "  s:[{s:[s, s]}],"
+		                 "  s:[{s:[s, s, s]}],"
 		                 "  s:[{s:[]}]"
 		                 "}]}",
 		                 "id", call->id,
 		                 "method", "monitor", "params", "Open_vSwitch",
 		                 "Bridge", "columns", "name", "ports", "external_ids",
 		                 "Port", "columns", "name", "interfaces", "external_ids",
-		                 "Interface", "columns", "name", "external_ids",
+		                 "Interface", "columns", "name", "type", "external_ids",
 		                 "Open_vSwitch", "columns");
 		break;
 	case NM_OVSDB_ADD_BR:
@@ -763,6 +779,7 @@ ovsdb_got_update (NMOvsdb *self, json_t *msg)
 	void *iter;
 	const char *name;
 	const char *key;
+	const char *type;
 	json_t *value;
 	OpenvswitchBridge *ovs_bridge;
 	OpenvswitchPort *ovs_port;
@@ -783,66 +800,165 @@ ovsdb_got_update (NMOvsdb *self, json_t *msg)
 		priv->db_uuid = g_strdup (iter ? json_object_iter_key (iter) : NULL);
 	}
 
-	json_object_foreach (bridge, key, value) {
-		if (json_unpack (value, "{s:{}}", "old") == 0) {
-			ovs_bridge = g_hash_table_lookup (priv->bridges, key);
-			_LOGT ("removed a bridge: %s%s%s", ovs_bridge->name,
-			       ovs_bridge->connection_uuid ? ", " : "",
-			       ovs_bridge->connection_uuid ? ovs_bridge->connection_uuid : "");
-			g_hash_table_remove (priv->bridges, key);
+	/* Interfaces */
+	json_object_foreach (interface, key, value) {
+		gboolean old = FALSE;
+		gboolean new = FALSE;
+
+		if (json_unpack (value, "{s:{}}", "old") == 0)
+			old = TRUE;
+
+		if (json_unpack (value, "{s:{s:s, s:s, s:o}}", "new",
+		                 "name", &name,
+		                 "type", &type,
+		                 "external_ids", &external_ids) == 0)
+			new = TRUE;
+
+		if (old) {
+			ovs_interface = g_hash_table_lookup (priv->interfaces, key);
+			if (g_strcmp0 (ovs_interface->name, name) != 0) {
+				old = FALSE;
+				_LOGT ("removed an '%s' interface: %s%s%s",
+				       ovs_interface->type, ovs_interface->name,
+				       ovs_interface->connection_uuid ? ", " : "",
+				       ovs_interface->connection_uuid ? ovs_interface->connection_uuid : "");
+				if (g_strcmp0 (type, "internal") == 0) {
+					/* Currently the factory only creates NMDevices for
+					 * internal interfaces. Ignore the rest. */
+					g_signal_emit (self, signals[DEVICE_REMOVED], 0,
+					               "ovs-interface", ovs_interface->name);
+				}
+			}
+			g_hash_table_remove (priv->interfaces, key);
 		}
-		if (json_unpack (value, "{s:{s?:s, s?:o, s?:o}}", "new", "name", &name, "external_ids", &external_ids, "ports", &items) == 0) {
-			ovs_bridge = g_slice_new (OpenvswitchBridge);
-			ovs_bridge->name = g_strdup (name);
-			ovs_bridge->connection_uuid = _connection_uuid_from_external_ids (external_ids);
-			ovs_bridge->ports = g_ptr_array_new_with_free_func (g_free);
-			_uuids_to_array (ovs_bridge->ports, items);
-			g_hash_table_insert (priv->bridges, g_strdup (key), ovs_bridge);
-			_LOGT ("added a bridge: %s%s%s", ovs_bridge->name,
-			       ovs_bridge->connection_uuid ? ", " : "",
-			       ovs_bridge->connection_uuid ? ovs_bridge->connection_uuid : "");
+
+		if (new) {
+			ovs_interface = g_slice_new (OpenvswitchInterface);
+			ovs_interface->name = g_strdup (name);
+			ovs_interface->type = g_strdup (type);
+			ovs_interface->connection_uuid = _connection_uuid_from_external_ids (external_ids);
+			if (old) {
+				_LOGT ("changed an '%s' interface: %s%s%s", type, ovs_interface->name,
+				       ovs_interface->connection_uuid ? ", " : "",
+				       ovs_interface->connection_uuid ? ovs_interface->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_CHANGED], 0,
+				               "ovs-interface", ovs_interface->name);
+			} else {
+				_LOGT ("added an '%s' interface: %s%s%s",
+				       ovs_interface->type, ovs_interface->name,
+				       ovs_interface->connection_uuid ? ", " : "",
+				       ovs_interface->connection_uuid ? ovs_interface->connection_uuid : "");
+				if (g_strcmp0 (ovs_interface->type, "internal") == 0) {
+					/* Currently the factory only creates NMDevices for
+					 * internal interfaces. Ignore the rest. */
+					g_signal_emit (self, signals[DEVICE_ADDED], 0,
+					               "ovs-interface", ovs_interface->name);
+				}
+			}
+			g_hash_table_insert (priv->interfaces, g_strdup (key), ovs_interface);
 		}
 	}
 
+	/* Ports */
 	json_object_foreach (port, key, value) {
-		if (json_unpack (value, "{s:{}}", "old") == 0) {
+		gboolean old = FALSE;
+		gboolean new = FALSE;
+
+		if (json_unpack (value, "{s:{}}", "old") == 0)
+			old = TRUE;
+
+		if (json_unpack (value, "{s:{s:s, s:o, s:o}}", "new",
+		                 "name", &name,
+		                 "external_ids", &external_ids,
+		                 "interfaces", &items) == 0)
+			new = TRUE;
+
+		if (old) {
 			ovs_port = g_hash_table_lookup (priv->ports, key);
-			_LOGT ("removed a port: %s%s%s", ovs_port->name,
-			       ovs_port->connection_uuid ? ", " : "",
-			       ovs_port->connection_uuid ? ovs_port->connection_uuid : "");
+			if (g_strcmp0 (ovs_port->name, name) != 0) {
+				old = FALSE;
+				_LOGT ("removed a port: %s%s%s", ovs_port->name,
+				       ovs_port->connection_uuid ? ", " : "",
+				       ovs_port->connection_uuid ? ovs_port->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_REMOVED], 0,
+				               NM_SETTING_OVS_PORT_SETTING_NAME, ovs_port->name);
+			}
 			g_hash_table_remove (priv->ports, key);
 		}
-		if (json_unpack (value, "{s:{s?:s, s?:o, s?:o}}", "new", "name", &name, "external_ids", &external_ids, "interfaces", &items) == 0) {
+
+		if (new) {
 			ovs_port = g_slice_new (OpenvswitchPort);
 			ovs_port->name = g_strdup (name);
 			ovs_port->connection_uuid = _connection_uuid_from_external_ids (external_ids);
 			ovs_port->interfaces = g_ptr_array_new_with_free_func (g_free);
 			_uuids_to_array (ovs_port->interfaces, items);
+			if (old) {
+				_LOGT ("changed a port: %s%s%s", ovs_port->name,
+				       ovs_port->connection_uuid ? ", " : "",
+				       ovs_port->connection_uuid ? ovs_port->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_CHANGED], 0,
+				               NM_SETTING_OVS_PORT_SETTING_NAME, ovs_port->name);
+			} else {
+				_LOGT ("added a port: %s%s%s", ovs_port->name,
+				       ovs_port->connection_uuid ? ", " : "",
+				       ovs_port->connection_uuid ? ovs_port->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_ADDED], 0,
+				               NM_SETTING_OVS_PORT_SETTING_NAME, ovs_port->name);
+			}
 			g_hash_table_insert (priv->ports, g_strdup (key), ovs_port);
-			_LOGT ("added a port: %s%s%s", ovs_port->name,
-			       ovs_port->connection_uuid ? ", " : "",
-			       ovs_port->connection_uuid ? ovs_port->connection_uuid : "");
 		}
 	}
 
-	json_object_foreach (interface, key, value) {
-		if (json_unpack (value, "{s:{}}", "old") == 0) {
-			ovs_interface = g_hash_table_lookup (priv->interfaces, key);
-			_LOGT ("removed an interface: %s%s%s", ovs_interface->name,
-			       ovs_interface->connection_uuid ? ", " : "",
-			       ovs_interface->connection_uuid ? ovs_interface->connection_uuid : "");
-			g_hash_table_remove (priv->interfaces, key);
+	/* Bridges */
+	json_object_foreach (bridge, key, value) {
+		gboolean old = FALSE;
+		gboolean new = FALSE;
+
+		if (json_unpack (value, "{s:{}}", "old") == 0)
+			old = TRUE;
+
+		if (json_unpack (value, "{s:{s:s, s:o, s:o}}", "new",
+		                 "name", &name,
+		                 "external_ids", &external_ids,
+		                 "ports", &items) == 0)
+			new = TRUE;
+
+		if (old) {
+			ovs_bridge = g_hash_table_lookup (priv->bridges, key);
+			if (g_strcmp0 (ovs_bridge->name, name) != 0) {
+				old = FALSE;
+				_LOGT ("removed a bridge: %s%s%s", ovs_bridge->name,
+				       ovs_bridge->connection_uuid ? ", " : "",
+				       ovs_bridge->connection_uuid ? ovs_bridge->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_REMOVED], 0,
+				               NM_SETTING_OVS_BRIDGE_SETTING_NAME, ovs_bridge->name);
+			}
+			g_hash_table_remove (priv->bridges, key);
 		}
-		if (json_unpack (value, "{s:{s?:s, s?:o}}", "new", "name", &name, "external_ids", &external_ids) == 0) {
-			ovs_interface = g_slice_new (OpenvswitchInterface);
-			ovs_interface->connection_uuid = _connection_uuid_from_external_ids (external_ids);
-			ovs_interface->name = g_strdup (name);
-			g_hash_table_insert (priv->interfaces, g_strdup (key), ovs_interface);
-			_LOGT ("added an interface: %s%s%s", ovs_interface->name,
-			       ovs_interface->connection_uuid ? ", " : "",
-			       ovs_interface->connection_uuid ? ovs_interface->connection_uuid : "");
+
+		if (new) {
+			ovs_bridge = g_slice_new (OpenvswitchBridge);
+			ovs_bridge->name = g_strdup (name);
+			ovs_bridge->connection_uuid = _connection_uuid_from_external_ids (external_ids);
+			ovs_bridge->ports = g_ptr_array_new_with_free_func (g_free);
+			_uuids_to_array (ovs_bridge->ports, items);
+			if (old) {
+				_LOGT ("changed a bridge: %s%s%s", ovs_bridge->name,
+				       ovs_bridge->connection_uuid ? ", " : "",
+				       ovs_bridge->connection_uuid ? ovs_bridge->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_CHANGED], 0,
+				               NM_SETTING_OVS_BRIDGE_SETTING_NAME, ovs_bridge->name);
+			} else {
+				_LOGT ("added a bridge: %s%s%s", ovs_bridge->name,
+				       ovs_bridge->connection_uuid ? ", " : "",
+				       ovs_bridge->connection_uuid ? ovs_bridge->connection_uuid : "");
+				g_signal_emit (self, signals[DEVICE_ADDED], 0,
+				               NM_SETTING_OVS_BRIDGE_SETTING_NAME, ovs_bridge->name);
+			}
+			g_hash_table_insert (priv->bridges, g_strdup (key), ovs_bridge);
 		}
 	}
+
 }
 
 /**
@@ -1300,6 +1416,7 @@ _free_interface (gpointer data)
 
 	g_free (ovs_interface->name);
 	g_free (ovs_interface->connection_uuid);
+	g_free (ovs_interface->type);
 	g_slice_free (OpenvswitchInterface, ovs_interface);
 }
 
@@ -1353,4 +1470,25 @@ nm_ovsdb_class_init (NMOvsdbClass *klass)
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->dispose = dispose;
+
+	signals[DEVICE_ADDED] =
+		g_signal_new (NM_OVSDB_DEVICE_ADDED,
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0, NULL, NULL, NULL,
+		              G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
+
+	signals[DEVICE_REMOVED] =
+		g_signal_new (NM_OVSDB_DEVICE_REMOVED,
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0, NULL, NULL, NULL,
+		              G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
+
+	signals[DEVICE_CHANGED] =
+		g_signal_new (NM_OVSDB_DEVICE_CHANGED,
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0, NULL, NULL, NULL,
+		              G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_POINTER);
 }
