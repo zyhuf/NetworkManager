@@ -5797,6 +5797,18 @@ static const NMMetaPropertyInfo *const property_infos_OVS_BRIDGE[] = {
 };
 
 #undef  _CURRENT_NM_META_SETTING_TYPE
+#define _CURRENT_NM_META_SETTING_TYPE NM_META_SETTING_TYPE_OVS_INTERFACE
+static const NMMetaPropertyInfo *const property_infos_OVS_INTERFACE[] = {
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_OVS_INTERFACE_TYPE,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =        VALUES_STATIC ("internal"),
+		),
+	),
+	NULL
+};
+
+#undef  _CURRENT_NM_META_SETTING_TYPE
 #define _CURRENT_NM_META_SETTING_TYPE NM_META_SETTING_TYPE_OVS_PORT
 static const NMMetaPropertyInfo *const property_infos_OVS_PORT[] = {
 	PROPERTY_INFO_WITH_DESC (NM_SETTING_OVS_PORT_VLAN_MODE,
@@ -6750,6 +6762,7 @@ _setting_init_fcn_wireless (ARGS_SETTING_INIT_FCN)
 #define SETTING_PRETTY_NAME_OLPC_MESH           N_("OLPC Mesh connection")
 #define SETTING_PRETTY_NAME_OVS_BRIDGE          N_("OpenVSwitch bridge settings")
 #define SETTING_PRETTY_NAME_OVS_PORT            N_("OpenVSwitch port settings")
+#define SETTING_PRETTY_NAME_OVS_INTERFACE       N_("OpenVSwitch interface settings")
 #define SETTING_PRETTY_NAME_PPP                 N_("PPP settings")
 #define SETTING_PRETTY_NAME_PPPOE               N_("PPPoE")
 #define SETTING_PRETTY_NAME_PROXY               N_("Proxy")
@@ -6904,6 +6917,14 @@ const NMMetaSettingInfoEditor nm_meta_setting_infos_editor[] = {
 			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (OVS_BRIDGE,            TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (OVS_PORT,              FALSE),
+			NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE,         FALSE),
+			NM_META_SETTING_VALID_PART_ITEM (WIRED,                 FALSE),
+		),
+	),
+	SETTING_INFO (OVS_INTERFACE,
+		.valid_parts = NM_META_SETTING_VALID_PARTS (
+			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
+			NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE,         TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (WIRED,                 FALSE),
 		),
 	),
@@ -6911,6 +6932,7 @@ const NMMetaSettingInfoEditor nm_meta_setting_infos_editor[] = {
 		.valid_parts = NM_META_SETTING_VALID_PARTS (
 			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (OVS_PORT,              TRUE),
+			NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE,         FALSE),
 			NM_META_SETTING_VALID_PART_ITEM (WIRED,                 FALSE),
 		),
 	),
