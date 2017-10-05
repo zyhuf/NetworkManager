@@ -121,7 +121,7 @@ typedef struct {
 	OvsdbMethodCallback callback;
 	gpointer user_data;
 	NMOvsdbCommand command;
-	const char *bridge;
+	NMConnection *bridge;
 	NMConnection *port;
 	NMConnection *interface;
 } OvsdbMethodCall;
@@ -156,7 +156,7 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
 
 	_LOGT ("%s: %s%s%s%s%s%s%s%s%s", comment, op,
 	       call->bridge ? " bridge=" : "",
-	       call->bridge ? call->bridge : "",
+	       call->bridge ? nm_connection_get_interface_name (call->bridge) : "",
 	       call->port ? " port=" : "",
 	       call->port ? nm_connection_get_interface_name (call->port) : "",
 	       call->interface ? " interface=" : "",
@@ -179,7 +179,7 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
  */
 static void
 ovsdb_call_method (NMOvsdb *self, NMOvsdbCommand command,
-                   const char *bridge, NMConnection *port, NMConnection *interface,
+                   NMConnection *bridge, NMConnection *port, NMConnection *interface,
                    OvsdbMethodCallback callback, gpointer user_data)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
@@ -193,7 +193,7 @@ ovsdb_call_method (NMOvsdb *self, NMOvsdbCommand command,
 	call->id = COMMAND_PENDING;
 	call->command = command;
 	if (bridge)
-		call->bridge = g_strdup (bridge);
+		call->bridge = nm_simple_connection_new_clone (bridge);
 	if (port)
 		call->port = nm_simple_connection_new_clone (port);
 	if (interface)
@@ -219,7 +219,7 @@ ovsdb_call_method (NMOvsdb *self, NMOvsdbCommand command,
  * in the state we expect it to be prior to the transaction.
  */
 static void
-_fill_bridges (NMOvsdb *self, const char *exclude_bridge,
+_fill_bridges (NMOvsdb *self, NMConnection *exclude_bridge,
                json_t **items, json_t **new_items)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
@@ -233,7 +233,7 @@ _fill_bridges (NMOvsdb *self, const char *exclude_bridge,
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
 		json_array_append_new (*items, json_pack ("[s,s]", "uuid", bridge_uuid));
-		if (   g_strcmp0 (exclude_bridge, ovs_bridge->name) == 0
+		if (   g_strcmp0 (nm_connection_get_interface_name (exclude_bridge),ovs_bridge->name) == 0
 		    && ovs_bridge->connection_uuid != NULL)
 			continue;
 		json_array_append_new (*new_items, json_pack ("[s,s]", "uuid", bridge_uuid));
@@ -285,7 +285,7 @@ _set_bridges (const json_t *bridges, const char *db_uuid)
  */
 static gboolean
 _fill_ports (NMOvsdb *self,
-             const char *bridge, NMConnection *exclude_port,
+             NMConnection *bridge, NMConnection *exclude_port,
              json_t **items, json_t **new_items)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
@@ -302,7 +302,7 @@ _fill_ports (NMOvsdb *self,
 
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
-		if (g_strcmp0 (ovs_bridge->name, bridge) != 0)
+		if (g_strcmp0 (ovs_bridge->name, nm_connection_get_interface_name (bridge)) != 0)
 			continue;
 		for (i = 0; i < ovs_bridge->ports->len; i++) {
 			port_uuid = g_ptr_array_index (ovs_bridge->ports, i);
@@ -332,13 +332,13 @@ _fill_ports (NMOvsdb *self,
  * bridge ports at the same time.
  */
 static json_t *
-_expect_ports (const char *bridge, const json_t *ports)
+_expect_ports (NMConnection *bridge, const json_t *ports)
 {
 	return json_pack ("{s:s, s:s, s:i, s:[s], s:s, s:[{s:[s, o]}], s:[[s, s, s]]}",
 	                  "op", "wait", "table", "Bridge",
 	                  "timeout", 0, "columns", "ports",
 	                  "until", "==", "rows", "ports", "set", ports,
-	                  "where", "name", "==", bridge);
+	                  "where", "name", "==", nm_connection_get_interface_name (bridge));
 }
 
 /**
@@ -348,12 +348,12 @@ _expect_ports (const char *bridge, const json_t *ports)
  * to @ports.
  */
 static json_t *
-_set_ports (const char *bridge, const json_t *ports)
+_set_ports (NMConnection *bridge, const json_t *ports)
 {
 	return json_pack ("{s:s, s:s, s:{s:[s, o]}, s:[[s, s, s]]}",
 	                  "op", "update", "table", "Bridge",
 	                  "row", "ports", "set", ports,
-	                  "where", "name", "==", bridge);
+	                  "where", "name", "==", nm_connection_get_interface_name (bridge));
 }
 
 /*
@@ -527,10 +527,9 @@ _new_port (NMConnection *port)
  * _new_bridge:
  *
  * Returns an commands that adds new bridge from a given connection.
- * The connection actually refers to the bridge's internal port so that we can get an UUID.
  */
 static json_t *
-_new_bridge (NMConnection *port)
+_new_bridge (NMConnection *bridge)
 {
 	NMSettingOvsBridge *s_ovs_bridge;
 	const char *fail_mode = NULL;
@@ -539,7 +538,7 @@ _new_bridge (NMConnection *port)
 	gboolean stp_enable = FALSE;
 	json_t *row;
 
-	s_ovs_bridge = nm_connection_get_setting_ovs_bridge (port);
+	s_ovs_bridge = nm_connection_get_setting_ovs_bridge (bridge);
 
 	row = json_object ();
 
@@ -559,11 +558,11 @@ _new_bridge (NMConnection *port)
 	if (stp_enable)
 		json_object_set_new (row, "stp_enable", json_boolean (stp_enable));
 
-	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (port)));
+	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (bridge)));
 	json_object_set_new (row, "ports", json_pack ("[s, s]", "named-uuid", "rowPort"));
 	json_object_set_new (row, "external_ids",
 		json_pack ("[s, [[s, s]]]", "map",
-		           "NM.connection.uuid", nm_connection_get_uuid (port)));
+		           "NM.connection.uuid", nm_connection_get_uuid (bridge)));
 
 	return json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Bridge",
 	                  "row", row, "uuid-name", "rowBridge");
@@ -623,9 +622,9 @@ ovsdb_next_command (NMOvsdb *self)
 		                 _expect_bridges (items, priv->db_uuid),
 		                 _set_bridges (new_items, priv->db_uuid),
 		                 _inc_next_cfg (priv->db_uuid),
-		                 _new_interface (call->port),
+		                 _new_interface (call->interface),
 		                 _new_port (call->port),
-		                 _new_bridge (call->port));
+		                 _new_bridge (call->bridge));
 		break;
 	case NM_OVSDB_DEL_BR:
 		_fill_bridges (self, call->bridge, &items, &new_items);
@@ -1363,7 +1362,7 @@ out:
 
 void
 nm_ovsdb_transact (NMOvsdb *self, NMOvsdbCommand command,
-                   const char *bridge, NMConnection *port, NMConnection *interface,
+                   NMConnection *bridge, NMConnection *port, NMConnection *interface,
                    NMOvsdbCallback callback, gpointer user_data)
 {
 	OvsdbCall *call;
@@ -1382,7 +1381,7 @@ _clear_call (gpointer data)
 {
 	OvsdbMethodCall *call = data;
 
-	g_clear_pointer (&call->bridge, g_free);
+	g_clear_object (&call->bridge);
 	g_clear_object (&call->port);
 	g_clear_object (&call->interface);
 }

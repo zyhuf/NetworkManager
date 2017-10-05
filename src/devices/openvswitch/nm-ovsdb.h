@@ -49,7 +49,7 @@ typedef enum {
 } NMOvsdbCommand;
 
 void nm_ovsdb_transact (NMOvsdb *self, NMOvsdbCommand command,
-                        const char *bridge, NMConnection *port, NMConnection *iface,
+                        NMConnection *bridge, NMConnection *port, NMConnection *iface,
                         NMOvsdbCallback callback, gpointer user_data);
 
 #endif /* __NETWORKMANAGER_OVSDB_H__ */
