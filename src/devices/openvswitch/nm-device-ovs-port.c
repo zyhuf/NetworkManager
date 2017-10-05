@@ -152,7 +152,6 @@ get_generic_capabilities (NMDevice *device)
 static gboolean
 check_connection_compatible (NMDevice *device, NMConnection *connection)
 {
-#if 0
 	NMSettingConnection *s_con;
 	const char *connection_type;
 
@@ -167,10 +166,6 @@ check_connection_compatible (NMDevice *device, NMConnection *connection)
 
 	if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
 		return TRUE;
-	if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
-#endif
-	g_printerr ("PORT: CHECK CONN COMPAT\n");
 
 	return FALSE;
 }
@@ -178,7 +173,6 @@ check_connection_compatible (NMDevice *device, NMConnection *connection)
 static gboolean
 check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 {
-#if 0
 	NMSettingConnection *s_con;
 	const char *slave_type;
 
@@ -190,14 +184,31 @@ check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 
 	if (strcmp (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
 		return TRUE;
-	if (strcmp (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
-#endif
-	g_printerr ("PORT: CHECK SLAVE COMPAT\n");
+
+//	g_printerr ("PORT: CHECK SLAVE COMPAT\n");
 
 	return FALSE;
 }
 
+static NMActStageReturn
+act_stage3_ip4_config_start (NMDevice *device,
+                             NMIP4Config **out_config,
+                             NMDeviceStateReason *out_failure_reason)
+{
+	g_printerr ("PORT: ACT3v4\n");
+	return NM_ACT_STAGE_RETURN_IP_FAIL;
+}
+
+static NMActStageReturn
+act_stage3_ip6_config_start (NMDevice *device,
+                             NMIP6Config **out_config,
+                             NMDeviceStateReason *out_failure_reason)
+{
+	g_printerr ("PORT: ACT3v6\n");
+	return NM_ACT_STAGE_RETURN_IP_FAIL;
+}
+
+#if 0
 static NMActStageReturn
 act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 {
@@ -220,11 +231,11 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	}
 #else
 	g_printerr ("PORT: ACT2\n");
-	return NM_ACT_STAGE_RETURN_SUCCESS;
+	return NM_ACT_STAGE_RETURN_POSTPONE;
 #endif
 }
+#endif
 
-#if 0
 static void
 add_iface_cb (GError *error, gpointer user_data)
 {
@@ -241,6 +252,7 @@ add_iface_cb (GError *error, gpointer user_data)
 	g_object_unref (slave);
 }
 
+#if 0
 static gboolean
 _get_port_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
                   NMDevice **port, NMDevice **port)
@@ -286,6 +298,24 @@ _get_port_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
+	NMDevice *bridge = NULL;
+
+	if (!configure)
+		return TRUE;
+
+	g_printerr ("PORT: ENSLAVE SLAVE\n");
+
+	bridge = nm_device_get_master (device);
+	if (!bridge)
+		return FALSE;
+
+
+	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
+	                   nm_device_get_iface (bridge),
+	                   nm_device_get_applied_connection (device),
+	                   nm_device_get_applied_connection (slave),
+	                   add_iface_cb, g_object_ref (slave));
+
 #if 0
 	NMDevice *port = NULL;
 	NMDevice *port = NULL;
@@ -298,18 +328,10 @@ enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboo
 
 	if (!port && !port)
 		return TRUE;
+#endif
 
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
-	                   nm_device_get_iface (port),
-	                   nm_device_get_applied_connection (port),
-	                   nm_device_get_applied_connection (slave),
-	                   add_iface_cb, g_object_ref (slave));
 
 	return TRUE;
-#else
-	g_printerr ("PORT: ENSLAVE SLAVE\n");
-	return FALSE;
-#endif
 }
 
 #if 0
@@ -377,7 +399,9 @@ nm_device_ovs_port_class_init (NMDeviceOvsPortClass *klass)
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;
 	device_class->check_slave_connection_compatible = check_slave_connection_compatible;
-	device_class->act_stage2_config = act_stage2_config;
+//	device_class->act_stage2_config = act_stage2_config;
+	device_class->act_stage3_ip4_config_start = act_stage3_ip4_config_start;
+	device_class->act_stage3_ip6_config_start = act_stage3_ip6_config_start;
 	device_class->enslave_slave = enslave_slave;
 	device_class->release_slave = release_slave;
 

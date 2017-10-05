@@ -152,7 +152,6 @@ get_generic_capabilities (NMDevice *device)
 static gboolean
 check_connection_compatible (NMDevice *device, NMConnection *connection)
 {
-#if 0
 	NMSettingConnection *s_con;
 	const char *connection_type;
 
@@ -165,12 +164,8 @@ check_connection_compatible (NMDevice *device, NMConnection *connection)
 	if (!connection_type)
 		return FALSE;
 
-	if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
 	if (strcmp (connection_type, NM_SETTING_OVS_BRIDGE_SETTING_NAME) == 0)
 		return TRUE;
-#endif
-	g_printerr ("BRIDGE: CHECK CONN COMPAT\n");
 
 	return FALSE;
 }
@@ -178,7 +173,6 @@ check_connection_compatible (NMDevice *device, NMConnection *connection)
 static gboolean
 check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 {
-#if 0
 	NMSettingConnection *s_con;
 	const char *slave_type;
 
@@ -188,16 +182,15 @@ check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 	if (!slave_type)
 		return FALSE;
 
-	if (strcmp (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
 	if (strcmp (slave_type, NM_SETTING_OVS_BRIDGE_SETTING_NAME) == 0)
 		return TRUE;
-#endif
+
 	g_printerr ("BRIDGE: CHECK SLAVE COMPAT\n");
 
 	return FALSE;
 }
 
+#if 0
 static NMActStageReturn
 act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 {
@@ -220,8 +213,28 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	}
 #else
 	g_printerr ("BRIDGE: ACT2\n");
-	return NM_ACT_STAGE_RETURN_SUCCESS;
+	return NM_ACT_STAGE_RETURN_POSTPONE;
+//	return NM_ACT_STAGE_RETURN_SUCCESS;
 #endif
+}
+#endif
+
+static NMActStageReturn
+act_stage3_ip4_config_start (NMDevice *device,
+                             NMIP4Config **out_config,
+                             NMDeviceStateReason *out_failure_reason)
+{
+	g_printerr ("BRIDGE: ACT3v4\n");
+	return NM_ACT_STAGE_RETURN_IP_FAIL;
+}
+
+static NMActStageReturn
+act_stage3_ip6_config_start (NMDevice *device,
+                             NMIP6Config **out_config,
+                             NMDeviceStateReason *out_failure_reason)
+{
+	g_printerr ("BRIDGE: ACT3v6\n");
+	return NM_ACT_STAGE_RETURN_IP_FAIL;
 }
 
 #if 0
@@ -308,7 +321,7 @@ enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboo
 	return TRUE;
 #else
 	g_printerr ("BRIDGE: ENSLAVE SLAVE\n");
-	return FALSE;
+	return TRUE;
 #endif
 }
 
@@ -377,7 +390,9 @@ nm_device_ovs_bridge_class_init (NMDeviceOvsBridgeClass *klass)
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;
 	device_class->check_slave_connection_compatible = check_slave_connection_compatible;
-	device_class->act_stage2_config = act_stage2_config;
+//	device_class->act_stage2_config = act_stage2_config;
+	device_class->act_stage3_ip4_config_start = act_stage3_ip4_config_start;
+	device_class->act_stage3_ip6_config_start = act_stage3_ip6_config_start;
 	device_class->enslave_slave = enslave_slave;
 	device_class->release_slave = release_slave;
 

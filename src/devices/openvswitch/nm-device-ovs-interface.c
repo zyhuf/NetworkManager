@@ -23,6 +23,7 @@
 #include "nm-ovsdb.h"
 
 #include "devices/nm-device-private.h"
+#include "nm-active-connection.h"
 #include "nm-setting-connection.h"
 #include "nm-setting-ovs-interface.h"
 #include "nm-setting-ovs-port.h"
@@ -152,27 +153,30 @@ get_generic_capabilities (NMDevice *device)
 static gboolean
 check_connection_compatible (NMDevice *device, NMConnection *connection)
 {
-#if 0
 	NMSettingConnection *s_con;
-	const char *connection_type;
+	NMSettingOvsInterface *s_ovs_iface;
 
 	if (!NM_DEVICE_CLASS (nm_device_ovs_interface_parent_class)->check_connection_compatible (device, connection))
 		return FALSE;
 
+	s_ovs_iface = nm_connection_get_setting_ovs_interface (connection);
+	if (!s_ovs_iface)
+		return FALSE;
+	if (g_strcmp0 (nm_setting_ovs_interface_get_interface_type (s_ovs_iface),
+	               "internal") != 0) {
+		return FALSE;
+	}
+
 	s_con = nm_connection_get_setting_connection (connection);
 	g_assert (s_con);
-	connection_type = nm_setting_connection_get_connection_type (s_con);
-	if (!connection_type)
+	if (g_strcmp0 (nm_setting_connection_get_connection_type (s_con),
+	               NM_SETTING_OVS_INTERFACE_SETTING_NAME) != 0) {
 		return FALSE;
+	}
 
-	if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
-	if (strcmp (connection_type, NM_SETTING_OVS_INTERFACE_SETTING_NAME) == 0)
-		return TRUE;
-#endif
-	g_printerr ("INTERFACE: CHECK CONN COMPAT\n");
+//	g_printerr ("INTERFACE: CHECK CONN COMPAT\n");
 
-	return FALSE;
+	return TRUE;
 }
 
 static gboolean
@@ -198,33 +202,6 @@ check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 	return FALSE;
 }
 
-static NMActStageReturn
-act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
-{
-#if 0
-	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
-	NMConnection *applied_connection;
-
-	applied_connection = nm_device_get_applied_connection (device);
-	if (   applied_connection
-	    && strcmp (nm_connection_get_connection_type (applied_connection),
-	               NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		return NM_ACT_STAGE_RETURN_SUCCESS;
-	}
-
-	if (nm_device_get_ifindex (device)) {
-		return NM_ACT_STAGE_RETURN_SUCCESS;
-	} else {
-		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
-		return NM_ACT_STAGE_RETURN_POSTPONE;
-	}
-#else
-	g_printerr ("INTERFACE: ACT2\n");
-	return NM_ACT_STAGE_RETURN_SUCCESS;
-#endif
-}
-
-#if 0
 static void
 add_iface_cb (GError *error, gpointer user_data)
 {
@@ -241,6 +218,59 @@ add_iface_cb (GError *error, gpointer user_data)
 	g_object_unref (slave);
 }
 
+static NMActStageReturn
+act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
+{
+	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
+	NMActRequest *act_request = NULL;
+	NMActiveConnection *ac_interface = NULL;
+	NMActiveConnection *ac_port = NULL;
+	NMActiveConnection *ac_bridge = NULL;
+
+	ac_interface = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
+	ac_port = nm_active_connection_get_master (NM_ACTIVE_CONNECTION (act_request));
+	if (!ac_port)
+		ac_port = ac_interface;
+	ac_bridge = nm_active_connection_get_master (ac_port);
+	if (!ac_bridge)
+		ac_bridge = ac_port;
+
+	g_printerr ("INTERFACE: ACT2 port=%p bridge=%p\n", ac_bridge, ac_port);
+
+	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
+	                   nm_connection_get_interface_name (nm_active_connection_get_applied_connection (ac_bridge)),
+	                   nm_active_connection_get_applied_connection (ac_port),
+	                   nm_active_connection_get_applied_connection (ac_interface),
+	                   add_iface_cb, g_object_ref (device));
+
+
+
+#if 1
+//	NMConnection *applied_connection;
+
+
+#if 0
+	applied_connection = nm_device_get_applied_connection (device);
+	if (   applied_connection
+	    && strcmp (nm_connection_get_connection_type (applied_connection),
+	               NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
+		return NM_ACT_STAGE_RETURN_SUCCESS;
+	}
+#endif
+
+	if (!nm_device_get_ifindex (device)) {
+		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
+		return NM_ACT_STAGE_RETURN_POSTPONE;
+	}
+
+	return NM_ACT_STAGE_RETURN_SUCCESS;
+#else
+	g_printerr ("INTERFACE: ACT2\n");
+	return NM_ACT_STAGE_RETURN_SUCCESS;
+#endif
+}
+
+#if 0
 static gboolean
 _get_interface_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
                   NMDevice **interface, NMDevice **port)
@@ -283,10 +313,10 @@ _get_interface_port (NMDevice *device, NMDevice *slave, NMConnection *connection
 }
 #endif
 
+#if 0
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
-#if 0
 	NMDevice *interface = NULL;
 	NMDevice *port = NULL;
 
@@ -306,11 +336,8 @@ enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboo
 	                   add_iface_cb, g_object_ref (slave));
 
 	return TRUE;
-#else
-	g_printerr ("INTERFACE: ENSLAVE SLAVE\n");
-	return FALSE;
-#endif
 }
+#endif
 
 #if 0
 static void
@@ -328,12 +355,10 @@ del_iface_cb (GError *error, gpointer user_data)
 
 	g_object_unref (slave);
 }
-#endif
 
 static void
 release_slave (NMDevice *device, NMDevice *slave, gboolean configure)
 {
-#if 0
 	NMDevice *interface = NULL;
 	NMDevice *port = NULL;
 
@@ -351,10 +376,8 @@ release_slave (NMDevice *device, NMDevice *slave, gboolean configure)
 	                   nm_device_get_applied_connection (port),
 	                   nm_device_get_applied_connection (slave),
 	                   del_iface_cb, g_object_ref (slave));
-#else
-	g_printerr ("INTERFACE: RELEASE SLAVE\n");
-#endif
 }
+#endif
 
 /*****************************************************************************/
 
@@ -378,8 +401,8 @@ nm_device_ovs_interface_class_init (NMDeviceOvsInterfaceClass *klass)
 	device_class->check_connection_compatible = check_connection_compatible;
 	device_class->check_slave_connection_compatible = check_slave_connection_compatible;
 	device_class->act_stage2_config = act_stage2_config;
-	device_class->enslave_slave = enslave_slave;
-	device_class->release_slave = release_slave;
+//	device_class->enslave_slave = enslave_slave;
+//	device_class->release_slave = release_slave;
 
 	nm_exported_object_class_add_interface (NM_EXPORTED_OBJECT_CLASS (klass),
 	                                        NMDBUS_TYPE_DEVICE_OVS_INTERFACE_SKELETON,
