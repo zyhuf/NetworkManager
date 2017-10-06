@@ -6926,6 +6926,8 @@ const NMMetaSettingInfoEditor nm_meta_setting_infos_editor[] = {
 			NM_META_SETTING_VALID_PART_ITEM (CONNECTION,            TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE,         TRUE),
 			NM_META_SETTING_VALID_PART_ITEM (WIRED,                 FALSE),
+			NM_META_SETTING_VALID_PART_ITEM (IP4_CONFIG,            FALSE),
+			NM_META_SETTING_VALID_PART_ITEM (IP6_CONFIG,            FALSE),
 		),
 	),
 	SETTING_INFO (OVS_PORT,
@@ -7042,8 +7044,14 @@ static const NMMetaSettingValidPartItem *const valid_settings_slave_bridge[] = {
 	NULL,
 };
 
+static const NMMetaSettingValidPartItem *const valid_settings_slave_ovs_bridge[] = {
+	NM_META_SETTING_VALID_PART_ITEM (OVS_PORT, FALSE),
+	NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE, FALSE),
+	NULL,
+};
+
 static const NMMetaSettingValidPartItem *const valid_settings_slave_ovs_port[] = {
-	NM_META_SETTING_VALID_PART_ITEM (OVS_PORT, TRUE),
+	NM_META_SETTING_VALID_PART_ITEM (OVS_INTERFACE, FALSE),
 	NULL,
 };
 
@@ -7067,8 +7075,11 @@ nm_meta_setting_info_valid_parts_for_slave_type (const char *slave_type, const c
 		NM_SET_OUT (out_slave_name, "bridge-slave");
 		return valid_settings_slave_bridge;
 	}
-	if (   nm_streq (slave_type, NM_SETTING_OVS_BRIDGE_SETTING_NAME)
-	    || nm_streq (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME)) {
+	if (nm_streq (slave_type, NM_SETTING_OVS_BRIDGE_SETTING_NAME)) {
+		NM_SET_OUT (out_slave_name, "ovs-slave");
+		return valid_settings_slave_ovs_bridge;
+	}
+	if (nm_streq (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME)) {
 		NM_SET_OUT (out_slave_name, "ovs-slave");
 		return valid_settings_slave_ovs_port;
 	}
