@@ -222,23 +222,26 @@ static NMActStageReturn
 act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 {
 	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
-	NMActRequest *act_request = NULL;
 	NMActiveConnection *ac_interface = NULL;
 	NMActiveConnection *ac_port = NULL;
 	NMActiveConnection *ac_bridge = NULL;
 
+	g_printerr ("INTERFACE0: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	ac_interface = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
-	ac_port = nm_active_connection_get_master (NM_ACTIVE_CONNECTION (act_request));
+	g_printerr ("INTERFACE1: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
+	ac_port = nm_active_connection_get_master (NM_ACTIVE_CONNECTION (ac_interface));
+	g_printerr ("INTERFACE2: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	if (!ac_port)
 		ac_port = ac_interface;
+	g_printerr ("INTERFACE3: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	ac_bridge = nm_active_connection_get_master (ac_port);
+	g_printerr ("INTERFACE4: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	if (!ac_bridge)
 		ac_bridge = ac_port;
-
-	g_printerr ("INTERFACE: ACT2 port=%p bridge=%p\n", ac_bridge, ac_port);
+	g_printerr ("INTERFACE5: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 
 	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
-	                   nm_connection_get_interface_name (nm_active_connection_get_applied_connection (ac_bridge)),
+	                   nm_active_connection_get_applied_connection (ac_bridge),
 	                   nm_active_connection_get_applied_connection (ac_port),
 	                   nm_active_connection_get_applied_connection (ac_interface),
 	                   add_iface_cb, g_object_ref (device));
