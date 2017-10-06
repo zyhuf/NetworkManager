@@ -197,14 +197,21 @@ ovsdb_call_method (NMOvsdb *self, OvsdbCommand command,
 	call = &g_array_index (priv->calls, OvsdbMethodCall, priv->calls->len - 1);
 	call->id = COMMAND_PENDING;
 	call->command = command;
-	if (bridge)
-		call->bridge = nm_simple_connection_new_clone (bridge);
-	if (port)
-		call->port = nm_simple_connection_new_clone (port);
-	if (interface)
-		call->interface = nm_simple_connection_new_clone (interface);
 	call->callback = callback;
 	call->user_data = user_data;
+
+	switch (call->command) {
+	case OVSDB_MONITOR:
+		break;
+	case OVSDB_ADD_IFACE:
+		call->bridge = nm_simple_connection_new_clone (bridge);
+		call->port = nm_simple_connection_new_clone (port);
+		call->interface = nm_simple_connection_new_clone (interface);
+		break;
+	case OVSDB_DEL_IFACE:
+		call->ifname = g_strdup (ifname);
+		break;
+	}
 
 	_call_trace ("enqueue", call, NULL);
 
@@ -218,14 +225,14 @@ ovsdb_call_method (NMOvsdb *self, OvsdbCommand command,
 /**
  * _fill_bridges:
  *
- * Put set of all bridges into @items and all but @exclude_bridge into
- * @new_items. The array with the ommited element is useful for replacement
+ * Put set of all bridges into @bridges and all but @exclude_bridge into
+ * @new_bridges. The array with the ommited element is useful for replacement
  * or deletion while the full array is good for ensuring the database is
  * in the state we expect it to be prior to the transaction.
  */
 static gboolean
 _fill_bridges (NMOvsdb *self, NMConnection *exclude_bridge,
-               json_t **items, json_t **new_items)
+               json_t **bridges, json_t **new_bridges)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
 	GHashTableIter iter;
@@ -233,18 +240,18 @@ _fill_bridges (NMOvsdb *self, NMConnection *exclude_bridge,
 	OpenvswitchBridge *ovs_bridge;
 	gboolean found = FALSE;
 
-	*items = json_array ();
-	*new_items = json_array ();
+	*bridges = json_array ();
+	*new_bridges = json_array ();
 
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
-		json_array_append_new (*items, json_pack ("[s,s]", "uuid", bridge_uuid));
+		json_array_append_new (*bridges, json_pack ("[s,s]", "uuid", bridge_uuid));
 		if (   g_strcmp0 (nm_connection_get_interface_name (exclude_bridge),ovs_bridge->name) == 0
 		    && ovs_bridge->connection_uuid != NULL) {
 			found = TRUE;
 			continue;
 		}
-		json_array_append_new (*new_items, json_pack ("[s,s]", "uuid", bridge_uuid));
+		json_array_append_new (*new_bridges, json_pack ("[s,s]", "uuid", bridge_uuid));
 	}
 
 	return found;
@@ -286,8 +293,8 @@ _set_bridges (const json_t *bridges, const char *db_uuid)
 /*
  * _fill_ports:
  *
- * Put set of all ports of @bridge into @items and all but @exclude_port into
- * @new_items.
+ * Put set of all ports of @bridge into @ports and all but @exclude_port into
+ * @new_ports.
  *
  * Returns: %TRUE if the specified port was actually seen, helping us to decide
  *          whether we need to put an itnerface into a new one or update the
@@ -296,7 +303,7 @@ _set_bridges (const json_t *bridges, const char *db_uuid)
 static gboolean
 _fill_ports (NMOvsdb *self,
              NMConnection *bridge, NMConnection *exclude_port,
-             json_t **items, json_t **new_items)
+             json_t **ports, json_t **new_ports)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
 	GHashTableIter iter;
@@ -307,8 +314,8 @@ _fill_ports (NMOvsdb *self,
 	gboolean found = FALSE;
 	int i;
 
-	*items = json_array ();
-	*new_items = json_array ();
+	*ports = json_array ();
+	*new_ports = json_array ();
 
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
@@ -316,7 +323,7 @@ _fill_ports (NMOvsdb *self,
 			continue;
 		for (i = 0; i < ovs_bridge->ports->len; i++) {
 			port_uuid = g_ptr_array_index (ovs_bridge->ports, i);
-			json_array_append_new (*items, json_pack ("[s,s]", "uuid", port_uuid));
+			json_array_append_new (*ports, json_pack ("[s,s]", "uuid", port_uuid));
 
 			ovs_port = g_hash_table_lookup (priv->ports, port_uuid);
 			if (!ovs_port)
@@ -326,7 +333,7 @@ _fill_ports (NMOvsdb *self,
 				found = TRUE;
 				continue;
 			}
-			json_array_append_new (*new_items, json_pack ("[s,s]", "uuid", port_uuid));
+			json_array_append_new (*new_ports, json_pack ("[s,s]", "uuid", port_uuid));
 		}
 	}
 
@@ -369,13 +376,13 @@ _set_ports (NMConnection *bridge, const json_t *ports)
 /*
  * _fill_interfaces:
  *
- * Put set of all interfaces of @port into @items and all but
- * @exclude_interface into @new_items.
+ * Put set of all interfaces of @port into @interfaces and all but
+ * @exclude_interface into @new_interfaces.
  */
 static void
 _fill_interfaces (NMOvsdb *self,
                   NMConnection *port, NMConnection *exclude_interface,
-                  json_t **items, json_t **new_items)
+                  json_t **interfaces, json_t **new_interfaces)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
 	GHashTableIter iter;
@@ -385,8 +392,8 @@ _fill_interfaces (NMOvsdb *self,
 	OpenvswitchInterface *ovs_interface;
 	int i;
 
-	*items = json_array ();
-	*new_items = json_array ();
+	*interfaces = json_array ();
+	*new_interfaces = json_array ();
 
 	g_hash_table_iter_init (&iter, priv->ports);
 	while (g_hash_table_iter_next (&iter, (gpointer) &port_uuid, (gpointer) &ovs_port)) {
@@ -394,7 +401,7 @@ _fill_interfaces (NMOvsdb *self,
 			continue;
 		for (i = 0; i < ovs_port->interfaces->len; i++) {
 			interface_uuid = g_ptr_array_index (ovs_port->interfaces, i);
-			json_array_append_new (*items, json_pack ("[s,s]", "uuid", interface_uuid));
+			json_array_append_new (*interfaces, json_pack ("[s,s]", "uuid", interface_uuid));
 
 			ovs_interface = g_hash_table_lookup (priv->interfaces, interface_uuid);
 			if (!ovs_interface)
@@ -402,7 +409,7 @@ _fill_interfaces (NMOvsdb *self,
 			if (   g_strcmp0 (nm_connection_get_interface_name (exclude_interface), ovs_interface->name) == 0
 			    && g_strcmp0 (nm_connection_get_uuid (exclude_interface), ovs_interface->connection_uuid) == 0)
 				continue;
-			json_array_append_new (*new_items, json_pack ("[s,s]", "uuid", interface_uuid));
+			json_array_append_new (*new_interfaces, json_pack ("[s,s]", "uuid", interface_uuid));
 		}
 	}
 }
@@ -595,7 +602,6 @@ ovsdb_next_command (NMOvsdb *self)
 	OvsdbMethodCall *call = NULL;
 	char *cmd;
 	json_t *msg = NULL;
-	json_t *items, *new_items;
 	json_t *ports, *new_ports;
 	json_t *bridges, *new_bridges;
 	json_t *params;
@@ -632,28 +638,6 @@ ovsdb_next_command (NMOvsdb *self)
 		json_array_append_new (params, _new_interface (call->interface));
 		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
 
-
-#if 0
-		_fill_bridges (self, call->bridge, &items, &new_items);
-		json_array_append_new (new_items, json_pack ("[s,s]", "named-uuid", "rowBridge"));
-
-		msg = json_pack ("{s:i, s:s, s:[s, o, o, o, o, o, o]}",
-		                 "id", call->id,
-		                 "method", "transact", "params", "Open_vSwitch",
-		                 _expect_bridges (items, priv->db_uuid),
-		                 _set_bridges (new_items, priv->db_uuid),
-		                 _inc_next_cfg (priv->db_uuid),
-		                 _new_interface (call->interface),
-		                 _new_port (call->port),
-		                 _new_bridge (call->bridge));
-#endif
-
-
-
-
-
-
-
 		if (_fill_ports (self, call->bridge, call->port, &ports, &new_ports)) {
 			/* The port exists, update it with the new interface. */
 			json_decref (ports);
@@ -670,16 +654,9 @@ ovsdb_next_command (NMOvsdb *self)
 				/* The bridge exists, update it with the new port. */
 				json_decref (bridges);
 				json_decref (new_bridges);
-
 				json_array_append_new (new_ports, json_pack ("[s,s]", "named-uuid", "rowPort"));
 				json_array_append_new (params, _expect_ports (call->bridge, ports));
 				json_array_append_new (params, _set_ports (call->bridge, new_ports));
-#if 0
-				_fill_ports (self, call->bridge, call->port, &bridges, &new_bridges);
-				json_array_append_new (new_bridges, json_pack ("[s,s]", "named-uuid", "rowIntf"));
-				json_array_append_new (params, _expect_ports (call->bridge, bridges));
-				json_array_append_new (params, _set_ports (call->bridge, new_bridges));
-#endif
 			} else {
 				/* Create a new bridge along with the port. */
 				json_array_append_new (params, _new_bridge (call->bridge));
@@ -687,10 +664,6 @@ ovsdb_next_command (NMOvsdb *self)
 				json_array_append_new (params, _expect_bridges (bridges, priv->db_uuid));
 				json_array_append_new (params, _set_bridges (new_bridges, priv->db_uuid));
 			}
-
-
-
-
 		}
 
 		msg = json_pack ("{s:i, s:s, s:o}",
@@ -703,6 +676,7 @@ ovsdb_next_command (NMOvsdb *self)
 		json_array_append_new (params, json_string ("Open_vSwitch"));
 		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
 
+#if 0
 		_fill_interfaces (self, call->port, call->interface, &items, &new_items);
 		if (json_array_size (new_items) == 0) {
 			/* A port can't exist without interfaces, drop it altogether. */
@@ -716,6 +690,7 @@ ovsdb_next_command (NMOvsdb *self)
 			json_array_append_new (params, _expect_interfaces (call->port, items));
 			json_array_append_new (params, _set_interfaces (call->port, new_items));
 		}
+#endif
 
 		msg = json_pack ("{s:i, s:s, s:o}",
 		                 "id", call->id,
@@ -1432,6 +1407,7 @@ _clear_call (gpointer data)
 {
 	OvsdbMethodCall *call = data;
 
+	g_clear_pointer (&call->ifname, g_free);
 	g_clear_object (&call->bridge);
 	g_clear_object (&call->port);
 	g_clear_object (&call->interface);
