@@ -27,7 +27,6 @@
 #include <gio/gunixsocketaddress.h>
 
 #include "devices/nm-device.h"
-//#include "nm-device-openvswitch.h"
 #include "platform/nm-platform.h"
 #include "nm-core-internal.h"
 
@@ -115,15 +114,26 @@ static void ovsdb_next_command (NMOvsdb *self);
 typedef void (*OvsdbMethodCallback) (NMOvsdb *self, json_t *response,
                                      GError *error, gpointer user_data);
 
+typedef enum {
+	OVSDB_MONITOR,
+	OVSDB_ADD_IFACE,
+	OVSDB_DEL_IFACE,
+} OvsdbCommand;
+
 typedef struct {
 	gint64 id;
 #define COMMAND_PENDING -1                      /* id not yet assigned */
+	OvsdbCommand command;
 	OvsdbMethodCallback callback;
 	gpointer user_data;
-	NMOvsdbCommand command;
-	NMConnection *bridge;
-	NMConnection *port;
-	NMConnection *interface;
+	union {
+		const char *ifname;
+		struct {
+			NMConnection *bridge;
+			NMConnection *port;
+			NMConnection *interface;
+		};
+	};
 } OvsdbMethodCall;
 
 static void
@@ -134,19 +144,13 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
 	char *str = NULL;
 
 	switch (call->command) {
-	case NM_OVSDB_MONITOR:
+	case OVSDB_MONITOR:
 		op = "monitor";
 		break;
-	case NM_OVSDB_ADD_BR:
-		op = "add-br";
-		break;
-	case NM_OVSDB_DEL_BR:
-		op = "del-br";
-		break;
-	case NM_OVSDB_ADD_IFACE:
+	case OVSDB_ADD_IFACE:
 		op = "add-interface";
 		break;
-	case NM_OVSDB_DEL_IFACE:
+	case OVSDB_DEL_IFACE:
 		op = "del-interface";
 		break;
 	}
@@ -178,7 +182,8 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
  * there's no command pending completion.
  */
 static void
-ovsdb_call_method (NMOvsdb *self, NMOvsdbCommand command,
+ovsdb_call_method (NMOvsdb *self, OvsdbCommand command,
+                   const char *ifname,
                    NMConnection *bridge, NMConnection *port, NMConnection *interface,
                    OvsdbMethodCallback callback, gpointer user_data)
 {
@@ -605,7 +610,7 @@ ovsdb_next_command (NMOvsdb *self)
 	call->id = priv->seq++;
 
 	switch (call->command) {
-	case NM_OVSDB_MONITOR:
+	case OVSDB_MONITOR:
 		msg = json_pack ("{s:i, s:s, s:[s, n, {"
 		                 "  s:[{s:[s, s, s]}],"
 		                 "  s:[{s:[s, s, s]}],"
@@ -619,36 +624,13 @@ ovsdb_next_command (NMOvsdb *self)
 		                 "Interface", "columns", "name", "type", "external_ids",
 		                 "Open_vSwitch", "columns");
 		break;
-	case NM_OVSDB_ADD_BR:
-		_fill_bridges (self, call->bridge, &items, &new_items);
-		json_array_append_new (new_items, json_pack ("[s,s]", "named-uuid", "rowBridge"));
-
-		msg = json_pack ("{s:i, s:s, s:[s, o, o, o, o, o, o]}",
-		                 "id", call->id,
-		                 "method", "transact", "params", "Open_vSwitch",
-		                 _expect_bridges (items, priv->db_uuid),
-		                 _set_bridges (new_items, priv->db_uuid),
-		                 _inc_next_cfg (priv->db_uuid),
-		                 _new_interface (call->interface),
-		                 _new_port (call->port),
-		                 _new_bridge (call->bridge));
-		break;
-	case NM_OVSDB_DEL_BR:
-		_fill_bridges (self, call->bridge, &items, &new_items);
-
-		msg = json_pack ("{s:i, s:s, s:[s,o,o,o]}",
-		                 "id", call->id,
-		                 "method", "transact", "params", "Open_vSwitch",
-		                 _expect_bridges (items, priv->db_uuid),
-		                 _set_bridges (new_items, priv->db_uuid),
-		                 _inc_next_cfg (priv->db_uuid));
-		break;
-	case NM_OVSDB_ADD_IFACE:
+	case OVSDB_ADD_IFACE:
 		params = json_array ();
 		json_array_append_new (params, json_string ("Open_vSwitch"));
 
 		/* Insert the new interface. */
 		json_array_append_new (params, _new_interface (call->interface));
+		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
 
 
 #if 0
@@ -716,9 +698,10 @@ ovsdb_next_command (NMOvsdb *self)
 		                 "method", "transact", "params", params);
 
 		break;
-	case NM_OVSDB_DEL_IFACE:
+	case OVSDB_DEL_IFACE:
 		params = json_array ();
 		json_array_append_new (params, json_string ("Open_vSwitch"));
+		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
 
 		_fill_interfaces (self, call->port, call->interface, &items, &new_items);
 		if (json_array_size (new_items) == 0) {
@@ -1374,7 +1357,8 @@ ovsdb_try_connect (NMOvsdb *self)
 
 	/* Queue a monitor call before any other command, ensuring that we have an up
 	 * to date view of existing bridged that we need for add and remove ops. */
-	ovsdb_call_method (self, NM_OVSDB_MONITOR, NULL, NULL, NULL, _monitor_bridges_cb, NULL);
+	ovsdb_call_method (self, OVSDB_MONITOR, NULL,
+	                   NULL, NULL, NULL, _monitor_bridges_cb, NULL);
 }
 
 /*****************************************************************************/
@@ -1413,9 +1397,9 @@ out:
 }
 
 void
-nm_ovsdb_transact (NMOvsdb *self, NMOvsdbCommand command,
-                   NMConnection *bridge, NMConnection *port, NMConnection *interface,
-                   NMOvsdbCallback callback, gpointer user_data)
+nm_ovsdb_add_interface (NMOvsdb *self,
+                        NMConnection *bridge, NMConnection *port, NMConnection *interface,
+                        NMOvsdbCallback callback, gpointer user_data)
 {
 	OvsdbCall *call;
 
@@ -1423,7 +1407,22 @@ nm_ovsdb_transact (NMOvsdb *self, NMOvsdbCommand command,
 	call->callback = callback;
 	call->user_data = user_data;
 
-	ovsdb_call_method (self, command, bridge, port, interface, _transact_cb, call);
+	ovsdb_call_method (self, OVSDB_ADD_IFACE, NULL,
+	                   bridge, port, interface, _transact_cb, call);
+}
+
+void
+nm_ovsdb_del_interface (NMOvsdb *self, const char *ifname,
+                        NMOvsdbCallback callback, gpointer user_data)
+{
+	OvsdbCall *call;
+
+	call = g_slice_new (OvsdbCall);
+	call->callback = callback;
+	call->user_data = user_data;
+
+	ovsdb_call_method (self, OVSDB_DEL_IFACE, ifname,
+	                   NULL, NULL, NULL, _transact_cb, call);
 }
 
 /*****************************************************************************/

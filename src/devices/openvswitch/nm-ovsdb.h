@@ -40,16 +40,11 @@ NMOvsdb *nm_ovsdb_get (void);
 
 GType nm_ovsdb_get_type (void);
 
-typedef enum {
-	NM_OVSDB_MONITOR,
-	NM_OVSDB_ADD_BR,
-	NM_OVSDB_DEL_BR,
-	NM_OVSDB_ADD_IFACE,
-	NM_OVSDB_DEL_IFACE,
-} NMOvsdbCommand;
+void nm_ovsdb_add_interface (NMOvsdb *self,
+                             NMConnection *bridge, NMConnection *port, NMConnection *interface,
+                             NMOvsdbCallback callback, gpointer user_data);
 
-void nm_ovsdb_transact (NMOvsdb *self, NMOvsdbCommand command,
-                        NMConnection *bridge, NMConnection *port, NMConnection *iface,
-                        NMOvsdbCallback callback, gpointer user_data);
+void nm_ovsdb_del_interface (NMOvsdb *self, const char *ifname,
+                             NMOvsdbCallback callback, gpointer user_data);
 
 #endif /* __NETWORKMANAGER_OVSDB_H__ */

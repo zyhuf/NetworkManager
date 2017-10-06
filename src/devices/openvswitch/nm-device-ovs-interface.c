@@ -50,7 +50,6 @@ G_DEFINE_TYPE (NMDeviceOvsInterface, nm_device_ovs_interface, NM_TYPE_DEVICE)
 static void
 link_changed (NMDevice *device, const NMPlatformLink *pllink)
 {
-#if 0
 	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
 
 	NM_DEVICE_CLASS (nm_device_ovs_interface_parent_class)->link_changed (device, pllink);
@@ -59,9 +58,6 @@ link_changed (NMDevice *device, const NMPlatformLink *pllink)
 		_LOGD (LOGD_DEVICE, "the link appeared, continuing activation");
 		nm_device_activate_schedule_stage2_device_config (device);
 	}
-#else
-	g_printerr ("INTERFACE: LINK CHANGED\n");
-#endif
 }
 
 #if 0
@@ -113,9 +109,8 @@ create_and_realize (NMDevice *device,
 	return TRUE;
 }
 
-#if 0
 static void
-del_br_cb (GError *error, gpointer user_data)
+del_iface_cb (GError *error, gpointer user_data)
 {
 	NMDeviceOvsInterface *self = user_data;
 
@@ -128,7 +123,6 @@ del_br_cb (GError *error, gpointer user_data)
 
 	g_object_unref (self);
 }
-#endif
 
 static gboolean
 unrealize (NMDevice *device, GError **error)
@@ -139,6 +133,11 @@ unrealize (NMDevice *device, GError **error)
 	                   del_br_cb, g_object_ref (device));
 #endif
 	g_printerr ("INTERFACE: UNREALIZE\n");
+
+
+	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_DEL_IFACE, NULL, NULL
+	                   nm_device_get_applied_connection (device),
+	                   del_iface_cb, g_object_ref (device));
 
 	return TRUE;
 }
@@ -174,32 +173,7 @@ check_connection_compatible (NMDevice *device, NMConnection *connection)
 		return FALSE;
 	}
 
-//	g_printerr ("INTERFACE: CHECK CONN COMPAT\n");
-
 	return TRUE;
-}
-
-static gboolean
-check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
-{
-#if 0
-	NMSettingConnection *s_con;
-	const char *slave_type;
-
-	s_con = nm_connection_get_setting_connection (slave);
-	g_assert (s_con);
-	slave_type = nm_setting_connection_get_slave_type (s_con);
-	if (!slave_type)
-		return FALSE;
-
-	if (strcmp (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
-		return TRUE;
-	if (strcmp (slave_type, NM_SETTING_OVS_INTERFACE_SETTING_NAME) == 0)
-		return TRUE;
-#endif
-	g_printerr ("INTERFACE: CHECK SLAVE COMPAT\n");
-
-	return FALSE;
 }
 
 static void
@@ -226,19 +200,13 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	NMActiveConnection *ac_port = NULL;
 	NMActiveConnection *ac_bridge = NULL;
 
-	g_printerr ("INTERFACE0: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	ac_interface = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
-	g_printerr ("INTERFACE1: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	ac_port = nm_active_connection_get_master (NM_ACTIVE_CONNECTION (ac_interface));
-	g_printerr ("INTERFACE2: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	if (!ac_port)
 		ac_port = ac_interface;
-	g_printerr ("INTERFACE3: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	ac_bridge = nm_active_connection_get_master (ac_port);
-	g_printerr ("INTERFACE4: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 	if (!ac_bridge)
 		ac_bridge = ac_port;
-	g_printerr ("INTERFACE5: ACT2 port=%p bridge=%p interface=%p\n", ac_port, ac_bridge, ac_interface);
 
 	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
 	                   nm_active_connection_get_applied_connection (ac_bridge),
@@ -246,101 +214,13 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	                   nm_active_connection_get_applied_connection (ac_interface),
 	                   add_iface_cb, g_object_ref (device));
 
-
-
-#if 1
-//	NMConnection *applied_connection;
-
-
-#if 0
-	applied_connection = nm_device_get_applied_connection (device);
-	if (   applied_connection
-	    && strcmp (nm_connection_get_connection_type (applied_connection),
-	               NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		return NM_ACT_STAGE_RETURN_SUCCESS;
-	}
-#endif
-
 	if (!nm_device_get_ifindex (device)) {
 		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
 		return NM_ACT_STAGE_RETURN_POSTPONE;
 	}
 
 	return NM_ACT_STAGE_RETURN_SUCCESS;
-#else
-	g_printerr ("INTERFACE: ACT2\n");
-	return NM_ACT_STAGE_RETURN_SUCCESS;
-#endif
 }
-
-#if 0
-static gboolean
-_get_interface_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
-                  NMDevice **interface, NMDevice **port)
-{
-	NMConnection *applied_connection;
-	const char *device_type;
-	const char *slave_type = NULL;
-
-	if (!connection)
-		connection = nm_device_get_applied_connection (slave);
-	if (connection)
-		slave_type = nm_connection_get_connection_type (connection);
-
-	applied_connection = nm_device_get_applied_connection (device);
-	if (!applied_connection)
-		return FALSE;
-	device_type = nm_connection_get_connection_type (applied_connection);
-
-	/* Do nothing if we're just enslaving an empty port to a interface. */
-	if (g_strcmp0 (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		*interface = NULL;
-		*port = NULL;
-		return g_strcmp0 (device_type, NM_SETTING_OVS_INTERFACE_SETTING_NAME) == 0;
-	}
-
-	if (g_strcmp0 (device_type, NM_SETTING_OVS_INTERFACE_SETTING_NAME) == 0) {
-		*interface = device;
-		*port = slave;
-	} else if (g_strcmp0 (device_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		*interface = nm_device_get_master (device);
-		*port = device;
-	} else {
-		g_return_val_if_reached (FALSE);
-	}
-
-	if (!*interface)
-		return FALSE;
-
-	return TRUE;
-}
-#endif
-
-#if 0
-static gboolean
-enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
-{
-	NMDevice *interface = NULL;
-	NMDevice *port = NULL;
-
-	if (!configure)
-		return TRUE;
-
-	if (!_get_interface_port (device, slave, connection, &interface, &port))
-		return FALSE;
-
-	if (!interface && !port)
-		return TRUE;
-
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
-	                   nm_device_get_iface (interface),
-	                   nm_device_get_applied_connection (port),
-	                   nm_device_get_applied_connection (slave),
-	                   add_iface_cb, g_object_ref (slave));
-
-	return TRUE;
-}
-#endif
 
 #if 0
 static void
