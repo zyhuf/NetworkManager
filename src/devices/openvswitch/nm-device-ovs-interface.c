@@ -135,9 +135,8 @@ unrealize (NMDevice *device, GError **error)
 	g_printerr ("INTERFACE: UNREALIZE\n");
 
 
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_DEL_IFACE, NULL, NULL
-	                   nm_device_get_applied_connection (device),
-	                   del_iface_cb, g_object_ref (device));
+	nm_ovsdb_del_interface (nm_ovsdb_get (), nm_device_get_iface (device),
+	                        del_iface_cb, g_object_ref (device));
 
 	return TRUE;
 }
@@ -208,11 +207,11 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	if (!ac_bridge)
 		ac_bridge = ac_port;
 
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
-	                   nm_active_connection_get_applied_connection (ac_bridge),
-	                   nm_active_connection_get_applied_connection (ac_port),
-	                   nm_active_connection_get_applied_connection (ac_interface),
-	                   add_iface_cb, g_object_ref (device));
+	nm_ovsdb_add_interface (nm_ovsdb_get (),
+	                        nm_active_connection_get_applied_connection (ac_bridge),
+	                        nm_active_connection_get_applied_connection (ac_port),
+	                        nm_active_connection_get_applied_connection (ac_interface),
+	                        add_iface_cb, g_object_ref (device));
 
 	if (!nm_device_get_ifindex (device)) {
 		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
@@ -282,7 +281,6 @@ nm_device_ovs_interface_class_init (NMDeviceOvsInterfaceClass *klass)
 	device_class->unrealize = unrealize;
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;
-	device_class->check_slave_connection_compatible = check_slave_connection_compatible;
 	device_class->act_stage2_config = act_stage2_config;
 //	device_class->enslave_slave = enslave_slave;
 //	device_class->release_slave = release_slave;
