@@ -140,38 +140,37 @@ static void
 _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
 {
 #ifdef NM_MORE_LOGGING
-	const char *op = NULL;
 	char *str = NULL;
-
-	switch (call->command) {
-	case OVSDB_MONITOR:
-		op = "monitor";
-		break;
-	case OVSDB_ADD_IFACE:
-		op = "add-interface";
-		break;
-	case OVSDB_DEL_IFACE:
-		op = "del-interface";
-		break;
-	}
 
 	if (msg)
 		str = json_dumps (msg, 0);
 
-	_LOGT ("%s: %s%s%s%s%s%s%s%s%s", comment, op,
-	       call->bridge ? " bridge=" : "",
-	       call->bridge ? nm_connection_get_interface_name (call->bridge) : "",
-	       call->port ? " port=" : "",
-	       call->port ? nm_connection_get_interface_name (call->port) : "",
-	       call->interface ? " interface=" : "",
-	       call->interface ? nm_connection_get_interface_name (call->interface) : "",
-	       msg ? ": " : "",
-	       msg ? str : "");
+	switch (call->command) {
+	case OVSDB_MONITOR:
+		_LOGT ("%s: monitor%s%s",
+		       comment, 
+		       msg ? ": " : "",
+		       msg ? str : "");
+		break;
+	case OVSDB_ADD_IFACE:
+		_LOGT ("%s: add-iface bridge=%s port=%s interface=%s%s%s",
+		       comment,
+		       nm_connection_get_interface_name (call->bridge),
+		       nm_connection_get_interface_name (call->port),
+		       nm_connection_get_interface_name (call->interface),
+		       msg ? ": " : "",
+		       msg ? str : "");
+		break;
+	case OVSDB_DEL_IFACE:
+		_LOGT ("%s: del-iface interface=%s%s%s",
+		       comment, call->ifname,
+		       msg ? ": " : "",
+		       msg ? str : "");
+		break;
+	}
 
 	if (msg)
 		g_free (str);
-
-	g_return_if_fail (op);
 #endif
 }
 
@@ -711,7 +710,7 @@ _update_bridges (json_t *params, const char *db_uuid,
 
 
 static void
-_delete_bridge (NMOvsdb *self, json_t *params, const char *ifname)
+_delete_interface (NMOvsdb *self, json_t *params, const char *ifname)
 {
 	NMOvsdbPrivate *priv = NM_OVSDB_GET_PRIVATE (self);
 	GHashTableIter iter;
@@ -736,7 +735,6 @@ _delete_bridge (NMOvsdb *self, json_t *params, const char *ifname)
 
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
-
 		json_array_append_new (bridges, json_pack ("[s,s]", "uuid", bridge_uuid));
 
 		ports = json_array ();
@@ -769,7 +767,7 @@ _delete_bridge (NMOvsdb *self, json_t *params, const char *ifname)
 				json_array_append_new (new_interfaces, json_pack ("[s,s]", "uuid", interface_uuid));
 			}
 
-			if (ii == 0) {
+			if (json_array_size (new_interfaces) == 0) {
 				ports_changed = TRUE;
 			} else {
 				if (interfaces_changed) {
@@ -783,14 +781,14 @@ _delete_bridge (NMOvsdb *self, json_t *params, const char *ifname)
 			json_decref (new_interfaces);
 		}
 
-		if (pi == 0) {
+		if (json_array_size (new_ports) == 0) {
 			bridges_changed = TRUE;
 		} else {
 			if (ports_changed) {
 				_update_bridge_ports (params, ovs_bridge->name,
 				                      ports, new_ports);
 			}
-			json_array_append_new (new_bridges, json_pack ("[s,s]", "uuid", port_uuid));
+			json_array_append_new (new_bridges, json_pack ("[s,s]", "uuid", bridge_uuid));
 		}
 
 		json_decref (ports);
@@ -916,7 +914,7 @@ ovsdb_next_command (NMOvsdb *self)
 		json_array_append_new (params, json_string ("Open_vSwitch"));
 		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
 
-		_delete_bridge (self, params, call->ifname);
+		_delete_interface (self, params, call->ifname);
 
 		msg = json_pack ("{s:i, s:s, s:o}",
 		                 "id", call->id,
