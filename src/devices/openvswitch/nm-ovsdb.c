@@ -116,8 +116,8 @@ typedef void (*OvsdbMethodCallback) (NMOvsdb *self, json_t *response,
 
 typedef enum {
 	OVSDB_MONITOR,
-	OVSDB_ADD_IFACE,
-	OVSDB_DEL_IFACE,
+	OVSDB_ADD_INTERFACE,
+	OVSDB_DEL_INTERFACE,
 } OvsdbCommand;
 
 typedef struct {
@@ -152,7 +152,7 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
 		       msg ? ": " : "",
 		       msg ? str : "");
 		break;
-	case OVSDB_ADD_IFACE:
+	case OVSDB_ADD_INTERFACE:
 		_LOGT ("%s: add-iface bridge=%s port=%s interface=%s%s%s",
 		       comment,
 		       nm_connection_get_interface_name (call->bridge),
@@ -161,7 +161,7 @@ _call_trace (const char *comment, OvsdbMethodCall *call, json_t *msg)
 		       msg ? ": " : "",
 		       msg ? str : "");
 		break;
-	case OVSDB_DEL_IFACE:
+	case OVSDB_DEL_INTERFACE:
 		_LOGT ("%s: del-iface interface=%s%s%s",
 		       comment, call->ifname,
 		       msg ? ": " : "",
@@ -202,12 +202,12 @@ ovsdb_call_method (NMOvsdb *self, OvsdbCommand command,
 	switch (call->command) {
 	case OVSDB_MONITOR:
 		break;
-	case OVSDB_ADD_IFACE:
+	case OVSDB_ADD_INTERFACE:
 		call->bridge = nm_simple_connection_new_clone (bridge);
 		call->port = nm_simple_connection_new_clone (port);
 		call->interface = nm_simple_connection_new_clone (interface);
 		break;
-	case OVSDB_DEL_IFACE:
+	case OVSDB_DEL_INTERFACE:
 		call->ifname = g_strdup (ifname);
 		break;
 	}
@@ -794,7 +794,7 @@ ovsdb_next_command (NMOvsdb *self)
 		                 "Interface", "columns", "name", "type", "external_ids",
 		                 "Open_vSwitch", "columns");
 		break;
-	case OVSDB_ADD_IFACE:
+	case OVSDB_ADD_INTERFACE:
 		params = json_array ();
 		json_array_append_new (params, json_string ("Open_vSwitch"));
 
@@ -838,7 +838,7 @@ ovsdb_next_command (NMOvsdb *self)
 		                 "method", "transact", "params", params);
 
 		break;
-	case OVSDB_DEL_IFACE:
+	case OVSDB_DEL_INTERFACE:
 		params = json_array ();
 		json_array_append_new (params, json_string ("Open_vSwitch"));
 		json_array_append_new (params, _inc_next_cfg (priv->db_uuid));
@@ -1535,7 +1535,7 @@ nm_ovsdb_add_interface (NMOvsdb *self,
 	call->callback = callback;
 	call->user_data = user_data;
 
-	ovsdb_call_method (self, OVSDB_ADD_IFACE, NULL,
+	ovsdb_call_method (self, OVSDB_ADD_INTERFACE, NULL,
 	                   bridge, port, interface, _transact_cb, call);
 }
 
@@ -1549,7 +1549,7 @@ nm_ovsdb_del_interface (NMOvsdb *self, const char *ifname,
 	call->callback = callback;
 	call->user_data = user_data;
 
-	ovsdb_call_method (self, OVSDB_DEL_IFACE, ifname,
+	ovsdb_call_method (self, OVSDB_DEL_INTERFACE, ifname,
 	                   NULL, NULL, NULL, _transact_cb, call);
 }
 
@@ -1563,12 +1563,12 @@ _clear_call (gpointer data)
 	switch (call->command) {
 	case OVSDB_MONITOR:
 		break;
-	case OVSDB_ADD_IFACE:
+	case OVSDB_ADD_INTERFACE:
 		g_clear_object (&call->bridge);
 		g_clear_object (&call->port);
 		g_clear_object (&call->interface);
 		break;
-	case OVSDB_DEL_IFACE:
+	case OVSDB_DEL_INTERFACE:
 		g_clear_pointer (&call->ifname, g_free);
 		break;
 	}
