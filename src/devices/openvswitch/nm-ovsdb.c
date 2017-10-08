@@ -355,7 +355,7 @@ static void
 _expect_ports (json_t *params, const char *ifname, json_t *ports)
 {
 	json_array_append_new (params,
-		json_pack ("{s:s, s:s, s:i, s:[s], s:s, s:[{s:[s, O]}], s:[[s, s, s]]}",
+		json_pack ("{s:s, s:s, s:i, s:[s], s:s, s:[{s:[s, o]}], s:[[s, s, s]]}",
 		           "op", "wait", "table", "Bridge",
 		           "timeout", 0, "columns", "ports",
 		           "until", "==", "rows", "ports", "set", ports,
@@ -373,13 +373,14 @@ static void
 _set_ports (json_t *params, const char *ifname, json_t *new_ports)
 {
 	json_array_append_new (params,
-		json_pack ("{s:s, s:s, s:{s:[s, O]}, s:[[s, s, s]]}",
+		json_pack ("{s:s, s:s, s:{s:[s, o]}, s:[[s, s, s]]}",
 		           "op", "update", "table", "Bridge",
 		           "row", "ports", "set", new_ports,
 		           "where", "name", "==", ifname)
 	);
 }
 
+#if 0
 static OpenvswitchPort *
 _ovs_port_by_connection (NMOvsdb *self, NMConnection *port)
 {
@@ -443,7 +444,7 @@ static void
 _expect_interfaces (json_t *params, const char *ifname, json_t *interfaces)
 {
 	json_array_append_new (params,
-		json_pack ("{s:s, s:s, s:i, s:[s], s:s, s:[{s:[s, O]}], s:[[s, s, s]]}",
+		json_pack ("{s:s, s:s, s:i, s:[s], s:s, s:[{s:[s, o]}], s:[[s, s, s]]}",
 		           "op", "wait", "table", "Port",
 		           "timeout", 0, "columns", "interfaces",
 		           "until", "==", "rows", "interfaces", "set", interfaces,
@@ -461,7 +462,7 @@ static void
 _set_interfaces (json_t *params, const char *ifname, json_t *new_interfaces)
 {
 	json_array_append_new (params,
-		json_pack ("{s:s, s:s, s:{s:[s, O]}, s:[[s, s, s]]}",
+		json_pack ("{s:s, s:s, s:{s:[s, o]}, s:[[s, s, s]]}",
 		           "op", "update", "table", "Port",
 		           "row", "interfaces", "set", new_interfaces,
 		           "where", "name", "==", ifname)
@@ -511,8 +512,8 @@ _inc_next_cfg (const char *db_uuid)
  * If the connection is of a bridge then an internal interface for the
  * bridge is added, otherwise it's a regular one.
  */
-static json_t *
-_new_interface (NMConnection *interface)
+static void
+_new_interface (json_t *params, NMConnection *interface)
 {
 	const char *type = NULL;
         NMSettingOvsInterface *s_ovs_iface;
@@ -521,12 +522,13 @@ _new_interface (NMConnection *interface)
         if (s_ovs_iface)
 		type = nm_setting_ovs_interface_get_interface_type (s_ovs_iface);
 
-	return json_pack ("{s:s, s:s, s:{s:s, s:s, s:[s, [[s, s]]]}, s:s}",
-	                  "op", "insert", "table", "Interface", "row",
-	                  "name", nm_connection_get_interface_name (interface),
-	                  "type", type,
-	                  "external_ids", "map", "NM.connection.uuid", nm_connection_get_uuid (interface),
-	                  "uuid-name", "rowIntf");
+	json_array_append_new (params,
+		json_pack ("{s:s, s:s, s:{s:s, s:s, s:[s, [[s, s]]]}, s:s}",
+		           "op", "insert", "table", "Interface", "row",
+		           "name", nm_connection_get_interface_name (interface),
+		           "type", type,
+		           "external_ids", "map", "NM.connection.uuid", nm_connection_get_uuid (interface),
+		           "uuid-name", "rowIntf"));
 }
 
 /**
@@ -534,8 +536,8 @@ _new_interface (NMConnection *interface)
  *
  * Returns an commands that adds new port from a given connection.
  */
-static json_t *
-_new_port (NMConnection *port)
+static void
+_new_port (json_t *params, NMConnection *port, json_t *new_interfaces)
 {
 	NMSettingOvsPort *s_ovs_port;
 	const char *vlan_mode = NULL;
@@ -573,13 +575,15 @@ _new_port (NMConnection *port)
 		json_object_set_new (row, "bond_downdelay", json_integer (bond_downdelay));
 
 	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (port)));
-	json_object_set_new (row, "interfaces", json_pack ("[s, s]", "named-uuid", "rowIntf"));
+//	json_object_set_new (row, "interfaces", json_pack ("[s, s]", "named-uuid", "rowIntf"));
+	json_object_set_new (row, "interfaces", new_interfaces);
 	json_object_set_new (row, "external_ids",
 		json_pack ("[s, [[s, s]]]", "map",
 		           "NM.connection.uuid", nm_connection_get_uuid (port)));
 
-	return json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Port",
-	                  "row", row, "uuid-name", "rowPort");
+	json_array_append_new (params,
+		json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Port",
+		           "row", row, "uuid-name", "rowPort"));
 }
 
 /**
@@ -587,8 +591,8 @@ _new_port (NMConnection *port)
  *
  * Returns an commands that adds new bridge from a given connection.
  */
-static json_t *
-_new_bridge (NMConnection *bridge)
+static void
+_new_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
 {
 	NMSettingOvsBridge *s_ovs_bridge;
 	const char *fail_mode = NULL;
@@ -618,13 +622,15 @@ _new_bridge (NMConnection *bridge)
 		json_object_set_new (row, "stp_enable", json_boolean (stp_enable));
 
 	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (bridge)));
-	json_object_set_new (row, "ports", json_pack ("[s, s]", "named-uuid", "rowPort"));
+//	json_object_set_new (row, "ports", json_pack ("[s, s]", "named-uuid", "rowPort"));
+	json_object_set_new (row, "ports", new_ports);
 	json_object_set_new (row, "external_ids",
 		json_pack ("[s, [[s, s]]]", "map",
 		           "NM.connection.uuid", nm_connection_get_uuid (bridge)));
 
-	return json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Bridge",
-	                  "row", row, "uuid-name", "rowBridge");
+	json_array_append_new (params,
+		json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Bridge",
+		           "row", row, "uuid-name", "rowBridge"));
 }
 
 
