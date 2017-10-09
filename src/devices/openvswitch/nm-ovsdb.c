@@ -520,7 +520,7 @@ _inc_next_cfg (const char *db_uuid)
  * bridge is added, otherwise it's a regular one.
  */
 static void
-_set_interface (json_t *params, NMConnection *interface)
+_insert_interface (json_t *params, NMConnection *interface)
 {
 	const char *type = NULL;
         NMSettingOvsInterface *s_ovs_iface;
@@ -544,7 +544,7 @@ _set_interface (json_t *params, NMConnection *interface)
  * Returns an commands that adds new port from a given connection.
  */
 static void
-_set_port (json_t *params, NMConnection *port, json_t *new_interfaces)
+_insert_port (json_t *params, NMConnection *port, json_t *new_interfaces)
 {
 	NMSettingOvsPort *s_ovs_port;
 	const char *vlan_mode = NULL;
@@ -589,18 +589,10 @@ _set_port (json_t *params, NMConnection *port, json_t *new_interfaces)
 		json_pack ("[s, [[s, s]]]", "map",
 		           "NM.connection.uuid", nm_connection_get_uuid (port)));
 
-	if (json_array_size (new_interfaces) == 1) {
-		/* Create a new one. */
-		json_array_append_new (params,
-			json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Port",
-			           "row", row, "uuid-name", "rowPort"));
-	} else {
-		/* We're updating an existing port. */
-		json_array_append_new (params,
-			json_pack ("{s:s, s:s, s:o, s:[[s, s, s]]}", "op", "update", "table", "Port",
-			           "row", row, "where",
-			           "name", "==", nm_connection_get_interface_name (port)));
-	}
+	/* Create a new one. */
+	json_array_append_new (params,
+		json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Port",
+		           "row", row, "uuid-name", "rowPort"));
 }
 
 /**
@@ -609,7 +601,7 @@ _set_port (json_t *params, NMConnection *port, json_t *new_interfaces)
  * Returns an commands that adds new bridge from a given connection.
  */
 static void
-_set_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
+_insert_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
 {
 	NMSettingOvsBridge *s_ovs_bridge;
 	const char *fail_mode = NULL;
@@ -646,18 +638,10 @@ _set_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
 		json_pack ("[s, [[s, s]]]", "map",
 		           "NM.connection.uuid", nm_connection_get_uuid (bridge)));
 
-	if (json_array_size (new_ports) == 1) {
-		/* Create a new one. */
-		json_array_append_new (params,
-			json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Bridge",
-			           "row", row, "uuid-name", "rowBridge"));
-	} else {
-		/* We're updating an existing bridge. */
-		json_array_append_new (params,
-			json_pack ("{s:s, s:s, s:o, s:[[s, s, s]]}", "op", "update", "table", "Bridge",
-			           "row", row, "where",
-			           "name", "==", nm_connection_get_interface_name (bridge)));
-	}
+	/* Create a new one. */
+	json_array_append_new (params,
+		json_pack ("{s:s, s:s, s:o, s:s}", "op", "insert", "table", "Bridge",
+		           "row", row, "uuid-name", "rowBridge"));
 }
 
 
@@ -692,8 +676,8 @@ _add_interface (NMOvsdb *self, json_t *params,
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
 		json_array_append_new (bridges, json_pack ("[s, s]", "uuid", bridge_uuid));
 
-		if (   g_strcmp0 (ovs_bridge->name, nm_connection_get_interface_name (bridge)) != 0)
-//		    || g_strcmp0 (ovs_bridge->connection_uuid, nm_connection_get_connection_uuid (bridge)) != 0)
+		if (   g_strcmp0 (ovs_bridge->name, nm_connection_get_interface_name (bridge)) != 0
+		    || g_strcmp0 (ovs_bridge->connection_uuid, nm_connection_get_uuid (bridge)) != 0)
 			continue;
 
 		for (pi = 0; pi < ovs_bridge->ports->len; pi++) {
@@ -702,8 +686,8 @@ _add_interface (NMOvsdb *self, json_t *params,
 
 			json_array_append_new (ports, json_pack ("[s, s]", "uuid", port_uuid));
 
-			if (   g_strcmp0 (ovs_port->name, nm_connection_get_interface_name (port)) != 0)
-//			    || g_strcmp0 (ovs_port->connection_uuid, nm_connection_get_connection_uuid (port)) != 0)
+			if (   g_strcmp0 (ovs_port->name, nm_connection_get_interface_name (port)) != 0
+			    || g_strcmp0 (ovs_port->connection_uuid, nm_connection_get_uuid (port)) != 0)
 				continue;
 
 			for (ii = 0; ii < ovs_port->interfaces->len; ii++) {
@@ -711,13 +695,6 @@ _add_interface (NMOvsdb *self, json_t *params,
 				ovs_interface = g_hash_table_lookup (priv->interfaces, interface_uuid);
 
 				json_array_append_new (interfaces, json_pack ("[s, s]", "uuid", interface_uuid));
-
-				/* The interface exists. Just drop in in the floor, we're creating a new one unconditionally. */
-				if (   g_strcmp0 (ovs_interface->name, nm_connection_get_interface_name (interface)) != 0)
-//				    || g_strcmp0 (ovs_interface->connection_uuid, nm_connection_get_connection_uuid (interface)) != 0)
-					continue;
-
-				json_array_append_new (new_interfaces, json_pack ("[s, s]", "uuid", interface_uuid));
 			}
 
 			break;
@@ -728,6 +705,7 @@ _add_interface (NMOvsdb *self, json_t *params,
 
 	json_array_extend (new_bridges, bridges);
 	json_array_extend (new_ports, ports);
+	json_array_extend (new_interfaces, interfaces);
 
 	if (json_array_size (interfaces) == 0) {
 		/* Need to create a port. */
@@ -736,23 +714,25 @@ _add_interface (NMOvsdb *self, json_t *params,
 			_expect_ovs_bridges (params, priv->db_uuid, bridges);
 			json_array_append_new (new_bridges, json_pack ("[s, s]", "named-uuid", "rowBridge"));
 			_set_ovs_bridges (params, priv->db_uuid, new_bridges);
+			_insert_bridge (params, bridge, new_ports);
 		} else {
 			/* Bridge already exists. */
 			g_return_if_fail (ovs_bridge);
 			_expect_bridge_ports (params, ovs_bridge->name, ports);
+			_set_bridge_ports (params, nm_connection_get_interface_name (bridge), new_ports);
 		}
 
 		json_array_append_new (new_ports, json_pack ("[s, s]", "named-uuid", "rowPort"));
-		_set_bridge (params, bridge, new_ports);
+		_insert_port (params, port, new_interfaces);
 	} else {
 		/* Port already exists */
 		g_return_if_fail (ovs_port);
 		_expect_port_interfaces (params, ovs_port->name, interfaces);
+		_set_port_interfaces (params, nm_connection_get_interface_name (port), new_interfaces);
 	}
 
-	_set_interface (params, interface);
+	_insert_interface (params, interface);
 	json_array_append_new (new_interfaces, json_pack ("[s, s]", "named-uuid", "rowInterface"));
-	_set_port (params, port, new_interfaces);
 
 	json_decref (interfaces);
 	json_decref (ports);
