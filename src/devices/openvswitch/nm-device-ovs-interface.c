@@ -47,23 +47,6 @@ G_DEFINE_TYPE (NMDeviceOvsInterface, nm_device_ovs_interface, NM_TYPE_DEVICE)
 
 /*****************************************************************************/
 
-#if 0
-static void
-link_changed (NMDevice *device, const NMPlatformLink *pllink)
-{
-	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
-
-	NM_DEVICE_CLASS (nm_device_ovs_interface_parent_class)->link_changed (device, pllink);
-
-g_printerr ("XXX: IF LINK CHANGD [%p] [%d] [%d]\n", pllink, nm_device_get_state (device), NM_DEVICE_STATE_CONFIG);
-
-	if (pllink && nm_device_get_state (device) == NM_DEVICE_STATE_CONFIG) {
-		_LOGD (LOGD_DEVICE, "the link appeared, continuing activation");
-		nm_device_activate_schedule_stage2_device_config (device);
-	}
-}
-#endif
-
 static gboolean
 create_and_realize (NMDevice *device,
                     NMConnection *connection,
@@ -126,7 +109,6 @@ nm_device_ovs_interface_class_init (NMDeviceOvsInterfaceClass *klass)
 	NM_DEVICE_CLASS_DECLARE_TYPES (klass, NULL, NM_LINK_TYPE_OPENVSWITCH);
 
 	device_class->is_master = TRUE;
-//	device_class->link_changed = link_changed;
 	device_class->create_and_realize = create_and_realize;
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;

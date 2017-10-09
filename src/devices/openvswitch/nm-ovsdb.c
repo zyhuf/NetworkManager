@@ -582,8 +582,6 @@ _insert_port (json_t *params, NMConnection *port, json_t *new_interfaces)
 		json_object_set_new (row, "bond_downdelay", json_integer (bond_downdelay));
 
 	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (port)));
-//	json_object_set_new (row, "interfaces", json_pack ("[s, s]", "named-uuid", "rowInterface"));
-//	json_object_set_new (row, "interfaces", new_interfaces);
 	json_object_set_new (row, "interfaces", json_pack ("[s, O]", "set", new_interfaces));
 	json_object_set_new (row, "external_ids",
 		json_pack ("[s, [[s, s]]]", "map",
@@ -631,9 +629,7 @@ _insert_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
 		json_object_set_new (row, "stp_enable", json_boolean (stp_enable));
 
 	json_object_set_new (row, "name", json_string (nm_connection_get_interface_name (bridge)));
-//	json_object_set_new (row, "ports", json_pack ("[s, s]", "named-uuid", "rowPort"));
 	json_object_set_new (row, "ports", json_pack ("[s, O]", "set", new_ports));
-//	json_object_set_new (row, "ports", new_ports);
 	json_object_set_new (row, "external_ids",
 		json_pack ("[s, [[s, s]]]", "map",
 		           "NM.connection.uuid", nm_connection_get_uuid (bridge)));
@@ -672,35 +668,28 @@ _add_interface (NMOvsdb *self, json_t *params,
 	new_ports = json_array ();
 	new_interfaces = json_array ();
 
-g_printerr ("XXX: {{{\n");
-
 	g_hash_table_iter_init (&iter, priv->bridges);
 	while (g_hash_table_iter_next (&iter, (gpointer) &bridge_uuid, (gpointer) &ovs_bridge)) {
 		json_array_append_new (bridges, json_pack ("[s, s]", "uuid", bridge_uuid));
 
-g_printerr ("XXX:   BRIDGE {%s}=={%s} {%s}=={%s}\n", ovs_bridge->name, nm_connection_get_interface_name (bridge), ovs_bridge->connection_uuid, nm_connection_get_uuid (bridge));
 		if (   g_strcmp0 (ovs_bridge->name, nm_connection_get_interface_name (bridge)) != 0
 		    || g_strcmp0 (ovs_bridge->connection_uuid, nm_connection_get_uuid (bridge)) != 0)
 			continue;
-g_printerr ("XXX:   BRIDGE YEP\n");
 
 		for (pi = 0; pi < ovs_bridge->ports->len; pi++) {
 			port_uuid = g_ptr_array_index (ovs_bridge->ports, pi);
 			ovs_port = g_hash_table_lookup (priv->ports, port_uuid);
 
-g_printerr ("XXX:     PORT {%s}=={%s} {%s}=={%s}\n", ovs_port->name, nm_connection_get_interface_name (port), ovs_port->connection_uuid, nm_connection_get_uuid (port));
 			json_array_append_new (ports, json_pack ("[s, s]", "uuid", port_uuid));
 
 			if (   g_strcmp0 (ovs_port->name, nm_connection_get_interface_name (port)) != 0
 			    || g_strcmp0 (ovs_port->connection_uuid, nm_connection_get_uuid (port)) != 0)
 				continue;
-g_printerr ("XXX:     PORT YEP\n");
 
 			for (ii = 0; ii < ovs_port->interfaces->len; ii++) {
 				interface_uuid = g_ptr_array_index (ovs_port->interfaces, ii);
 				ovs_interface = g_hash_table_lookup (priv->interfaces, interface_uuid);
 
-g_printerr ("XXX:       INTERFACE {%s}=={%s} {%s}=={%s}\n", ovs_interface->name, nm_connection_get_interface_name (interface), ovs_interface->connection_uuid, nm_connection_get_uuid (interface));
 				json_array_append_new (interfaces, json_pack ("[s, s]", "uuid", interface_uuid));
 			}
 
@@ -709,8 +698,6 @@ g_printerr ("XXX:       INTERFACE {%s}=={%s} {%s}=={%s}\n", ovs_interface->name,
 
 		break;
 	}
-
-g_printerr ("XXX: }}}\n");
 
 	json_array_extend (new_bridges, bridges);
 	json_array_extend (new_ports, ports);
@@ -1659,8 +1646,6 @@ nm_ovsdb_add_interface (NMOvsdb *self,
                         NMOvsdbCallback callback, gpointer user_data)
 {
 	OvsdbCall *call;
-
-g_printerr ("XXX nm_ovsdb_add_interface\n");
 
 	call = g_slice_new (OvsdbCall);
 	call->callback = callback;
