@@ -47,40 +47,6 @@ G_DEFINE_TYPE (NMDeviceOvsPort, nm_device_ovs_port, NM_TYPE_DEVICE)
 
 /*****************************************************************************/
 
-static void
-link_changed (NMDevice *device, const NMPlatformLink *pllink)
-{
-#if 0
-	NMDeviceOvsPort *self = NM_DEVICE_OVS_PORT (device);
-
-	NM_DEVICE_CLASS (nm_device_ovs_port_parent_class)->link_changed (device, pllink);
-
-	if (pllink && nm_device_get_state (device) == NM_DEVICE_STATE_CONFIG) {
-		_LOGD (LOGD_DEVICE, "the link appeared, continuing activation");
-		nm_device_activate_schedule_stage2_device_config (device);
-	}
-#else
-	g_printerr ("PORT: LINK CHANGED\n");
-#endif
-}
-
-#if 0
-static void
-add_br_cb (GError *error, gpointer user_data)
-{
-	NMDeviceOvsPort *self = user_data;
-
-	if (error) {
-		_LOGW (LOGD_DEVICE, "%s", error->message);
-		nm_device_state_changed (NM_DEVICE (self),
-		                         NM_DEVICE_STATE_FAILED,
-		                         NM_DEVICE_STATE_REASON_UNKNOWN);
-	}
-
-	g_object_unref (self);
-}
-#endif
-
 static gboolean
 create_and_realize (NMDevice *device,
                     NMConnection *connection,
@@ -88,57 +54,8 @@ create_and_realize (NMDevice *device,
                     const NMPlatformLink **out_plink,
                     GError **error)
 {
-#if 0
-	const char *connection_type;
-
-	connection_type = nm_connection_get_connection_type (connection);
-	g_return_val_if_fail (connection_type, FALSE);
-
-	if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_BR,
-		                   nm_device_get_iface (device), connection, NULL,
-		                   add_br_cb, g_object_ref (device));
-
-		/* We don't have a plink yet, since the device is eventually instantiated
-		 * by ovs-vswitchd asynchronously. Manager knows and manager is fine with that. */
-	} else if (strcmp (connection_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		/* This doesn't really exist, not even in the ovsdb, until an interface is
-		 * enslaved. */
-	} else {
-		g_return_val_if_reached (FALSE);
-	}
-#endif
-	g_printerr ("PORT: CREATE AND REALIZE\n");
-
-	return TRUE;
-}
-
-#if 0
-static void
-del_br_cb (GError *error, gpointer user_data)
-{
-	NMDeviceOvsPort *self = user_data;
-
-	if (error) {
-	        _LOGW (LOGD_DEVICE, "%s", error->message);
-	        nm_device_state_changed (NM_DEVICE (self),
-	                                 NM_DEVICE_STATE_FAILED,
-	                                 NM_DEVICE_STATE_REASON_UNKNOWN);
-	}
-
-	g_object_unref (self);
-}
-#endif
-
-static gboolean
-unrealize (NMDevice *device, GError **error)
-{
-#if 0
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_DEL_BR,
-	                   nm_device_get_iface (device), NULL, NULL,
-	                   del_br_cb, g_object_ref (device));
-#endif
-	g_printerr ("PORT: UNREALIZE\n");
+	/* The port will be added to ovsdb when an interface is enslaved,
+	 * because there's no such thing like an empty port. */
 
 	return TRUE;
 }
@@ -146,7 +63,7 @@ unrealize (NMDevice *device, GError **error)
 static NMDeviceCapabilities
 get_generic_capabilities (NMDevice *device)
 {
-	return NM_DEVICE_CAP_CARRIER_DETECT | NM_DEVICE_CAP_IS_SOFTWARE;
+	return NM_DEVICE_CAP_IS_SOFTWARE;
 }
 
 
@@ -186,8 +103,6 @@ check_slave_connection_compatible (NMDevice *device, NMConnection *slave)
 	if (strcmp (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0)
 		return TRUE;
 
-//	g_printerr ("PORT: CHECK SLAVE COMPAT\n");
-
 	return FALSE;
 }
 
@@ -196,7 +111,6 @@ act_stage3_ip4_config_start (NMDevice *device,
                              NMIP4Config **out_config,
                              NMDeviceStateReason *out_failure_reason)
 {
-	g_printerr ("PORT: ACT3v4\n");
 	return NM_ACT_STAGE_RETURN_IP_FAIL;
 }
 
@@ -205,38 +119,8 @@ act_stage3_ip6_config_start (NMDevice *device,
                              NMIP6Config **out_config,
                              NMDeviceStateReason *out_failure_reason)
 {
-	g_printerr ("PORT: ACT3v6\n");
 	return NM_ACT_STAGE_RETURN_IP_FAIL;
 }
-
-#if 0
-static NMActStageReturn
-act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
-{
-#if 0
-	NMDeviceOvsPort *self = NM_DEVICE_OVS_PORT (device);
-	NMConnection *applied_connection;
-
-	applied_connection = nm_device_get_applied_connection (device);
-	if (   applied_connection
-	    && strcmp (nm_connection_get_connection_type (applied_connection),
-	               NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		return NM_ACT_STAGE_RETURN_SUCCESS;
-	}
-
-	if (nm_device_get_ifindex (device)) {
-		return NM_ACT_STAGE_RETURN_SUCCESS;
-	} else {
-		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
-		return NM_ACT_STAGE_RETURN_POSTPONE;
-	}
-#else
-	g_printerr ("PORT: ACT2\n");
-	return NM_ACT_STAGE_RETURN_POSTPONE;
-#endif
-}
-#endif
-
 
 static void
 add_iface_cb (GError *error, gpointer user_data)
@@ -254,57 +138,11 @@ add_iface_cb (GError *error, gpointer user_data)
 	g_object_unref (slave);
 }
 
-#if 0
-static gboolean
-_get_port_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
-                  NMDevice **port, NMDevice **port)
-{
-	NMConnection *applied_connection;
-	const char *device_type;
-	const char *slave_type = NULL;
-
-	if (!connection)
-		connection = nm_device_get_applied_connection (slave);
-	if (connection)
-		slave_type = nm_connection_get_connection_type (connection);
-
-	applied_connection = nm_device_get_applied_connection (device);
-	if (!applied_connection)
-		return FALSE;
-	device_type = nm_connection_get_connection_type (applied_connection);
-
-	/* Do nothing if we're just enslaving an empty port to a port. */
-	if (g_strcmp0 (slave_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		*port = NULL;
-		*port = NULL;
-		return g_strcmp0 (device_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0;
-	}
-
-	if (g_strcmp0 (device_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		*port = device;
-		*port = slave;
-	} else if (g_strcmp0 (device_type, NM_SETTING_OVS_PORT_SETTING_NAME) == 0) {
-		*port = nm_device_get_master (device);
-		*port = device;
-	} else {
-		g_return_val_if_reached (FALSE);
-	}
-
-	if (!*port)
-		return FALSE;
-
-	return TRUE;
-}
-#endif
-
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
         NMActiveConnection *ac_port = NULL;
         NMActiveConnection *ac_bridge = NULL;
-
-	g_printerr ("PORT: ENSLAVE SLAVE\n");
-
 
 	if (!configure)
 		return TRUE;
@@ -319,7 +157,7 @@ enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboo
                                 nm_active_connection_get_applied_connection (ac_bridge),
                                 nm_device_get_applied_connection (device),
                                 nm_device_get_applied_connection (slave),
-                                add_iface_cb, g_object_ref (device));
+                                add_iface_cb, g_object_ref (slave));
 
 	return TRUE;
 }
@@ -343,8 +181,6 @@ del_iface_cb (GError *error, gpointer user_data)
 static void
 release_slave (NMDevice *device, NMDevice *slave, gboolean configure)
 {
-	g_printerr ("PORT: RELEASE SLAVE\n");
-
 	if (!configure)
 		return;
 
@@ -364,16 +200,11 @@ nm_device_ovs_port_class_init (NMDeviceOvsPortClass *klass)
 {
 	NMDeviceClass *device_class = NM_DEVICE_CLASS (klass);
 
-//	NM_DEVICE_CLASS_DECLARE_TYPES (klass, NULL, NM_LINK_TYPE_OVS_PORT)
-
 	device_class->is_master = TRUE;
-	device_class->link_changed = link_changed;
 	device_class->create_and_realize = create_and_realize;
-	device_class->unrealize = unrealize;
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;
 	device_class->check_slave_connection_compatible = check_slave_connection_compatible;
-//	device_class->act_stage2_config = act_stage2_config;
 	device_class->act_stage3_ip4_config_start = act_stage3_ip4_config_start;
 	device_class->act_stage3_ip6_config_start = act_stage3_ip6_config_start;
 	device_class->enslave_slave = enslave_slave;
