@@ -195,9 +195,9 @@ add_iface_cb (GError *error, gpointer user_data)
 }
 
 static NMActStageReturn
-act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
+act_stage1_prepare (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 {
-	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
+	//NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
 	NMActiveConnection *ac_interface = NULL;
 	NMActiveConnection *ac_port = NULL;
 	NMActiveConnection *ac_bridge = NULL;
@@ -210,11 +210,43 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	if (!ac_bridge)
 		ac_bridge = ac_port;
 
+g_printerr ("XXX act1 PREPARE i=%p b=%p p=%p\n", ac_interface, ac_port, ac_bridge);
 	nm_ovsdb_add_interface (nm_ovsdb_get (),
 	                        nm_active_connection_get_applied_connection (ac_bridge),
 	                        nm_active_connection_get_applied_connection (ac_port),
 	                        nm_active_connection_get_applied_connection (ac_interface),
 	                        add_iface_cb, g_object_ref (device));
+
+	return NM_ACT_STAGE_RETURN_SUCCESS;
+}
+
+static NMActStageReturn
+act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
+{
+	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
+
+#if 0
+	NMActiveConnection *ac_interface = NULL;
+	NMActiveConnection *ac_port = NULL;
+	NMActiveConnection *ac_bridge = NULL;
+
+	ac_interface = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
+	ac_port = nm_active_connection_get_master (NM_ACTIVE_CONNECTION (ac_interface));
+	if (!ac_port)
+		ac_port = ac_interface;
+	ac_bridge = nm_active_connection_get_master (ac_port);
+	if (!ac_bridge)
+		ac_bridge = ac_port;
+
+g_printerr ("XXX act2 CONFIG\n");
+#if 0
+	nm_ovsdb_add_interface (nm_ovsdb_get (),
+	                        nm_active_connection_get_applied_connection (ac_bridge),
+	                        nm_active_connection_get_applied_connection (ac_port),
+	                        nm_active_connection_get_applied_connection (ac_interface),
+	                        add_iface_cb, g_object_ref (device));
+#endif
+#endif
 
 	if (!nm_device_get_ifindex (device)) {
 		_LOGD (LOGD_DEVICE, "the link is not there, waiting for it to appear");
@@ -284,6 +316,7 @@ nm_device_ovs_interface_class_init (NMDeviceOvsInterfaceClass *klass)
 	device_class->unrealize = unrealize;
 	device_class->get_generic_capabilities = get_generic_capabilities;
 	device_class->check_connection_compatible = check_connection_compatible;
+	device_class->act_stage1_prepare = act_stage1_prepare;
 	device_class->act_stage2_config = act_stage2_config;
 //	device_class->enslave_slave = enslave_slave;
 //	device_class->release_slave = release_slave;

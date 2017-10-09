@@ -301,16 +301,19 @@ _get_port_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
-	NMDevice *bridge = NULL;
+//	NMDevice *bridge = NULL;
 
 	if (!configure)
 		return TRUE;
 
 	g_printerr ("PORT: ENSLAVE SLAVE\n");
 
+
+#if 0
 	bridge = nm_device_get_master (device);
 	if (!bridge)
 		return FALSE;
+#endif
 
 
 #if 0
