@@ -245,7 +245,7 @@ _expect_ovs_bridges (json_t *params, const char *db_uuid, json_t *bridges)
  * _set_ovs_bridges:
  *
  * Return a command that will update the list of bridges in @db_uuid
- * database to @bridges.
+ * database to @new_bridges.
  */
 static void
 _set_ovs_bridges (json_t *params, const char *db_uuid, json_t *new_bridges)
@@ -262,7 +262,7 @@ _set_ovs_bridges (json_t *params, const char *db_uuid, json_t *new_bridges)
  * _expect_bridge_ports:
  *
  * Return a command that will fail the transaction if the actual set of
- * ports in @bridge doesn't match @ports. This is a way of detecting
+ * ports in bridge @ifname doesn't match @ports. This is a way of detecting
  * race conditions with other ovsdb clients that might be adding or removing
  * bridge ports at the same time.
  */
@@ -281,8 +281,8 @@ _expect_bridge_ports (json_t *params, const char *ifname, json_t *ports)
 /**
  * _set_bridge_ports:
  *
- * Return a command that will update the list of ports of @bridge
- * to @ports.
+ * Return a command that will update the list of ports of bridge
+ * @ifname to @new_ports.
  */
 static void
 _set_bridge_ports (json_t *params, const char *ifname, json_t *new_ports)
@@ -299,9 +299,9 @@ _set_bridge_ports (json_t *params, const char *ifname, json_t *new_ports)
  * _expect_port_interfaces:
  *
  * Return a command that will fail the transaction if the actual set of
- * interfaces in @port doesn't match @interfaces. This is a way of detecting
- * race conditions with other ovsdb clients that might be adding or removing
- * port interfaces at the same time.
+ * interfaces in port @ifname doesn't match @interfaces. This is a way of
+ * detecting race conditions with other ovsdb clients that might be adding
+ * or removing port interfaces at the same time.
  */
 static void
 _expect_port_interfaces (json_t *params, const char *ifname, json_t *interfaces)
@@ -318,8 +318,8 @@ _expect_port_interfaces (json_t *params, const char *ifname, json_t *interfaces)
 /**
  * _set_port_interfaces:
  *
- * Return a command that will update the list of interfaces of @port
- * to @interfaces.
+ * Return a command that will update the list of interfaces of port @ifname
+ * to @new_interfaces.
  */
 static void
 _set_port_interfaces (json_t *params, const char *ifname, json_t *new_interfaces)
@@ -332,48 +332,10 @@ _set_port_interfaces (json_t *params, const char *ifname, json_t *new_interfaces
 	);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
- * _inc_next_cfg:
- *
- * Returns an mutate command that bumps next_cfg upon successful completion
- * of the transaction it is in.
- */
-static json_t *
-_inc_next_cfg (const char *db_uuid)
-{
-	return json_pack ("{s:s, s:s, s:[[s, s, i]], s:[[s, s, [s, s]]]}",
-                          "op", "mutate", "table", "Open_vSwitch",
-	                  "mutations", "next_cfg", "+=", 1,
-	                  "where", "_uuid", "==", "uuid", db_uuid);
-}
-
-/**
- * _set_interface:
+ * _insert_interface:
  *
  * Returns an commands that adds new interface from a given connection.
- * If the connection is of a bridge then an internal interface for the
- * bridge is added, otherwise it's a regular one.
  */
 static void
 _insert_interface (json_t *params, NMConnection *interface)
@@ -395,7 +357,7 @@ _insert_interface (json_t *params, NMConnection *interface)
 }
 
 /**
- * _new_port:
+ * _insert_port:
  *
  * Returns an commands that adds new port from a given connection.
  */
@@ -450,7 +412,7 @@ _insert_port (json_t *params, NMConnection *port, json_t *new_interfaces)
 }
 
 /**
- * _new_bridge:
+ * _insert_bridge:
  *
  * Returns an commands that adds new bridge from a given connection.
  */
@@ -496,9 +458,27 @@ _insert_bridge (json_t *params, NMConnection *bridge, json_t *new_ports)
 		           "row", row, "uuid-name", "rowBridge"));
 }
 
+/**
+ * _inc_next_cfg:
+ *
+ * Returns an mutate command that bumps next_cfg upon successful completion
+ * of the transaction it is in.
+ */
+static json_t *
+_inc_next_cfg (const char *db_uuid)
+{
+	return json_pack ("{s:s, s:s, s:[[s, s, i]], s:[[s, s, [s, s]]]}",
+                          "op", "mutate", "table", "Open_vSwitch",
+	                  "mutations", "next_cfg", "+=", 1,
+	                  "where", "_uuid", "==", "uuid", db_uuid);
+}
 
-
-
+/**
+ * _add_interface:
+ *
+ * Adds an interface as specified by @itnerface connection, optionally creating
+ * a parent @port and @bridge if needed.
+ */
 static void
 _add_interface (NMOvsdb *self, json_t *params,
                 NMConnection *bridge, NMConnection *port, NMConnection *interface)
@@ -595,6 +575,12 @@ _add_interface (NMOvsdb *self, json_t *params,
 	json_decref (new_bridges);
 }
 
+/**
+ * _delete_interface:
+ *
+ * Removes an interface of @ifname name, collecting empty ports and bridge
+ * if last item is removed from them.
+ */
 static void
 _delete_interface (NMOvsdb *self, json_t *params, const char *ifname)
 {
@@ -643,7 +629,6 @@ _delete_interface (NMOvsdb *self, json_t *params, const char *ifname)
 
 				json_array_append_new (interfaces, json_pack ("[s,s]", "uuid", interface_uuid));
 
-				/*** XXX ***/
 				if (strcmp (ovs_interface->name, ifname) == 0) {
 					/* skip the interface */
 					interfaces_changed = TRUE;
@@ -686,25 +671,6 @@ _delete_interface (NMOvsdb *self, json_t *params, const char *ifname)
 		_set_ovs_bridges (params, priv->db_uuid, new_bridges);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * ovsdb_next_command:
@@ -1293,6 +1259,7 @@ ovsdb_write (NMOvsdb *self)
 	                             priv->output->str, priv->output->len,
 	                             G_PRIORITY_DEFAULT, NULL, ovsdb_write_cb, self);
 }
+
 /*****************************************************************************/
 
 /* Routines to maintain the ovsdb connection. */
