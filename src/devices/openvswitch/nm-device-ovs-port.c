@@ -23,6 +23,7 @@
 #include "nm-ovsdb.h"
 
 #include "devices/nm-device-private.h"
+#include "nm-active-connection.h"
 #include "nm-setting-connection.h"
 #include "nm-setting-ovs-port.h"
 #include "nm-setting-ovs-port.h"
@@ -237,7 +238,6 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 #endif
 
 
-#if 0
 static void
 add_iface_cb (GError *error, gpointer user_data)
 {
@@ -253,7 +253,6 @@ add_iface_cb (GError *error, gpointer user_data)
 
 	g_object_unref (slave);
 }
-#endif
 
 #if 0
 static gboolean
@@ -301,48 +300,30 @@ _get_port_port (NMDevice *device, NMDevice *slave, NMConnection *connection,
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
-//	NMDevice *bridge = NULL;
-
-	if (!configure)
-		return TRUE;
+        NMActiveConnection *ac_port = NULL;
+        NMActiveConnection *ac_bridge = NULL;
 
 	g_printerr ("PORT: ENSLAVE SLAVE\n");
 
 
-#if 0
-	bridge = nm_device_get_master (device);
-	if (!bridge)
-		return FALSE;
-#endif
-
-
-#if 0
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
-	                   nm_device_get_iface (bridge),
-	                   nm_device_get_applied_connection (device),
-	                   nm_device_get_applied_connection (slave),
-	                   add_iface_cb, g_object_ref (slave));
-#endif
-
-#if 0
-	NMDevice *port = NULL;
-	NMDevice *port = NULL;
-
 	if (!configure)
 		return TRUE;
 
-	if (!_get_port_port (device, slave, connection, &port, &port))
-		return FALSE;
 
-	if (!port && !port)
-		return TRUE;
-#endif
+        ac_port = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
+        ac_bridge = nm_active_connection_get_master (ac_port);
+        if (!ac_bridge)
+                ac_bridge = ac_port;
 
+        nm_ovsdb_add_interface (nm_ovsdb_get (),
+                                nm_active_connection_get_applied_connection (ac_bridge),
+                                nm_device_get_applied_connection (device),
+                                nm_device_get_applied_connection (slave),
+                                add_iface_cb, g_object_ref (device));
 
 	return TRUE;
 }
 
-#if 0
 static void
 del_iface_cb (GError *error, gpointer user_data)
 {
@@ -358,32 +339,17 @@ del_iface_cb (GError *error, gpointer user_data)
 
 	g_object_unref (slave);
 }
-#endif
 
 static void
 release_slave (NMDevice *device, NMDevice *slave, gboolean configure)
 {
-#if 0
-	NMDevice *port = NULL;
-	NMDevice *port = NULL;
+	g_printerr ("PORT: RELEASE SLAVE\n");
 
 	if (!configure)
 		return;
 
-	if (!_get_port_port (device, slave, NULL, &port, &port))
-		return;
-
-	if (!port && !port)
-		return;
-
-	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_DEL_IFACE,
-	                   nm_device_get_iface (port),
-	                   nm_device_get_applied_connection (port),
-	                   nm_device_get_applied_connection (slave),
-	                   del_iface_cb, g_object_ref (slave));
-#else
-	g_printerr ("PORT: RELEASE SLAVE\n");
-#endif
+	nm_ovsdb_del_interface (nm_ovsdb_get (), nm_device_get_iface (slave),
+				del_iface_cb, g_object_ref (slave));
 }
 
 /*****************************************************************************/
