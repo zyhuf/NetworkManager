@@ -533,7 +533,7 @@ _insert_interface (json_t *params, NMConnection *interface)
 		json_pack ("{s:s, s:s, s:{s:s, s:s, s:[s, [[s, s]]]}, s:s}",
 		           "op", "insert", "table", "Interface", "row",
 		           "name", nm_connection_get_interface_name (interface),
-		           "type", type,
+		           "type", type ? type : "",
 		           "external_ids", "map", "NM.connection.uuid", nm_connection_get_uuid (interface),
 		           "uuid-name", "rowInterface"));
 }
