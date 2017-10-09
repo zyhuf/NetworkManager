@@ -236,6 +236,8 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 }
 #endif
 
+
+#if 0
 static void
 add_iface_cb (GError *error, gpointer user_data)
 {
@@ -251,6 +253,7 @@ add_iface_cb (GError *error, gpointer user_data)
 
 	g_object_unref (slave);
 }
+#endif
 
 #if 0
 static gboolean
@@ -310,11 +313,13 @@ enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboo
 		return FALSE;
 
 
+#if 0
 	nm_ovsdb_transact (nm_ovsdb_get (), NM_OVSDB_ADD_IFACE,
 	                   nm_device_get_iface (bridge),
 	                   nm_device_get_applied_connection (device),
 	                   nm_device_get_applied_connection (slave),
 	                   add_iface_cb, g_object_ref (slave));
+#endif
 
 #if 0
 	NMDevice *port = NULL;

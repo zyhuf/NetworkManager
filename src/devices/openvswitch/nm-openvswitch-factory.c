@@ -104,6 +104,7 @@ ovsdb_device_added (NMOvsdb *ovsdb, const char *type, const char *name,
 	NMDevice *device = NULL;
 	g_printerr ("ADDED: [%s] %s\n", type, name);
 
+return;
 
 	device = device_from_type (name, type);
 	g_return_if_fail (device);
@@ -137,12 +138,19 @@ create_device (NMDeviceFactory *self,
                NMConnection *connection,
                gboolean *out_ignore)
 {
-	if (g_strcmp0 (iface, "ovs-system") == 0)
+	if (g_strcmp0 (iface, "ovs-system") == 0) {
+		*out_ignore = TRUE;
 		return NULL;
+	}
 
 	g_printerr ("CREATE DEVICE [%s]\n", iface);
 
-	return device_from_type (iface, nm_connection_get_connection_type (connection));
+	if (connection)
+		return device_from_type (iface, nm_connection_get_connection_type (connection));
+	else if (plink)
+		return device_from_type (iface, NM_SETTING_OVS_INTERFACE_SETTING_NAME);
+	else
+		return NULL;
 #if 0
 	return (NMDevice *) g_object_new (NM_TYPE_DEVICE_OPENVSWITCH,
 	                                  NM_DEVICE_IFACE, iface,

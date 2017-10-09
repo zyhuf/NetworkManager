@@ -54,6 +54,9 @@ link_changed (NMDevice *device, const NMPlatformLink *pllink)
 
 	NM_DEVICE_CLASS (nm_device_ovs_interface_parent_class)->link_changed (device, pllink);
 
+
+g_printerr ("XXX: IF LINK CHANGD [%p] [%d] [%d]\n", pllink, nm_device_get_state (device), NM_DEVICE_STATE_CONFIG);
+
 	if (pllink && nm_device_get_state (device) == NM_DEVICE_STATE_CONFIG) {
 		_LOGD (LOGD_DEVICE, "the link appeared, continuing activation");
 		nm_device_activate_schedule_stage2_device_config (device);
@@ -273,7 +276,7 @@ nm_device_ovs_interface_class_init (NMDeviceOvsInterfaceClass *klass)
 {
 	NMDeviceClass *device_class = NM_DEVICE_CLASS (klass);
 
-//	NM_DEVICE_CLASS_DECLARE_TYPES (klass, NULL, NM_LINK_TYPE_OVS_INTERFACE)
+	NM_DEVICE_CLASS_DECLARE_TYPES (klass, NULL, NM_LINK_TYPE_OPENVSWITCH);
 
 	device_class->is_master = TRUE;
 	device_class->link_changed = link_changed;
