@@ -181,6 +181,8 @@ nm_setting_ovs_interface_class_init (NMSettingOvsInterfaceClass *setting_class)
 	 * NMSettingOvsInterface:type:
 	 *
 	 * The interface type. Either "internal", or empty.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_TYPE,
