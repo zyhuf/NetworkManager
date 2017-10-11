@@ -258,8 +258,8 @@ nm_setting_ovs_bridge_class_init (NMSettingOvsBridgeClass *setting_class)
 	 * Since: 1.10
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_FAIL_MODE,
-		 g_param_spec_string (NM_SETTING_OVS_BRIDGE_FAIL_MODE, "", "",
+	        (object_class, PROP_FAIL_MODE,
+	         g_param_spec_string (NM_SETTING_OVS_BRIDGE_FAIL_MODE, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
