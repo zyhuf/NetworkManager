@@ -19,9 +19,10 @@
 
 #include "nm-default.h"
 
+#include "nm-device-ovs-interface.h"
+
 #include <string.h>
 
-#include "nm-device-ovs-interface.h"
 #include "nm-object-private.h"
 #include "nm-setting-ovs-interface.h"
 #include "nm-setting-ovs-port.h"
