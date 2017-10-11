@@ -329,6 +329,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 *
 	 * The VLAN mode. One of "access", "native-tagged", "native-untagged",
 	 * "trunk" or unset.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_VLAN_MODE,
@@ -343,6 +345,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * NMSettingOvsPort:vlan_tag:
 	 *
 	 * The VLAN tag in the range 0-4095.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_TAG,
@@ -357,6 +361,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * NMSettingOvsPort:lacp:
 	 *
 	 * LACP mode. One of "active", "off", or "passive".
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_LACP,
@@ -371,6 +377,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * NMSettingOvsPort:bond-mode:
 	 *
 	 * Bonding mode. One of "active-backup", "balance-slb", or "balance-tcp".
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_BOND_MODE,
@@ -386,6 +394,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * NMSettingOvsPort:updelay:
 	 *
 	 * The time port must be active befor it starts forwarding traffic.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_BOND_UPDELAY,
@@ -400,6 +410,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * NMSettingOvsPort:downdelay:
 	 *
 	 * The time port must be inactive in order to be considered down.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_BOND_DOWNDELAY,
