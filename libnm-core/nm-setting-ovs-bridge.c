@@ -34,6 +34,15 @@
  * necessary for OpenVSwitch bridges.
  **/
 
+enum {
+	PROP_0,
+	PROP_FAIL_MODE,
+	PROP_MCAST_SNOOPING_ENABLE,
+	PROP_RSTP_ENABLE,
+	PROP_STP_ENABLE,
+	LAST_PROP
+};
+
 /**
  * NMSettingOvsBridge:
  *
@@ -56,29 +65,7 @@ G_DEFINE_TYPE_WITH_CODE (NMSettingOvsBridge, nm_setting_ovs_bridge, NM_TYPE_SETT
                          _nm_register_setting (OVS_BRIDGE, NM_SETTING_PRIORITY_HW_BASE))
 NM_SETTING_REGISTER_TYPE (NM_TYPE_SETTING_OVS_BRIDGE)
 
-enum {
-	PROP_0,
-	PROP_FAIL_MODE,
-	PROP_MCAST_SNOOPING_ENABLE,
-	PROP_RSTP_ENABLE,
-	PROP_STP_ENABLE,
-	LAST_PROP
-};
-
-/**
- * nm_setting_ovs_bridge_new:
- *
- * Creates a new #NMSettingOvsBridge object with default values.
- *
- * Returns: (transfer full): the new empty #NMSettingOvsBridge object
- *
- * Since: 1.10
- **/
-NMSetting *
-nm_setting_ovs_bridge_new (void)
-{
-	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_BRIDGE, NULL);
-}
+/*****************************************************************************/
 
 /**
  * nm_setting_ovs_bridge_get_fail_mode:
@@ -144,31 +131,30 @@ nm_setting_ovs_bridge_get_stp_enable (NMSettingOvsBridge *s_ovs_bridge)
 	return s_ovs_bridge->stp_enable;
 }
 
-static void
-set_property (GObject *object, guint prop_id,
-              const GValue *value, GParamSpec *pspec)
-{
-	NMSettingOvsBridge *s_ovs_bridge = NM_SETTING_OVS_BRIDGE (object);
+/*****************************************************************************/
 
-	switch (prop_id) {
-	case PROP_FAIL_MODE:
-		g_free (s_ovs_bridge->fail_mode);
-		s_ovs_bridge->fail_mode = g_value_dup_string (value);
-		break;
-	case PROP_MCAST_SNOOPING_ENABLE:
-		s_ovs_bridge->mcast_snooping_enable = g_value_get_boolean (value);
-		break;
-	case PROP_RSTP_ENABLE:
-		s_ovs_bridge->rstp_enable = g_value_get_boolean (value);
-		break;
-	case PROP_STP_ENABLE:
-		s_ovs_bridge->stp_enable = g_value_get_boolean (value);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
+static int
+verify (NMSetting *setting, NMConnection *connection, GError **error)
+{
+	NMSettingOvsBridge *s_ovs_bridge = NM_SETTING_OVS_BRIDGE (setting);
+
+	if (!_nm_connection_verify_required_interface_name (connection, error))
+		return FALSE;
+
+	if (!NM_IN_STRSET (s_ovs_bridge->fail_mode, "secure", "standalone", NULL)) {
+		g_set_error (error,
+		             NM_CONNECTION_ERROR,
+		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		             _("'%s' is not allowed in fail_mode"),
+		             s_ovs_bridge->fail_mode);
+		g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_BRIDGE_SETTING_NAME, NM_SETTING_OVS_BRIDGE_FAIL_MODE);
+		return FALSE;
 	}
+
+	return TRUE;
 }
+
+/*****************************************************************************/
 
 static void
 get_property (GObject *object, guint prop_id,
@@ -195,25 +181,52 @@ get_property (GObject *object, guint prop_id,
 	}
 }
 
-static int
-verify (NMSetting *setting, NMConnection *connection, GError **error)
+static void
+set_property (GObject *object, guint prop_id,
+              const GValue *value, GParamSpec *pspec)
 {
-	NMSettingOvsBridge *s_ovs_bridge = NM_SETTING_OVS_BRIDGE (setting);
+	NMSettingOvsBridge *s_ovs_bridge = NM_SETTING_OVS_BRIDGE (object);
 
-	if (!_nm_connection_verify_required_interface_name (connection, error))
-		return FALSE;
-
-	if (!NM_IN_STRSET (s_ovs_bridge->fail_mode, "secure", "standalone", NULL)) {
-		g_set_error (error,
-		             NM_CONNECTION_ERROR,
-		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
-		             _("'%s' is not allowed in fail_mode"),
-		             s_ovs_bridge->fail_mode);
-		g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_BRIDGE_SETTING_NAME, NM_SETTING_OVS_BRIDGE_FAIL_MODE);
-		return FALSE;
+	switch (prop_id) {
+	case PROP_FAIL_MODE:
+		g_free (s_ovs_bridge->fail_mode);
+		s_ovs_bridge->fail_mode = g_value_dup_string (value);
+		break;
+	case PROP_MCAST_SNOOPING_ENABLE:
+		s_ovs_bridge->mcast_snooping_enable = g_value_get_boolean (value);
+		break;
+	case PROP_RSTP_ENABLE:
+		s_ovs_bridge->rstp_enable = g_value_get_boolean (value);
+		break;
+	case PROP_STP_ENABLE:
+		s_ovs_bridge->stp_enable = g_value_get_boolean (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
 	}
+}
 
-	return TRUE;
+/*****************************************************************************/
+
+static void
+nm_setting_ovs_bridge_init (NMSettingOvsBridge *s_ovs_bridge)
+{
+}
+
+/**
+ * nm_setting_ovs_bridge_new:
+ *
+ * Creates a new #NMSettingOvsBridge object with default values.
+ *
+ * Returns: (transfer full): the new empty #NMSettingOvsBridge object
+ *
+ * Since: 1.10
+ **/
+NMSetting *
+nm_setting_ovs_bridge_new (void)
+{
+	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_BRIDGE, NULL);
 }
 
 static void
@@ -224,11 +237,6 @@ finalize (GObject *object)
 	g_free (s_ovs_bridge->fail_mode);
 
 	G_OBJECT_CLASS (nm_setting_ovs_bridge_parent_class)->finalize (object);
-}
-
-static void
-nm_setting_ovs_bridge_init (NMSettingOvsBridge *s_ovs_bridge)
-{
 }
 
 static void
