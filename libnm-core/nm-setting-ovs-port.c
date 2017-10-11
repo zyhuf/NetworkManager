@@ -331,8 +331,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * "trunk" or unset.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_VLAN_MODE,
-		 g_param_spec_string (NM_SETTING_OVS_PORT_VLAN_MODE, "", "",
+	        (object_class, PROP_VLAN_MODE,
+	         g_param_spec_string (NM_SETTING_OVS_PORT_VLAN_MODE, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
@@ -345,8 +345,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * The VLAN tag in the range 0-4095.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_TAG,
-		 g_param_spec_uint (NM_SETTING_OVS_PORT_TAG, "", "",
+	        (object_class, PROP_TAG,
+	         g_param_spec_uint (NM_SETTING_OVS_PORT_TAG, "", "",
 	                            0, 4095, 0,
 	                            G_PARAM_READWRITE |
 	                            G_PARAM_CONSTRUCT |
@@ -359,8 +359,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * LACP mode. One of "active", "off", or "passive".
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_LACP,
-		 g_param_spec_string (NM_SETTING_OVS_PORT_LACP, "", "",
+	        (object_class, PROP_LACP,
+	         g_param_spec_string (NM_SETTING_OVS_PORT_LACP, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
@@ -373,8 +373,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * Bonding mode. One of "active-backup", "balance-slb", or "balance-tcp".
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_BOND_MODE,
-		 g_param_spec_string (NM_SETTING_OVS_PORT_BOND_MODE, "", "",
+	        (object_class, PROP_BOND_MODE,
+	         g_param_spec_string (NM_SETTING_OVS_PORT_BOND_MODE, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
@@ -388,8 +388,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * The time port must be active befor it starts forwarding traffic.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_BOND_UPDELAY,
-		 g_param_spec_uint (NM_SETTING_OVS_PORT_BOND_UPDELAY, "", "",
+	        (object_class, PROP_BOND_UPDELAY,
+	         g_param_spec_uint (NM_SETTING_OVS_PORT_BOND_UPDELAY, "", "",
 	                            0, G_MAXUINT, 0,
 	                            G_PARAM_READWRITE |
 	                            G_PARAM_CONSTRUCT |
@@ -402,8 +402,8 @@ nm_setting_ovs_port_class_init (NMSettingOvsPortClass *setting_class)
 	 * The time port must be inactive in order to be considered down.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_BOND_DOWNDELAY,
-		 g_param_spec_uint (NM_SETTING_OVS_PORT_BOND_DOWNDELAY, "", "",
+	        (object_class, PROP_BOND_DOWNDELAY,
+	         g_param_spec_uint (NM_SETTING_OVS_PORT_BOND_DOWNDELAY, "", "",
 	                            0, G_MAXUINT, 0,
 	                            G_PARAM_READWRITE |
 	                            G_PARAM_CONSTRUCT |
