@@ -34,6 +34,17 @@
  * necessary for OpenVSwitch ports.
  **/
 
+enum {
+	PROP_0,
+	PROP_VLAN_MODE,
+	PROP_TAG,
+	PROP_LACP,
+	PROP_BOND_MODE,
+	PROP_BOND_UPDELAY,
+	PROP_BOND_DOWNDELAY,
+	LAST_PROP
+};
+
 /**
  * NMSettingOvsPort:
  *
@@ -58,31 +69,7 @@ G_DEFINE_TYPE_WITH_CODE (NMSettingOvsPort, nm_setting_ovs_port, NM_TYPE_SETTING,
                          _nm_register_setting (OVS_PORT, NM_SETTING_PRIORITY_HW_BASE))
 NM_SETTING_REGISTER_TYPE (NM_TYPE_SETTING_OVS_PORT)
 
-enum {
-	PROP_0,
-	PROP_VLAN_MODE,
-	PROP_TAG,
-	PROP_LACP,
-	PROP_BOND_MODE,
-	PROP_BOND_UPDELAY,
-	PROP_BOND_DOWNDELAY,
-	LAST_PROP
-};
-
-/**
- * nm_setting_ovs_port_new:
- *
- * Creates a new #NMSettingOvsPort object with default values.
- *
- * Returns: (transfer full): the new empty #NMSettingOvsPort object
- *
- * Since: 1.10
- **/
-NMSetting *
-nm_setting_ovs_port_new (void)
-{
-	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_PORT, NULL);
-}
+/*****************************************************************************/
 
 /**
  * nm_setting_ovs_port_get_vlan_mode:
@@ -180,70 +167,7 @@ nm_setting_ovs_port_get_bond_downdelay (NMSettingOvsPort *s_ovs_port)
 	return s_ovs_port->bond_downdelay;
 }
 
-static void
-set_property (GObject *object, guint prop_id,
-              const GValue *value, GParamSpec *pspec)
-{
-	NMSettingOvsPort *s_ovs_port = NM_SETTING_OVS_PORT (object);
-
-	switch (prop_id) {
-	case PROP_VLAN_MODE:
-		g_free (s_ovs_port->vlan_mode);
-		s_ovs_port->vlan_mode = g_value_dup_string (value);
-		break;
-	case PROP_TAG:
-		s_ovs_port->tag = g_value_get_uint (value);
-		break;
-	case PROP_LACP:
-		g_free (s_ovs_port->lacp);
-		s_ovs_port->lacp = g_value_dup_string (value);
-		break;
-	case PROP_BOND_MODE:
-		g_free (s_ovs_port->bond_mode);
-		s_ovs_port->bond_mode = g_value_dup_string (value);
-		break;
-	case PROP_BOND_UPDELAY:
-		s_ovs_port->bond_updelay = g_value_get_uint (value);
-		break;
-	case PROP_BOND_DOWNDELAY:
-		s_ovs_port->bond_downdelay = g_value_get_uint (value);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static void
-get_property (GObject *object, guint prop_id,
-              GValue *value, GParamSpec *pspec)
-{
-	NMSettingOvsPort *s_ovs_port = NM_SETTING_OVS_PORT (object);
-
-	switch (prop_id) {
-	case PROP_VLAN_MODE:
-		g_value_set_string (value, s_ovs_port->vlan_mode);
-		break;
-	case PROP_TAG:
-		g_value_set_uint (value, s_ovs_port->tag);
-		break;
-	case PROP_LACP:
-		g_value_set_string (value, s_ovs_port->lacp);
-		break;
-	case PROP_BOND_MODE:
-		g_value_set_string (value, s_ovs_port->bond_mode);
-		break;
-	case PROP_BOND_UPDELAY:
-		g_value_set_uint (value, s_ovs_port->bond_updelay);
-		break;
-	case PROP_BOND_DOWNDELAY:
-		g_value_set_uint (value, s_ovs_port->bond_downdelay);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
+/*****************************************************************************/
 
 static int
 verify (NMSetting *setting, NMConnection *connection, GError **error)
@@ -296,6 +220,95 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	return TRUE;
 }
 
+/*****************************************************************************/
+
+static void
+get_property (GObject *object, guint prop_id,
+              GValue *value, GParamSpec *pspec)
+{
+	NMSettingOvsPort *s_ovs_port = NM_SETTING_OVS_PORT (object);
+
+	switch (prop_id) {
+	case PROP_VLAN_MODE:
+		g_value_set_string (value, s_ovs_port->vlan_mode);
+		break;
+	case PROP_TAG:
+		g_value_set_uint (value, s_ovs_port->tag);
+		break;
+	case PROP_LACP:
+		g_value_set_string (value, s_ovs_port->lacp);
+		break;
+	case PROP_BOND_MODE:
+		g_value_set_string (value, s_ovs_port->bond_mode);
+		break;
+	case PROP_BOND_UPDELAY:
+		g_value_set_uint (value, s_ovs_port->bond_updelay);
+		break;
+	case PROP_BOND_DOWNDELAY:
+		g_value_set_uint (value, s_ovs_port->bond_downdelay);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+set_property (GObject *object, guint prop_id,
+              const GValue *value, GParamSpec *pspec)
+{
+	NMSettingOvsPort *s_ovs_port = NM_SETTING_OVS_PORT (object);
+
+	switch (prop_id) {
+	case PROP_VLAN_MODE:
+		g_free (s_ovs_port->vlan_mode);
+		s_ovs_port->vlan_mode = g_value_dup_string (value);
+		break;
+	case PROP_TAG:
+		s_ovs_port->tag = g_value_get_uint (value);
+		break;
+	case PROP_LACP:
+		g_free (s_ovs_port->lacp);
+		s_ovs_port->lacp = g_value_dup_string (value);
+		break;
+	case PROP_BOND_MODE:
+		g_free (s_ovs_port->bond_mode);
+		s_ovs_port->bond_mode = g_value_dup_string (value);
+		break;
+	case PROP_BOND_UPDELAY:
+		s_ovs_port->bond_updelay = g_value_get_uint (value);
+		break;
+	case PROP_BOND_DOWNDELAY:
+		s_ovs_port->bond_downdelay = g_value_get_uint (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+/*****************************************************************************/
+
+static void
+nm_setting_ovs_port_init (NMSettingOvsPort *s_ovs_port)
+{
+}
+
+/**
+ * nm_setting_ovs_port_new:
+ *
+ * Creates a new #NMSettingOvsPort object with default values.
+ *
+ * Returns: (transfer full): the new empty #NMSettingOvsPort object
+ *
+ * Since: 1.10
+ **/
+NMSetting *
+nm_setting_ovs_port_new (void)
+{
+	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_PORT, NULL);
+}
+
 static void
 finalize (GObject *object)
 {
@@ -306,11 +319,6 @@ finalize (GObject *object)
 	g_free (s_ovs_port->bond_mode);
 
 	G_OBJECT_CLASS (nm_setting_ovs_port_parent_class)->finalize (object);
-}
-
-static void
-nm_setting_ovs_port_init (NMSettingOvsPort *s_ovs_port)
-{
 }
 
 static void
