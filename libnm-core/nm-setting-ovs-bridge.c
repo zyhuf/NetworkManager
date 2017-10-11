@@ -254,6 +254,8 @@ nm_setting_ovs_bridge_class_init (NMSettingOvsBridgeClass *setting_class)
 	 * NMSettingOvsBridge:fail_mode:
 	 *
 	 * The bridge failure mode. One of "secure", "standalone" or empty.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 		(object_class, PROP_FAIL_MODE,
@@ -268,6 +270,8 @@ nm_setting_ovs_bridge_class_init (NMSettingOvsBridgeClass *setting_class)
 	 * NMSettingOvsBridge:mcast-snooping_enable:
 	 *
 	 * Enable or disable multicast snooping.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_MCAST_SNOOPING_ENABLE,
@@ -282,6 +286,8 @@ nm_setting_ovs_bridge_class_init (NMSettingOvsBridgeClass *setting_class)
 	 *
 	 *
 	 * Enable or disable RSTP.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_RSTP_ENABLE,
@@ -295,6 +301,8 @@ nm_setting_ovs_bridge_class_init (NMSettingOvsBridgeClass *setting_class)
 	 * NMSettingOvsBridge:stp-enable:
 	 *
 	 * Enable or disable STP.
+	 *
+	 * Since: 1.10
 	 **/
 	g_object_class_install_property
 	        (object_class, PROP_STP_ENABLE,
