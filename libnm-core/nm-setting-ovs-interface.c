@@ -183,8 +183,8 @@ nm_setting_ovs_interface_class_init (NMSettingOvsInterfaceClass *setting_class)
 	 * The interface type. Either "internal", or empty.
 	 **/
 	g_object_class_install_property
-		(object_class, PROP_TYPE,
-		 g_param_spec_string (NM_SETTING_OVS_INTERFACE_TYPE, "", "",
+	        (object_class, PROP_TYPE,
+	         g_param_spec_string (NM_SETTING_OVS_INTERFACE_TYPE, "", "",
 	                              NULL,
 	                              G_PARAM_READWRITE |
 	                              G_PARAM_CONSTRUCT |
