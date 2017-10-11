@@ -33,6 +33,12 @@
  * necessary for OpenVSwitch interfaces.
  **/
 
+enum {
+	PROP_0,
+	PROP_TYPE,
+	LAST_PROP
+};
+
 /**
  * NMSettingOvsInterface:
  *
@@ -52,26 +58,7 @@ G_DEFINE_TYPE_WITH_CODE (NMSettingOvsInterface, nm_setting_ovs_interface, NM_TYP
                          _nm_register_setting (OVS_INTERFACE, NM_SETTING_PRIORITY_HW_BASE))
 NM_SETTING_REGISTER_TYPE (NM_TYPE_SETTING_OVS_INTERFACE)
 
-enum {
-	PROP_0,
-	PROP_TYPE,
-	LAST_PROP
-};
-
-/**
- * nm_setting_ovs_interface_new:
- *
- * Creates a new #NMSettingOvsInterface object with default values.
- *
- * Returns: (transfer full): the new empty #NMSettingOvsInterface object
- *
- * Since: 1.10
- **/
-NMSetting *
-nm_setting_ovs_interface_new (void)
-{
-	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_INTERFACE, NULL);
-}
+/*****************************************************************************/
 
 /**
  * nm_setting_ovs_interface_get_interface_type:
@@ -88,38 +75,8 @@ nm_setting_ovs_interface_get_interface_type (NMSettingOvsInterface *s_ovs_interf
 
 	return s_ovs_interface->type;
 }
-static void
-set_property (GObject *object, guint prop_id,
-              const GValue *value, GParamSpec *pspec)
-{
-	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
 
-	switch (prop_id) {
-	case PROP_TYPE:
-		g_free (s_ovs_interface->type);
-		s_ovs_interface->type = g_value_dup_string (value);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static void
-get_property (GObject *object, guint prop_id,
-              GValue *value, GParamSpec *pspec)
-{
-	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
-
-	switch (prop_id) {
-	case PROP_TYPE:
-		g_value_set_string (value, s_ovs_interface->type);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
+/*****************************************************************************/
 
 static int
 verify (NMSetting *setting, NMConnection *connection, GError **error)
@@ -142,6 +99,63 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	return TRUE;
 }
 
+/*****************************************************************************/
+
+static void
+get_property (GObject *object, guint prop_id,
+              GValue *value, GParamSpec *pspec)
+{
+	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
+
+	switch (prop_id) {
+	case PROP_TYPE:
+		g_value_set_string (value, s_ovs_interface->type);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+set_property (GObject *object, guint prop_id,
+              const GValue *value, GParamSpec *pspec)
+{
+	NMSettingOvsInterface *s_ovs_interface = NM_SETTING_OVS_INTERFACE (object);
+
+	switch (prop_id) {
+	case PROP_TYPE:
+		g_free (s_ovs_interface->type);
+		s_ovs_interface->type = g_value_dup_string (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+/*****************************************************************************/
+
+static void
+nm_setting_ovs_interface_init (NMSettingOvsInterface *s_ovs_interface)
+{
+}
+
+/**
+ * nm_setting_ovs_interface_new:
+ *
+ * Creates a new #NMSettingOvsInterface object with default values.
+ *
+ * Returns: (transfer full): the new empty #NMSettingOvsInterface object
+ *
+ * Since: 1.10
+ **/
+NMSetting *
+nm_setting_ovs_interface_new (void)
+{
+	return (NMSetting *) g_object_new (NM_TYPE_SETTING_OVS_INTERFACE, NULL);
+}
+
 static void
 finalize (GObject *object)
 {
@@ -150,11 +164,6 @@ finalize (GObject *object)
 	g_free (s_ovs_interface->type);
 
 	G_OBJECT_CLASS (nm_setting_ovs_interface_parent_class)->finalize (object);
-}
-
-static void
-nm_setting_ovs_interface_init (NMSettingOvsInterface *s_ovs_interface)
-{
 }
 
 static void
