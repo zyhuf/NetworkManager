@@ -461,6 +461,7 @@ _get_text_hidden (NMMetaAccessorGetType get_type)
 	return NM_META_TEXT_HIDDEN;
 }
 
+
 /*****************************************************************************/
 
 G_GNUC_PRINTF (4, 5)
@@ -3642,6 +3643,60 @@ _validate_fcn_team_config (const char *value, char **out_to_free, GError **error
 	RETURN_STR_TO_FREE (json);
 }
 
+static gboolean
+_is_valid_team_runner_txhash_element (const char *txhash_element)
+{
+	const char *valid_txhashes[] = { "eth", "vlan", "ipv4", "ipv6", "ip",
+	                                  "l3", "tcp", "udp", "sctp", "l4", NULL };
+	if (nmc_string_is_valid (txhash_element, valid_txhashes, NULL))
+		return TRUE;
+	return FALSE;
+}
+
+static gboolean
+_set_fcn_team_runner_txhash (ARGS_SET_FCN)
+{
+	char **strv = NULL;
+	guint i = 0;
+
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	strv = _nm_utils_strv_cleanup (g_strsplit_set (value, " \t,", 0),
+	                               TRUE, TRUE, TRUE);
+	if (!verify_string_list (strv, property_info->property_name,
+	                         _is_valid_team_runner_txhash_element,
+	                         error)) {
+		g_strfreev (strv);
+		return FALSE;
+	}
+
+	while (strv && strv[i])
+		nm_setting_team_add_runner_txhash (NM_SETTING_TEAM (setting), strv[i++]);
+	g_strfreev (strv);
+
+	return TRUE;
+}
+
+static gboolean
+_validate_and_remove_team_runner_txhash (NMSettingTeam *setting,
+                                         const char *tx_hash,
+                                         GError **error)
+{
+	if (!nm_setting_team_remove_runner_txhash_by_value (setting, tx_hash)) {
+		g_set_error (error, 1, 0,
+		             _("the property doesn't contain string '%s'"),
+		             tx_hash);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+DEFINE_REMOVER_INDEX_OR_VALUE (_remove_fcn_team_runner_txhash,
+                               NM_SETTING_TEAM,
+                               nm_setting_team_get_num_runner_txhash,
+                               nm_setting_team_remove_runner_txhash,
+                               _validate_and_remove_team_runner_txhash)
+
 static gconstpointer
 _get_fcn_vlan_flags (ARGS_GET_FCN)
 {
@@ -5999,6 +6054,64 @@ static const NMMetaPropertyInfo *const property_infos_TEAM[] = {
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_SUBTYPE (gobject_string,
 			.validate_fcn =             _validate_fcn_team_config,
 		),
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_NOTIFYPEERS_COUNT,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_NOTIFYPEERS_INTERVAL,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_MCASTREJOIN_COUNT,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_MCASTREJOIN_INTERVAL,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_TEAM_RUNNER_BROADCAST,
+			                                           NM_SETTING_TEAM_RUNNER_ROUNDROBIN,
+			                                           NM_SETTING_TEAM_RUNNER_ACTIVEBACKUP,
+			                                           NM_SETTING_TEAM_RUNNER_LOADBALANCE,
+			                                           NM_SETTING_TEAM_RUNNER_LACP),
+		),
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_HWPOLICY,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_TEAM_RUNNER_HWPOLICY_SAMEALL,
+			                                           NM_SETTING_TEAM_RUNNER_HWPOLICY_BYACTIVE,
+			                                           NM_SETTING_TEAM_RUNNER_HWPOLICY_ONLYACTIVE),
+		),
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_TXHASH,
+		.property_type =  DEFINE_PROPERTY_TYPE (
+			.get_fcn =                   _get_fcn_gobject,
+			.set_fcn =                   _set_fcn_team_runner_txhash,
+			.remove_fcn =                _remove_fcn_team_runner_txhash,
+		),
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_TXBALANCER,
+		.property_type =                &_pt_gobject_string,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_TXBALANCER_INTERVAL,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_ACTIVE,
+		.property_type =                & _pt_gobject_bool,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_FASTRATE,
+		.property_type =                & _pt_gobject_bool,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_SYSPRIO,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_MINPORTS,
+		.property_type =                &_pt_gobject_int,
+	),
+	PROPERTY_INFO_WITH_DESC (NM_SETTING_TEAM_RUNNER_AGGSELECTPOLICY,
+		.property_type =                &_pt_gobject_string,
 	),
 	NULL
 };
