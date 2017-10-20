@@ -60,6 +60,10 @@ G_BEGIN_DECLS
 #define NM_SETTING_TEAM_RUNNER_LOADBALANCE  "loadbalance"
 #define NM_SETTING_TEAM_RUNNER_LACP         "lacp"
 
+#define NM_SETTING_TEAM_RUNNER_HWPOLICY_SAMEALL    "same_all"
+#define NM_SETTING_TEAM_RUNNER_HWPOLICY_BYACTIVE   "by_active"
+#define NM_SETTING_TEAM_RUNNER_HWPOLICY_ONLYACTIVE "only_active"
+
 /**
  * NMSettingTeam:
  *
