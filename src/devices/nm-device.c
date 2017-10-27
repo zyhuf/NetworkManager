@@ -2544,7 +2544,8 @@ device_recheck_slave_status (NMDevice *self, const NMPlatformLink *plink)
 {
 	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
 	NMDevice *master;
-	const char *master_ifname;
+	nm_auto_nmpobj const NMPObject *plink_master_keep_alive = NULL;
+	const NMPlatformLink *plink_master;
 
 	g_return_if_fail (plink);
 
@@ -2552,11 +2553,13 @@ device_recheck_slave_status (NMDevice *self, const NMPlatformLink *plink)
 		return;
 
 	master = nm_manager_get_device_by_ifindex (nm_manager_get (), plink->master);
-	master_ifname = nm_platform_link_get_name (nm_device_get_platform (self), plink->master);
+	plink_master = nm_platform_link_get (nm_device_get_platform (self), plink->master);
+	plink_master_keep_alive = nmp_object_ref (NMP_OBJECT_UP_CAST (plink_master));
 
 	if (   master == NULL
-	    && g_strcmp0 (master_ifname, "ovs-system") == 0
-	    && nm_platform_link_get_type (nm_device_get_platform (self), plink->master) == NM_LINK_TYPE_OPENVSWITCH) {
+	    && plink_master
+	    && g_strcmp0 (plink_master->name, "ovs-system") == 0
+	    && plink_master->type == NM_LINK_TYPE_OPENVSWITCH) {
 		_LOGD (LOGD_DEVICE, "the device claimed by openvswitch");
 		return;
 	}
@@ -2579,8 +2582,9 @@ device_recheck_slave_status (NMDevice *self, const NMPlatformLink *plink)
 		_LOGI (LOGD_DEVICE, "enslaved to non-master-type device %s; ignoring",
 		       nm_device_get_iface (master));
 	} else {
-		_LOGW (LOGD_DEVICE, "enslaved to unknown device %d %s",
-		       plink->master, master_ifname);
+		_LOGW (LOGD_DEVICE, "enslaved to unknown device %d (%s%s%s)",
+		       plink->master,
+		       NM_PRINT_FMT_QUOTED (plink_master, "\"", plink_master->name, "\"", "??"));
 	}
 }
 
