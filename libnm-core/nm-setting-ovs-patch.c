@@ -116,7 +116,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	}
 
 
-        if (connection) {
+	if (connection) {
 		NMSettingOvsInterface *s_ovs_interface;
 		const char *interface_type = NULL;
 
@@ -135,14 +135,14 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 			return FALSE;
 		}
 
-                if (!interface_type) {
+		if (!interface_type) {
 			g_set_error (error,
 			             NM_CONNECTION_ERROR,
 			             NM_CONNECTION_ERROR_INVALID_PROPERTY,
 			             _("A connection with '%s' setting needs to be of 'patch' interface type"),
 			            NM_SETTING_OVS_PATCH_SETTING_NAME);
-                        g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_INTERFACE_SETTING_NAME, NM_SETTING_OVS_INTERFACE_TYPE);
-                        return NM_SETTING_VERIFY_NORMALIZABLE_ERROR;
+			g_prefix_error (error, "%s.%s: ", NM_SETTING_OVS_INTERFACE_SETTING_NAME, NM_SETTING_OVS_INTERFACE_TYPE);
+			return NM_SETTING_VERIFY_NORMALIZABLE_ERROR;
 		}
 	}
 
