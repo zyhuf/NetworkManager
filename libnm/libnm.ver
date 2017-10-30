@@ -1234,6 +1234,11 @@ global:
 	nm_setting_team_get_runner_txhash;
 	nm_setting_team_remove_runner_txhash;
 	nm_setting_team_add_runner_txhash;
+	nm_setting_team_port_get_queue_id;
+	nm_setting_team_port_get_prio;
+	nm_setting_team_port_get_sticky;
+	nm_setting_team_port_get_lacp_prio;
+	nm_setting_team_port_get_lacp_key;
 	nm_setting_wireless_security_get_pmf;
 	nm_setting_wireless_security_get_wps_method;
 	nm_setting_wireless_security_pmf_get_type;
