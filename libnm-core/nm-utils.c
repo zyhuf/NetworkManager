@@ -4540,13 +4540,16 @@ _nm_utils_team_config_get (const char *conf,
 			g_value_set_int (value, json_integer_value (json_element));
 		} else if (json_is_boolean (json_element)) {
 			g_value_init (value, G_TYPE_BOOLEAN);
-			g_value_set_boolean (value, json_boolean_value (json_element));
+			g_value_set_boolean (value, json_is_true (json_element));
 		} else if (json_is_array (json_element)) {
 			GPtrArray *data = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
 			json_t *str_element;
 			int index;
 
-			json_array_foreach (json_element, index, str_element) {
+			for (index = 0; index < json_array_size (json_element); index++) {
+				str_element = json_array_get (json_element, index);
+				if (!str_element)
+					break;
 				if (json_is_string (str_element))
 					g_ptr_array_add (data, g_strdup (json_string_value (str_element)));
 			}
@@ -4631,7 +4634,7 @@ _nm_utils_team_config_set (char **conf,
 	else if (G_VALUE_HOLDS_INT (value))
 		json_value = json_integer (g_value_get_int (value));
 	else if (G_VALUE_HOLDS_BOOLEAN (value))
-		json_value = json_boolean (g_value_get_boolean (value));
+		json_value = g_value_get_boolean (value) ? json_true () : json_false();
 	else if (G_VALUE_HOLDS_BOXED (value)) {
 		strv = g_value_get_boxed (value);
 		if (strv) {
