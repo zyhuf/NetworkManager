@@ -50,7 +50,7 @@
 %bcond_without wwan
 %bcond_without team
 %bcond_without wifi
-%bcond_without ovs
+%bcond_with ovs
 %bcond_without ppp
 %bcond_without nmtui
 %bcond_without regen_docs
