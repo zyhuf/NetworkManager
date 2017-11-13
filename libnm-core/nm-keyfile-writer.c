@@ -501,6 +501,43 @@ cert_writer (KeyfileWriterInfo *info,
 	cert_writer_default (info->connection, info->keyfile, &type_data);
 }
 
+static void
+team_link_watcher_writer (KeyfileWriterInfo *info,
+                          NMSetting *setting,
+                          const char *key,
+                          const GValue *value)
+{
+	GPtrArray *array;
+	const char *setting_name = nm_setting_get_name (setting);
+	GString *output = NULL;
+	const char *name, *target_host, *source_host;
+	int val1, val2, val3, i;
+	NMTeamLinkWatcherArpPingFlags flags;
+
+	array = (GPtrArray *) g_value_get_boxed (value);
+	if (array && array->len) {
+		output = g_string_sized_new (32);
+
+		for (i = 0; i < array->len; i++) {
+			NMTeamLinkWatcher *watcher = array->pdata[i];
+
+			name = nm_team_link_watcher_get_name (watcher);
+			val1 = nm_team_link_watcher_get_init_wait (watcher);
+			val2 = nm_team_link_watcher_get_interval (watcher);
+			val3 = nm_team_link_watcher_get_missed_max (watcher);
+			target_host = nm_team_link_watcher_get_target_host (watcher);
+			source_host = nm_team_link_watcher_get_source_host (watcher);
+			flags = nm_team_link_watcher_get_flags (watcher);
+
+			g_string_set_size (output, 0);
+			g_string_printf (output, "[%d] {name:%s, vals:[%d %d %d], target:'%s', source:'%s', flags:%d}",
+			                 i, name, val1, val2, val3, target_host, source_host, flags);
+			nm_keyfile_plugin_kf_set_string (info->keyfile, setting_name, "link-watcher", output->str);
+		}
+	}
+	g_string_free (output, TRUE);
+}
+
 /*****************************************************************************/
 
 typedef struct {
@@ -576,6 +613,9 @@ static KeyWriter key_writers[] = {
 	{ NM_SETTING_802_1X_SETTING_NAME,
 	  NM_SETTING_802_1X_PHASE2_PRIVATE_KEY,
 	  cert_writer },
+	{ NM_SETTING_TEAM_SETTING_NAME,
+	  NM_SETTING_TEAM_LINK_WATCHERS,
+	  team_link_watcher_writer},
 	{ NULL, NULL, NULL }
 };
 
