@@ -2885,7 +2885,8 @@ src_platform_tests_libadd = \
 	$(LIBNL_LIBS)
 
 check_programs_norun += \
-	src/platform/tests/monitor
+	src/platform/tests/monitor \
+	src/platform/tests/tc
 
 check_programs += \
 	src/platform/tests/test-link-fake \
@@ -2902,6 +2903,10 @@ check_programs += \
 src_platform_tests_monitor_CPPFLAGS = $(src_tests_cppflags)
 src_platform_tests_monitor_LDFLAGS = $(src_platform_tests_ldflags)
 src_platform_tests_monitor_LDADD = $(src_platform_tests_libadd)
+
+src_platform_tests_tc_CPPFLAGS = $(src_tests_cppflags)
+src_platform_tests_tc_LDFLAGS = $(src_platform_tests_ldflags)
+src_platform_tests_tc_LDADD = $(src_platform_tests_libadd)
 
 src_platform_tests_test_link_fake_SOURCES = src/platform/tests/test-link.c
 src_platform_tests_test_link_fake_CPPFLAGS = $(src_tests_cppflags_fake)
@@ -2952,6 +2957,7 @@ src_platform_tests_test_general_LDFLAGS = $(src_platform_tests_ldflags)
 src_platform_tests_test_general_LDADD = src/libNetworkManagerTest.la
 
 $(src_platform_tests_monitor_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
+$(src_platform_tests_tc_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(src_platform_tests_test_link_fake_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(src_platform_tests_test_link_linux_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(src_platform_tests_test_address_fake_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
