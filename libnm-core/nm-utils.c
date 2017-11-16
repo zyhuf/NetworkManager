@@ -5124,8 +5124,6 @@ _nm_utils_team_link_watchers_from_variant (GVariant *value)
 				val1 = 0;
 			if (!g_variant_lookup (watcher_var, "delay-down", "i", &val2))
 				val2 = 0;
-			if (val1 == 0 && val2 == 0)
-				goto next;
 			watcher = nm_team_link_watcher_ethtool_new (val1, val2, &error);
 		} else {
 			if (!g_variant_lookup (watcher_var, "target-host", "&s", &target_host)) {
