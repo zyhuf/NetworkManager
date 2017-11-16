@@ -2531,6 +2531,22 @@ nm_connection_get_setting_serial (NMConnection *connection)
 }
 
 /**
+ * nm_connection_get_setting_tc_config:
+ * @connection: the #NMConnection
+ *
+ * A shortcut to return any #NMSettingTCConfig the connection might contain.
+ *
+ * Returns: (transfer none): an #NMSettingTCConfig if the connection contains one, otherwise %NULL
+ *
+ * Since: 1.12
+ **/
+NMSettingTCConfig *
+nm_connection_get_setting_tc_config (NMConnection *connection)
+{
+	return _connection_get_setting_check (connection, NM_TYPE_SETTING_TC_CONFIG);
+}
+
+/**
  * nm_connection_get_setting_tun:
  * @connection: the #NMConnection
  *

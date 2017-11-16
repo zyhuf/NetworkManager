@@ -315,6 +315,8 @@
 #define DESCRIBE_DOC_NM_SETTING_SERIAL_PARITY N_("Parity setting of the serial port.")
 #define DESCRIBE_DOC_NM_SETTING_SERIAL_SEND_DELAY N_("Time to delay between each byte sent to the modem, in microseconds.")
 #define DESCRIBE_DOC_NM_SETTING_SERIAL_STOPBITS N_("Number of stop bits for communication on the serial port.  Either 1 or 2. The 1 in \"8n1\" for example.")
+#define DESCRIBE_DOC_NM_SETTING_TC_CONFIG_NAME N_("The setting's name, which uniquely identifies the setting within the connection.  Each setting type has a name unique to that type, for example \"ppp\" or \"wireless\" or \"wired\".")
+#define DESCRIBE_DOC_NM_SETTING_TC_CONFIG_QDISCS N_("Array of TC queuening disciplines.")
 #define DESCRIBE_DOC_NM_SETTING_TEAM_CONFIG N_("The JSON configuration for the team network interface.  The property should contain raw JSON configuration data suitable for teamd, because the value is passed directly to teamd. If not specified, the default configuration is used.  See man teamd.conf for the format details.")
 #define DESCRIBE_DOC_NM_SETTING_TEAM_MCAST_REJOIN_COUNT N_("Corresponds to the teamd mcast_rejoin.count.")
 #define DESCRIBE_DOC_NM_SETTING_TEAM_MCAST_REJOIN_INTERVAL N_("Corresponds to the teamd mcast_rejoin.interval.")
