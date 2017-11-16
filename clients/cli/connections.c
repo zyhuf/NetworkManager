@@ -144,7 +144,8 @@ const NmcMetaGenericInfo *const nmc_fields_con_active_details_general[] = {
                                          NM_SETTING_MACSEC_SETTING_NAME"," \
                                          NM_SETTING_MACVLAN_SETTING_NAME"," \
                                          NM_SETTING_VXLAN_SETTING_NAME"," \
-                                         NM_SETTING_PROXY_SETTING_NAME
+                                         NM_SETTING_PROXY_SETTING_NAME"," \
+                                         NM_SETTING_TC_CONFIG_SETTING_NAME
                                          // NM_SETTING_DUMMY_SETTING_NAME
                                          // NM_SETTING_WIMAX_SETTING_NAME
 

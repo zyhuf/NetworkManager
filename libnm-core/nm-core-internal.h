@@ -63,6 +63,7 @@
 #include "nm-setting-ppp.h"
 #include "nm-setting-pppoe.h"
 #include "nm-setting-serial.h"
+#include "nm-setting-tc-config.h"
 #include "nm-setting-team-port.h"
 #include "nm-setting-team.h"
 #include "nm-setting-tun.h"
