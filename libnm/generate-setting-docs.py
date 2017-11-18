@@ -58,6 +58,7 @@ dbus_type_name_map = {
     'aay': 'array of byte array',
     'a(ayuay)': 'array of legacy IPv6 address struct',
     'a(ayuayu)': 'array of legacy IPv6 route struct',
+    'aa{sv}': 'array od vardict',
 }
 
 ns_map = {
