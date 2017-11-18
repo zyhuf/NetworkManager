@@ -33,6 +33,7 @@
 #include <gmodule.h>
 #include <sys/stat.h>
 #include <net/if.h>
+#include <linux/pkt_sched.h>
 
 #include "nm-utils/nm-jansson.h"
 #include "nm-utils/nm-enum-utils.h"
@@ -2090,6 +2091,249 @@ next:
 	}
 
 	return routes;
+}
+
+/*****************************************************************************/
+
+static void
+_string_append_tc_handle (GString *string, guint32 handle)
+{
+	g_string_append_printf (string, "%x:", TC_H_MAJ (handle) >> 16);
+	if (TC_H_MIN (handle) != TC_H_UNSPEC)
+		g_string_append_printf (string, "%x", TC_H_MIN (handle));
+}
+
+/**
+ * _nm_utils_string_append_tc_parent:
+ * @string: the string to write the parent handle to
+ * @prefix: optional prefix for the numeric handle
+ * @parent: the parent handle
+ *
+ * This is used to either write out the parent handle to the tc qdisc string
+ * or to pretty-format (use symbolic name for root) the key in keyfile.
+ * The presence of prefix determnines which one is the case.
+ *
+ * Private API due to general uglyness and overall uselessness for anything
+ * sensible.
+ */
+void
+_nm_utils_string_append_tc_parent (GString *string, const char *prefix, guint32 parent)
+{
+	if (parent == TC_H_ROOT) {
+		g_string_append (string, "root");
+	} else {
+		if (prefix) {
+			if (parent == TC_H_INGRESS)
+				return;
+			g_string_append_printf (string, "%s ", prefix);
+		}
+		_string_append_tc_handle (string, parent);
+	}
+
+	if (prefix)
+		g_string_append_c (string, ' ');
+}
+
+/**
+ * _nm_utils_parse_tc_handle:
+ * @str: the string representation of a qdisc handle
+ * @error: location of the error
+ *
+ * Parses tc style handle number into a numeric representation.
+ * Don't use this, use nm_utils_tc_qdisc_from_str() instead.
+ */
+guint32
+_nm_utils_parse_tc_handle (const char *str, GError **error)
+{
+	gint64 maj, min;
+	char *sep;
+
+	maj = g_ascii_strtoll (str, &sep, 0x10);
+	if (*sep == ':')
+		min = g_ascii_strtoll (&sep[1], &sep, 0x10);
+	else
+		min = 0;
+
+	if (*sep != '\0' || maj <= 0 || maj > 0xffff || min < 0 || min > 0xffff) {
+		g_set_error (error, 1, 0, _("'%s' is not a valid handle."), str);
+		return TC_H_UNSPEC;
+	}
+
+	return TC_H_MAKE (maj << 16, min);
+}
+
+static int
+_tc_read_common_opts (char **strv,
+                      guint32 *handle,
+                      guint32 *parent,
+                      const char **kind,
+                      GError **error)
+{
+	int i = 0;
+
+	while (1) {
+		if (g_strcmp0 (strv[i], "root") == 0) {
+			if (*parent != TC_H_UNSPEC) {
+				g_set_error (error, 1, 0,
+				             _("'%s' unexpected: parent already specified."),
+				             strv[i]);
+				return 0;
+			}
+			*parent = TC_H_ROOT;
+			i++;
+		} else if (g_strcmp0 (strv[i], "parent") == 0) {
+			if (*parent != TC_H_UNSPEC) {
+				g_set_error (error, 1, 0,
+				             _("'%s' unexpected: parent already specified."),
+				             strv[i]);
+				return 0;
+			}
+			i++;
+			*parent = _nm_utils_parse_tc_handle (strv[i], error);
+			if (*parent == TC_H_UNSPEC)
+				return 0;
+			i++;
+		} else if (g_strcmp0 (strv[i], "handle") == 0) {
+			if (*handle != TC_H_UNSPEC) {
+				g_set_error (error, 1, 0,
+				             _("'%s' unexpected: handle already specified."),
+				             strv[i]);
+				return 0;
+			}
+			i++;
+			*handle = _nm_utils_parse_tc_handle (strv[i], error);
+			if (*handle == TC_H_UNSPEC)
+				return 0;
+			if (TC_H_MIN (*handle)) {
+				g_set_error (error, 1, 0,
+				             _("invalid handle: '%s'"),
+				             strv[i]);
+				return 0;
+			}
+			i++;
+		} else {
+			break;
+		}
+	}
+
+	if (!strv[i]) {
+		g_set_error_literal (error, 1, 0, _("expected a kind name"));
+		return 0;
+	}
+
+	*kind = strv[i];
+	i++;
+
+	return i;
+}
+
+/*****************************************************************************/
+
+/**
+ * _nm_utils_string_append_tc_qdisc_rest:
+ * @string: the string to write the formatted qdisc to
+ * @qdisc: the %NMTCQdisc
+ *
+ * This formats the rest of the qdisc string but the parent. Useful to format
+ * the keyfile value and nowhere else.
+ * Use nm_utils_tc_qdisc_to_str() that also includes the parent instead.
+ */
+void
+_nm_utils_string_append_tc_qdisc_rest (GString *string, NMTCQdisc *qdisc)
+{
+	guint32 handle = nm_tc_qdisc_get_handle (qdisc);
+	const char *kind = nm_tc_qdisc_get_kind (qdisc);
+
+	if (handle != TC_H_UNSPEC && strcmp (kind, "ingress") != 0) {
+		g_string_append (string, "handle ");
+		_string_append_tc_handle (string, handle);
+		g_string_append_c (string, ' ');
+	}
+
+	g_string_append (string, kind);
+}
+
+/**
+ * nm_utils_tc_qdisc_to_str:
+ * @qdisc: the %NMTCQdisc
+ * @error: location of the error
+ *
+ * Turns the %NMTCQdisc into a tc style string representation of the queueing
+ * discipline.
+ *
+ * Returns: formatted string or %NULL
+ *
+ * Since: 1.12
+ */
+char *
+nm_utils_tc_qdisc_to_str (NMTCQdisc *qdisc, GError **error)
+{
+	GString *string;
+
+	string = g_string_sized_new (60);
+
+	_nm_utils_string_append_tc_parent (string, "parent",
+	                                   nm_tc_qdisc_get_parent (qdisc));
+	_nm_utils_string_append_tc_qdisc_rest (string, qdisc);
+
+	return g_string_free (string, FALSE);
+}
+
+/**
+ * nm_utils_tc_qdisc_from_str:
+ * @str: the string representation of a qdisc
+ * @error: location of the error
+ *
+ * Parces the tc style string qdisc representation of the queueing
+ * discipline to a %NMTCQdisc instance. Supports a subset of the tc language.
+ *
+ * Returns: the %NMTCQdisc or %NULL
+ *
+ * Since: 1.12
+ */
+NMTCQdisc *
+nm_utils_tc_qdisc_from_str (const char *str, GError **error)
+{
+	const char *kind = NULL;
+	int family = AF_UNSPEC;
+	guint32 handle = TC_H_UNSPEC;
+	guint32 parent = TC_H_UNSPEC;
+	guint32 info = 0;
+	NMTCQdisc *qdisc = NULL;
+	GError *local = NULL;
+	gs_strfreev char **qdiscv = NULL;
+	gs_free char *str_clean = NULL;
+	int opts_read;
+
+	nm_assert (str);
+	nm_assert (!error || !*error);
+
+	str_clean = g_strstrip (g_strdup (str));
+	qdiscv = _nm_utils_strsplit_set (str_clean, " \t", 0);
+	if (!qdiscv) {
+		g_set_error (error, 1, 0, _("invalid qdisc: '%s'."), str);
+		return NULL;
+	}
+
+	opts_read = _tc_read_common_opts (qdiscv, &handle, &parent, &kind, error);
+	if (!opts_read)
+		return NULL;
+
+	if (strcmp (kind, "ingress") == 0) {
+		handle = TC_H_MAKE (TC_H_INGRESS, 0);
+		parent = TC_H_INGRESS;
+	}
+
+	if (qdiscv[opts_read]) {
+		g_set_error (error, 1, 0, _("unsupported qdisc option: '%s'."), qdiscv[opts_read]);
+		return NULL;
+	}
+
+	qdisc = nm_tc_qdisc_new (kind, family, handle, parent, info, &local);
+	if (!qdisc)
+		return NULL;
+
+	return qdisc;
 }
 
 /*****************************************************************************/

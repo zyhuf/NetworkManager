@@ -35,6 +35,7 @@
 
 #include "nm-core-enum-types.h"
 #include "nm-setting-wireless-security.h"
+#include "nm-setting-tc-config.h"
 
 G_BEGIN_DECLS
 
@@ -229,6 +230,13 @@ NM_AVAILABLE_IN_1_8
 char * nm_utils_format_variant_attributes (GHashTable *attributes,
                                            char attr_separator,
                                            char key_value_separator);
+
+/*****************************************************************************/
+
+NM_AVAILABLE_IN_1_12
+NMTCQdisc *nm_utils_tc_qdisc_from_str      (const char *str, GError **error);
+NM_AVAILABLE_IN_1_12
+char *nm_utils_tc_qdisc_to_str             (NMTCQdisc *qdisc, GError **error);
 
 G_END_DECLS
 
