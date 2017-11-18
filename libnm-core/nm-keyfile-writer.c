@@ -254,6 +254,39 @@ route_writer (KeyfileWriterInfo *info,
 }
 
 static void
+qdisc_writer (KeyfileWriterInfo *info,
+              NMSetting *setting,
+              const char *key,
+              const GValue *value)
+{
+	gsize i;
+	GPtrArray *array;
+
+	array = (GPtrArray *) g_value_get_boxed (value);
+	if (!array || !array->len)
+		return;
+
+	for (i = 0; i < array->len; i++) {
+		NMTCQdisc *qdisc = array->pdata[i];
+		GString *key_name = g_string_sized_new (16);
+		GString *value_str = g_string_sized_new (60);
+
+		g_string_append (key_name, "qdisc.");
+		_nm_utils_string_append_tc_parent (key_name, NULL,
+		                                   nm_tc_qdisc_get_parent (qdisc));
+		_nm_utils_string_append_tc_qdisc_rest (value_str, qdisc);
+
+		nm_keyfile_plugin_kf_set_string (info->keyfile,
+		                                 NM_SETTING_TC_CONFIG_SETTING_NAME,
+		                                 key_name->str,
+		                                 value_str->str);
+
+		g_string_free (key_name, TRUE);
+		g_string_free (value_str, TRUE);
+	}
+}
+
+static void
 write_hash_of_string (GKeyFile *file,
                       NMSetting *setting,
                       const char *key,
@@ -576,6 +609,9 @@ static KeyWriter key_writers[] = {
 	{ NM_SETTING_802_1X_SETTING_NAME,
 	  NM_SETTING_802_1X_PHASE2_PRIVATE_KEY,
 	  cert_writer },
+	{ NM_SETTING_TC_CONFIG_SETTING_NAME,
+	  NM_SETTING_TC_CONFIG_QDISCS,
+	  qdisc_writer },
 	{ NULL, NULL, NULL }
 };
 

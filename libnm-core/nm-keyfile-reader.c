@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <linux/pkt_sched.h>
 
 #include "nm-common-macros.h"
 #include "nm-core-internal.h"
@@ -1313,6 +1314,54 @@ team_config_parser (KeyfileReaderInfo *info, NMSetting *setting, const char *key
 	g_object_set (G_OBJECT (setting), key, conf, NULL);
 }
 
+static void
+qdisc_parser (KeyfileReaderInfo *info, NMSetting *setting, const char *key)
+{
+	const char *setting_name = nm_setting_get_name (setting);
+	GPtrArray *qdiscs;
+	gchar **keys = NULL;
+	gsize n_keys = 0;
+	int i;
+
+	qdiscs = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_tc_qdisc_unref);
+
+	keys = nm_keyfile_plugin_kf_get_keys (info->keyfile, setting_name, &n_keys, NULL);
+	if (!keys || n_keys == 0)
+		return;
+
+	for (i = 0; i < n_keys; i++) {
+		NMTCQdisc *qdisc;
+		const char *parent_str;
+		char *qdisc_str;
+		gs_free_error GError *err = NULL;
+
+		if (!g_str_has_prefix (keys[i], "qdisc."))
+			continue;
+
+		parent_str = keys[i] + sizeof ("qdisc.") - 1;
+		qdisc_str = g_strdup_printf ("%s%s %s",
+		                             _nm_utils_parse_tc_handle (parent_str, NULL) != TC_H_UNSPEC ? "parent " : "",
+		                             parent_str,
+		                             nm_keyfile_plugin_kf_get_string (info->keyfile, setting_name, keys[i], NULL));
+
+		qdisc = nm_utils_tc_qdisc_from_str (qdisc_str, &err);
+		if (!qdisc) {
+			handle_warn (info, keys[i], NM_KEYFILE_WARN_SEVERITY_WARN,
+			             _("invalid qdisc: %s"),
+			             err->message);
+		} else {
+			g_ptr_array_add (qdiscs, qdisc);
+		}
+
+		g_free (qdisc_str);
+	}
+
+	if (qdiscs->len >= 1)
+		g_object_set (setting, key, qdiscs, NULL);
+
+	g_ptr_array_unref (qdiscs);
+}
+
 typedef struct {
 	const char *setting_name;
 	const char *key;
@@ -1439,6 +1488,10 @@ static KeyParser key_parsers[] = {
 	  NM_SETTING_TEAM_CONFIG,
 	  TRUE,
 	  team_config_parser },
+        { NM_SETTING_TC_CONFIG_SETTING_NAME,
+          NM_SETTING_TC_CONFIG_QDISCS,
+	  FALSE,
+          qdisc_parser },
 	{ NULL, NULL, FALSE }
 };
 
