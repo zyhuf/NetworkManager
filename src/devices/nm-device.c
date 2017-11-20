@@ -10677,6 +10677,51 @@ nm_device_start_ip_check (NMDevice *self)
 /*****************************************************************************/
 
 static gboolean
+tc_commit (NMDevice *self)
+{
+	NMConnection *connection = NULL;
+	gs_unref_ptrarray GPtrArray *qdiscs = NULL;
+	NMSettingTCConfig *s_tc = NULL;
+	int ip_ifindex;
+	guint nqdiscs;
+	int i;
+
+	ip_ifindex = nm_device_get_ip_ifindex (self);
+	g_return_val_if_fail (ip_ifindex, FALSE);
+
+	connection = nm_device_get_applied_connection (self);
+	if (connection)
+		s_tc = nm_connection_get_setting_tc_config (connection);
+
+	if (s_tc) {
+		nqdiscs = nm_setting_tc_config_get_num_qdiscs (s_tc);
+		qdiscs = g_ptr_array_new_full (nqdiscs, (GDestroyNotify) nmp_object_unref);
+
+		for (i = 0; i < nqdiscs; i++) {
+			NMTCQdisc *s_qdisc = nm_setting_tc_config_get_qdisc (s_tc, i);
+			NMPObject *q = nmp_object_new (NMP_OBJECT_TYPE_QDISC, NULL);
+			NMPlatformQdisc *qdisc = NMP_OBJECT_CAST_QDISC (q);
+
+			qdisc->ifindex = ip_ifindex;
+			qdisc->kind = nm_tc_qdisc_get_kind (s_qdisc);
+			qdisc->addr_family = nm_tc_qdisc_get_family (s_qdisc);
+			qdisc->handle = nm_tc_qdisc_get_handle (s_qdisc);
+			qdisc->parent = nm_tc_qdisc_get_parent (s_qdisc);
+			qdisc->info = nm_tc_qdisc_get_info (s_qdisc);
+
+			g_ptr_array_add (qdiscs, q);
+		}
+	}
+
+	if (!nm_platform_qdisc_sync (nm_device_get_platform (self), ip_ifindex, qdiscs))
+		return FALSE;
+
+	return TRUE;
+}
+
+/*****************************************************************************/
+
+static gboolean
 carrier_wait_timeout (gpointer user_data)
 {
 	NMDevice *self = NM_DEVICE (user_data);
@@ -10803,6 +10848,11 @@ nm_device_bring_up (NMDevice *self, gboolean block, gboolean *no_firmware)
 	if (priv->ip6_state == IP_DONE) {
 		if (!ip6_config_merge_and_apply (self, TRUE))
 			_LOGW (LOGD_IP6, "failed applying IP6 config after bringing link up");
+	}
+
+	if (ifindex > 0) {
+		if (!tc_commit (self))
+			_LOGW (LOGD_IP6, "failed applying traffic control rules");
 	}
 
 	return TRUE;
