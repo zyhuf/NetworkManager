@@ -5878,15 +5878,15 @@ link_can_assume (NMPlatform *platform, int ifindex)
 	if (link->link.master > 0)
 		return TRUE;
 
-	nmp_lookup_init_addrroute (&lookup,
-	                           NMP_OBJECT_TYPE_IP4_ADDRESS,
-	                           ifindex);
+	nmp_lookup_init_object (&lookup,
+	                        NMP_OBJECT_TYPE_IP4_ADDRESS,
+	                        ifindex);
 	if (nmp_cache_lookup (cache, &lookup))
 		return TRUE;
 
-	nmp_lookup_init_addrroute (&lookup,
-	                           NMP_OBJECT_TYPE_IP6_ADDRESS,
-	                           ifindex);
+	nmp_lookup_init_object (&lookup,
+	                        NMP_OBJECT_TYPE_IP6_ADDRESS,
+	                        ifindex);
 	nmp_cache_iter_for_each (&iter,
 	                         nmp_cache_lookup (cache, &lookup),
 	                         &o) {

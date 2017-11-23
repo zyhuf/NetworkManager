@@ -600,9 +600,9 @@ nm_ip4_config_capture (NMDedupMultiIndex *multi_idx, NMPlatform *platform, int i
 	self = nm_ip4_config_new (multi_idx, ifindex);
 	priv = NM_IP4_CONFIG_GET_PRIVATE (self);
 
-	head_entry = nm_platform_lookup_addrroute (platform,
-	                                           NMP_OBJECT_TYPE_IP4_ADDRESS,
-	                                           ifindex);
+	head_entry = nm_platform_lookup_object (platform,
+	                                        NMP_OBJECT_TYPE_IP4_ADDRESS,
+	                                        ifindex);
 	if (head_entry) {
 		nmp_cache_iter_for_each (&iter, head_entry, &plobj) {
 			if (!_nm_ip_config_add_obj (priv->multi_idx,
@@ -625,9 +625,9 @@ nm_ip4_config_capture (NMDedupMultiIndex *multi_idx, NMPlatform *platform, int i
 		_notify_addresses (self);
 	}
 
-	head_entry = nm_platform_lookup_addrroute (platform,
-	                                           NMP_OBJECT_TYPE_IP4_ROUTE,
-	                                           ifindex);
+	head_entry = nm_platform_lookup_object (platform,
+	                                        NMP_OBJECT_TYPE_IP4_ROUTE,
+	                                        ifindex);
 
 	/* Extract gateway from default route */
 	nmp_cache_iter_for_each (&iter, head_entry, &plobj)
