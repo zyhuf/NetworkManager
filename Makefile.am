@@ -643,6 +643,7 @@ check_programs += \
 	libnm-core/tests/test-setting-8021x \
 	libnm-core/tests/test-setting-bond \
 	libnm-core/tests/test-setting-dcb \
+	libnm-core/tests/test-setting-tc-config \
 	libnm-core/tests/test-settings-defaults
 
 GLIB_GENERATED += \
@@ -669,6 +670,7 @@ libnm_core_tests_test_secrets_CPPFLAGS = $(libnm_core_tests_cppflags)
 libnm_core_tests_test_setting_8021x_CPPFLAGS = $(libnm_core_tests_cppflags)
 libnm_core_tests_test_setting_bond_CPPFLAGS = $(libnm_core_tests_cppflags)
 libnm_core_tests_test_setting_dcb_CPPFLAGS = $(libnm_core_tests_cppflags)
+libnm_core_tests_test_setting_tc_config_CPPFLAGS = $(libnm_core_tests_cppflags)
 libnm_core_tests_test_settings_defaults_CPPFLAGS = $(libnm_core_tests_cppflags)
 
 libnm_core_tests_test_general_SOURCES = \
@@ -691,6 +693,7 @@ libnm_core_tests_test_secrets_LDADD = $(libnm_core_tests_ldadd)
 libnm_core_tests_test_setting_8021x_LDADD = $(libnm_core_tests_ldadd)
 libnm_core_tests_test_setting_bond_LDADD = $(libnm_core_tests_ldadd)
 libnm_core_tests_test_setting_dcb_LDADD = $(libnm_core_tests_ldadd)
+libnm_core_tests_test_setting_tc_config_LDADD = $(libnm_core_tests_ldadd)
 libnm_core_tests_test_settings_defaults_LDADD = $(libnm_core_tests_ldadd)
 
 $(libnm_core_tests_test_compare_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
@@ -701,6 +704,7 @@ $(libnm_core_tests_test_secrets_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(libnm_core_tests_test_setting_8021x_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(libnm_core_tests_test_setting_bond_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(libnm_core_tests_test_setting_dcb_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
+$(libnm_core_tests_test_setting_tc_config_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 $(libnm_core_tests_test_settings_defaults_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 
 # test-cert.p12 created with:
