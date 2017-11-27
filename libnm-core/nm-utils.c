@@ -4899,8 +4899,10 @@ nm_utils_parse_variant_attributes (const char *string,
 		if (*ptr == '\\') {
 			ptr++;
 			if (!*ptr) {
-				g_set_error (error, NM_CONNECTION_ERROR, NM_CONNECTION_ERROR_FAILED,
-				             _("unterminated escape sequence"));
+				g_set_error_literal (error,
+				                     NM_CONNECTION_ERROR,
+				                     NM_CONNECTION_ERROR_FAILED,
+				                     _("unterminated escape sequence"));
 				return NULL;
 			}
 			goto next;
@@ -4917,8 +4919,10 @@ nm_utils_parse_variant_attributes (const char *string,
 				if (*sep == '\\') {
 					sep++;
 					if (!*sep) {
-						g_set_error (error, NM_CONNECTION_ERROR, NM_CONNECTION_ERROR_FAILED,
-						             _("unterminated escape sequence"));
+						g_set_error_literal (error,
+						                     NM_CONNECTION_ERROR,
+						                     NM_CONNECTION_ERROR_FAILED,
+						                     _("unterminated escape sequence"));
 						return NULL;
 					}
 				}
