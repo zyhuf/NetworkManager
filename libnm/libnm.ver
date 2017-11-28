@@ -1295,6 +1295,8 @@ global:
 	nm_tc_qdisc_set_kind;
 	nm_tc_qdisc_set_parent;
 	nm_tc_qdisc_unref;
+	nm_utils_tc_action_from_str;
+	nm_utils_tc_action_to_str;
 	nm_utils_tc_qdisc_from_str;
 	nm_utils_tc_qdisc_to_str;
 } libnm_1_10_0;

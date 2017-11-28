@@ -2335,6 +2335,247 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 
 	return qdisc;
 }
+/*****************************************************************************/
+
+typedef struct _Attribute Attribute;
+struct _Attribute {
+	const char *name;
+	const GVariantType *type;
+	gboolean (*print) (Attribute *attr,
+	                   GString *string,
+	                   GVariant *value,
+	                   GError **error);
+	GVariant *(*parse) (Attribute *attr,
+	                    const char *string,
+	                    GError **error);
+};
+
+static gboolean
+_print_sdata (Attribute *attr,
+              GString *string,
+              GVariant *value,
+              GError **error)
+{
+	const char *sdata = g_variant_get_bytestring (value);
+
+	if (strlen (sdata) > 32) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_FAILED,
+		                     _("sdata too long"));
+		return FALSE;
+	}
+	if (strchr (sdata, ' ')) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_FAILED,
+		                     _("spaces are not allowed in sdata"));
+		return FALSE;
+	}
+
+	g_string_append_printf (string, "%s %s", attr->name, sdata);
+
+	return TRUE;
+}
+
+static GVariant *
+_parse_sdata (Attribute *attr,
+              const char *string,
+              GError **error)
+{
+	if (strlen (string) > 32) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_FAILED,
+		                     _("sdata too long"));
+		return FALSE;
+	}
+
+	return g_variant_new_bytestring (string);
+}
+
+Attribute simple_attrs[] = {
+	{ "sdata", G_VARIANT_TYPE_BYTESTRING, _print_sdata, _parse_sdata },
+	{ NULL }
+};
+
+static Attribute *
+_attr_for_name (Attribute *attrs, const char *name, GError **error)
+{
+	while (attrs->name) {
+		if (strcmp (attrs->name, name) == 0)
+			return attrs;
+		attrs++;
+	}
+	g_set_error (error,
+	             NM_CONNECTION_ERROR,
+	             NM_CONNECTION_ERROR_FAILED,
+	             _("no such attribute: '%s'"), name);
+	return NULL;
+}
+
+static gboolean
+_string_append_tc_action (GString *string, NMTCAction *action, GError **error)
+{
+	const char *kind = nm_tc_action_get_kind (action);
+	Attribute *attrs, *attr;
+	GVariant *value;
+	gs_strfreev char **attr_names = NULL;
+	int i = 0;
+
+	if (strcmp (kind, "simple") == 0)
+		attrs = simple_attrs;
+	else
+		attrs = NULL;
+
+	g_string_append (string, kind);
+
+	attr_names = nm_tc_action_get_attribute_names (action);
+	if (attrs) {
+		while (attr_names[i]) {
+			attr = _attr_for_name (attrs, attr_names[i], error);
+			if (!attr)
+				return FALSE;
+			value = nm_tc_action_get_attribute (action, attr->name);
+			g_string_append_c (string, ' ');
+			if (!attr->print (attr, string, value, error))
+				return FALSE;
+			i++;
+		}
+	}
+
+	if (attr_names[i]) {
+		g_set_error (error, 1, 0,
+		             _("unsupported action option: '%s'."),
+		             attr_names[i]);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/**
+ * nm_utils_tc_action_to_str:
+ * @action: the %NMTCAction
+ * @error: location of the error
+ *
+ * Turns the %NMTCAction into a tc style string representation of the queueing
+ * discipline.
+ *
+ * Returns: formatted string or %NULL
+ *
+ * Since: 1.12
+ */
+char *
+nm_utils_tc_action_to_str (NMTCAction *action, GError **error)
+{
+	GString *string;
+
+	string = g_string_sized_new (60);
+	if (!_string_append_tc_action (string, action, error)) {
+		g_string_free (string, TRUE);
+		return NULL;
+	}
+
+	return g_string_free (string, FALSE);
+}
+
+static NMTCAction *
+_tc_action_from_strv (char **strv, GError **error)
+{
+	const char *kind = NULL;
+	NMTCAction *action = NULL;
+	guint i = 0;
+	GError *local = NULL;
+	GVariant *value;
+	Attribute *attrs, *attr;
+
+	if (!strv[i]) {
+		g_set_error_literal (error, 1, 0, _("action name missing."));
+		return NULL;
+	}
+
+	kind = strv[i];
+	i++;
+
+	action = nm_tc_action_new (kind, &local);
+	if (!action)
+		return NULL;
+
+	if (strcmp (kind, "simple") == 0)
+		attrs = simple_attrs;
+	else
+		attrs = NULL;
+
+	if (attrs) {
+		while (strv[i]) {
+			attr = _attr_for_name (attrs, strv[i], error);
+			if (!attr)
+				goto error;
+			if (nm_tc_action_get_attribute (action, strv[i])) {
+				g_set_error (error, 1, 0,
+				             _("%s already specified,"),
+				             strv[i]);
+				goto error;
+			}
+			i++;
+			if (strv[i] == NULL) {
+				g_set_error (error, 1, 0,
+				             _("expected a value for %s"),
+				             attr->name);
+				goto error;
+			}
+			value = attr->parse (attr, strv[i], error);
+			if (!value)
+				goto error;
+			nm_tc_action_set_attribute (action, attr->name, value);
+			i++;
+		}
+	}
+
+	if (strv[i]) {
+		g_set_error (error, 1, 0,
+		             _("unsupported option: '%s'."),
+		             strv[i]);
+		goto error;
+	}
+
+	return action;
+error:
+	nm_tc_action_unref (action);
+	return NULL;
+}
+
+/**
+ * nm_utils_tc_action_from_str:
+ * @str: the string representation of a action
+ * @error: location of the error
+ *
+ * Parces the tc style string action representation of the queueing
+ * discipline to a %NMTCAction instance. Supports a subset of the tc language.
+ *
+ * Returns: the %NMTCAction or %NULL
+ *
+ * Since: 1.12
+ */
+NMTCAction *
+nm_utils_tc_action_from_str (const char *str, GError **error)
+{
+	gs_strfreev char **actionv = NULL;
+	gs_free char *str_clean = NULL;
+
+	nm_assert (str);
+	nm_assert (!error || !*error);
+
+	str_clean = g_strstrip (g_strdup (str));
+	actionv = _nm_utils_strsplit_set (str_clean, " \t", 0);
+	if (!actionv) {
+		g_set_error (error, 1, 0, _("invalid action: '%s'."), str);
+		return NULL;
+	}
+
+	return _tc_action_from_strv (actionv, error);
+}
 
 /*****************************************************************************/
 
