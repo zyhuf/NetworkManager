@@ -2580,6 +2580,135 @@ nm_utils_tc_action_from_str (const char *str, GError **error)
 /*****************************************************************************/
 
 /**
+ * _nm_utils_string_append_tc_tfilter_rest:
+ * @string: the string to write the formatted tfilter to
+ * @tfilter: the %NMTCTfilter
+ *
+ * This formats the rest of the tfilter string but the parent. Useful to format
+ * the keyfile value and nowhere else.
+ * Use nm_utils_tc_tfilter_to_str() that also includes the parent instead.
+ */
+gboolean
+_nm_utils_string_append_tc_tfilter_rest (GString *string, NMTCTfilter *tfilter, GError **error)
+{
+	guint32 handle = nm_tc_tfilter_get_handle (tfilter);
+	const char *kind = nm_tc_tfilter_get_kind (tfilter);
+	NMTCAction *action;
+
+	if (handle != TC_H_UNSPEC) {
+		g_string_append (string, "handle ");
+		_string_append_tc_handle (string, handle);
+		g_string_append_c (string, ' ');
+	}
+
+	g_string_append (string, kind);
+
+	action = nm_tc_tfilter_get_action (tfilter);
+	if (action) {
+		g_string_append (string, " action ");
+		if (!_string_append_tc_action (string, action, error))
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+/**
+ * nm_utils_tc_tfilter_to_str:
+ * @tfilter: the %NMTCTfilter
+ * @error: location of the error
+ *
+ * Turns the %NMTCTfilter into a tc style string representation of the queueing
+ * discipline.
+ *
+ * Returns: formatted string or %NULL
+ *
+ * Since: 1.12
+ */
+char *
+nm_utils_tc_tfilter_to_str (NMTCTfilter *tfilter, GError **error)
+{
+	GString *string;
+
+	string = g_string_sized_new (60);
+
+	_nm_utils_string_append_tc_parent (string, "parent",
+	                                   nm_tc_tfilter_get_parent (tfilter));
+	if (!_nm_utils_string_append_tc_tfilter_rest (string, tfilter, error)) {
+		g_string_free (string, TRUE);
+		return NULL;
+	}
+
+	return g_string_free (string, FALSE);
+}
+
+/**
+ * nm_utils_tc_tfilter_from_str:
+ * @str: the string representation of a tfilter
+ * @error: location of the error
+ *
+ * Parces the tc style string tfilter representation of the queueing
+ * discipline to a %NMTCTfilter instance. Supports a subset of the tc language.
+ *
+ * Returns: the %NMTCTfilter or %NULL
+ *
+ * Since: 1.12
+ */
+NMTCTfilter *
+nm_utils_tc_tfilter_from_str (const char *str, GError **error)
+{
+	const char *kind = NULL;
+	int family = AF_UNSPEC;
+	guint32 handle = TC_H_UNSPEC;
+	guint32 parent = TC_H_UNSPEC;
+	guint32 info = 0;
+	NMTCAction *action = NULL;
+	NMTCTfilter *tfilter = NULL;
+	GError *local = NULL;
+	gs_strfreev char **tfilterv = NULL;
+	gs_free char *str_clean = NULL;
+	int opts_read;
+
+	nm_assert (str);
+	nm_assert (!error || !*error);
+
+	str_clean = g_strstrip (g_strdup (str));
+	tfilterv = _nm_utils_strsplit_set (str_clean, " \t", 0);
+	if (!tfilterv) {
+		g_set_error (error, 1, 0, _("invalid tfilter: '%s'."), str);
+		return NULL;
+	}
+
+	opts_read = _tc_read_common_opts (tfilterv, &handle, &parent, &kind, error);
+	if (!opts_read)
+		return NULL;
+
+	if (g_strcmp0 (tfilterv[opts_read], "action") == 0) {
+		opts_read++;
+		action = _tc_action_from_strv (&tfilterv[opts_read], error);
+		if (!action) {
+			g_prefix_error (error, _("invalid action: "));
+			return NULL;
+		}
+	} else if (tfilterv[opts_read]) {
+		g_set_error (error, 1, 0, _("unsupported tfilter option: '%s'."), tfilterv[opts_read]);
+		return NULL;
+	}
+
+	info = TC_H_MAKE (0, htons (ETH_P_ALL));
+
+	tfilter = nm_tc_tfilter_new (kind, family, handle, parent, info, &local);
+	if (!tfilter)
+		return NULL;
+	if (action)
+		nm_tc_tfilter_set_action (tfilter, action);
+
+	return tfilter;
+}
+
+/*****************************************************************************/
+
+/**
  * nm_utils_uuid_generate_buf_:
  * @buf: input buffer, must contain at least 37 bytes
  *
