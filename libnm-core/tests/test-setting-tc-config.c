@@ -84,7 +84,7 @@ test_tc_config_qdisc (void)
 
 	str = nm_utils_tc_qdisc_to_str (qdisc1, &error);
 	nmtst_assert_success (str, error);
-	g_assert (strcmp (str, "parent fff1:1 handle 1234 pfifo_fast") == 0);
+	g_assert (strcmp (str, "parent fff1:1 handle 1234: pfifo_fast") == 0);
 	g_free (str);
 
 	nm_tc_qdisc_unref (qdisc2);
@@ -163,7 +163,7 @@ test_tc_config_tfilter (void)
 	                              AF_UNSPEC,
 	                              TC_H_UNSPEC,
 	                              TC_H_MAKE (0x1234 << 16, 0x0000),
-	                              0,
+	                              TC_H_MAKE (0, htons (ETH_P_ALL)),
 	                              &error);
 	nmtst_assert_success (tfilter1, error);
 
@@ -171,7 +171,7 @@ test_tc_config_tfilter (void)
 	                              AF_UNSPEC,
 	                              TC_H_UNSPEC,
 	                              TC_H_MAKE (0x1234 << 16, 0x0000),
-	                              0,
+	                              TC_H_MAKE (0, htons (ETH_P_ALL)),
 	                              &error);
 	nmtst_assert_success (tfilter2, error);
 
@@ -187,7 +187,7 @@ test_tc_config_tfilter (void)
 
 	str = nm_utils_tc_tfilter_to_str (tfilter1, &error);
 	nmtst_assert_success (str, error);
-	g_assert (strcmp (str, "parent 1234 matchall action simple sdata Hello") == 0);
+	g_assert (strcmp (str, "parent 1234: matchall action simple sdata Hello") == 0);
 	g_free (str);
 
 	nm_tc_tfilter_unref (tfilter2);
