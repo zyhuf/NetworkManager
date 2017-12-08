@@ -5383,9 +5383,9 @@ tc_commit (NMDevice *self)
 			if (action) {
 				tfilter->action.kind = nm_tc_action_get_kind (action);
 				if (strcmp (tfilter->action.kind, "simple") == 0) {
-					strncpy (tfilter->action.simple.str,
-					         g_variant_get_bytestring (nm_tc_action_get_attribute (action, "sdata")),
-					         sizeof (tfilter->action.simple));
+					g_strlcpy (tfilter->action.simple.str,
+					           g_variant_get_bytestring (nm_tc_action_get_attribute (action, "sdata")),
+					           sizeof (tfilter->action.simple.str));
 				}
 			}
 
