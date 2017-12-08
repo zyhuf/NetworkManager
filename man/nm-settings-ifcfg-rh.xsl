@@ -45,10 +45,35 @@
         <para>
           The <emphasis>ifcfg-rh</emphasis> plugin is used on the Fedora and Red Hat
           Enterprise Linux distributions to read/write configuration from/to
-          the traditional <filename>/etc/sysconfig/network-scripts/ifcfg-*</filename> files.
-          Each NetworkManager connection maps to one <filename>ifcfg-*</filename> file, with
-          possible usage of <filename>keys-*</filename> for passwords, <filename>route-*</filename>
-          for static IPv4 routes and <filename>route6-*</filename> for static IPv6 routes.
+	  the traditional <filename>/etc/sysconfig/network-scripts/ifcfg-*</filename> files.
+        </para>
+        <para>
+	  Each NetworkManager connection maps to one <filename>ifcfg-*</filename> file, possibly
+	  accompanied by some extra files:
+          <variablelist>
+            <varlistentry>
+              <term><filename>keys-*</filename></term>
+              <listitem><para>passwords</para></listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><filename>route-*</filename></term>
+              <listitem><para>static IPv4 routes</para></listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><filename>route6-*</filename></term>
+              <listitem><para>static IPv6 routes</para></listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><filename>qdisc-*</filename></term>
+              <listitem><para>traffic control queueing disciplines</para></listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><filename>qdisc-*</filename></term>
+              <listitem><para>traffic filters</para></listitem>
+            </varlistentry>
+          </variablelist>
+        </para>
+        <para>
           The plugin currently supports reading and writing Ethernet, Wi-Fi, InfiniBand,
           VLAN, Bond, Bridge, and Team connections. Unsupported connection types (such as
           WWAN, PPPoE, VPN, or ADSL) are handled by <emphasis>keyfile</emphasis> plugin
@@ -312,6 +337,8 @@ DEVICETYPE=TeamPort
         <para><filename>/etc/sysconfig/network-scripts/keys-*</filename></para>
         <para><filename>/etc/sysconfig/network-scripts/route-*</filename></para>
         <para><filename>/etc/sysconfig/network-scripts/route6-*</filename></para>
+        <para><filename>/etc/sysconfig/network-scripts/qdisc-*</filename></para>
+        <para><filename>/etc/sysconfig/network-scripts/filter-*</filename></para>
         <para><filename>/usr/share/doc/initscripts/sysconfig.txt</filename></para>
       </refsect1>
       <refsect1 id='see_also'><title>See Also</title>

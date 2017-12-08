@@ -72,6 +72,12 @@ typedef struct {
 	char *route6file;
 	int route6file_wd;
 
+	char *qdiscfile;
+	int qdiscfile_wd;
+
+	char *filterfile;
+	int filterfile_wd;
+
 	char *unmanaged_spec;
 	char *unrecognized_spec;
 
@@ -206,7 +212,9 @@ files_changed_cb (NMInotifyHelper *ih,
 	if (   (evt->wd != priv->file_wd)
 	    && (evt->wd != priv->keyfile_wd)
 	    && (evt->wd != priv->routefile_wd)
-	    && (evt->wd != priv->route6file_wd))
+	    && (evt->wd != priv->route6file_wd)
+	    && (evt->wd != priv->qdiscfile_wd)
+	    && (evt->wd != priv->filterfile_wd))
 		return;
 
 	/* push the event up to the plugin */
@@ -224,10 +232,14 @@ path_watch_stop (NMIfcfgConnection *self)
 	nm_inotify_helper_clear_watch (priv->inotify_helper, &priv->keyfile_wd);
 	nm_inotify_helper_clear_watch (priv->inotify_helper, &priv->routefile_wd);
 	nm_inotify_helper_clear_watch (priv->inotify_helper, &priv->route6file_wd);
+	nm_inotify_helper_clear_watch (priv->inotify_helper, &priv->qdiscfile_wd);
+	nm_inotify_helper_clear_watch (priv->inotify_helper, &priv->filterfile_wd);
 
 	nm_clear_g_free (&priv->keyfile);
 	nm_clear_g_free (&priv->routefile);
 	nm_clear_g_free (&priv->route6file);
+	nm_clear_g_free (&priv->qdiscfile);
+	nm_clear_g_free (&priv->filterfile);
 }
 
 static void
@@ -248,6 +260,8 @@ filename_changed (GObject *object,
 	priv->keyfile = utils_get_keys_path (ifcfg_path);
 	priv->routefile = utils_get_route_path (ifcfg_path);
 	priv->route6file = utils_get_route6_path (ifcfg_path);
+	priv->qdiscfile = utils_get_qdisc_path (ifcfg_path);
+	priv->filterfile = utils_get_filter_path (ifcfg_path);
 
 	if (nm_config_get_monitor_connection_files (nm_config_get ())) {
 		NMInotifyHelper *ih;
@@ -261,6 +275,8 @@ filename_changed (GObject *object,
 		priv->keyfile_wd = nm_inotify_helper_add_watch (ih, priv->keyfile);
 		priv->routefile_wd = nm_inotify_helper_add_watch (ih, priv->routefile);
 		priv->route6file_wd = nm_inotify_helper_add_watch (ih, priv->route6file);
+		priv->qdiscfile_wd = nm_inotify_helper_add_watch (ih, priv->qdiscfile);
+		priv->filterfile_wd = nm_inotify_helper_add_watch (ih, priv->filterfile);
 	}
 }
 
@@ -339,6 +355,10 @@ delete (NMSettingsConnection *connection,
 			g_unlink (priv->routefile);
 		if (priv->route6file)
 			g_unlink (priv->route6file);
+		if (priv->qdiscfile)
+			g_unlink (priv->qdiscfile);
+		if (priv->filterfile)
+			g_unlink (priv->filterfile);
 	}
 
 	return TRUE;
@@ -395,6 +415,8 @@ nm_ifcfg_connection_init (NMIfcfgConnection *connection)
 	priv->keyfile_wd = -1;
 	priv->routefile_wd = -1;
 	priv->route6file_wd = -1;
+	priv->qdiscfile_wd = -1;
+	priv->filterfile_wd = -1;
 
 	g_signal_connect (connection, "notify::" NM_SETTINGS_CONNECTION_FILENAME,
 	                  G_CALLBACK (filename_changed), NULL);

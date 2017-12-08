@@ -41,6 +41,8 @@ char *utils_get_ifcfg_path (const char *parent);
 char *utils_get_keys_path (const char *parent);
 char *utils_get_route_path (const char *parent);
 char *utils_get_route6_path (const char *parent);
+char *utils_get_qdisc_path (const char *parent);
+char *utils_get_filter_path (const char *parent);
 
 shvarFile *utils_get_extra_ifcfg (const char *parent, const char *tag, gboolean should_create);
 shvarFile *utils_get_keys_ifcfg (const char *parent, gboolean should_create);

@@ -82,6 +82,8 @@ utils_should_ignore_file (const char *filename, gboolean only_ifcfg)
 			return TRUE;
 		else if (   strncmp (base, KEYS_TAG, strlen (KEYS_TAG)) != 0
 		         && strncmp (base, ROUTE_TAG, strlen (ROUTE_TAG)) != 0
+		         && strncmp (base, QDISC_TAG, strlen (QDISC_TAG)) != 0
+		         && strncmp (base, FILTER_TAG, strlen (FILTER_TAG)) != 0
 		         && strncmp (base, ROUTE6_TAG, strlen (ROUTE6_TAG)) != 0)
 			return TRUE;
 	}
@@ -154,6 +156,8 @@ utils_get_ifcfg_name (const char *file, gboolean only_ifcfg)
 		MATCH_TAG_AND_RETURN (name, KEYS_TAG);
 		MATCH_TAG_AND_RETURN (name, ROUTE_TAG);
 		MATCH_TAG_AND_RETURN (name, ROUTE6_TAG);
+		MATCH_TAG_AND_RETURN (name, QDISC_TAG);
+		MATCH_TAG_AND_RETURN (name, FILTER_TAG);
 	}
 
 	return NULL;
@@ -209,6 +213,18 @@ char *
 utils_get_route6_path (const char *parent)
 {
 	return utils_get_extra_path (parent, ROUTE6_TAG);
+}
+
+char *
+utils_get_qdisc_path (const char *parent)
+{
+	return utils_get_extra_path (parent, QDISC_TAG);
+}
+
+char *
+utils_get_filter_path (const char *parent)
+{
+	return utils_get_extra_path (parent, FILTER_TAG);
 }
 
 shvarFile *
