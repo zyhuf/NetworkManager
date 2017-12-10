@@ -61,7 +61,9 @@ nm_tc_qdisc_new (const char *kind,
 {
 	NMTCQdisc *qdisc;
 
-	if (!kind || !*kind || strchr (kind, ' ') || strchr (kind, '\t')) {
+	if (   !kind
+	    || !*kind
+	    || strpbrk (kind, " \t\\")) {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
@@ -254,7 +256,7 @@ G_DEFINE_BOXED_TYPE (NMTCAction, nm_tc_action, nm_tc_action_dup, nm_tc_action_un
 struct NMTCAction {
 	guint refcount;
 
-	char *kind;
+	const char *kind;
 
 	GHashTable *attributes;
 };
@@ -276,7 +278,17 @@ nm_tc_action_new (const char *kind,
 {
 	NMTCAction *action;
 
-	if (!kind || !*kind || strchr (kind, ' ') || strchr (kind, '\t')) {
+	if (!kind) {
+		g_set_error_literal (error,
+		                     NM_CONNECTION_ERROR,
+		                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		                     _("missing kind"));
+		return NULL;
+	}
+
+	if (nm_streq (kind, "simple"))
+		kind = "simple";
+	else {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
@@ -287,7 +299,9 @@ nm_tc_action_new (const char *kind,
 	action = g_slice_new0 (NMTCAction);
 	action->refcount = 1;
 
-	action->kind = g_strdup (kind);
+	/* kind must be a static string. tc_commit() and
+	 * nm_tc_action_equal() relies on that. */
+	action->kind = kind;
 
 	return action;
 }
@@ -326,7 +340,6 @@ nm_tc_action_unref (NMTCAction *action)
 
 	action->refcount--;
 	if (action->refcount == 0) {
-		g_free (action->kind);
 		if (action->attributes)
 			g_hash_table_unref (action->attributes);
 		g_slice_free (NMTCAction, action);
@@ -361,7 +374,7 @@ nm_tc_action_equal (NMTCAction *action, NMTCAction *other)
 	if (!action || !other)
 		return FALSE;
 
-	if (g_strcmp0 (action->kind, other->kind) != 0)
+	if (action->kind != other->kind)
 		return FALSE;
 
 	n = action->attributes ? g_hash_table_size (action->attributes) : 0;

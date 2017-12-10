@@ -5383,6 +5383,8 @@ tc_commit (NMDevice *self)
 			if (action) {
 				GVariant *attr;
 
+				/* XXX: we rely on nm_tc_action_get_kind() to return
+				 * a statically allocated string. */
 				tfilter->action.kind = nm_tc_action_get_kind (action);
 				if (   nm_streq (tfilter->action.kind, "simple")
 				    && (attr = nm_tc_action_get_attribute (action, "sdata"))
