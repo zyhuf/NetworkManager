@@ -2680,81 +2680,6 @@ write_ip6_setting (NMConnection *connection,
 	return TRUE;
 }
 
-static GString *
-write_qdisc_file (NMSettingTCConfig *s_tc)
-{
-	GString *contents;
-	NMTCQdisc *qdisc;
-	guint32 i, num;
-
-	num = nm_setting_tc_config_get_num_qdiscs (s_tc);
-	if (num == 0)
-		return NULL;
-
-	contents = g_string_sized_new (60);
-
-	for (i = 0; i < num; i++) {
-		gs_free char *str = NULL;
-
-		qdisc = nm_setting_tc_config_get_qdisc (s_tc, i);
-
-		str = nm_utils_tc_qdisc_to_str (qdisc, NULL);
-		if (!str)
-			continue;
-		g_string_append (contents, str);
-		g_string_append_c (contents, '\n');
-	}
-
-	return contents;
-}
-
-static GString *
-write_filter_file (NMSettingTCConfig *s_tc)
-{
-	GString *contents;
-	NMTCTfilter *tfilter;
-	guint32 i, num;
-
-	num = nm_setting_tc_config_get_num_tfilters (s_tc);
-	if (num == 0)
-		return NULL;
-
-	contents = g_string_sized_new (60);
-
-	for (i = 0; i < num; i++) {
-		gs_free char *str = NULL;
-
-		tfilter = nm_setting_tc_config_get_tfilter (s_tc, i);
-
-		str = nm_utils_tc_tfilter_to_str (tfilter, NULL);
-		if (!str)
-			continue;
-		g_string_append (contents, str);
-		g_string_append_c (contents, '\n');
-	}
-
-	return contents;
-}
-
-static gboolean
-write_tc_setting (NMConnection *connection,
-                  shvarFile *ifcfg,
-                  GString **out_qdisc_content,
-                  GString **out_filter_content,
-                  GError **error)
-{
-	NMSettingTCConfig *s_tc;
-
-	s_tc = nm_connection_get_setting_tc_config (connection);
-	if (!s_tc)
-		return TRUE;
-
-	NM_SET_OUT (out_qdisc_content, write_qdisc_file (s_tc));
-	NM_SET_OUT (out_filter_content, write_filter_file (s_tc));
-
-	return TRUE;
-}
-
 static char *
 escape_id (const char *id)
 {
@@ -2784,8 +2709,6 @@ do_write_construct (NMConnection *connection,
                     shvarFile **out_route_content_svformat,
                     GString **out_route_content,
                     GString **out_route6_content,
-                    GString **out_qdisc_content,
-                    GString **out_filter_content,
                     GError **error)
 {
 	NMSettingConnection *s_con;
@@ -2805,8 +2728,6 @@ do_write_construct (NMConnection *connection,
 	nm_auto_shvar_file_close shvarFile *route_content_svformat = NULL;
 	nm_auto_free_gstring GString *route_content = NULL;
 	nm_auto_free_gstring GString *route6_content = NULL;
-	nm_auto_free_gstring GString *qdisc_content = NULL;
-	nm_auto_free_gstring GString *filter_content = NULL;
 
 	nm_assert (NM_IS_CONNECTION (connection));
 	nm_assert (_nm_connection_verify (connection, NULL) == NM_SETTING_VERIFY_SUCCESS);
@@ -2870,9 +2791,6 @@ do_write_construct (NMConnection *connection,
 		             "Could not get route6 file path for '%s'", svFileGetName (ifcfg));
 		return FALSE;
 	}
-
-	if (!write_tc_setting (connection, ifcfg, &qdisc_content, &filter_content, error))
-		return FALSE;
 
 	type = nm_setting_connection_get_connection_type (s_con);
 	if (!type) {
@@ -2999,8 +2917,6 @@ do_write_construct (NMConnection *connection,
 	NM_SET_OUT (out_route_content_svformat, g_steal_pointer (&route_content_svformat));
 	NM_SET_OUT (out_route_content, g_steal_pointer (&route_content));
 	NM_SET_OUT (out_route6_content, g_steal_pointer (&route6_content));
-	NM_SET_OUT (out_qdisc_content, g_steal_pointer (&qdisc_content));
-	NM_SET_OUT (out_filter_content, g_steal_pointer (&filter_content));
 	return TRUE;
 }
 
@@ -3013,13 +2929,8 @@ do_write_to_disk (NMConnection *connection,
                   shvarFile *route_content_svformat,
                   GString *route_content,
                   GString *route6_content,
-                  GString *qdisc_content,
-                  GString *filter_content,
                   GError **error)
 {
-	gs_free char *qdisc_path = NULL;
-	gs_free char *filter_path = NULL;
-
 	/* From here on, we persist data to disk. Before, it was all in-memory
 	 * only. But we loaded the ifcfg files from disk, and managled our
 	 * new settings (in-momory). */
@@ -3066,30 +2977,6 @@ do_write_to_disk (NMConnection *connection,
 				             "Writing route6 file '%s' failed", route6_path);
 				return FALSE;
 			}
-		}
-	}
-
-	qdisc_path = utils_get_qdisc_path (svFileGetName (ifcfg));
-
-	if (!qdisc_content) {
-		(void) unlink (qdisc_path);
-	} else {
-		if (!g_file_set_contents (qdisc_path, qdisc_content->str, qdisc_content->len, NULL)) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
-			             "Writing qdisc file '%s' failed", qdisc_path);
-			return FALSE;
-		}
-	}
-
-	filter_path = utils_get_filter_path (svFileGetName (ifcfg));
-
-	if (!filter_content) {
-		(void) unlink (filter_path);
-	} else {
-		if (!g_file_set_contents (filter_path, filter_content->str, filter_content->len, NULL)) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
-			             "Writing filter file '%s' failed", filter_path);
-			return FALSE;
 		}
 	}
 
@@ -3154,8 +3041,6 @@ nms_ifcfg_rh_writer_write_connection (NMConnection *connection,
 	gboolean route_ignore = FALSE;
 	nm_auto_shvar_file_close shvarFile *route_content_svformat = NULL;
 	nm_auto_free_gstring GString *route6_content = NULL;
-	nm_auto_free_gstring GString *qdisc_content = NULL;
-	nm_auto_free_gstring GString *filter_content = NULL;
 	gs_unref_hashtable GHashTable *secrets = NULL;
 	gs_unref_hashtable GHashTable *blobs = NULL;
 	GError *local = NULL;
@@ -3172,8 +3057,6 @@ nms_ifcfg_rh_writer_write_connection (NMConnection *connection,
 	                         &route_content_svformat,
 	                         &route_content,
 	                         &route6_content,
-	                         &qdisc_content,
-	                         &filter_content,
 	                         error))
 		return FALSE;
 
@@ -3190,8 +3073,6 @@ nms_ifcfg_rh_writer_write_connection (NMConnection *connection,
 	                       route_content_svformat,
 	                       route_content,
 	                       route6_content,
-	                       qdisc_content,
-	                       filter_content,
 	                       error))
 		return FALSE;
 

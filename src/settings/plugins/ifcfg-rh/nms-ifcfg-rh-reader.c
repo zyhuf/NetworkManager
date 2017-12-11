@@ -472,7 +472,7 @@ read_full_ip4_address (shvarFile *ifcfg,
 /*****************************************************************************/
 
 static gboolean
-line_is_comment (const char *line)
+parse_route_line_is_comment (const char *line)
 {
 	/* we obtained the line from a legacy route file. Here we skip
 	 * empty lines and comments.
@@ -1050,7 +1050,7 @@ read_route_file (int addr_family,
 
 		line_num++;
 
-		if (line_is_comment (line))
+		if (parse_route_line_is_comment (line))
 			continue;
 
 		e = parse_route_line (line, addr_family, NULL, &route, &local);
@@ -1963,106 +1963,6 @@ error:
 	g_object_unref (s_ip6);
 	return NULL;
 }
-
-static gboolean
-parse_qdiscs (NMSettingTCConfig *s_tc, shvarFile *ifcfg)
-{
-	gs_free char *qdisc_path = NULL;
-	gs_free char *contents = NULL;
-	char *contents_rest = NULL;
-	const char *line;
-	gsize len = 0;
-	gsize line_num;
-
-	qdisc_path = utils_get_qdisc_path (svFileGetName (ifcfg));
-
-	if (!g_file_get_contents (qdisc_path, &contents, &len, NULL))
-		return FALSE;
-
-	line_num = 0;
-	for (line = strtok_r (contents, "\n", &contents_rest);
-	     line;
-	     line = strtok_r (NULL, "\n", &contents_rest)) {
-		NMTCQdisc *qdisc;
-		gs_free_error GError *local = NULL;
-
-		line_num++;
-
-		if (line_is_comment (line))
-			continue;
-
-		qdisc = nm_utils_tc_qdisc_from_str (line,  &local);
-		if (!qdisc) {
-			PARSE_WARNING ("ignoring bad qdisc: '%s': %s (%s)", line, qdisc_path, local->message);
-			continue;
-		}
-
-		if (!nm_setting_tc_config_add_qdisc (s_tc, qdisc))
-			PARSE_WARNING ("duplicate qdisc route");
-	}
-
-	return TRUE;
-}
-
-static gboolean
-parse_filters (NMSettingTCConfig *s_tc, shvarFile *ifcfg)
-{
-	gs_free char *filter_path = NULL;
-	gs_free char *contents = NULL;
-	char *contents_rest = NULL;
-	const char *line;
-	gsize len = 0;
-	gsize line_num;
-
-	filter_path = utils_get_filter_path (svFileGetName (ifcfg));
-
-	if (!g_file_get_contents (filter_path, &contents, &len, NULL))
-		return FALSE;
-
-	line_num = 0;
-	for (line = strtok_r (contents, "\n", &contents_rest);
-	     line;
-	     line = strtok_r (NULL, "\n", &contents_rest)) {
-		NMTCTfilter *tfilter;
-		gs_free_error GError *local = NULL;
-
-		line_num++;
-
-		if (line_is_comment (line))
-			continue;
-
-		tfilter = nm_utils_tc_tfilter_from_str (line,  &local);
-		if (!tfilter) {
-			PARSE_WARNING ("ignoring bad filter: '%s': %s (%s)", line, filter_path, local->message);
-			continue;
-		}
-
-		if (!nm_setting_tc_config_add_tfilter (s_tc, tfilter))
-			PARSE_WARNING ("duplicate filter route");
-		nm_tc_tfilter_unref (tfilter);
-	}
-
-	return TRUE;
-}
-
-static NMSetting *
-make_tc_setting (shvarFile *ifcfg)
-{
-	NMSetting *s_tc;
-	gboolean has_tc = FALSE;
-
-	s_tc = nm_setting_tc_config_new ();
-
-	has_tc |= parse_qdiscs (NM_SETTING_TC_CONFIG (s_tc), ifcfg);
-	has_tc |= parse_filters (NM_SETTING_TC_CONFIG (s_tc), ifcfg);
-
-	if (has_tc)
-		return s_tc;
-
-	g_object_unref (s_tc);
-	return NULL;
-}
-
 
 typedef struct {
 	const char *enable_key;
@@ -5342,7 +5242,7 @@ connection_from_file_full (const char *filename,
 	gs_unref_object NMConnection *connection = NULL;
 	gs_free char *type = NULL;
 	char *devtype, *bootproto;
-	NMSetting *s_ip4, *s_ip6, *s_tc, *s_proxy, *s_port, *s_dcb = NULL, *s_user;
+	NMSetting *s_ip4, *s_ip6, *s_proxy, *s_port, *s_dcb = NULL, *s_user;
 	const char *ifcfg_name = NULL;
 	gboolean has_ip4_defroute = FALSE;
 	gboolean has_complex_routes_v4;
@@ -5604,10 +5504,6 @@ connection_from_file_full (const char *filename,
 	 * values into IPv6 config instead of IPv4.
 	 */
 	check_dns_search_domains (parsed, s_ip4, s_ip6);
-
-	s_tc = make_tc_setting (parsed);
-	if (s_tc)
-		nm_connection_add_setting (connection, s_tc);
 
 	s_proxy = make_proxy_setting (parsed);
 	if (s_proxy)
