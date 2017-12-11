@@ -36,7 +36,6 @@
 #include <linux/if_link.h>
 #include <linux/if_tun.h>
 #include <linux/if_tunnel.h>
-#include <linux/tc_act/tc_defact.h>
 #include <netlink/netlink.h>
 #include <netlink/msg.h>
 #include <libudev.h>
@@ -54,6 +53,29 @@
 #include "wifi/wifi-utils-wext.h"
 #include "nm-utils/unaligned.h"
 #include "nm-utils/nm-udev-utils.h"
+
+/*****************************************************************************/
+
+/* re-implement <linux/tc_act/tc_defact.h> to build against kernel
+ * headers that lack this. */
+
+#include <linux/pkt_cls.h>
+
+struct tc_defact {
+	tc_gen;
+};
+
+enum {
+	TCA_DEF_UNSPEC,
+	TCA_DEF_TM,
+	TCA_DEF_PARMS,
+	TCA_DEF_DATA,
+	TCA_DEF_PAD,
+	__TCA_DEF_MAX
+};
+#define TCA_DEF_MAX (__TCA_DEF_MAX - 1)
+
+/*****************************************************************************/
 
 #define VLAN_FLAG_MVRP 0x8
 
@@ -2923,7 +2945,7 @@ _add_action_simple (struct nl_msg *msg,
 	if (!(act_options = nla_nest_start (msg, TCA_ACT_OPTIONS)))
 		goto nla_put_failure;
 
-	NLA_PUT (msg, TCA_DEF_PARMS, sizeof(sel), &sel);
+	NLA_PUT (msg, TCA_DEF_PARMS, sizeof (sel), &sel);
 	NLA_PUT_STRING (msg, TCA_DEF_DATA, simple->sdata);
 
 	nla_nest_end (msg, act_options);
