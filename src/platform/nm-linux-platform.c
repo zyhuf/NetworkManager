@@ -2924,7 +2924,7 @@ _add_action_simple (struct nl_msg *msg,
 		goto nla_put_failure;
 
 	NLA_PUT (msg, TCA_DEF_PARMS, sizeof(sel), &sel);
-	NLA_PUT_STRING (msg, TCA_DEF_DATA, simple->str);
+	NLA_PUT_STRING (msg, TCA_DEF_DATA, simple->sdata);
 
 	nla_nest_end (msg, act_options);
 

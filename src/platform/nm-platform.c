@@ -5397,7 +5397,7 @@ nm_platform_tfilter_hash_update (const NMPlatformTfilter *obj, NMHashState *h)
 	nm_hash_update_str (h, obj->action.kind);
 	if (obj->action.kind) {
 		if (nm_streq (obj->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE))
-			nm_hash_update_str (h, obj->action.simple.str);
+			nm_hash_update_str (h, obj->action.simple.sdata);
 	}
 }
 
@@ -5415,7 +5415,7 @@ nm_platform_tfilter_cmp (const NMPlatformTfilter *a, const NMPlatformTfilter *b)
 	NM_CMP_FIELD_STR_INTERNED (a, b, action.kind);
 	if (a->action.kind) {
 		if (nm_streq (a->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE))
-			NM_CMP_FIELD_STR (a, b, action.simple.str);
+			NM_CMP_FIELD_STR (a, b, action.simple.sdata);
 	}
 
 	return 0;

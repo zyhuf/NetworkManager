@@ -57,7 +57,7 @@ main (int argc, char **argv)
 		.parent = TC_H_MAKE (0x8003 << 16, 0),
 		.info = TC_H_MAKE (0, htons (ETH_P_ALL)),
 		.action.kind = "simple",
-		.action.simple.str = "Egress",
+		.action.simple.sdata = "Egress",
 	};
 	NMPlatformTfilter tfilter2 = {
 		.kind = "matchall",
@@ -66,7 +66,7 @@ main (int argc, char **argv)
 		.parent = TC_H_MAKE (TC_H_INGRESS, 0),
 		.info = TC_H_MAKE (0, htons (ETH_P_ALL)),
 		.action.kind = "simple",
-		.action.simple.str = "Ingress",
+		.action.simple.sdata = "Ingress",
 	};
 
 	if (!g_getenv ("NMTST_DEBUG"))

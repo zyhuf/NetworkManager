@@ -541,7 +541,7 @@ typedef struct {
 } NMPlatformQdisc;
 
 typedef struct {
-	char str[32];
+	char sdata[32];
 } NMPlatformActionSimple;
 
 typedef struct {
