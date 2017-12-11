@@ -2317,7 +2317,7 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 /*****************************************************************************/
 
 static const NMVariantAttributeSpec * const tc_action_simple_attribute_spec[] = {
-	TC_ATTR_SPEC_PTR ("sdata",   G_VARIANT_TYPE_BYTESTRING,  FALSE, FALSE, 0   ),
+	TC_ATTR_SPEC_PTR ("sdata",   G_VARIANT_TYPE_STRING,      FALSE, FALSE, 0   ),
 	NULL,
 };
 

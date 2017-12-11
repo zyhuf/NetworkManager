@@ -2679,8 +2679,7 @@ test_read_tc_config (void)
 	action2 = nm_tc_tfilter_get_action (tfilter2);
 	g_assert (action2);
 	g_assert (g_strcmp0 (nm_tc_action_get_kind (action2), "simple") == 0);
-	g_assert (g_strcmp0 (g_variant_get_bytestring (nm_tc_action_get_attribute (action2, "sdata")),
-	                     "Hello") == 0);
+	g_assert_cmpstr (g_variant_get_string (nm_tc_action_get_attribute (action2, "sdata"), NULL), ==, "Hello");
 }
 
 static void
@@ -2726,7 +2725,7 @@ test_write_tc_config (void)
 	nmtst_assert_success (tfilter2, error);
 	action = nm_tc_action_new ("simple", &error);
 	nmtst_assert_success (action, error);
-	nm_tc_action_set_attribute (action, "sdata", g_variant_new_bytestring ("Hello"));
+	nm_tc_action_set_attribute (action, "sdata", g_variant_new_string ("Hello"));
 	nm_tc_tfilter_set_action (tfilter2, action);
 	nm_tc_action_unref (action);
 	nm_setting_tc_config_add_tfilter (NM_SETTING_TC_CONFIG (s_tc), tfilter2);

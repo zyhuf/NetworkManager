@@ -1337,7 +1337,7 @@ test_tc_config_action (void)
 	nm_tc_action_unref (action1);
 	action1 = nm_tc_action_new ("simple", &error);
 	nmtst_assert_success (action1, error);
-	nm_tc_action_set_attribute (action1, "sdata", g_variant_new_bytestring ("Hello"));
+	nm_tc_action_set_attribute (action1, "sdata", g_variant_new_string ("Hello"));
 
 	g_assert (!nm_tc_action_equal (action1, action2));
 
@@ -1365,7 +1365,7 @@ test_tc_config_action (void)
 	nmtst_assert_success (action1, error);
 
 	g_assert_cmpstr (nm_tc_action_get_kind (action1), ==, "simple");
-	g_assert_cmpstr (g_variant_get_bytestring (nm_tc_action_get_attribute (action1, "sdata")), ==, "Hello");
+	g_assert_cmpstr (g_variant_get_string (nm_tc_action_get_attribute (action1, "sdata"), NULL), ==, "Hello");
 
 	nm_tc_action_unref (action1);
 	nm_tc_action_unref (action2);
@@ -1393,7 +1393,7 @@ test_tc_config_tfilter (void)
 
 	action1 = nm_tc_action_new ("simple", &error);
 	nmtst_assert_success (action1, error);
-	nm_tc_action_set_attribute (action1, "sdata", g_variant_new_bytestring ("Hello"));
+	nm_tc_action_set_attribute (action1, "sdata", g_variant_new_string ("Hello"));
 	nm_tc_tfilter_set_action (tfilter1, action1);
 	nm_tc_action_unref (action1);
 
@@ -1506,7 +1506,7 @@ test_tc_config_dbus (void)
 	nmtst_assert_success (tfilter2, error);
 	action = nm_tc_action_new ("simple", &error);
 	nmtst_assert_success (action, error);
-	nm_tc_action_set_attribute (action, "sdata", g_variant_new_bytestring ("Hello"));
+	nm_tc_action_set_attribute (action, "sdata", g_variant_new_string ("Hello"));
 	nm_tc_tfilter_set_action (tfilter2, action);
 	nm_tc_action_unref (action);
 	nm_setting_tc_config_add_tfilter (NM_SETTING_TC_CONFIG (s_tc), tfilter2);

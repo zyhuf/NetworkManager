@@ -5381,10 +5381,18 @@ tc_commit (NMDevice *self)
 
 			action = nm_tc_tfilter_get_action (s_tfilter);
 			if (action) {
+				GVariant *attr;
+
 				tfilter->action.kind = nm_tc_action_get_kind (action);
-				if (strcmp (tfilter->action.kind, "simple") == 0) {
+				if (   nm_streq (tfilter->action.kind, "simple")
+				    && (attr = nm_tc_action_get_attribute (action, "sdata"))
+				    && g_variant_is_of_type (attr, G_VARIANT_TYPE_STRING)) {
+					gs_free char *sdata = NULL;
+
+					/* we don't check the length of sdata. Just truncate if it's too long. */
 					g_strlcpy (tfilter->action.simple.sdata,
-					           g_variant_get_bytestring (nm_tc_action_get_attribute (action, "sdata")),
+					           nm_utils_str_utf8safe_unescape (g_variant_get_string (attr, NULL),
+					                                           &sdata),
 					           sizeof (tfilter->action.simple.sdata));
 				}
 			}
