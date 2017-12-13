@@ -299,6 +299,12 @@ if enable_wifi
 endif
 config_h.set10('WITH_WIFI', enable_wifi)
 
+enable_iwd = get_option('iwd')
+if enable_iwd
+  assert(enable_wifi, 'Enabling iwd support requires Wi-Fi support as well')
+endif
+config_h.set10('WITH_IWD', enable_iwd)
+
 # Default to using WEXT but allow it to be disabled
 enable_wext = get_option('wext')
 if enable_wext
@@ -1063,6 +1069,7 @@ output += '  libaudit: ' + enable_libaudit.to_string() + ' (default: logging.aud
 output += '\nFeatures:\n'
 output += '  wext: ' + enable_wext.to_string() + '\n'
 output += '  wifi: ' + enable_wifi.to_string() + '\n'
+output += '  iwd:  ' + enable_iwd.to_string() + '\n'
 output += '  pppd: ' + enable_ppp.to_string()
 if enable_ppp
   output += ' ' + pppd_path

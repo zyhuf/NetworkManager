@@ -9,6 +9,13 @@ sources = common_sources + files(
   'nm-device-olpc-mesh.c'
 )
 
+if enable_iwd
+  sources += files(
+    'nm-device-iwd.c',
+    'nm-iwd-manager.c',
+  )
+endif
+
 deps = [
   core_dep,
   libnmdbus_dep

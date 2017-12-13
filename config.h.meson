@@ -225,6 +225,9 @@
 /* Define if you have Wi-Fi support */
 #mesondefine WITH_WIFI
 
+/* Define if you have iwd support */
+#mesondefine WITH_IWD
+
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD
