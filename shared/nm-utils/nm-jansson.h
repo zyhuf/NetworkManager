@@ -25,6 +25,82 @@
 #if WITH_JANSSON
 
 #include <jansson.h>
+#include <dlfcn.h>
+
+/*
+ * 'json_object_iter_next' symbol clashes with libjson-glib: as
+ * gnome-control-center links both libjson-glib and libnm, we would
+ * end up resolving 'json_object_iter_next' in the wrong library when
+ * calling libnm-core functions in g-c-c.
+ * Expose a wrapper to allow calling 'json_object_iter_next' from
+ * libjansson in libnm-core when a program binds both libjson-glib
+ * and libnm (leverage dlopen()).
+ */
+static void __attribute__((used))
+*nm_json_object_iter_next (json_t *json, void *iter, GError **error)
+{
+	const char *libjansson = "libjansson.so.4";
+	const char *jsymbol = "json_object_iter_next";
+	void *handle;
+	void *retval = NULL;
+	void *(*iter_next)(json_t *json, void *iter);
+	char *dl_error;
+	gboolean already_open = TRUE;
+
+	g_return_val_if_fail (!error || !*error, NULL);
+
+	handle = dlopen (libjansson, RTLD_NOLOAD | RTLD_LAZY);
+	if (!handle) {
+		dlerror ();
+		handle = dlopen (libjansson, RTLD_LAZY);
+		if (!handle) {
+			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_UNKNOWN,
+			             _("cannot dlopen '%s': %s"), libjansson, dlerror ());
+			goto done;
+		}
+		already_open = FALSE;
+	}
+
+	dlerror ();
+	*(void **) (&iter_next) = dlsym (handle, jsymbol);
+	dl_error = dlerror ();
+
+	if (error != NULL) {
+		g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_UNKNOWN,
+		             _("cannot dlsym symbol '%s':%s"), jsymbol, dl_error);
+		goto done;
+	}
+
+	retval = iter_next (json, iter);
+done:
+	if (!already_open)
+		dlclose (handle);
+	return retval;
+}
+
+/* Clone of 'json_object_foreach' skipping 'json_object_iter_next' in
+ * favor of the 'nm_json_object_iter_next' wrapper */
+#define nm_json_object_foreach(object, key, value) \
+    for(key = json_object_iter_key(json_object_iter(object)); \
+        key && (value = json_object_iter_value(json_object_iter_at (object, key) )); \
+        key = json_object_iter_key(nm_json_object_iter_next(object, json_object_iter_at (object, key), NULL)))
+/* Clone of 'json_object_foreach_safe' skipping 'json_object_iter_next'
+ * in favor of the 'nm_json_object_iter_next' wrapper */
+#if JANSSON_VERSION_HEX < 0x020300
+#define nm_json_object_foreach_safe(object, n, key, value)     \
+    for (key = json_object_iter_key (json_object_iter (object)), \
+         n = nm_json_object_iter_next (object, json_object_iter_at (object, key), NULL); \
+         key && (value = json_object_iter_value (json_object_iter_at (object, key))); \
+         key = json_object_iter_key (n), \
+         n = nm_json_object_iter_next (object, json_object_iter_at (object, key), NULL))
+#else
+#define nm_json_object_foreach_safe(object, n, key, value)     \
+    for(key = json_object_iter_key(json_object_iter(object)), \
+            n = nm_json_object_iter_next(object, json_object_key_to_iter(key), NULL); \
+        key && (value = json_object_iter_value(json_object_key_to_iter(key))); \
+        key = json_object_iter_key(n), \
+            n = nm_json_object_iter_next(object, json_object_key_to_iter(key), NULL))
+#endif
 
 /* Added in Jansson v2.3 (released Jan 27 2012) */
 #ifndef json_object_foreach
