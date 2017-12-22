@@ -5165,7 +5165,7 @@ _nm_utils_team_link_watcher_from_json (json_t *json_element)
 
 	g_return_val_if_fail (json_element, NULL);
 
-	json_object_foreach (json_element, j_key, j_val) {
+	nm_json_object_foreach (json_element, j_key, j_val) {
 		if (nm_streq (j_key, "name")) {
 			g_free (name);
 			name = strdup (json_string_value (j_val));
@@ -5360,7 +5360,7 @@ _nm_utils_team_config_equal (const char *conf1,
 	/* Only consider a given subset of nodes, others can change depending on
 	 * current state */
 	for (i = 0, json = json1; i < 2; i++, json = json2) {
-		json_object_foreach_safe (json, tmp, key, value) {
+		nm_json_object_foreach_safe (json, tmp, key, value) {
 			if (!NM_IN_STRSET (key, "runner", "link_watch"))
 				json_object_del (json, key);
 		}
