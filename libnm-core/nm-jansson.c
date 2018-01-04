@@ -51,7 +51,7 @@ void *_nm_jansson_json_string_value;
 #define TRY_BIND_SYMBOL(symbol) \
 	G_STMT_START { \
 		void *sym = dlsym (handle, #symbol); \
-		if (_nm_jansson_ ## symbol && sym != _nm_jansson_ ## symbol) \
+		if (!sym) \
 			return FALSE; \
 		_nm_jansson_ ## symbol = sym; \
 	} G_STMT_END
@@ -99,11 +99,7 @@ nm_jansson_load (void)
 	if (G_LIKELY (state != UNKNOWN))
 		goto out;
 
-	/* First just resolve the symbols to see if there's a conflict already. */
-	if (!bind_symbols (RTLD_DEFAULT))
-		goto out;
-
-	handle = dlopen (JANSSON_SONAME, RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE);
+	handle = dlopen (JANSSON_SONAME, RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE | RTLD_DEEPBIND);
 	if (!handle)
 		goto out;
 
