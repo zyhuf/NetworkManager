@@ -518,6 +518,8 @@ libnm_core_lib_c_real = \
 	libnm-core/nm-vpn-plugin-info.c
 
 if WITH_JSON_VALIDATION
+libnm_core_lib_h_priv += \
+	libnm-core/nm-jansson.h
 libnm_core_lib_c_real += \
 	libnm-core/nm-jansson.c
 endif
