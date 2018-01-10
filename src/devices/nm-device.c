@@ -5598,6 +5598,32 @@ nm_device_activate_schedule_stage2_device_config (NMDevice *self)
 	activation_source_schedule (self, activate_stage2_device_config, AF_INET);
 }
 
+static gboolean
+nm_device_ip_other_family_successful (NMDevice *self,
+                                      int addr_family)
+{
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+	NMSettingIPConfig *s_ip;
+
+	s_ip = (NMSettingIPConfig *) nm_device_get_applied_setting (self,
+	                                                            addr_family == AF_INET ?
+	                                                              NM_TYPE_SETTING_IP6_CONFIG :
+	                                                              NM_TYPE_SETTING_IP4_CONFIG);
+	if (s_ip && nm_streq0 (nm_setting_ip_config_get_method (s_ip),
+	                       addr_family == AF_INET ?
+	                         NM_SETTING_IP6_CONFIG_METHOD_IGNORE :
+	                         NM_SETTING_IP4_CONFIG_METHOD_DISABLED))
+		return FALSE;
+
+	if (   addr_family == AF_INET
+	    && priv->ip6_state != IP_DONE)
+			return FALSE;
+	if (   addr_family == AF_INET6
+	    && priv->ip4_state != IP_DONE)
+			return FALSE;
+	return TRUE;
+}
+
 void
 nm_device_ip_method_failed (NMDevice *self,
                             int addr_family,
@@ -5608,9 +5634,11 @@ nm_device_ip_method_failed (NMDevice *self,
 
 	_set_ip_state (self, addr_family, IP_FAIL);
 
-	if (get_ip_config_may_fail (self, addr_family))
+	if (!get_ip_config_may_fail (self, addr_family))
+		nm_device_state_changed (self, NM_DEVICE_STATE_FAILED, reason);
+	else if (nm_device_get_state (self) == NM_DEVICE_STATE_IP_CONFIG)
 		check_ip_state (self, FALSE);
-	else
+	else if (!nm_device_ip_other_family_successful (self, addr_family))
 		nm_device_state_changed (self, NM_DEVICE_STATE_FAILED, reason);
 }
 
