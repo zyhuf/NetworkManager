@@ -401,11 +401,6 @@ intltoolize --automake --copy --force
 	--with-dhcpcanon=no \
 	--with-config-dhcp-default=dhclient \
 	--with-crypto=nss \
-%if %{with test}
-	--enable-more-warnings=error \
-%else
-	--enable-more-warnings=yes \
-%endif
 %if %{with sanitizer}
 	--enable-address-sanitizer \
 	--enable-undefined-sanitizer \
@@ -414,9 +409,11 @@ intltoolize --automake --copy --force
 	--disable-undefined-sanitizer \
 %endif
 %if %{with debug}
+	--enable-more-warnings=error \
 	--enable-more-logging \
 	--with-more-asserts=10000 \
 %else
+	--enable-more-warnings=yes \
 	--disable-more-logging \
 	--without-more-asserts \
 %endif
