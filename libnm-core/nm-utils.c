@@ -4437,6 +4437,51 @@ _nm_utils_inet6_is_token (const struct in6_addr *in6addr)
 }
 
 /**
+ * _nm_utils_dhcp_duid_valid:
+ * @duid: the candidate DUID
+ *
+ * Checks if @duid string contains either a special duid value ("ll",
+ * "llt", "lease" or the "stable" variants) or a valid hex DUID.
+ *
+ * Return value: %TRUE or %FALSE
+ */
+gboolean
+_nm_utils_dhcp_duid_valid (const char *duid, GBytes **out_duid_bin)
+{
+	gsize duid_len;
+	GBytes *duid_bin;
+
+	if (!duid)
+		return FALSE;
+
+	if (NM_IN_STRSET (duid, "lease",
+	                        "llt",
+	                        "ll",
+	                        "stable-llt",
+	                        "stable-ll",
+	                        "stable-uuid")) {
+		return TRUE;
+	}
+
+	duid_bin = nm_utils_hexstr2bin (duid);
+	if (!duid_bin)
+		return FALSE;
+
+	duid_len = g_bytes_get_size (duid_bin);
+	/* MAX DUID lenght is 128 octects + the type code (2 octects). */
+	if (   duid_len <= 2
+	    || duid_len > (128 + 2))
+		return FALSE;
+
+	if (out_duid_bin)
+		*out_duid_bin = duid_bin;
+	else
+		g_bytes_unref (duid_bin);
+
+	return TRUE;
+}
+
+/**
  * nm_utils_check_virtual_device_compatibility:
  * @virtual_type: a virtual connection type
  * @other_type: a connection type to test against @virtual_type
