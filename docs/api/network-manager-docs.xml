@@ -206,6 +206,7 @@
       <xi:include href="dbus-org.freedesktop.NetworkManager.Device.Wireguard.xml"/>
       <xi:include href="dbus-org.freedesktop.NetworkManager.Device.Wireless.xml"/>
       <xi:include href="dbus-org.freedesktop.NetworkManager.Device.Wpan.xml"/>
+      <xi:include href="dbus-org.freedesktop.NetworkManager.Device.WiMax.xml"/>
       <xi:include href="dbus-org.freedesktop.NetworkManager.PPP.xml"/>
     </chapter>
 
