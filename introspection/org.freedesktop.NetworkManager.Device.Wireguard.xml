@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/">
+  <!--
+      org.freedesktop.NetworkManager.Device.Wireguard:
+      @short_description: WireGuard Device
+
+  -->
+  <interface name="org.freedesktop.NetworkManager.Device.Wireguard">
+
+    <!--
+        PublicKey:
+
+        32-byte public WireGuard key, encoded in base64.
+    -->
+    <property name="PublicKey" type="s" access="read"/>
+
+    <!--
+        ListenPort:
+
+        Local UDP listening port.
+    -->
+    <property name="ListenPort" type="u" access="read"/>
+
+    <!--
+        FwMark:
+
+	Optional 32-bit mark used to set routing policy for outgoing encrypted packets.
+	See: ip-rule(8)
+    -->
+    <property name="FwMark" type="u" access="read"/>
+  </interface>
+</node>

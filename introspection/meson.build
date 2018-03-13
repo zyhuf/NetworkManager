@@ -34,6 +34,7 @@ ifaces = [
   'org.freedesktop.NetworkManager.Device.Wpan',
   'org.freedesktop.NetworkManager.Device.Wired',
   'org.freedesktop.NetworkManager.Device.Wireless',
+  'org.freedesktop.NetworkManager.Device.Wireguard',
   'org.freedesktop.NetworkManager.Device',
   'org.freedesktop.NetworkManager.DHCP4Config',
   'org.freedesktop.NetworkManager.DHCP6Config',
