@@ -84,6 +84,69 @@ _create_export_path (NMDBusObjectClass *klass)
 	return g_strdup (klass->export_path.path);
 }
 
+static const char *
+_export (NMDBusObject *self, gboolean allow_multiref)
+{
+	static guint64 id_counter = 0;
+
+	g_return_val_if_fail (NM_IS_DBUS_OBJECT (self), NULL);
+
+#define PATH_REF_NO_MULTI G_MAXUINT
+
+	if (allow_multiref) {
+		if (self->internal.path_ref > 0) {
+			nm_assert (self->internal.path);
+			g_return_val_if_fail (self->internal.path_ref != PATH_REF_NO_MULTI, self->internal.path);
+			self->internal.path_ref++;
+			return self->internal.path;
+		}
+		nm_assert (!self->internal.path);
+		self->internal.path_ref = 1;
+	} else {
+		g_return_val_if_fail (self->internal.path_ref == 0, self->internal.path);
+		nm_assert (!self->internal.path);
+		self->internal.path_ref = PATH_REF_NO_MULTI;
+	}
+
+	self->internal.path = _create_export_path (NM_DBUS_OBJECT_GET_CLASS (self));
+
+	self->internal.export_version_id = ++id_counter;
+
+	_LOGT ("export: \"%s\"", self->internal.path);
+
+	_nm_dbus_manager_obj_export (self);
+
+	_notify (self, PROP_PATH);
+	return self->internal.path;
+}
+
+static void
+_unexport (NMDBusObject *self, gboolean allow_multiref)
+{
+	g_return_if_fail (NM_IS_DBUS_OBJECT (self));
+
+	g_return_if_fail (self->internal.path_ref > 0);
+	nm_assert (self->internal.path);
+
+	if (allow_multiref) {
+		g_return_if_fail (self->internal.path_ref != PATH_REF_NO_MULTI);
+		if (--self->internal.path_ref > 0)
+			return;
+	} else {
+		g_return_if_fail (self->internal.path_ref == PATH_REF_NO_MULTI);
+		self->internal.path_ref = 0;
+	}
+
+	_LOGT ("unexport: \"%s\"", self->internal.path);
+
+	_nm_dbus_manager_obj_unexport (self);
+
+	g_clear_pointer (&self->internal.path, g_free);
+	self->internal.export_version_id = 0;
+
+	_notify (self, PROP_PATH);
+}
+
 /**
  * nm_dbus_object_export:
  * @self: an #NMDBusObject
@@ -101,22 +164,13 @@ _create_export_path (NMDBusObjectClass *klass)
 const char *
 nm_dbus_object_export (NMDBusObject *self)
 {
-	static guint64 id_counter = 0;
+	return _export (self, FALSE);
+}
 
-	g_return_val_if_fail (NM_IS_DBUS_OBJECT (self), NULL);
-
-	g_return_val_if_fail (!self->internal.path, self->internal.path);
-
-	self->internal.path = _create_export_path (NM_DBUS_OBJECT_GET_CLASS (self));
-
-	self->internal.export_version_id = ++id_counter;
-
-	_LOGT ("export: \"%s\"", self->internal.path);
-
-	_nm_dbus_manager_obj_export (self);
-
-	_notify (self, PROP_PATH);
-	return self->internal.path;
+const char *
+nm_dbus_object_export_ref (NMDBusObject *self)
+{
+	return _export (self, TRUE);
 }
 
 /**
@@ -129,24 +183,19 @@ nm_dbus_object_export (NMDBusObject *self)
 void
 nm_dbus_object_unexport (NMDBusObject *self)
 {
-	g_return_if_fail (NM_IS_DBUS_OBJECT (self));
+	return _unexport (self, FALSE);
+}
 
-	g_return_if_fail (self->internal.path);
-
-	_LOGT ("unexport: \"%s\"", self->internal.path);
-
-	_nm_dbus_manager_obj_unexport (self);
-
-	g_clear_pointer (&self->internal.path, g_free);
-	self->internal.export_version_id = 0;
-
-	_notify (self, PROP_PATH);
+void
+nm_dbus_object_unexport_ref (NMDBusObject *self)
+{
+	return _unexport (self, TRUE);
 }
 
 /*****************************************************************************/
 
 void
-_nm_dbus_object_clear_and_unexport (NMDBusObject **location)
+_nm_dbus_object_clear_and_unexport (NMDBusObject **location, gboolean allow_multiref)
 {
 	NMDBusObject *self;
 
@@ -159,7 +208,7 @@ _nm_dbus_object_clear_and_unexport (NMDBusObject **location)
 	g_return_if_fail (NM_IS_DBUS_OBJECT (self));
 
 	if (self->internal.path)
-		nm_dbus_object_unexport (self);
+		_unexport (self, allow_multiref);
 
 	g_object_unref (self);
 }
@@ -282,7 +331,11 @@ dispose (GObject *object)
 	if (!quitting) {
 		if (self->internal.path) {
 			g_warn_if_reached ();
-			nm_dbus_object_unexport (self);
+			/* Just hit a bug. You must unexport the objects before dispoing it.
+			 * Hack around it, by setting the path_ref to one exclusive reference
+			 * and forcefully unexport. */
+			self->internal.path_ref = PATH_REF_NO_MULTI;
+			_unexport (self, FALSE);
 		}
 	} else if (nm_clear_g_free (&self->internal.path)) {
 		/* FIXME: do a proper, coordinate shutdown, so that no objects stay

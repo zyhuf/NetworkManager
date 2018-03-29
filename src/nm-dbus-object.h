@@ -99,6 +99,10 @@ struct _NMDBusObjectInternal {
 	 * unexported, or even re-exported afterwards. If that happens, we want
 	 * to fail the request. For that, we keep track of a version id.  */
 	guint64 export_version_id;
+
+	/** exporting an object is ref-counted. This is the reference count
+	 * of how many callers exported this object. ref/unref must match. */
+	guint path_ref;
 };
 
 struct _NMDBusObject {
@@ -172,8 +176,13 @@ nm_dbus_object_is_exported (NMDBusObject *self)
 const char *nm_dbus_object_export      (NMDBusObject *self);
 void        nm_dbus_object_unexport    (NMDBusObject *self);
 
-void        _nm_dbus_object_clear_and_unexport (NMDBusObject **location);
-#define nm_dbus_object_clear_and_unexport(location) _nm_dbus_object_clear_and_unexport ((NMDBusObject **) (location))
+const char *nm_dbus_object_export_ref (NMDBusObject *self);
+void        nm_dbus_object_unexport_ref (NMDBusObject *self);
+
+void        _nm_dbus_object_clear_and_unexport (NMDBusObject **location, gboolean allow_multiref);
+
+#define nm_dbus_object_clear_and_unexport(location)     _nm_dbus_object_clear_and_unexport ((NMDBusObject **) (location), FALSE)
+#define nm_dbus_object_clear_and_unexport_ref(location) _nm_dbus_object_clear_and_unexport ((NMDBusObject **) (location), TRUE)
 
 void        nm_dbus_object_emit_signal_variant (NMDBusObject *self,
                                                 const NMDBusInterfaceInfoExtended *interface_info,
