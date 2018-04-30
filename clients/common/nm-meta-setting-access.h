@@ -94,7 +94,8 @@ typedef struct {
 	const NMMetaSelectionItem items[];
 } NMMetaSelectionResultList;
 
-NMMetaSelectionResultList *nm_meta_selection_create_all (const NMMetaAbstractInfo *const* fields_array);
+NMMetaSelectionResultList *nm_meta_selection_create_all (const NMMetaAbstractInfo *const* fields_array,
+                                                         const char *self_selection);
 NMMetaSelectionResultList *nm_meta_selection_create_parse_one (const NMMetaAbstractInfo *const* fields_array,
                                                                const char *fields_prefix,
                                                                const char *fields_str,
