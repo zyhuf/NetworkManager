@@ -132,334 +132,472 @@ Strony podręcznika nmcli(1) i nmcli-examples(5) zawierają pełne informacje
 o użyciu.
 
 <<<
-size: 1260
+size: 2805
 location: clients/tests/test-client.py:848:test_002()/7
 cmd: $NMCLI -f AP -mode multiline d show wlan0
 lang: C
 returncode: 0
-stdout: 1107 bytes
+stdout: 2652 bytes
 >>>
-AP[1].IN-USE:                            
 AP[1].SSID:                             wlan0-ap-3
+AP[1].SSID-HEX:                         776C616E302D61702D33
+AP[1].BSSID:                            60:B3:25:25:E2:C8
 AP[1].MODE:                             Infra
 AP[1].CHAN:                             1
+AP[1].FREQ:                             2412 MHz
 AP[1].RATE:                             54 Mbit/s
 AP[1].SIGNAL:                           55
 AP[1].BARS:                             **  
 AP[1].SECURITY:                         WPA1 WPA2
-AP[2].IN-USE:                            
+AP[1].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:                           wlan0
+AP[1].ACTIVE:                           no
+AP[1].IN-USE:                            
+AP[1].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/3
 AP[2].SSID:                             wlan0-ap-1
+AP[2].SSID-HEX:                         776C616E302D61702D31
+AP[2].BSSID:                            90:B1:5F:9E:E0:E3
 AP[2].MODE:                             Infra
 AP[2].CHAN:                             1
+AP[2].FREQ:                             2412 MHz
 AP[2].RATE:                             54 Mbit/s
 AP[2].SIGNAL:                           44
 AP[2].BARS:                             **  
 AP[2].SECURITY:                         WPA1 WPA2
-AP[3].IN-USE:                            
+AP[2].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:                           wlan0
+AP[2].ACTIVE:                           no
+AP[2].IN-USE:                            
+AP[2].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/1
 AP[3].SSID:                             wlan0-ap-2
+AP[3].SSID-HEX:                         776C616E302D61702D32
+AP[3].BSSID:                            61:66:D2:E7:44:A2
 AP[3].MODE:                             Infra
 AP[3].CHAN:                             1
+AP[3].FREQ:                             2412 MHz
 AP[3].RATE:                             54 Mbit/s
 AP[3].SIGNAL:                           34
 AP[3].BARS:                             **  
 AP[3].SECURITY:                         WPA1 WPA2
+AP[3].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:                           wlan0
+AP[3].ACTIVE:                           no
+AP[3].IN-USE:                            
+AP[3].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/2
 
 <<<
-size: 1297
+size: 2851
 location: clients/tests/test-client.py:848:test_002()/8
 cmd: $NMCLI -f AP -mode multiline d show wlan0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1134 bytes
+stdout: 2688 bytes
 >>>
-AP[1].IN-USE:                            
 AP[1].SSID:                             wlan0-ap-3
+AP[1].SSID-HEX:                         776C616E302D61702D33
+AP[1].BSSID:                            60:B3:25:25:E2:C8
 AP[1].MODE:                             Infrastruktura
 AP[1].CHAN:                             1
+AP[1].FREQ:                             2412 MHz
 AP[1].RATE:                             54 Mb/s
 AP[1].SIGNAL:                           55
 AP[1].BARS:                             **  
 AP[1].SECURITY:                         WPA1 WPA2
-AP[2].IN-USE:                            
+AP[1].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:                           wlan0
+AP[1].ACTIVE:                           nie
+AP[1].IN-USE:                            
+AP[1].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/3
 AP[2].SSID:                             wlan0-ap-1
+AP[2].SSID-HEX:                         776C616E302D61702D31
+AP[2].BSSID:                            90:B1:5F:9E:E0:E3
 AP[2].MODE:                             Infrastruktura
 AP[2].CHAN:                             1
+AP[2].FREQ:                             2412 MHz
 AP[2].RATE:                             54 Mb/s
 AP[2].SIGNAL:                           44
 AP[2].BARS:                             **  
 AP[2].SECURITY:                         WPA1 WPA2
-AP[3].IN-USE:                            
+AP[2].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:                           wlan0
+AP[2].ACTIVE:                           nie
+AP[2].IN-USE:                            
+AP[2].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/1
 AP[3].SSID:                             wlan0-ap-2
+AP[3].SSID-HEX:                         776C616E302D61702D32
+AP[3].BSSID:                            61:66:D2:E7:44:A2
 AP[3].MODE:                             Infrastruktura
 AP[3].CHAN:                             1
+AP[3].FREQ:                             2412 MHz
 AP[3].RATE:                             54 Mb/s
 AP[3].SIGNAL:                           34
 AP[3].BARS:                             **  
 AP[3].SECURITY:                         WPA1 WPA2
+AP[3].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:                           wlan0
+AP[3].ACTIVE:                           nie
+AP[3].IN-USE:                            
+AP[3].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/2
 
 <<<
-size: 1714
+size: 3259
 location: clients/tests/test-client.py:849:test_002()/9
 cmd: $NMCLI -f AP -mode multiline -p d show wlan0
 lang: C
 returncode: 0
-stdout: 1558 bytes
+stdout: 3103 bytes
 >>>
 ===============================================================================
                             Device details (wlan0)
 ===============================================================================
-AP[1].IN-USE:                            
 AP[1].SSID:                             wlan0-ap-3
+AP[1].SSID-HEX:                         776C616E302D61702D33
+AP[1].BSSID:                            60:B3:25:25:E2:C8
 AP[1].MODE:                             Infra
 AP[1].CHAN:                             1
+AP[1].FREQ:                             2412 MHz
 AP[1].RATE:                             54 Mbit/s
 AP[1].SIGNAL:                           55
 AP[1].BARS:                             **  
 AP[1].SECURITY:                         WPA1 WPA2
+AP[1].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:                           wlan0
+AP[1].ACTIVE:                           no
+AP[1].IN-USE:                            
+AP[1].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/3
 -------------------------------------------------------------------------------
-AP[2].IN-USE:                            
 AP[2].SSID:                             wlan0-ap-1
+AP[2].SSID-HEX:                         776C616E302D61702D31
+AP[2].BSSID:                            90:B1:5F:9E:E0:E3
 AP[2].MODE:                             Infra
 AP[2].CHAN:                             1
+AP[2].FREQ:                             2412 MHz
 AP[2].RATE:                             54 Mbit/s
 AP[2].SIGNAL:                           44
 AP[2].BARS:                             **  
 AP[2].SECURITY:                         WPA1 WPA2
+AP[2].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:                           wlan0
+AP[2].ACTIVE:                           no
+AP[2].IN-USE:                            
+AP[2].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/1
 -------------------------------------------------------------------------------
-AP[3].IN-USE:                            
 AP[3].SSID:                             wlan0-ap-2
+AP[3].SSID-HEX:                         776C616E302D61702D32
+AP[3].BSSID:                            61:66:D2:E7:44:A2
 AP[3].MODE:                             Infra
 AP[3].CHAN:                             1
+AP[3].FREQ:                             2412 MHz
 AP[3].RATE:                             54 Mbit/s
 AP[3].SIGNAL:                           34
 AP[3].BARS:                             **  
 AP[3].SECURITY:                         WPA1 WPA2
+AP[3].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:                           wlan0
+AP[3].ACTIVE:                           no
+AP[3].IN-USE:                            
+AP[3].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/2
 -------------------------------------------------------------------------------
 
 <<<
-size: 1759
+size: 3313
 location: clients/tests/test-client.py:849:test_002()/10
 cmd: $NMCLI -f AP -mode multiline -p d show wlan0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1592 bytes
+stdout: 3146 bytes
 >>>
 ===============================================================================
                         Informacje o urządzeniu (wlan0)
 ===============================================================================
-AP[1].IN-USE:                            
 AP[1].SSID:                             wlan0-ap-3
+AP[1].SSID-HEX:                         776C616E302D61702D33
+AP[1].BSSID:                            60:B3:25:25:E2:C8
 AP[1].MODE:                             Infrastruktura
 AP[1].CHAN:                             1
+AP[1].FREQ:                             2412 MHz
 AP[1].RATE:                             54 Mb/s
 AP[1].SIGNAL:                           55
 AP[1].BARS:                             **  
 AP[1].SECURITY:                         WPA1 WPA2
+AP[1].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:                           wlan0
+AP[1].ACTIVE:                           nie
+AP[1].IN-USE:                            
+AP[1].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/3
 -------------------------------------------------------------------------------
-AP[2].IN-USE:                            
 AP[2].SSID:                             wlan0-ap-1
+AP[2].SSID-HEX:                         776C616E302D61702D31
+AP[2].BSSID:                            90:B1:5F:9E:E0:E3
 AP[2].MODE:                             Infrastruktura
 AP[2].CHAN:                             1
+AP[2].FREQ:                             2412 MHz
 AP[2].RATE:                             54 Mb/s
 AP[2].SIGNAL:                           44
 AP[2].BARS:                             **  
 AP[2].SECURITY:                         WPA1 WPA2
+AP[2].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:                           wlan0
+AP[2].ACTIVE:                           nie
+AP[2].IN-USE:                            
+AP[2].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/1
 -------------------------------------------------------------------------------
-AP[3].IN-USE:                            
 AP[3].SSID:                             wlan0-ap-2
+AP[3].SSID-HEX:                         776C616E302D61702D32
+AP[3].BSSID:                            61:66:D2:E7:44:A2
 AP[3].MODE:                             Infrastruktura
 AP[3].CHAN:                             1
+AP[3].FREQ:                             2412 MHz
 AP[3].RATE:                             54 Mb/s
 AP[3].SIGNAL:                           34
 AP[3].BARS:                             **  
 AP[3].SECURITY:                         WPA1 WPA2
+AP[3].WPA-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:                        pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:                           wlan0
+AP[3].ACTIVE:                           nie
+AP[3].IN-USE:                            
+AP[3].DBUS-PATH:                        /org/freedesktop/NetworkManager/AccessPoint/2
 -------------------------------------------------------------------------------
 
 <<<
-size: 591
+size: 1513
 location: clients/tests/test-client.py:850:test_002()/11
 cmd: $NMCLI -f AP -mode multiline -t d show wlan0
 lang: C
 returncode: 0
-stdout: 435 bytes
+stdout: 1356 bytes
 >>>
-AP[1].IN-USE: 
 AP[1].SSID:wlan0-ap-3
+AP[1].SSID-HEX:776C616E302D61702D33
+AP[1].BSSID:60:B3:25:25:E2:C8
 AP[1].MODE:Infra
 AP[1].CHAN:1
+AP[1].FREQ:2412 MHz
 AP[1].RATE:54 Mbit/s
 AP[1].SIGNAL:55
 AP[1].BARS:**  
 AP[1].SECURITY:WPA1 WPA2
-AP[2].IN-USE: 
+AP[1].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:wlan0
+AP[1].ACTIVE:no
+AP[1].IN-USE: 
+AP[1].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/3
 AP[2].SSID:wlan0-ap-1
+AP[2].SSID-HEX:776C616E302D61702D31
+AP[2].BSSID:90:B1:5F:9E:E0:E3
 AP[2].MODE:Infra
 AP[2].CHAN:1
+AP[2].FREQ:2412 MHz
 AP[2].RATE:54 Mbit/s
 AP[2].SIGNAL:44
 AP[2].BARS:**  
 AP[2].SECURITY:WPA1 WPA2
-AP[3].IN-USE: 
+AP[2].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:wlan0
+AP[2].ACTIVE:no
+AP[2].IN-USE: 
+AP[2].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/1
 AP[3].SSID:wlan0-ap-2
+AP[3].SSID-HEX:776C616E302D61702D32
+AP[3].BSSID:61:66:D2:E7:44:A2
 AP[3].MODE:Infra
 AP[3].CHAN:1
+AP[3].FREQ:2412 MHz
 AP[3].RATE:54 Mbit/s
 AP[3].SIGNAL:34
 AP[3].BARS:**  
 AP[3].SECURITY:WPA1 WPA2
+AP[3].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:wlan0
+AP[3].ACTIVE:no
+AP[3].IN-USE: 
+AP[3].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/2
 
 <<<
-size: 628
+size: 1523
 location: clients/tests/test-client.py:850:test_002()/12
 cmd: $NMCLI -f AP -mode multiline -t d show wlan0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 462 bytes
+stdout: 1356 bytes
 >>>
-AP[1].IN-USE: 
 AP[1].SSID:wlan0-ap-3
-AP[1].MODE:Infrastruktura
+AP[1].SSID-HEX:776C616E302D61702D33
+AP[1].BSSID:60:B3:25:25:E2:C8
+AP[1].MODE:Infra
 AP[1].CHAN:1
-AP[1].RATE:54 Mb/s
+AP[1].FREQ:2412 MHz
+AP[1].RATE:54 Mbit/s
 AP[1].SIGNAL:55
 AP[1].BARS:**  
 AP[1].SECURITY:WPA1 WPA2
-AP[2].IN-USE: 
+AP[1].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[1].DEVICE:wlan0
+AP[1].ACTIVE:no
+AP[1].IN-USE: 
+AP[1].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/3
 AP[2].SSID:wlan0-ap-1
-AP[2].MODE:Infrastruktura
+AP[2].SSID-HEX:776C616E302D61702D31
+AP[2].BSSID:90:B1:5F:9E:E0:E3
+AP[2].MODE:Infra
 AP[2].CHAN:1
-AP[2].RATE:54 Mb/s
+AP[2].FREQ:2412 MHz
+AP[2].RATE:54 Mbit/s
 AP[2].SIGNAL:44
 AP[2].BARS:**  
 AP[2].SECURITY:WPA1 WPA2
-AP[3].IN-USE: 
+AP[2].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[2].DEVICE:wlan0
+AP[2].ACTIVE:no
+AP[2].IN-USE: 
+AP[2].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/1
 AP[3].SSID:wlan0-ap-2
-AP[3].MODE:Infrastruktura
+AP[3].SSID-HEX:776C616E302D61702D32
+AP[3].BSSID:61:66:D2:E7:44:A2
+AP[3].MODE:Infra
 AP[3].CHAN:1
-AP[3].RATE:54 Mb/s
+AP[3].FREQ:2412 MHz
+AP[3].RATE:54 Mbit/s
 AP[3].SIGNAL:34
 AP[3].BARS:**  
 AP[3].SECURITY:WPA1 WPA2
+AP[3].WPA-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].RSN-FLAGS:pair_tkip pair_ccmp group_tkip group_ccmp psk
+AP[3].DEVICE:wlan0
+AP[3].ACTIVE:no
+AP[3].IN-USE: 
+AP[3].DBUS-PATH:/org/freedesktop/NetworkManager/AccessPoint/2
 
 <<<
-size: 455
+size: 1288
 location: clients/tests/test-client.py:851:test_002()/13
 cmd: $NMCLI -f AP -mode tabular d show wlan0
 lang: C
 returncode: 0
-stdout: 304 bytes
->>>
-NAME   IN-USE  SSID        MODE   CHAN  RATE       SIGNAL  BARS  SECURITY  
-AP[1]          wlan0-ap-3  Infra  1     54 Mbit/s  55      **    WPA1 WPA2 
-AP[2]          wlan0-ap-1  Infra  1     54 Mbit/s  44      **    WPA1 WPA2 
-AP[3]          wlan0-ap-2  Infra  1     54 Mbit/s  34      **    WPA1 WPA2 
-
-<<<
-size: 499
-location: clients/tests/test-client.py:851:test_002()/14
-cmd: $NMCLI -f AP -mode tabular d show wlan0
-lang: pl_PL.UTF-8
-returncode: 0
-stdout: 338 bytes
->>>
-NAME   IN-USE  SSID        MODE            CHAN  RATE     SIGNAL  BARS  SECURITY  
-AP[1]          wlan0-ap-3  Infrastruktura  1     54 Mb/s  55      **    WPA1 WPA2 
-AP[2]          wlan0-ap-1  Infrastruktura  1     54 Mb/s  44      **    WPA1 WPA2 
-AP[3]          wlan0-ap-2  Infrastruktura  1     54 Mb/s  34      **    WPA1 WPA2 
-
-<<<
-size: 614
-location: clients/tests/test-client.py:852:test_002()/15
-cmd: $NMCLI -f AP -mode tabular -p d show wlan0
-lang: C
-returncode: 0
-stdout: 460 bytes
->>>
-==========================
-  Device details (wlan0)
-==========================
-NAME   IN-USE  SSID        MODE   CHAN  RATE       SIGNAL  BARS  SECURITY  
-----------------------------------------------------------------------------
-AP[1]          wlan0-ap-3  Infra  1     54 Mbit/s  55      **    WPA1 WPA2 
-AP[2]          wlan0-ap-1  Infra  1     54 Mbit/s  44      **    WPA1 WPA2 
-AP[3]          wlan0-ap-2  Infra  1     54 Mbit/s  34      **    WPA1 WPA2 
-
-<<<
-size: 694
-location: clients/tests/test-client.py:852:test_002()/16
-cmd: $NMCLI -f AP -mode tabular -p d show wlan0
-lang: pl_PL.UTF-8
-returncode: 0
-stdout: 530 bytes
->>>
-===================================
-  Informacje o urządzeniu (wlan0)
-===================================
-NAME   IN-USE  SSID        MODE            CHAN  RATE     SIGNAL  BARS  SECURITY  
------------------------------------------------------------------------------------
-AP[1]          wlan0-ap-3  Infrastruktura  1     54 Mb/s  55      **    WPA1 WPA2 
-AP[2]          wlan0-ap-1  Infrastruktura  1     54 Mb/s  44      **    WPA1 WPA2 
-AP[3]          wlan0-ap-2  Infrastruktura  1     54 Mb/s  34      **    WPA1 WPA2 
-
-<<<
-size: 319
-location: clients/tests/test-client.py:853:test_002()/17
-cmd: $NMCLI -f AP -mode tabular -t d show wlan0
-lang: C
-returncode: 0
-stdout: 165 bytes
->>>
-AP[1]: :wlan0-ap-3:Infra:1:54 Mbit/s:55:**  :WPA1 WPA2
-AP[2]: :wlan0-ap-1:Infra:1:54 Mbit/s:44:**  :WPA1 WPA2
-AP[3]: :wlan0-ap-2:Infra:1:54 Mbit/s:34:**  :WPA1 WPA2
-
-<<<
-size: 356
-location: clients/tests/test-client.py:853:test_002()/18
-cmd: $NMCLI -f AP -mode tabular -t d show wlan0
-lang: pl_PL.UTF-8
-returncode: 0
-stdout: 192 bytes
->>>
-AP[1]: :wlan0-ap-3:Infrastruktura:1:54 Mb/s:55:**  :WPA1 WPA2
-AP[2]: :wlan0-ap-1:Infrastruktura:1:54 Mb/s:44:**  :WPA1 WPA2
-AP[3]: :wlan0-ap-2:Infrastruktura:1:54 Mb/s:34:**  :WPA1 WPA2
-
-<<<
-size: 1973
-location: clients/tests/test-client.py:855:test_002()/19
-cmd: $NMCLI -f ALL d wifi
-lang: C
-returncode: 0
-stdout: 1840 bytes
+stdout: 1136 bytes
 >>>
 NAME   SSID        SSID-HEX              BSSID              MODE   CHAN  FREQ      RATE       SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
 AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infra  1     2412 MHz  54 Mbit/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/3 
 AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infra  1     2412 MHz  54 Mbit/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/1 
 AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infra  1     2412 MHz  54 Mbit/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/2 
 
-NAME   SSID        SSID-HEX              BSSID              MODE   CHAN  FREQ      RATE       SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
-AP[1]  wlan1-ap-4  776C616E312D61702D34  EE:52:8B:49:A1:96  Infra  1     2412 MHz  54 Mbit/s  38      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan1   no              /org/freedesktop/NetworkManager/AccessPoint/4 
-
-NAME  SSID  SSID-HEX  BSSID  MODE  CHAN  FREQ  RATE  SIGNAL  BARS  SECURITY  WPA-FLAGS  RSN-FLAGS  DEVICE  ACTIVE  IN-USE  DBUS-PATH 
-
 <<<
-size: 2041
-location: clients/tests/test-client.py:855:test_002()/20
-cmd: $NMCLI -f ALL d wifi
+size: 1338
+location: clients/tests/test-client.py:851:test_002()/14
+cmd: $NMCLI -f AP -mode tabular d show wlan0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1898 bytes
+stdout: 1176 bytes
 >>>
 NAME   SSID        SSID-HEX              BSSID              MODE            CHAN  FREQ      RATE     SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
 AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infrastruktura  1     2412 MHz  54 Mb/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/3 
 AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infrastruktura  1     2412 MHz  54 Mb/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/1 
 AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infrastruktura  1     2412 MHz  54 Mb/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/2 
 
+<<<
+size: 1655
+location: clients/tests/test-client.py:852:test_002()/15
+cmd: $NMCLI -f AP -mode tabular -p d show wlan0
+lang: C
+returncode: 0
+stdout: 1500 bytes
+>>>
+==========================
+  Device details (wlan0)
+==========================
+NAME   SSID        SSID-HEX              BSSID              MODE   CHAN  FREQ      RATE       SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infra  1     2412 MHz  54 Mbit/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/3 
+AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infra  1     2412 MHz  54 Mbit/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/1 
+AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infra  1     2412 MHz  54 Mbit/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/2 
+
+<<<
+size: 1741
+location: clients/tests/test-client.py:852:test_002()/16
+cmd: $NMCLI -f AP -mode tabular -p d show wlan0
+lang: pl_PL.UTF-8
+returncode: 0
+stdout: 1576 bytes
+>>>
+===================================
+  Informacje o urządzeniu (wlan0)
+===================================
+NAME   SSID        SSID-HEX              BSSID              MODE            CHAN  FREQ      RATE     SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infrastruktura  1     2412 MHz  54 Mb/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/3 
+AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infrastruktura  1     2412 MHz  54 Mb/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/1 
+AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infrastruktura  1     2412 MHz  54 Mb/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/2 
+
+<<<
+size: 919
+location: clients/tests/test-client.py:853:test_002()/17
+cmd: $NMCLI -f AP -mode tabular -t d show wlan0
+lang: C
+returncode: 0
+stdout: 765 bytes
+>>>
+AP[1]:wlan0-ap-3:776C616E302D61702D33:60\:B3\:25\:25\:E2\:C8:Infra:1:2412 MHz:54 Mbit/s:55:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/3
+AP[2]:wlan0-ap-1:776C616E302D61702D31:90\:B1\:5F\:9E\:E0\:E3:Infra:1:2412 MHz:54 Mbit/s:44:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/1
+AP[3]:wlan0-ap-2:776C616E302D61702D32:61\:66\:D2\:E7\:44\:A2:Infra:1:2412 MHz:54 Mbit/s:34:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/2
+
+<<<
+size: 929
+location: clients/tests/test-client.py:853:test_002()/18
+cmd: $NMCLI -f AP -mode tabular -t d show wlan0
+lang: pl_PL.UTF-8
+returncode: 0
+stdout: 765 bytes
+>>>
+AP[1]:wlan0-ap-3:776C616E302D61702D33:60\:B3\:25\:25\:E2\:C8:Infra:1:2412 MHz:54 Mbit/s:55:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/3
+AP[2]:wlan0-ap-1:776C616E302D61702D31:90\:B1\:5F\:9E\:E0\:E3:Infra:1:2412 MHz:54 Mbit/s:44:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/1
+AP[3]:wlan0-ap-2:776C616E302D61702D32:61\:66\:D2\:E7\:44\:A2:Infra:1:2412 MHz:54 Mbit/s:34:**  :WPA1 WPA2:pair_tkip pair_ccmp group_tkip group_ccmp psk:pair_tkip pair_ccmp group_tkip group_ccmp psk:wlan0:no: :/org/freedesktop/NetworkManager/AccessPoint/2
+
+<<<
+size: 1837
+location: clients/tests/test-client.py:855:test_002()/19
+cmd: $NMCLI -f ALL d wifi
+lang: C
+returncode: 0
+stdout: 1704 bytes
+>>>
+NAME   SSID        SSID-HEX              BSSID              MODE   CHAN  FREQ      RATE       SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
+AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infra  1     2412 MHz  54 Mbit/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/3 
+AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infra  1     2412 MHz  54 Mbit/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/1 
+AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infra  1     2412 MHz  54 Mbit/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   no              /org/freedesktop/NetworkManager/AccessPoint/2 
+NAME   SSID        SSID-HEX              BSSID              MODE   CHAN  FREQ      RATE       SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
+AP[1]  wlan1-ap-4  776C616E312D61702D34  EE:52:8B:49:A1:96  Infra  1     2412 MHz  54 Mbit/s  38      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan1   no              /org/freedesktop/NetworkManager/AccessPoint/4 
+
+<<<
+size: 1905
+location: clients/tests/test-client.py:855:test_002()/20
+cmd: $NMCLI -f ALL d wifi
+lang: pl_PL.UTF-8
+returncode: 0
+stdout: 1762 bytes
+>>>
+NAME   SSID        SSID-HEX              BSSID              MODE            CHAN  FREQ      RATE     SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
+AP[1]  wlan0-ap-3  776C616E302D61702D33  60:B3:25:25:E2:C8  Infrastruktura  1     2412 MHz  54 Mb/s  55      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/3 
+AP[2]  wlan0-ap-1  776C616E302D61702D31  90:B1:5F:9E:E0:E3  Infrastruktura  1     2412 MHz  54 Mb/s  44      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/1 
+AP[3]  wlan0-ap-2  776C616E302D61702D32  61:66:D2:E7:44:A2  Infrastruktura  1     2412 MHz  54 Mb/s  34      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan0   nie             /org/freedesktop/NetworkManager/AccessPoint/2 
 NAME   SSID        SSID-HEX              BSSID              MODE            CHAN  FREQ      RATE     SIGNAL  BARS  SECURITY   WPA-FLAGS                                      RSN-FLAGS                                      DEVICE  ACTIVE  IN-USE  DBUS-PATH                                     
 AP[1]  wlan1-ap-4  776C616E312D61702D34  EE:52:8B:49:A1:96  Infrastruktura  1     2412 MHz  54 Mb/s  38      **    WPA1 WPA2  pair_tkip pair_ccmp group_tkip group_ccmp psk  pair_tkip pair_ccmp group_tkip group_ccmp psk  wlan1   nie             /org/freedesktop/NetworkManager/AccessPoint/4 
-
-NAME  SSID  SSID-HEX  BSSID  MODE  CHAN  FREQ  RATE  SIGNAL  BARS  SECURITY  WPA-FLAGS  RSN-FLAGS  DEVICE  ACTIVE  IN-USE  DBUS-PATH 
 
 <<<
 size: 246
