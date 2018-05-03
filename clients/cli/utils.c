@@ -38,6 +38,24 @@ _meta_type_nmc_generic_info_get_name (const NMMetaAbstractInfo *abstract_info, g
 	return info->name;
 }
 
+static gboolean
+_meta_type_nmc_generic_info_included_in_common (const NMMetaAbstractInfo *abstract_info,
+                                                int *out_order,
+                                                gboolean *out_is_common_parent)
+{
+	const NmcMetaGenericInfo *info = (const NmcMetaGenericInfo *) abstract_info;
+
+	NM_SET_OUT (out_is_common_parent, info->is_common_parent);
+
+	if (info->common_priority < 0) {
+		nm_assert (info->common_priority == -1);
+		NM_SET_OUT (out_order, 0);
+		return FALSE;
+	}
+	NM_SET_OUT (out_order, info->common_priority);
+	return TRUE;
+}
+
 static const NMMetaAbstractInfo *const*
 _meta_type_nmc_generic_info_get_nested (const NMMetaAbstractInfo *abstract_info,
                                         guint *out_len,
@@ -99,10 +117,11 @@ _meta_type_nmc_generic_info_get_fcn (const NMMetaAbstractInfo *abstract_info,
 }
 
 const NMMetaType nmc_meta_type_generic_info = {
-	.type_name =         "nmc-generic-info",
-	.get_name =          _meta_type_nmc_generic_info_get_name,
-	.get_nested =        _meta_type_nmc_generic_info_get_nested,
-	.get_fcn =           _meta_type_nmc_generic_info_get_fcn,
+	.type_name =          "nmc-generic-info",
+	.get_name =           _meta_type_nmc_generic_info_get_name,
+	.included_in_common = _meta_type_nmc_generic_info_included_in_common,
+	.get_nested =         _meta_type_nmc_generic_info_get_nested,
+	.get_fcn =            _meta_type_nmc_generic_info_get_fcn,
 };
 
 /*****************************************************************************/
@@ -672,12 +691,13 @@ _output_selection_append (GArray *cols,
 			.self_idx = col_idx,
 			.is_leaf = TRUE,
 		};
+
 		g_array_append_val (cols, col);
 	}
 
-	nested = nm_meta_abstract_info_get_nested (selection_item->info, NULL, &nested_to_free);
-
 	if (selection_item->sub_selection) {
+		nested = nm_meta_abstract_info_get_nested (selection_item->info, TRUE, NULL, &nested_to_free);
+
 		if (!nested) {
 			gs_free char *allowed_fields = NULL;
 
@@ -685,7 +705,7 @@ _output_selection_append (GArray *cols,
 				const NMMetaSelectionItem *si;
 
 				si = g_array_index (cols, PrintDataCol, parent_idx).selection_item;
-				allowed_fields = nm_meta_abstract_info_get_nested_names_str (si->info, si->self_selection);
+				allowed_fields = nm_meta_abstract_info_get_nested_names_str (si->info, TRUE, si->self_selection);
 			}
 			if (!allowed_fields) {
 				g_set_error (error, NMCLI_ERROR, 1, _("invalid field '%s%s%s'; no such field"),
@@ -705,11 +725,17 @@ _output_selection_append (GArray *cols,
 		if (!selection)
 			return FALSE;
 		nm_assert (selection->num == 1);
-	} else if (nested) {
-		selection = nm_meta_selection_create_all (nested);
-		nm_assert (selection && selection->num > 0);
-	} else
-		selection = NULL;
+	} else {
+		nested = nm_meta_abstract_info_get_nested (selection_item->info,
+		                                           FALSE,
+		                                           NULL,
+		                                           &nested_to_free);
+		if (nested) {
+			selection = nm_meta_selection_create_all (nested);
+			nm_assert (selection && selection->num > 0);
+		} else
+			selection = NULL;
+	}
 
 	if (selection) {
 		g_ptr_array_add (gfree_keeper, selection);
