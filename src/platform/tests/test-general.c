@@ -57,7 +57,7 @@ NMTST_DEFINE ();
 int
 main (int argc, char **argv)
 {
-	nmtst_init_assert_logging (&argc, &argv, "INFO", "DEFAULT");
+	nmtst_init_assert_logging (&argc, &argv, "WARN", "DEFAULT");
 
 	g_test_add_func ("/general/init_linux_platform", test_init_linux_platform);
 	g_test_add_func ("/general/link_get_all", test_link_get_all);
