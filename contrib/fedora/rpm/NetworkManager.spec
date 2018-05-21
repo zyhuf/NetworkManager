@@ -794,6 +794,15 @@ else
 fi
 
 
+%triggerin -- initscripts
+if [ -f %{_sbindir}/ifup -a ! -L %{_sbindir}/ifup ]; then
+    # initscripts package too old, won't let us set an alternative
+    /usr/sbin/update-alternatives --remove ifup %{_bindir}/nmcli >/dev/null 2>&1 || :
+else
+    /usr/sbin/update-alternatives --install %{_sbindir}/ifup ifup %{_bindir}/nmcli 50 \
+        --slave %{_sbindir}/ifdown ifdown %{_bindir}/nmcli
+fi
+
 %preun
 if [ $1 -eq 0 ]; then
     # Package removal, not upgrade
@@ -802,7 +811,7 @@ if [ $1 -eq 0 ]; then
     # Don't kill networking entirely just on package remove
     #/bin/systemctl stop NetworkManager.service >/dev/null 2>&1 || :
 
-    /usr/sbin/update-alternatives --remove ifup %{_libexecdir}/nm-ifup >/dev/null 2>&1 || :
+    /usr/sbin/update-alternatives --remove ifup %{_bindir}/nmcli >/dev/null 2>&1 || :
 fi
 %systemd_preun NetworkManager-wait-online.service NetworkManager-dispatcher.service
 
@@ -825,6 +834,8 @@ fi
 %{dbus_sys_dir}/nm-dispatcher.conf
 %{dbus_sys_dir}/nm-ifcfg-rh.conf
 %{_sbindir}/%{name}
+%ghost %{_sbindir}/ifup
+%ghost %{_sbindir}/ifdown
 %{_bindir}/nmcli
 %{_datadir}/bash-completion/completions/nmcli
 %dir %{_sysconfdir}/%{name}
