@@ -959,6 +959,9 @@ nmc_cleanup (NmCli *nmc)
 int
 main (int argc, char *argv[])
 {
+	char *basename;
+	char *ifupdown[5] = { 0, };
+
 	/* Set locale to use environment variables */
 	setlocale (LC_ALL, "");
 
@@ -978,6 +981,21 @@ main (int argc, char *argv[])
 	g_unix_signal_add (SIGTERM, signal_handler, GINT_TO_POINTER (SIGTERM));
 	g_unix_signal_add (SIGINT, signal_handler, GINT_TO_POINTER (SIGINT));
 
+	basename = strrchr (argv[0], '/');
+	if (basename)
+		basename++;
+	else
+		basename = argv[0];
+	if (NM_IN_STRSET (basename, "ifup", "ifdown")) {
+		ifupdown[0] = "nmcli";
+		ifupdown[1] = "connection";
+		ifupdown[2] = &basename[2]; /* up/down */
+		ifupdown[3] = "filename";
+		ifupdown[4] = g_strdup_printf ("%s/ifcfg-%s", SYSCONFDIR "/sysconfig/network-scripts", argv[1]);
+		argv = ifupdown;
+		argc = G_N_ELEMENTS (ifupdown);
+	}
+
 	if (process_command_line (&nm_cli, argc, argv))
 		g_main_loop_run (loop);
 
@@ -992,6 +1010,7 @@ main (int argc, char *argv[])
 
 	g_main_loop_unref (loop);
 	nmc_cleanup (&nm_cli);
+	g_free (ifupdown[4]);
 
 	return nm_cli.return_value;
 }
