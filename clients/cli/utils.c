@@ -939,7 +939,11 @@ typedef struct {
 	const PrintDataCol *col;
 	const char *title;
 	bool title_to_free:1;
-	bool skip:1;
+
+	/* whether the column should be printed. If not %TRUE,
+	 * the column will be skipped. */
+	bool to_print:1;
+
 	int width;
 } PrintDataHeaderCell;
 
@@ -1036,7 +1040,10 @@ _print_fill (const NmcConfig *nmc_config,
 
 		header_cell->col_idx = col_idx;
 		header_cell->col = col;
-		header_cell->skip = FALSE;
+
+		/* by default, the entire column is skipped. That is the case,
+		 * unless we have a cell (below) which opts-in to be printed. */
+		header_cell->to_print = FALSE;
 
 		header_cell->title = nm_meta_abstract_info_get_name (info, TRUE);
 		if (   nmc_config->multiline_output
@@ -1094,7 +1101,8 @@ _print_fill (const NmcConfig *nmc_config,
 
 			nm_assert (!to_free || value == to_free);
 
-			header_cell->skip = nmc_config->overview && is_default;
+			if (!nmc_config->overview || !is_default)
+				header_cell->to_print = TRUE;
 
 			if (NM_FLAGS_HAS (text_out_flags, NM_META_ACCESSOR_GET_OUT_FLAGS_STRV)) {
 				if (nmc_config->multiline_output) {
@@ -1180,8 +1188,8 @@ _print_skip_column (const NmcConfig *nmc_config,
 	selection_item = header_cell->col->selection_item;
 	info = selection_item->info;
 
-	if (header_cell->skip)
-		return TRUE;
+	if (!header_cell->to_print)
+		return FALSE;
 
 	if (nmc_config->multiline_output) {
 		if (info->meta_type == &nm_meta_type_setting_info_editor) {
