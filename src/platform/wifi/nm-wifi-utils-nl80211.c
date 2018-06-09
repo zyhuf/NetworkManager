@@ -56,6 +56,12 @@ typedef struct {
 	bool can_wowlan:1;
 } NMWifiUtilsNl80211;
 
+typedef struct {
+	NMWifiUtilsClass parent;
+} NMWifiUtilsNl80211Class;
+
+G_DEFINE_TYPE (NMWifiUtilsNl80211, nm_wifi_utils_nl80211, NM_TYPE_WIFI_UTILS)
+
 static int
 ack_handler (struct nl_msg *msg, void *arg)
 {
@@ -164,13 +170,15 @@ nl80211_send_and_recv (NMWifiUtilsNl80211 *nl80211,
 }
 
 static void
-wifi_nl80211_deinit (NMWifiUtils *parent)
+dispose (GObject *object)
 {
-	NMWifiUtilsNl80211 *nl80211 = (NMWifiUtilsNl80211 *) parent;
+	NMWifiUtilsNl80211 *nl80211 = NM_WIFI_UTILS_NL80211 (object);
 
-	if (nl80211->nl_sock)
+	if (nl80211->nl_sock) {
 		nl_socket_free (nl80211->nl_sock);
-	g_free (nl80211->freqs);
+		nl80211->nl_sock = NULL;
+	}
+	g_clear_pointer (&nl80211->freqs, g_free);
 }
 
 struct nl80211_iface_info {
@@ -838,23 +846,34 @@ static int nl80211_wiphy_info_handler (struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
-NMWifiUtils *
-nm_wifi_utils_nl80211_init (int ifindex)
+static void
+nm_wifi_utils_nl80211_init (NMWifiUtilsNl80211 *self)
 {
-	static const NMWifiUtilsClass klass = {
-		.struct_size = sizeof (NMWifiUtilsNl80211),
-		.get_mode = wifi_nl80211_get_mode,
-		.set_mode = wifi_nl80211_set_mode,
-		.set_powersave = wifi_nl80211_set_powersave,
-		.get_freq = wifi_nl80211_get_freq,
-		.find_freq = wifi_nl80211_find_freq,
-		.get_bssid = wifi_nl80211_get_bssid,
-		.get_rate = wifi_nl80211_get_rate,
-		.get_qual = wifi_nl80211_get_qual,
-		.get_wowlan = wifi_nl80211_get_wowlan,
-		.indicate_addressing_running = wifi_nl80211_indicate_addressing_running,
-		.deinit = wifi_nl80211_deinit,
-	};
+}
+
+static void
+nm_wifi_utils_nl80211_class_init (NMWifiUtilsNl80211Class *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	NMWifiUtilsClass *wifi_utils_class = NM_WIFI_UTILS_CLASS (klass);
+
+	object_class->dispose = dispose;
+
+	wifi_utils_class->get_mode = wifi_nl80211_get_mode;
+	wifi_utils_class->set_mode = wifi_nl80211_set_mode;
+	wifi_utils_class->set_powersave = wifi_nl80211_set_powersave;
+	wifi_utils_class->get_freq = wifi_nl80211_get_freq;
+	wifi_utils_class->find_freq = wifi_nl80211_find_freq;
+	wifi_utils_class->get_bssid = wifi_nl80211_get_bssid;
+	wifi_utils_class->get_rate = wifi_nl80211_get_rate;
+	wifi_utils_class->get_qual = wifi_nl80211_get_qual;
+	wifi_utils_class->get_wowlan = wifi_nl80211_get_wowlan;
+	wifi_utils_class->indicate_addressing_running = wifi_nl80211_indicate_addressing_running;
+}
+
+NMWifiUtils *
+nm_wifi_utils_nl80211_new (int ifindex)
+{
 	NMWifiUtilsNl80211 *nl80211;
 	nm_auto_nlmsg struct nl_msg *msg = NULL;
 	struct nl80211_device_info device_info = {};
@@ -866,8 +885,9 @@ nm_wifi_utils_nl80211_init (int ifindex)
 		nm_sprintf_buf (ifname, "if %d", ifindex);
 	}
 
-	nl80211 = nm_wifi_utils_new (&klass, ifindex);
+	nl80211 = g_object_new (NM_TYPE_WIFI_UTILS_NL80211, NULL);
 
+	nl80211->parent.ifindex = ifindex;
 	nl80211->nl_sock = nl_socket_alloc ();
 	if (nl80211->nl_sock == NULL)
 		goto error;
@@ -940,7 +960,6 @@ nm_wifi_utils_nl80211_init (int ifindex)
 	return (NMWifiUtils *) nl80211;
 
 error:
-	nm_wifi_utils_unref ((NMWifiUtils *) nl80211);
+	g_object_unref (nl80211);
 	return NULL;
 }
-

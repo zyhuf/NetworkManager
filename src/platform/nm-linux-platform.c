@@ -5993,14 +5993,14 @@ wifi_get_wifi_data (NMPlatform *platform, int ifindex)
 	if (!wifi_data) {
 		if (pllink) {
 			if (pllink->type == NM_LINK_TYPE_WIFI)
-				wifi_data = nm_wifi_utils_init (ifindex, TRUE);
+				wifi_data = nm_wifi_utils_new (ifindex, TRUE);
 			else if (pllink->type == NM_LINK_TYPE_OLPC_MESH) {
 				/* The kernel driver now uses nl80211, but we force use of WEXT because
 				 * the cfg80211 interactions are not quite ready to support access to
 				 * mesh control through nl80211 just yet.
 				 */
 #if HAVE_WEXT
-				wifi_data = nm_wifi_utils_wext_init (ifindex, FALSE);
+				wifi_data = nm_wifi_utils_wext_new (ifindex, FALSE);
 #endif
 			}
 
@@ -6998,7 +6998,7 @@ nm_linux_platform_init (NMLinuxPlatform *self)
 	priv->delayed_action.list_master_connected = g_ptr_array_new ();
 	priv->delayed_action.list_refresh_link = g_ptr_array_new ();
 	priv->delayed_action.list_wait_for_nl_response = g_array_new (FALSE, TRUE, sizeof (DelayedActionWaitForNlResponseData));
-	priv->wifi_data = g_hash_table_new_full (nm_direct_hash, NULL, NULL, (GDestroyNotify) nm_wifi_utils_unref);
+	priv->wifi_data = g_hash_table_new_full (nm_direct_hash, NULL, NULL, g_object_unref);
 }
 
 static void

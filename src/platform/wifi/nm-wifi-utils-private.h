@@ -25,7 +25,7 @@
 #include "nm-wifi-utils.h"
 
 typedef struct {
-	gsize struct_size;
+	GObjectClass parent;
 
 	NM80211Mode (*get_mode) (NMWifiUtils *data);
 
@@ -50,8 +50,6 @@ typedef struct {
 	 */
 	int (*get_qual) (NMWifiUtils *data);
 
-	void (*deinit) (NMWifiUtils *data);
-
 	gboolean (*get_wowlan) (NMWifiUtils *data);
 
 	/* OLPC Mesh-only functions */
@@ -68,11 +66,10 @@ typedef struct {
 } NMWifiUtilsClass;
 
 struct NMWifiUtils {
-	const NMWifiUtilsClass *klass;
+	GObject parent;
+
 	int ifindex;
 	NMDeviceWifiCapabilities caps;
 };
-
-gpointer nm_wifi_utils_new (const NMWifiUtilsClass *klass, int ifindex);
 
 #endif  /* __WIFI_UTILS_PRIVATE_H__ */
