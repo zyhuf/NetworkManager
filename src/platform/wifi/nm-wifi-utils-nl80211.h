@@ -15,16 +15,14 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright (C) 2011 Red Hat, Inc.
+ * Copyright (C) 2011 Intel Corporation. All rights reserved.
  */
 
-#ifndef __WIFI_UTILS_WEXT_H__
-#define __WIFI_UTILS_WEXT_H__
+#ifndef __WIFI_UTILS_NL80211_H__
+#define __WIFI_UTILS_NL80211_H__
 
-#include "wifi-utils.h"
+#include "nm-wifi-utils.h"
 
-WifiData *wifi_wext_init (int ifindex, gboolean check_scan);
+NMWifiUtils *nm_wifi_utils_nl80211_init (int ifindex);
 
-gboolean wifi_wext_is_wifi (const char *iface);
-
-#endif  /* __WIFI_UTILS_WEXT_H__ */
+#endif  /* __WIFI_UTILS_NL80211_H__ */
