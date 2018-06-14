@@ -685,15 +685,23 @@ _output_selection_append (GArray *cols,
 	guint i;
 	const NMMetaAbstractInfo *const*nested;
 	NMMetaSelectionResultList *selection;
+	gboolean is_leaf;
 
 	col_idx = cols->len;
+
+	is_leaf = TRUE;
+	if (   selection_item->selection_type == NM_META_SELECTION_TYPE_COMMON
+	    && !nm_meta_abstract_info_included_in_common (selection_item->info, NULL, NULL)) {
+		/* this item is not actually relevant. It's here for the nested entries. Skip it. */
+		is_leaf = FALSE;
+	}
 
 	{
 		PrintDataCol col = {
 			.selection_item = selection_item,
 			._parent_idx = parent_idx,
 			.self_idx = col_idx,
-			.is_leaf = TRUE,
+			.is_leaf = is_leaf,
 		};
 
 		g_array_append_val (cols, col);
@@ -731,11 +739,11 @@ _output_selection_append (GArray *cols,
 		nm_assert (selection->num == 1);
 	} else {
 		nested = nm_meta_abstract_info_get_nested (selection_item->info,
-		                                           FALSE,
+		                                           selection_item->selection_type == NM_META_SELECTION_TYPE_ALL,
 		                                           NULL,
 		                                           &nested_to_free);
 		if (nested) {
-			selection = nm_meta_selection_create_all (nested);
+			selection = nm_meta_selection_create_all (nested, selection_item->selection_type);
 			nm_assert (selection && selection->num > 0);
 		} else
 			selection = NULL;
