@@ -6223,6 +6223,33 @@ nm_utils_format_variant_attributes (GHashTable *attributes,
 
 /*****************************************************************************/
 
+/*
+ * nm_utils_get_timestamp_msec():
+ *
+ * Gets current time in milliseconds of CLOCK_BOOTTIME.
+ *
+ * Returns: time in milliseconds
+ *
+ * Since: 1.12
+ */
+gint64
+nm_utils_get_timestamp_msec (void)
+{
+	struct timespec ts;
+
+	if (clock_gettime (CLOCK_BOOTTIME, &ts) == -1) {
+		/* The fallback to CLOCK_MONOTONIC is taken only if we're running on a
+		 * criminally old kernel, prior to 2.6.39 (released on 18 May, 2011).
+		 * That happens during buildcheck on old builders, we don't expect to
+		 * be actually runs on kernels that old. */
+		return g_get_monotonic_time () / 1000;
+	}
+
+	return (((gint64) ts.tv_sec) * 1000) + (ts.tv_nsec / 1000000);
+}
+
+/*****************************************************************************/
+
 /**
  * nm_utils_version:
  *
