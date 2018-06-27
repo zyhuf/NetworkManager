@@ -2501,7 +2501,7 @@ nm_utils_tc_action_from_str (const char *str, GError **error)
 
 		g_hash_table_iter_init (&iter, options);
 		while (g_hash_table_iter_next (&iter, &key, &value))
-			nm_tc_action_set_attribute (action, key, g_variant_ref_sink (value));
+			nm_tc_action_set_attribute (action, key, value);
 	}
 
 	return action;
