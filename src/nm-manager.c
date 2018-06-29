@@ -4335,7 +4335,14 @@ _new_active_connection (NMManager *self,
 			return NULL;
 		}
 
-		parent_device = nm_active_connection_get_device (parent);
+		if (NM_IS_VPN_CONNECTION (parent)) {
+			int ifindex;
+
+			ifindex = nm_vpn_connection_get_ip_ifindex (NM_VPN_CONNECTION (parent), TRUE);
+			parent_device = nm_manager_get_device_by_ifindex (self, ifindex);
+		} else
+			parent_device = nm_active_connection_get_device (parent);
+
 		if (!parent_device) {
 			g_set_error_literal (error, NM_MANAGER_ERROR, NM_MANAGER_ERROR_UNKNOWN_DEVICE,
 			                     "Source connection had no active device");
