@@ -2031,13 +2031,15 @@ supplicant_iface_state_cb (NMSupplicantInterface *iface,
 			GBytes *ssid;
 			gs_free char *ssid_str = NULL;
 
+			g_return_if_fail (priv->current_ap);
+
 			connection = nm_device_get_applied_connection (NM_DEVICE (self));
 			g_return_if_fail (connection);
 
 			s_wifi = nm_connection_get_setting_wireless (connection);
 			g_return_if_fail (s_wifi);
 
-			ssid = nm_setting_wireless_get_ssid (s_wifi);
+			ssid = nm_wifi_ap_get_ssid (priv->current_ap);
 			g_return_if_fail (ssid);
 
 			_LOGI (LOGD_DEVICE | LOGD_WIFI,
@@ -2046,6 +2048,7 @@ supplicant_iface_state_cb (NMSupplicantInterface *iface,
 			       ? "Started Wi-Fi Hotspot"
 			       : "Connected to wireless network",
 			       (ssid_str = _nm_utils_ssid_to_string (ssid)));
+
 			nm_device_activate_schedule_stage3_ip_config_start (device);
 		} else if (devstate == NM_DEVICE_STATE_ACTIVATED)
 			periodic_update (self);
@@ -2352,6 +2355,7 @@ static NMSupplicantConfig *
 build_supplicant_config (NMDeviceWifi *self,
                          NMConnection *connection,
                          guint32 fixed_freq,
+                         GBytes *ssid,
                          GError **error)
 {
 	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
@@ -2380,6 +2384,7 @@ build_supplicant_config (NMDeviceWifi *self,
 	if (!nm_supplicant_config_add_setting_wireless (config,
 	                                                s_wireless,
 	                                                fixed_freq,
+	                                                ssid,
 	                                                error)) {
 		g_prefix_error (error, "802-11-wireless: ");
 		goto error;
@@ -2741,7 +2746,10 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 		set_powersave (device);
 
 	/* Build up the supplicant configuration */
-	config = build_supplicant_config (self, connection, nm_wifi_ap_get_freq (ap), &error);
+	config = build_supplicant_config (self, connection,
+	                                  nm_wifi_ap_get_freq (ap),
+	                                  nm_wifi_ap_get_ssid (ap),
+	                                  &error);
 	if (config == NULL) {
 		_LOGE (LOGD_DEVICE | LOGD_WIFI,
 		       "Activation: (wifi) couldn't build wireless configuration: %s",
