@@ -2553,10 +2553,14 @@ static gboolean
 recheck_assume_connection (NMManager *self,
                            NMDevice *device)
 {
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	NMSettingsConnection *connection;
 	gboolean was_unmanaged = FALSE;
 	gboolean generated = FALSE;
+	gboolean external = FALSE;
+	NMActiveConnection *ac;
 	NMDeviceState state;
+	int ifindex;
 
 	g_return_val_if_fail (NM_IS_MANAGER (self), FALSE);
 	g_return_val_if_fail (NM_IS_DEVICE (device), FALSE);
@@ -2580,8 +2584,26 @@ recheck_assume_connection (NMManager *self,
 	if (!connection)
 		return FALSE;
 
+	external = generated;
+	ifindex = nm_device_get_ifindex (device);
+	if (external && ifindex > 0) {
+		/* If the connection is generated and the device is the
+		 * IP interface of a VPN, treat the connection as fully
+		 * managed as we'll possibly need to add routes to it. */
+		c_list_for_each_entry (ac, &priv->active_connections_lst_head, active_connections_lst) {
+			if (   NM_IS_VPN_CONNECTION (ac)
+				&& nm_vpn_connection_get_ip_ifindex (NM_VPN_CONNECTION (ac), TRUE) == ifindex) {
+				_LOG2D (LOGD_DEVICE, device,
+				        "assume: device managed because is the IP iface of VPN '%s' (%s)",
+				        nm_connection_get_id (nm_active_connection_get_applied_connection (ac)),
+				        nm_connection_get_uuid (nm_active_connection_get_applied_connection (ac)));
+				external = FALSE;
+			}
+		}
+	}
+
 	nm_device_sys_iface_state_set (device,
-	                               generated
+	                               external
 	                                   ? NM_DEVICE_SYS_IFACE_STATE_EXTERNAL
 	                                   : NM_DEVICE_SYS_IFACE_STATE_ASSUME);
 
@@ -2614,8 +2636,8 @@ recheck_assume_connection (NMManager *self,
 		                                 NULL,
 		                                 device,
 		                                 subject,
-		                                 generated ? NM_ACTIVATION_TYPE_EXTERNAL : NM_ACTIVATION_TYPE_ASSUME,
-		                                 generated ? NM_ACTIVATION_REASON_EXTERNAL : NM_ACTIVATION_REASON_ASSUME,
+		                                 external ? NM_ACTIVATION_TYPE_EXTERNAL : NM_ACTIVATION_TYPE_ASSUME,
+		                                 external ? NM_ACTIVATION_REASON_EXTERNAL : NM_ACTIVATION_REASON_ASSUME,
 		                                 &error);
 
 		if (!active) {
