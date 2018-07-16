@@ -2308,6 +2308,7 @@ test_nm_vpn_service_plugin_read_vpn_details (void)
 	                      ),
 	                      READ_VPN_DETAIL_DATA ());
 
+	NMTST_EXPECT_LIBNM_WARNING ("DATA_VAL= not preceded by DATA_KEY=");
 	_do_read_vpn_details (""
 	                      "DATA_KEY=some-key\n"
 	                      "DATA_VAL=string\n"
@@ -2334,12 +2335,9 @@ test_nm_vpn_service_plugin_read_vpn_details (void)
 	                      "",
 	                      READ_VPN_DETAIL_DATA (
 	                        { "some-key", "string\ncontinued after a line break" },
-	                        { "", "x" },
-	                        { "y", "y" },
 	                      ),
 	                      READ_VPN_DETAIL_DATA (
 	                        { "key names\ncan have\ncontinuations too", "value" },
-	                        { "s1", "z" },
 	                      ));
 
 	_do_read_vpn_details (""
