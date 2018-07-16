@@ -2359,13 +2359,13 @@ test_nm_vpn_service_plugin_read_vpn_details (void)
 	                      "DONE\n"
 	                      "",
 	                      READ_VPN_DETAIL_DATA (
-	                        { "some-key", "string" },
+	                        { "some-key", "string\ncontinued after a line break" },
 	                        { "", "x" },
 	                        { "y", "y" },
-	                        { "s1", "z" },
 	                      ),
 	                      READ_VPN_DETAIL_DATA (
-	                        { "key names", "value" },
+	                        { "key names\ncan have\ncontinuations too", "value" },
+	                        { "s1", "z" },
 	                      ),
 	                      );
 
@@ -2379,10 +2379,9 @@ test_nm_vpn_service_plugin_read_vpn_details (void)
 	                      "SECRET_VAL=value\n"
 	                      "",
 	                      READ_VPN_DETAIL_DATA (
-	                        { "some-key", "string" },
+	                        { "some-key", "string\ncontinued after a line break" },
 	                      ),
 	                      READ_VPN_DETAIL_DATA (
-	                        { "key names", "value" },
 	                      ),
 	                      );
 
@@ -2417,7 +2416,7 @@ test_nm_vpn_service_plugin_read_vpn_details (void)
 	                      "\n"
 	                      "",
 	                      READ_VPN_DETAIL_DATA (
-	                        { "some", "val2" },
+	                        { "some\nkey-2", "val2" },
 	                        { "some-key", "string" },
 	                        { "key3", "val3" },
 	                      ),
