@@ -24,8 +24,8 @@
     <!--
         FwMark:
 
-	Optional 32-bit mark used to set routing policy for outgoing encrypted packets.
-	See: ip-rule(8)
+        Optional 32-bit mark used to set routing policy for outgoing encrypted packets.
+        See: ip-rule(8)
     -->
     <property name="FwMark" type="u" access="read"/>
   </interface>

@@ -102,7 +102,6 @@ link_changed (NMDevice *device,
 	update_properties (device);
 }
 
-
 /******************************************************************/
 
 static void
@@ -141,14 +140,14 @@ nm_device_wireguard_init (NMDeviceWireguard *self)
 }
 
 static const NMDBusInterfaceInfoExtended interface_info_device_wireguard = {
-       .parent = NM_DEFINE_GDBUS_INTERFACE_INFO_INIT (
-               NM_DBUS_INTERFACE_DEVICE_WIREGUARD,
-               .properties = NM_DEFINE_GDBUS_PROPERTY_INFOS (
-                       NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("PublicKey", "s", NM_DEVICE_WIREGUARD_PUBLIC_KEY),
-                       NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("ListenPort", "q", NM_DEVICE_WIREGUARD_LISTEN_PORT),
-                       NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("FwMark", "u", NM_DEVICE_WIREGUARD_FWMARK),
-               ),
-       ),
+	.parent = NM_DEFINE_GDBUS_INTERFACE_INFO_INIT (
+		NM_DBUS_INTERFACE_DEVICE_WIREGUARD,
+		.properties = NM_DEFINE_GDBUS_PROPERTY_INFOS (
+			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("PublicKey",  "s", NM_DEVICE_WIREGUARD_PUBLIC_KEY),
+			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("ListenPort", "q", NM_DEVICE_WIREGUARD_LISTEN_PORT),
+			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE ("FwMark",     "u", NM_DEVICE_WIREGUARD_FWMARK),
+		),
+	),
 };
 
 static void
