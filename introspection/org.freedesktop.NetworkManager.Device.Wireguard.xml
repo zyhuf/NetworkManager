@@ -19,7 +19,7 @@
 
         Local UDP listening port.
     -->
-    <property name="ListenPort" type="u" access="read"/>
+    <property name="ListenPort" type="q" access="read"/>
 
     <!--
         FwMark:
