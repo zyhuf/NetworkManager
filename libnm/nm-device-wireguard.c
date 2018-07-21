@@ -36,9 +36,9 @@ struct _NMDeviceWireguard {
 	NMDevice parent;
 };
 
-typedef struct {
+struct _NMDeviceWireguardClass {
 	NMDeviceClass parent;
-} NMDeviceWireguardClass;
+};
 
 G_DEFINE_TYPE (NMDeviceWireguard, nm_device_wireguard, NM_TYPE_DEVICE)
 
