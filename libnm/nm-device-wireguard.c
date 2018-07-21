@@ -20,11 +20,12 @@
 #include "nm-default.h"
 
 #include "nm-device-wireguard.h"
+
 #include "nm-object-private.h"
 
 typedef struct {
-	guchar *private_key;
-	guchar *public_key;
+	char *private_key;
+	char *public_key;
 	guint listen_port;
 	guint fwmark;
 } NMDeviceWireguardPrivate;
@@ -57,11 +58,11 @@ NM_GOBJECT_PROPERTIES_DEFINE_BASE (
  *
  * Gets the private key for this interface
  *
- * Returns: pointer to the 32-byte private key
+ * Returns: (transfer-none): pointer to the 32-byte private key in base64 encoding.
  *
  * Since: 1.14
  **/
-const guchar*
+const char *
 nm_device_wireguard_get_private_key (NMDeviceWireguard *device)
 {
 	g_return_val_if_fail (NM_IS_DEVICE_WIREGUARD (device), NULL);
@@ -75,11 +76,11 @@ nm_device_wireguard_get_private_key (NMDeviceWireguard *device)
  *
  * Gets the public key for this interface
  *
- * Returns: pointer to the 32-byte public key
+ * Returns: (transfer-none): pointer to the 32-byte public key in base64 encoding.
  *
  * Since: 1.14
  **/
-const guchar*
+const char *
 nm_device_wireguard_get_public_key (NMDeviceWireguard *device)
 {
 	g_return_val_if_fail (NM_IS_DEVICE_WIREGUARD (device), NULL);
@@ -135,18 +136,13 @@ get_property (GObject *object,
 {
 	NMDeviceWireguard *device = NM_DEVICE_WIREGUARD (object);
 	NMDeviceWireguardPrivate *priv = NM_DEVICE_WIREGUARD_GET_PRIVATE (object);
-	gchar *b64;
 
 	switch (prop_id) {
 	case PROP_PRIVATE_KEY:
-		b64 = g_base64_encode (priv->private_key, sizeof (priv->private_key));
-		g_value_set_string (value, b64);
-		g_free (b64);
+		g_value_set_string (value, priv->private_key);
 		break;
 	case PROP_PUBLIC_KEY:
-		b64 = g_base64_encode (priv->public_key, sizeof (priv->public_key));
-		g_value_set_string (value, b64);
-		g_free (b64);
+		g_value_set_string (value, priv->public_key);
 		break;
 	case PROP_LISTEN_PORT:
 		g_value_set_uint (value, nm_device_wireguard_get_listen_port (device));
@@ -199,8 +195,7 @@ nm_device_wireguard_class_init (NMDeviceWireguardClass *wireguard_class)
 	/**
 	 * NMDeviceWireguard:private_key:
 	 *
-	 * 32-byte private key.
-	 * Set to all zeros to purge an existing key.
+	 * 32-byte private key in base64 encoding.
 	 *
 	 * Since: 1.14
 	 **/
@@ -213,7 +208,8 @@ nm_device_wireguard_class_init (NMDeviceWireguardClass *wireguard_class)
 	/**
 	 * NMDeviceWireguard:public_key:
 	 *
-	 * 32-byte public key, derived from the current private key.
+	 * 32-byte public key in base64 encoding, derived from the
+	 * current private key.
 	 *
 	 * Since: 1.14
 	 **/

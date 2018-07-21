@@ -46,9 +46,9 @@ NM_AVAILABLE_IN_1_14
 GType nm_device_wireguard_get_type (void);
 
 NM_AVAILABLE_IN_1_14
-const guchar* nm_device_wireguard_get_private_key (NMDeviceWireguard *device);
+const char *nm_device_wireguard_get_private_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
-const guchar* nm_device_wireguard_get_public_key (NMDeviceWireguard *device);
+const char *nm_device_wireguard_get_public_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
 guint16 nm_device_wireguard_get_listen_port (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
