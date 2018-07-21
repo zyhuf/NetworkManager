@@ -25,7 +25,7 @@
 typedef struct {
 	guchar *private_key;
 	guchar *public_key;
-	guint16 listen_port;
+	guint listen_port;
 	guint32 fwmark;
 } NMDeviceWireguardPrivate;
 
@@ -97,7 +97,7 @@ nm_device_wireguard_get_public_key (NMDeviceWireguard *device)
  *
  * Since: 1.14
  **/
-guint
+guint16
 nm_device_wireguard_get_listen_port (NMDeviceWireguard *device)
 {
 	g_return_val_if_fail (NM_IS_DEVICE_WIREGUARD (device), 0);

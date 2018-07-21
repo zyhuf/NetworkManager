@@ -50,7 +50,7 @@ const guchar* nm_device_wireguard_get_private_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
 const guchar* nm_device_wireguard_get_public_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
-guint       nm_device_wireguard_get_listen_port (NMDeviceWireguard *device);
+guint16 nm_device_wireguard_get_listen_port (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
 guint       nm_device_wireguard_get_fwmark (NMDeviceWireguard *device);
 
