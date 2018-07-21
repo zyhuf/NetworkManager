@@ -109,18 +109,16 @@ get_property (GObject *object, guint prop_id,
               GValue *value, GParamSpec *pspec)
 {
 	NMDeviceWireguard *self = NM_DEVICE_WIREGUARD (object);
-	gchar *b64;
+	char *b64;
 
 	switch (prop_id) {
 	case PROP_PRIVATE_KEY:
 		b64 = g_base64_encode (self->props.private_key, sizeof (self->props.private_key));
-		g_value_set_string (value, b64);
-		g_free (b64);
+		g_value_take_string (value, b64);
 		break;
 	case PROP_PUBLIC_KEY:
 		b64 = g_base64_encode (self->props.public_key, sizeof (self->props.public_key));
-		g_value_set_string (value, b64);
-		g_free (b64);
+		g_value_take_string (value, b64);
 		break;
 	case PROP_LISTEN_PORT:
 		g_value_set_uint (value, self->props.listen_port);
