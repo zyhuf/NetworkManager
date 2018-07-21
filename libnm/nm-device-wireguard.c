@@ -26,7 +26,7 @@ typedef struct {
 	guchar *private_key;
 	guchar *public_key;
 	guint listen_port;
-	guint32 fwmark;
+	guint fwmark;
 } NMDeviceWireguardPrivate;
 
 /**
