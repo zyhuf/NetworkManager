@@ -24,7 +24,6 @@
 #include "nm-object-private.h"
 
 typedef struct {
-	char *private_key;
 	char *public_key;
 	guint listen_port;
 	guint fwmark;
@@ -46,29 +45,10 @@ G_DEFINE_TYPE (NMDeviceWireguard, nm_device_wireguard, NM_TYPE_DEVICE)
 #define NM_DEVICE_WIREGUARD_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_DEVICE_WIREGUARD, NMDeviceWireguardPrivate))
 
 NM_GOBJECT_PROPERTIES_DEFINE_BASE (
-	PROP_PRIVATE_KEY,
 	PROP_PUBLIC_KEY,
 	PROP_LISTEN_PORT,
 	PROP_FWMARK,
 );
-
-/**
- * nm_device_wireguard_get_private_key:
- * @device: a #NMDeviceWireguard
- *
- * Gets the private key for this interface
- *
- * Returns: (transfer-none): pointer to the 32-byte private key in base64 encoding.
- *
- * Since: 1.14
- **/
-const char *
-nm_device_wireguard_get_private_key (NMDeviceWireguard *device)
-{
-	g_return_val_if_fail (NM_IS_DEVICE_WIREGUARD (device), NULL);
-
-	return NM_DEVICE_WIREGUARD_GET_PRIVATE (device)->private_key;
-}
 
 /**
  * nm_device_wireguard_get_public_key:
@@ -138,9 +118,6 @@ get_property (GObject *object,
 	NMDeviceWireguardPrivate *priv = NM_DEVICE_WIREGUARD_GET_PRIVATE (object);
 
 	switch (prop_id) {
-	case PROP_PRIVATE_KEY:
-		g_value_set_string (value, priv->private_key);
-		break;
 	case PROP_PUBLIC_KEY:
 		g_value_set_string (value, priv->public_key);
 		break;
@@ -166,7 +143,6 @@ init_dbus (NMObject *object)
 {
 	NMDeviceWireguardPrivate *priv = NM_DEVICE_WIREGUARD_GET_PRIVATE (object);
 	const NMPropertiesInfo property_info[] = {
-		{ NM_DEVICE_WIREGUARD_PRIVATE_KEY, &priv->private_key },
 		{ NM_DEVICE_WIREGUARD_PUBLIC_KEY,  &priv->public_key },
 		{ NM_DEVICE_WIREGUARD_LISTEN_PORT, &priv->listen_port },
 		{ NM_DEVICE_WIREGUARD_FWMARK,      &priv->fwmark },
@@ -191,19 +167,6 @@ nm_device_wireguard_class_init (NMDeviceWireguardClass *wireguard_class)
 	object_class->get_property = get_property;
 
 	nm_object_class->init_dbus = init_dbus;
-
-	/**
-	 * NMDeviceWireguard:private_key:
-	 *
-	 * 32-byte private key in base64 encoding.
-	 *
-	 * Since: 1.14
-	 **/
-	obj_properties[PROP_PRIVATE_KEY] =
-	    g_param_spec_string (NM_DEVICE_WIREGUARD_PRIVATE_KEY,
-	                         "", "",
-	                         NULL,
-	                         G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
 
 	/**
 	 * NMDeviceWireguard:public_key:

@@ -37,7 +37,6 @@ G_BEGIN_DECLS
 
 typedef struct _NMDeviceWireguardClass NMDeviceWireguardClass;
 
-#define NM_DEVICE_WIREGUARD_PRIVATE_KEY  "private-key"
 #define NM_DEVICE_WIREGUARD_PUBLIC_KEY   "public-key"
 #define NM_DEVICE_WIREGUARD_LISTEN_PORT  "listen-port"
 #define NM_DEVICE_WIREGUARD_FWMARK       "fwmark"
@@ -45,8 +44,6 @@ typedef struct _NMDeviceWireguardClass NMDeviceWireguardClass;
 NM_AVAILABLE_IN_1_14
 GType nm_device_wireguard_get_type (void);
 
-NM_AVAILABLE_IN_1_14
-const char *nm_device_wireguard_get_private_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
 const char *nm_device_wireguard_get_public_key (NMDeviceWireguard *device);
 NM_AVAILABLE_IN_1_14
