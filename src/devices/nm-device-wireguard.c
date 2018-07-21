@@ -31,7 +31,6 @@ _LOG_DECLARE_SELF(NMDeviceWireguard);
 /*****************************************************************************/
 
 NM_GOBJECT_PROPERTIES_DEFINE (NMDeviceWireguard,
-	PROP_PRIVATE_KEY,
 	PROP_PUBLIC_KEY,
 	PROP_LISTEN_PORT,
 	PROP_FWMARK,
@@ -86,7 +85,6 @@ update_properties (NMDevice *device)
 		} \
 	} G_STMT_END
 
-	CHECK_PROPERTY_CHANGED_ARRAY (private_key, PROP_PRIVATE_KEY);
 	CHECK_PROPERTY_CHANGED_ARRAY (public_key, PROP_PUBLIC_KEY);
 	CHECK_PROPERTY_CHANGED (listen_port, PROP_LISTEN_PORT);
 	CHECK_PROPERTY_CHANGED (fwmark, PROP_FWMARK);
@@ -112,10 +110,6 @@ get_property (GObject *object, guint prop_id,
 	char *b64;
 
 	switch (prop_id) {
-	case PROP_PRIVATE_KEY:
-		b64 = g_base64_encode (self->props.private_key, sizeof (self->props.private_key));
-		g_value_take_string (value, b64);
-		break;
 	case PROP_PUBLIC_KEY:
 		b64 = g_base64_encode (self->props.public_key, sizeof (self->props.public_key));
 		g_value_take_string (value, b64);
@@ -162,12 +156,6 @@ nm_device_wireguard_class_init (NMDeviceWireguardClass *klass)
 	dbus_object_class->interface_infos = NM_DBUS_INTERFACE_INFOS (&interface_info_device_wireguard);
 
 	device_class->link_changed = link_changed;
-
-	obj_properties[PROP_PRIVATE_KEY] =
-	    g_param_spec_string (NM_DEVICE_WIREGUARD_PRIVATE_KEY,
-	                         "", "",
-	                         NULL,
-	                         G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
 
 	obj_properties[PROP_PUBLIC_KEY] =
 	    g_param_spec_string (NM_DEVICE_WIREGUARD_PUBLIC_KEY,
