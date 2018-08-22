@@ -837,11 +837,8 @@ nm_wifi_ap_update_from_properties (NMWifiAP *ap,
 		bytes = g_variant_get_fixed_array (v, &len, 1);
 		len = MIN (32, len);
 
-		/* Stupid ieee80211 layer uses <hidden> */
 		if (   bytes
 		    && len
-		    && !(   NM_IN_SET (len, 8, 9)
-		         && memcmp (bytes, "<hidden>", len) == 0)
 		    && !nm_utils_is_empty_ssid (bytes, len)) {
 			/* good */
 		} else
