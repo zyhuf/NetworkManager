@@ -763,6 +763,113 @@ nm_vpn_service_plugin_secrets_required (NMVpnServicePlugin *plugin,
 #define SECRET_KEY_TAG "SECRET_KEY="
 #define SECRET_VAL_TAG "SECRET_VAL="
 
+static gboolean
+_consume_prefix (char **p_line,
+                 gsize *p_line_len,
+                 const char *prefix,
+                 const char **out_line,
+                 gsize *out_line_len)
+{
+	char *line;
+	gsize line_len, prefix_len;
+	gsize i, j;
+
+	nm_assert (p_line && *p_line);
+	nm_assert (p_line_len);
+	nm_assert (prefix);
+	nm_assert (strlen (prefix) < G_MAXUINT);
+
+	prefix_len = strlen (prefix);
+
+	nm_assert (prefix_len >= 2);
+	nm_assert (prefix[prefix_len - 1] == '=');
+
+	line = *p_line;
+	line_len = *p_line_len;
+
+	if (   line_len < prefix_len
+	    || memcmp (line, prefix, prefix_len) != 0) {
+		/* the string does not have the requested prefix. Do nothing. */
+		return FALSE;
+	}
+
+	line += prefix_len;
+	line_len -= prefix_len;
+
+	j = 0;
+	for (i = 0, j = 0; i < line_len; ) {
+
+		/* the line is terminated by '\n' or '\0'. */
+		if (NM_IN_SET (line[i], '\n', '\0')) {
+			i++;
+			if (   i < line_len
+			    && line[i] == '=') {
+				/* ... unless, it's followed by an '='. Hence, "\n=" and "\0="
+				 * can be used for escaping '\n' and '\0'.
+				 *
+				 * Note: for the moment, the API only returns NUL terminated strings,
+				 *   hence, "\0=" will be later rejected as invalid. That will be
+				 *   fixed. */
+				line[j++] = line[i - 1];
+				i++;
+				continue;
+			}
+			break;
+		}
+
+		line[j++] = line[i++];
+	}
+
+	if (j < line_len)
+		line[j] = '\0';
+	else {
+		/* inside the declared size of the buffer, there is no
+		 * space for the trailing NUL. Shift the text to make
+		 * space (there is space, because we are going to overwrite
+		 * the non-empty prefix non-empty. */
+		memmove (&line[-1], line, line_len);
+		line--;
+		line[line_len - 1] = '\0';
+	}
+
+	*out_line = line;
+	*out_line_len = j;
+
+	line += i;
+	line_len -= i;
+	while (   line_len > 0
+	    && NM_IN_SET (line[0], '\0', '\n')) {
+		/* skip al empty lines immedately afterwards. */
+		line++;
+		line_len--;
+	}
+
+	*p_line = line;
+	*p_line_len = line_len;
+	return TRUE;
+}
+
+static void
+_hash_add (GHashTable *hash, const char *key, gsize key_len, const char *val, gsize val_len)
+{
+	if (   key_len != strlen (key)
+	    || val_len != strlen (val)) {
+		/* the text contains embedded NUL chars. These values are invalid, skip them */
+		return;
+	}
+	if (key_len == 0) {
+		/* empty keys are skipped as well. */
+		return;
+	}
+	if (   !g_utf8_validate (key, key_len, NULL)
+	    || !g_utf8_validate (val, val_len, NULL)) {
+		/* the key names and values must be valid UTF-8. */
+		return;
+	}
+
+	g_hash_table_insert (hash, g_strdup (key), g_strdup (val));
+}
+
 /**
  * nm_vpn_service_plugin_read_vpn_details:
  * @fd: file descriptor to read from, usually stdin (0)
@@ -785,26 +892,17 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 {
 	gs_unref_hashtable GHashTable *data = NULL;
 	gs_unref_hashtable GHashTable *secrets = NULL;
-	gboolean success = FALSE;
-	GHashTable *hash = NULL;
-	GString *key = NULL, *val = NULL;
-	nm_auto_free_gstring GString *line = NULL;
-	char c;
-
-	GString *str = NULL;
-
-	if (out_data)
-		g_return_val_if_fail (*out_data == NULL, FALSE);
-	if (out_secrets)
-		g_return_val_if_fail (*out_secrets == NULL, FALSE);
+	nm_auto_free_gstring GString *contents = NULL;
+	char *line;
+	gsize line_len;
 
 	data = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_free);
 	secrets = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, (GDestroyNotify) nm_free_secret);
 
-	line = g_string_new (NULL);
+	contents = g_string_new (NULL);
 
-	/* Read stdin for data and secret items until we get a DONE */
-	while (1) {
+	while (TRUE) {
+		char c;
 		ssize_t nr;
 
 		errno = 0;
@@ -819,74 +917,59 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 		if (nr == 0)
 			break;
 
-		if (c != '\n') {
-			g_string_append_c (line, c);
-			continue;
-		}
+		g_string_append_c (contents, c);
+	}
 
-		if (str && *line->str == '=') {
-			/* continuation */
-			g_string_append_c (str, '\n');
-			g_string_append (str, line->str + 1);
-		} else if (key && val) {
-			/* done a line */
-			g_return_val_if_fail (hash, FALSE);
-			g_hash_table_insert (hash,
-					     g_string_free (key, FALSE),
-					     g_string_free (val, FALSE));
-			key = NULL;
-			val = NULL;
-			hash = NULL;
-			success = TRUE;  /* Got at least one value */
-		}
+	line = contents->str;
+	line_len = contents->len;
 
-		if (strcmp (line->str, "DONE") == 0) {
-			 /* finish marker */
+	while (line_len > 0) {
+		const char *key, *val;
+		gsize key_len, val_len;
+
+		if (   line_len >= NM_STRLEN ("DONE")
+		    && memcmp (line, "DONE", NM_STRLEN ("DONE") == 0)
+		    && (   line_len == NM_STRLEN ("DONE")
+		        || NM_IN_SET (line[NM_STRLEN ("DONE")], '\0', '\n'))) {
+			/* finish marker. */
 			break;
-		} else if (strncmp (line->str, DATA_KEY_TAG, strlen (DATA_KEY_TAG)) == 0) {
-			if (key != NULL) {
-				g_warning ("a value expected");
-				g_string_free (key, TRUE);
-			}
-			key = g_string_new (line->str + strlen (DATA_KEY_TAG));
-			str = key;
-			hash = data;
-		} else if (strncmp (line->str, DATA_VAL_TAG, strlen (DATA_VAL_TAG)) == 0) {
-			if (val != NULL)
-				g_string_free (val, TRUE);
-			if (val || !key || hash != data) {
-				g_warning ("%s not preceded by %s", DATA_VAL_TAG, DATA_KEY_TAG);
-				break;
-			}
-			val = g_string_new (line->str + strlen (DATA_VAL_TAG));
-			str = val;
-		} else if (strncmp (line->str, SECRET_KEY_TAG, strlen (SECRET_KEY_TAG)) == 0) {
-			if (key != NULL) {
-				g_warning ("a value expected");
-				g_string_free (key, TRUE);
-			}
-			key = g_string_new (line->str + strlen (SECRET_KEY_TAG));
-			str = key;
-			hash = secrets;
-		} else if (strncmp (line->str, SECRET_VAL_TAG, strlen (SECRET_VAL_TAG)) == 0) {
-			if (val != NULL)
-				g_string_free (val, TRUE);
-			if (val || !key || hash != secrets) {
-				g_warning ("%s not preceded by %s", SECRET_VAL_TAG, SECRET_KEY_TAG);
-				break;
-			}
-			val = g_string_new (line->str + strlen (SECRET_VAL_TAG));
-			str = val;
 		}
 
-		g_string_truncate (line, 0);
+		if (_consume_prefix (&line, &line_len, DATA_KEY_TAG, &key, &key_len)) {
+			if (_consume_prefix (&line, &line_len, DATA_VAL_TAG, &val, &val_len)) {
+				_hash_add (data, key, key_len, val, val_len);
+				continue;
+			}
+		} else if (_consume_prefix (&line, &line_len, SECRET_KEY_TAG, &key, &key_len)) {
+			if (_consume_prefix (&line, &line_len, SECRET_VAL_TAG, &val, &val_len)) {
+				_hash_add (secrets, key, key_len, val, val_len);
+				continue;
+			}
+		}
+
+		/* the current line is invalid, according to protocol.
+		 * Silently skip it. */
+		while (   line_len > 0
+		       && !NM_IN_SET (line[0], '\0', '\n')) {
+			line_len--;
+			line++;
+		}
+		if (line_len > 0) {
+			line_len--;
+			line++;
+		}
 	}
 
-	if (success) {
-		NM_SET_OUT (out_data, g_steal_pointer (&data));
-		NM_SET_OUT (out_secrets, g_steal_pointer (&secrets));
+	if (   g_hash_table_size (data) == 0
+	    && g_hash_table_size (secrets) == 0) {
+		NM_SET_OUT (out_data, NULL);
+		NM_SET_OUT (out_secrets, NULL);
+		return FALSE;
 	}
-	return success;
+
+	NM_SET_OUT (out_data, g_steal_pointer (&data));
+	NM_SET_OUT (out_secrets, g_steal_pointer (&secrets));
+	return TRUE;
 }
 
 /**
