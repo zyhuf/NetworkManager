@@ -815,6 +815,8 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 			}
 			break;
 		}
+		if (nr == 0)
+			break;
 
 		if (c != '\n') {
 			g_string_append_c (line, c);
