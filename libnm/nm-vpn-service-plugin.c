@@ -849,11 +849,19 @@ _consume_prefix (char **p_line,
 	return TRUE;
 }
 
+typedef enum {
+	PARSE_TYPE_UTF8_ONLY,
+	PARSE_TYPE_ESCAPED_NO_NUL,
+	PARSE_TYPE_ESCAPED_BINARY,
+} ParseType;
+
 static void
-_hash_add (GHashTable *hash, const char *key, gsize key_len, const char *val, gsize val_len)
+_hash_add (ParseType parse_type, GHashTable *hash, const char *key, gsize key_len, const char *val, gsize val_len)
 {
-	if (   key_len != strlen (key)
-	    || val_len != strlen (val)) {
+	if (   NM_IN_SET (parse_type, PARSE_TYPE_UTF8_ONLY,
+	                              PARSE_TYPE_ESCAPED_NO_NUL)
+	    && (   key_len != strlen (key)
+	        || val_len != strlen (val))) {
 		/* the text contains embedded NUL chars. These values are invalid, skip them */
 		return;
 	}
@@ -861,13 +869,93 @@ _hash_add (GHashTable *hash, const char *key, gsize key_len, const char *val, gs
 		/* empty keys are skipped as well. */
 		return;
 	}
-	if (   !g_utf8_validate (key, key_len, NULL)
-	    || !g_utf8_validate (val, val_len, NULL)) {
+	if (   parse_type == PARSE_TYPE_UTF8_ONLY
+	    && (   !g_utf8_validate (key, key_len, NULL)
+	        || !g_utf8_validate (val, val_len, NULL))) {
 		/* the key names and values must be valid UTF-8. */
 		return;
 	}
 
-	g_hash_table_insert (hash, g_strdup (key), g_strdup (val));
+	if (parse_type == PARSE_TYPE_UTF8_ONLY)
+		g_hash_table_insert (hash, g_strdup (key), g_strdup (val));
+	else {
+		char *key_dup, *val_dup;
+		const NMUtilsStrUtf8SafeFlags FLAG =   NM_UTILS_STR_UTF8_SAFE_FLAG_ESCAPE_CTRL
+		                                     | NM_UTILS_STR_UTF8_SAFE_FLAG_SECRET;
+
+		key = nm_utils_buf_utf8safe_escape (key, key_len, FLAG, &key_dup);
+		val = nm_utils_buf_utf8safe_escape (val, val_len, FLAG, &val_dup);
+		g_hash_table_insert (hash,
+		                     key_dup ?: g_strdup (key),
+		                     val_dup ?: g_strdup (val));
+	}
+}
+
+static gboolean
+_parse_vpn_details (char *contents /* modified in-place */,
+                    gsize contents_len,
+                    ParseType parse_type,
+                    GHashTable **out_data,
+                    GHashTable **out_secrets)
+{
+	gs_unref_hashtable GHashTable *data = NULL;
+	gs_unref_hashtable GHashTable *secrets = NULL;
+	char *line;
+	gsize line_len;
+
+	data = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_free);
+	secrets = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, (GDestroyNotify) nm_free_secret);
+
+	line = contents;
+	line_len = contents_len;
+
+	while (line_len > 0) {
+		const char *key, *val;
+		gsize key_len, val_len;
+
+		if (   line_len >= NM_STRLEN ("DONE")
+		    && memcmp (line, "DONE", NM_STRLEN ("DONE") == 0)
+		    && (   line_len == NM_STRLEN ("DONE")
+		        || NM_IN_SET (line[NM_STRLEN ("DONE")], '\0', '\n'))) {
+			/* finish marker. */
+			break;
+		}
+
+		if (_consume_prefix (&line, &line_len, DATA_KEY_TAG, &key, &key_len)) {
+			if (_consume_prefix (&line, &line_len, DATA_VAL_TAG, &val, &val_len)) {
+				_hash_add (parse_type, data, key, key_len, val, val_len);
+				continue;
+			}
+		} else if (_consume_prefix (&line, &line_len, SECRET_KEY_TAG, &key, &key_len)) {
+			if (_consume_prefix (&line, &line_len, SECRET_VAL_TAG, &val, &val_len)) {
+				_hash_add (parse_type, secrets, key, key_len, val, val_len);
+				continue;
+			}
+		}
+
+		/* the current line is invalid, according to protocol.
+		 * Silently skip it. */
+		while (   line_len > 0
+		       && !NM_IN_SET (line[0], '\0', '\n')) {
+			line_len--;
+			line++;
+		}
+		if (line_len > 0) {
+			line_len--;
+			line++;
+		}
+	}
+
+	if (   g_hash_table_size (data) == 0
+	    && g_hash_table_size (secrets) == 0) {
+		NM_SET_OUT (out_data, NULL);
+		NM_SET_OUT (out_secrets, NULL);
+		return FALSE;
+	}
+
+	NM_SET_OUT (out_data, g_steal_pointer (&data));
+	NM_SET_OUT (out_secrets, g_steal_pointer (&secrets));
+	return TRUE;
 }
 
 /**
@@ -890,14 +978,7 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
                                         GHashTable **out_data,
                                         GHashTable **out_secrets)
 {
-	gs_unref_hashtable GHashTable *data = NULL;
-	gs_unref_hashtable GHashTable *secrets = NULL;
 	nm_auto_clear_secret_ptr NMSecretPtr contents = { 0 };
-	char *line;
-	gsize line_len;
-
-	data = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_free);
-	secrets = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, (GDestroyNotify) nm_free_secret);
 
 	if (nm_utils_fd_get_contents (fd,
 	                              FALSE,
@@ -905,60 +986,72 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 	                              NM_UTILS_FILE_GET_CONTENTS_FLAG_SECRET,
 	                              &contents.str,
 	                              &contents.len,
-	                              NULL) < 0)
-		goto out;
-
-	line = contents.str;
-	line_len = contents.len;
-
-	while (line_len > 0) {
-		const char *key, *val;
-		gsize key_len, val_len;
-
-		if (   line_len >= NM_STRLEN ("DONE")
-		    && memcmp (line, "DONE", NM_STRLEN ("DONE") == 0)
-		    && (   line_len == NM_STRLEN ("DONE")
-		        || NM_IN_SET (line[NM_STRLEN ("DONE")], '\0', '\n'))) {
-			/* finish marker. */
-			break;
-		}
-
-		if (_consume_prefix (&line, &line_len, DATA_KEY_TAG, &key, &key_len)) {
-			if (_consume_prefix (&line, &line_len, DATA_VAL_TAG, &val, &val_len)) {
-				_hash_add (data, key, key_len, val, val_len);
-				continue;
-			}
-		} else if (_consume_prefix (&line, &line_len, SECRET_KEY_TAG, &key, &key_len)) {
-			if (_consume_prefix (&line, &line_len, SECRET_VAL_TAG, &val, &val_len)) {
-				_hash_add (secrets, key, key_len, val, val_len);
-				continue;
-			}
-		}
-
-		/* the current line is invalid, according to protocol.
-		 * Silently skip it. */
-		while (   line_len > 0
-		       && !NM_IN_SET (line[0], '\0', '\n')) {
-			line_len--;
-			line++;
-		}
-		if (line_len > 0) {
-			line_len--;
-			line++;
-		}
+	                              NULL) < 0) {
+		/* ignore error. _parse_vpn_details() fails on empty data. */
 	}
 
-out:
-	if (   g_hash_table_size (data) == 0
-	    && g_hash_table_size (secrets) == 0) {
-		NM_SET_OUT (out_data, NULL);
-		NM_SET_OUT (out_secrets, NULL);
-		return FALSE;
-	}
+	return _parse_vpn_details (contents.str,
+	                           contents.len,
+	                           PARSE_TYPE_UTF8_ONLY,
+	                           out_data,
+	                           out_secrets);
+}
 
-	NM_SET_OUT (out_data, g_steal_pointer (&data));
-	NM_SET_OUT (out_secrets, g_steal_pointer (&secrets));
-	return TRUE;
+/**
+ * nm_vpn_service_plugin_parse_vpn_details:
+ * @data: the data buffer to parse
+ * @data_len: the number of bytes in the data buffer
+ * @allow_non_utf8: if %FALSE, all strings in the output dictionaries
+ *   @out_data and @out_secrets will be valid, plain NUL terminated,
+ *   UTF-8 strings. In this case, non UTF-8 sequences are silently
+ *   ignored.
+ *   If %TRUE, the strings will be UTF-8 encoded with backslash escaping
+ *   of invalid character sequences. This can be reverted with g_strcompress(),
+ *   but see @allow_nul_char.
+ * @allow_nul_char: only makes sense in combination with @allow_non_utf8 %TRUE.
+ *   If %FALSE, the backslash encoded string won't encode any NUL characters,
+ *   and g_strcompress() can be safely used. Entries with NUL characters
+ *   will be silently dropped.
+ *   If %TRUE, the strings may contain backslash sequences for NUL characters,
+ *   but beware that g_strcompress() cannot unescape these.
+ * @out_data: (out) (transfer full): on successful return, a hash table
+ *   (mapping char*:char*) containing the key/value pairs of VPN data items.
+ *   Note that keys and values are all valid UTF-8. Invalid sequences
+ *   are backslash encoded.
+ * @out_secrets: (out) (transfer full): on successful return, a hash table
+ *   (mapping char*:char*) containing the key/value pairsof VPN secrets.
+ *   Like with out_data, the strings are valid UTF-8 where invalid sequences
+ *   are backslash encoded.
+ *
+ * Parses key/value pairs from a data bufffer, commonly received from an applet
+ * when the applet calls the authentication dialog of the VPN plugin.
+ *
+ * Returns: %TRUE if reading values was successful, %FALSE if not
+ *
+ * Since: 1.16
+ **/
+gboolean
+nm_vpn_service_plugin_parse_vpn_details (const guint8 *data,
+                                         gsize data_len,
+                                         gboolean allow_non_utf8,
+                                         gboolean allow_nul_char,
+                                         GHashTable **out_data,
+                                         GHashTable **out_secrets)
+{
+	nm_auto_clear_secret_ptr NMSecretPtr contents = {
+		.bin = nm_memdup (data, data_len),
+		.len = data_len,
+	};
+
+	return _parse_vpn_details (contents.str,
+	                           contents.len,
+	                           !allow_non_utf8
+	                             ? PARSE_TYPE_UTF8_ONLY
+	                             : (allow_nul_char
+	                                ? PARSE_TYPE_ESCAPED_BINARY
+	                                : PARSE_TYPE_ESCAPED_NO_NUL),
+	                           out_data,
+	                           out_secrets);
 }
 
 /**

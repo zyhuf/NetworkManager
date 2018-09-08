@@ -160,6 +160,14 @@ gboolean nm_vpn_service_plugin_read_vpn_details (int fd,
                                                  GHashTable **out_data,
                                                  GHashTable **out_secrets);
 
+NM_AVAILABLE_IN_1_16
+gboolean nm_vpn_service_plugin_parse_vpn_details (const guint8 *data,
+                                                  gsize data_len,
+                                                  gboolean allow_non_utf8,
+                                                  gboolean allow_nul_char,
+                                                  GHashTable **out_data,
+                                                  GHashTable **out_secrets);
+
 NM_AVAILABLE_IN_1_2
 gboolean nm_vpn_service_plugin_get_secret_flags (GHashTable *data,
                                                  const char *secret_name,
