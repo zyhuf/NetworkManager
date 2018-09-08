@@ -892,36 +892,24 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 {
 	gs_unref_hashtable GHashTable *data = NULL;
 	gs_unref_hashtable GHashTable *secrets = NULL;
-	nm_auto_free_gstring GString *contents = NULL;
+	nm_auto_clear_secret_ptr NMSecretPtr contents = { 0 };
 	char *line;
 	gsize line_len;
 
 	data = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_free);
 	secrets = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, (GDestroyNotify) nm_free_secret);
 
-	contents = g_string_new (NULL);
+	if (nm_utils_fd_get_contents (fd,
+	                              FALSE,
+	                              100*1024*1024,
+	                              NM_UTILS_FILE_GET_CONTENTS_FLAG_SECRET,
+	                              &contents.str,
+	                              &contents.len,
+	                              NULL) < 0)
+		goto out;
 
-	while (TRUE) {
-		char c;
-		ssize_t nr;
-
-		errno = 0;
-		nr = read (fd, &c, 1);
-		if (nr == -1) {
-			if (errno == EAGAIN) {
-				g_usleep (100);
-				continue;
-			}
-			break;
-		}
-		if (nr == 0)
-			break;
-
-		g_string_append_c (contents, c);
-	}
-
-	line = contents->str;
-	line_len = contents->len;
+	line = contents.str;
+	line_len = contents.len;
 
 	while (line_len > 0) {
 		const char *key, *val;
@@ -960,6 +948,7 @@ nm_vpn_service_plugin_read_vpn_details (int fd,
 		}
 	}
 
+out:
 	if (   g_hash_table_size (data) == 0
 	    && g_hash_table_size (secrets) == 0) {
 		NM_SET_OUT (out_data, NULL);
