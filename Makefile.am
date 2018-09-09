@@ -4766,6 +4766,7 @@ EXTRA_DIST += \
 	shared/nm-utils/nm-macros-internal.h \
 	shared/nm-utils/nm-shared-utils.c \
 	shared/nm-utils/nm-shared-utils.h \
+	shared/nm-utils/nm-str-buf.h \
 	shared/nm-utils/nm-test-utils.h \
 	shared/nm-utils/nm-vpn-editor-plugin-call.h \
 	shared/nm-utils/nm-vpn-plugin-macros.h \

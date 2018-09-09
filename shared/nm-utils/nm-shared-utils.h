@@ -951,6 +951,10 @@ GBytes *nm_secret_buf_to_gbytes_take (NMSecretBuf *secret, gssize actual_len);
 
 /*****************************************************************************/
 
+gsize nm_utils_get_next_realloc_size (gboolean true_realloc, gsize requested);
+
+/*****************************************************************************/
+
 static inline char *
 nm_secret_mem_realloc (char *m_old, gboolean do_bzero_mem, gsize cur_len, gsize new_len)
 {
