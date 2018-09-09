@@ -35,7 +35,6 @@
 #include <ciferfam.h>
 #include <p12plcy.h>
 
-#include "nm-utils/nm-secret-utils.h"
 #include "nm-errors.h"
 
 /*****************************************************************************/

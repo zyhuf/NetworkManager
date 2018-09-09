@@ -33,7 +33,6 @@
 #include <string.h>
 #include <linux/pkt_sched.h>
 
-#include "nm-utils/nm-secret-utils.h"
 #include "nm-common-macros.h"
 #include "nm-core-internal.h"
 #include "nm-keyfile-utils.h"

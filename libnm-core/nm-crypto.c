@@ -30,9 +30,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "nm-utils/nm-secret-utils.h"
-#include "nm-utils/nm-io-utils.h"
-
 #include "nm-crypto-impl.h"
 #include "nm-utils.h"
 #include "nm-errors.h"

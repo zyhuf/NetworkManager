@@ -34,8 +34,6 @@
 #include "nms-keyfile-utils.h"
 #include "nms-keyfile-reader.h"
 
-#include "nm-utils/nm-io-utils.h"
-
 /*****************************************************************************/
 
 typedef struct {

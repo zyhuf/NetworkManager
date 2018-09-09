@@ -25,8 +25,6 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "nm-utils/nm-secret-utils.h"
-
 #include "nm-setting-vpn.h"
 #include "nm-utils.h"
 #include "nm-utils-private.h"
