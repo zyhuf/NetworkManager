@@ -81,6 +81,12 @@ AC_CHECK_DECLS([
 #include <malloc.h>
 ]])
 
+AC_CHECK_DECLS([
+	memfd_create],
+	[], [], [[
+#include <linux/memfd.h>
+]])
+
 AC_CHECK_HEADERS(sys/auxv.h)
 
 AC_CHECK_DECLS([getrandom],
