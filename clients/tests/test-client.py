@@ -711,9 +711,6 @@ class TestNmcli(NmTestBase):
 
         self.async_wait()
 
-        self.srv.shutdown()
-        self.srv = None
-
         self._calling_num = None
 
         results = self._results
@@ -748,6 +745,22 @@ class TestNmcli(NmTestBase):
                 print("EXPECT OUTPUT:\n[[%s]]\n" % (n['content']))
                 print("Let the test write the file by rerunning with NM_TEST_REGENERATE=1")
                 print("See howto in %s for details.\n" % (PathConfiguration.canonical_script_filename()))
+
+                env = {}
+                for k in ['LD_LIBRARY_PATH',
+                          'DBUS_SESSION_BUS_ADDRESS']:
+                    val = os.environ.get(k, None)
+                    if val is not None:
+                        env[k] = val
+                env['LIBNM_USE_SESSION_BUS'] = '1'
+                env['LIBNM_USE_NO_UDEV'] = '1'
+                env['TERM'] = 'linux'
+                env['XDG_CONFIG_HOME'] = PathConfiguration.srcdir()
+                print("######## DEVICES ########")
+                print("%s" % subprocess.check_output([conf.get(ENV_NM_TEST_CLIENT_NMCLI_PATH), 'device', 'show'], env = env))
+                print("#########################")
+                sys.stdout.flush()
+
                 self.fail("Unexpected output of command, expected %s. Rerun test with NM_TEST_REGENERATE=1 to regenerate files" % (filename))
             if len(results_expect) != len(results):
                 if not regenerate:
@@ -759,6 +772,9 @@ class TestNmcli(NmTestBase):
                     print("Let the test write the file by rerunning with NM_TEST_REGENERATE=1")
                     print("See howto in %s for details.\n" % (PathConfiguration.canonical_script_filename()))
                     self.fail("Unexpected output of command, expected %s. Rerun test with NM_TEST_REGENERATE=1 to regenerate files" % (filename))
+
+        self.srv.shutdown()
+        self.srv = None
 
         if regenerate:
             content_new = ''.join([r['content'] for r in results])

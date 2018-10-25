@@ -1,5 +1,5 @@
 size: 244
-location: clients/tests/test-client.py:870:test_003()/1
+location: clients/tests/test-client.py:886:test_003()/1
 cmd: $NMCLI c add type ethernet ifname '*' con-name con-xx1
 lang: C
 returncode: 0
@@ -9,7 +9,7 @@ Connection 'con-xx1' (UUID-con-xx1-REPLACED-REPLACED-REPLA) successfully added.
 
 <<<
 size: 316
-location: clients/tests/test-client.py:873:test_003()/2
+location: clients/tests/test-client.py:889:test_003()/2
 cmd: $NMCLI c s
 lang: C
 returncode: 0
@@ -21,7 +21,7 @@ con-xx1  UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 326
-location: clients/tests/test-client.py:873:test_003()/3
+location: clients/tests/test-client.py:889:test_003()/3
 cmd: $NMCLI c s
 lang: pl_PL.UTF-8
 returncode: 0
@@ -33,7 +33,7 @@ con-xx1  UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 332
-location: clients/tests/test-client.py:878:test_003()/4
+location: clients/tests/test-client.py:894:test_003()/4
 cmd: $NMCLI connection add type gsm autoconnect no con-name con-gsm1 ifname '*' apn xyz.con-gsm1 serial.baud 5 serial.send-delay 100 serial.pari 1
 lang: C
 returncode: 0
@@ -43,7 +43,7 @@ Connection 'con-gsm1' (UUID-con-gsm1-REPLACED-REPLACED-REPL) successfully added.
 
 <<<
 size: 228
-location: clients/tests/test-client.py:883:test_003()/5
+location: clients/tests/test-client.py:899:test_003()/5
 cmd: $NMCLI c add type ethernet ifname '*'
 lang: C
 returncode: 0
@@ -53,7 +53,7 @@ Connection 'ethernet' (UUID-ethernet-REPLACED-REPLACED-REPL) successfully added.
 
 <<<
 size: 451
-location: clients/tests/test-client.py:886:test_003()/6
+location: clients/tests/test-client.py:902:test_003()/6
 cmd: $NMCLI c s
 lang: C
 returncode: 0
@@ -67,7 +67,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  --
 
 <<<
 size: 461
-location: clients/tests/test-client.py:886:test_003()/7
+location: clients/tests/test-client.py:902:test_003()/7
 cmd: $NMCLI c s
 lang: pl_PL.UTF-8
 returncode: 0
@@ -81,7 +81,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  --
 
 <<<
 size: 1514
-location: clients/tests/test-client.py:889:test_003()/8
+location: clients/tests/test-client.py:905:test_003()/8
 cmd: $NMCLI -f ALL c s
 lang: C
 returncode: 0
@@ -95,7 +95,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never      
 
 <<<
 size: 1524
-location: clients/tests/test-client.py:889:test_003()/9
+location: clients/tests/test-client.py:905:test_003()/9
 cmd: $NMCLI -f ALL c s
 lang: pl_PL.UTF-8
 returncode: 0
@@ -109,7 +109,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          nigdy      
 
 <<<
 size: 229
-location: clients/tests/test-client.py:893:test_003()/10
+location: clients/tests/test-client.py:909:test_003()/10
 cmd: $NMCLI --complete-args -f ALL c s ''
 lang: C
 returncode: 0
@@ -130,7 +130,7 @@ path
 uuid
 <<<
 size: 239
-location: clients/tests/test-client.py:893:test_003()/11
+location: clients/tests/test-client.py:909:test_003()/11
 cmd: $NMCLI --complete-args -f ALL c s ''
 lang: pl_PL.UTF-8
 returncode: 0
@@ -151,7 +151,7 @@ path
 uuid
 <<<
 size: 3989
-location: clients/tests/test-client.py:896:test_003()/12
+location: clients/tests/test-client.py:912:test_003()/12
 cmd: $NMCLI con s con-gsm1
 lang: C
 returncode: 0
@@ -245,7 +245,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 4018
-location: clients/tests/test-client.py:896:test_003()/13
+location: clients/tests/test-client.py:912:test_003()/13
 cmd: $NMCLI con s con-gsm1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -339,7 +339,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 252
-location: clients/tests/test-client.py:909:test_003()/14
+location: clients/tests/test-client.py:925:test_003()/14
 cmd: $NMCLI con up ethernet ifname eth0
 lang: C
 returncode: 0
@@ -349,7 +349,7 @@ Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkMa
 
 <<<
 size: 452
-location: clients/tests/test-client.py:912:test_003()/15
+location: clients/tests/test-client.py:928:test_003()/15
 cmd: $NMCLI con
 lang: C
 returncode: 0
@@ -363,7 +363,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 462
-location: clients/tests/test-client.py:912:test_003()/16
+location: clients/tests/test-client.py:928:test_003()/16
 cmd: $NMCLI con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -377,7 +377,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 1730
-location: clients/tests/test-client.py:915:test_003()/17
+location: clients/tests/test-client.py:931:test_003()/17
 cmd: $NMCLI -f ALL con
 lang: C
 returncode: 0
@@ -391,7 +391,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 1745
-location: clients/tests/test-client.py:915:test_003()/18
+location: clients/tests/test-client.py:931:test_003()/18
 cmd: $NMCLI -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -405,7 +405,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 774
-location: clients/tests/test-client.py:918:test_003()/19
+location: clients/tests/test-client.py:934:test_003()/19
 cmd: $NMCLI -f ALL con s -a
 lang: C
 returncode: 0
@@ -416,7 +416,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never      
 
 <<<
 size: 786
-location: clients/tests/test-client.py:918:test_003()/20
+location: clients/tests/test-client.py:934:test_003()/20
 cmd: $NMCLI -f ALL con s -a
 lang: pl_PL.UTF-8
 returncode: 0
@@ -427,7 +427,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          nigdy      
 
 <<<
 size: 352
-location: clients/tests/test-client.py:921:test_003()/21
+location: clients/tests/test-client.py:937:test_003()/21
 cmd: $NMCLI -f ACTIVE-PATH,DEVICE,UUID con s -act
 lang: C
 returncode: 0
@@ -438,7 +438,7 @@ ACTIVE-PATH                                         DEVICE  UUID
 
 <<<
 size: 362
-location: clients/tests/test-client.py:921:test_003()/22
+location: clients/tests/test-client.py:937:test_003()/22
 cmd: $NMCLI -f ACTIVE-PATH,DEVICE,UUID con s -act
 lang: pl_PL.UTF-8
 returncode: 0
@@ -449,7 +449,7 @@ ACTIVE-PATH                                         DEVICE  UUID
 
 <<<
 size: 241
-location: clients/tests/test-client.py:924:test_003()/23
+location: clients/tests/test-client.py:940:test_003()/23
 cmd: $NMCLI -f UUID,NAME con s --active
 lang: C
 returncode: 0
@@ -460,7 +460,7 @@ UUID-ethernet-REPLACED-REPLACED-REPL  ethernet
 
 <<<
 size: 251
-location: clients/tests/test-client.py:924:test_003()/24
+location: clients/tests/test-client.py:940:test_003()/24
 cmd: $NMCLI -f UUID,NAME con s --active
 lang: pl_PL.UTF-8
 returncode: 0
@@ -471,7 +471,7 @@ UUID-ethernet-REPLACED-REPLACED-REPL  ethernet
 
 <<<
 size: 3805
-location: clients/tests/test-client.py:927:test_003()/25
+location: clients/tests/test-client.py:943:test_003()/25
 cmd: $NMCLI -f ALL con s ethernet
 lang: C
 returncode: 0
@@ -561,7 +561,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 3833
-location: clients/tests/test-client.py:927:test_003()/26
+location: clients/tests/test-client.py:943:test_003()/26
 cmd: $NMCLI -f ALL con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -651,7 +651,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 199
-location: clients/tests/test-client.py:930:test_003()/27
+location: clients/tests/test-client.py:946:test_003()/27
 cmd: $NMCLI -f GENERAL.STATE con s ethernet
 lang: C
 returncode: 0
@@ -661,7 +661,7 @@ GENERAL.STATE:                          activated
 
 <<<
 size: 210
-location: clients/tests/test-client.py:930:test_003()/28
+location: clients/tests/test-client.py:946:test_003()/28
 cmd: $NMCLI -f GENERAL.STATE con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -671,7 +671,7 @@ GENERAL.STATE:                          aktywowano
 
 <<<
 size: 4462
-location: clients/tests/test-client.py:933:test_003()/29
+location: clients/tests/test-client.py:949:test_003()/29
 cmd: $NMCLI con s ethernet
 lang: C
 returncode: 0
@@ -773,7 +773,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4494
-location: clients/tests/test-client.py:933:test_003()/30
+location: clients/tests/test-client.py:949:test_003()/30
 cmd: $NMCLI con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -875,7 +875,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1243
-location: clients/tests/test-client.py:936:test_003()/31
+location: clients/tests/test-client.py:952:test_003()/31
 cmd: $NMCLI -f ALL dev s eth0
 lang: C
 returncode: 0
@@ -895,7 +895,7 @@ Unknown parameter: eth0
 
 <<<
 size: 1258
-location: clients/tests/test-client.py:936:test_003()/32
+location: clients/tests/test-client.py:952:test_003()/32
 cmd: $NMCLI -f ALL dev s eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -915,7 +915,7 @@ Nieznany parametr: eth0
 
 <<<
 size: 3390
-location: clients/tests/test-client.py:939:test_003()/33
+location: clients/tests/test-client.py:955:test_003()/33
 cmd: $NMCLI -f ALL dev show eth0
 lang: C
 returncode: 0
@@ -979,7 +979,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3423
-location: clients/tests/test-client.py:939:test_003()/34
+location: clients/tests/test-client.py:955:test_003()/34
 cmd: $NMCLI -f ALL dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1043,7 +1043,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 2165
-location: clients/tests/test-client.py:942:test_003()/35
+location: clients/tests/test-client.py:958:test_003()/35
 cmd: $NMCLI -f ALL -t dev show eth0
 lang: C
 returncode: 0
@@ -1107,7 +1107,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2175
-location: clients/tests/test-client.py:942:test_003()/36
+location: clients/tests/test-client.py:958:test_003()/36
 cmd: $NMCLI -f ALL -t dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1171,7 +1171,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 252
-location: clients/tests/test-client.py:909:test_003()/37
+location: clients/tests/test-client.py:925:test_003()/37
 cmd: $NMCLI con up ethernet ifname eth1
 lang: C
 returncode: 0
@@ -1181,7 +1181,7 @@ Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkMa
 
 <<<
 size: 518
-location: clients/tests/test-client.py:912:test_003()/38
+location: clients/tests/test-client.py:928:test_003()/38
 cmd: $NMCLI con
 lang: C
 returncode: 0
@@ -1196,7 +1196,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 528
-location: clients/tests/test-client.py:912:test_003()/39
+location: clients/tests/test-client.py:928:test_003()/39
 cmd: $NMCLI con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1211,7 +1211,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --
 
 <<<
 size: 2050
-location: clients/tests/test-client.py:915:test_003()/40
+location: clients/tests/test-client.py:931:test_003()/40
 cmd: $NMCLI -f ALL con
 lang: C
 returncode: 0
@@ -1226,7 +1226,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2066
-location: clients/tests/test-client.py:915:test_003()/41
+location: clients/tests/test-client.py:931:test_003()/41
 cmd: $NMCLI -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1241,7 +1241,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 1094
-location: clients/tests/test-client.py:918:test_003()/42
+location: clients/tests/test-client.py:934:test_003()/42
 cmd: $NMCLI -f ALL con s -a
 lang: C
 returncode: 0
@@ -1253,7 +1253,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never      
 
 <<<
 size: 1107
-location: clients/tests/test-client.py:918:test_003()/43
+location: clients/tests/test-client.py:934:test_003()/43
 cmd: $NMCLI -f ALL con s -a
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1265,7 +1265,7 @@ ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          nigdy      
 
 <<<
 size: 450
-location: clients/tests/test-client.py:921:test_003()/44
+location: clients/tests/test-client.py:937:test_003()/44
 cmd: $NMCLI -f ACTIVE-PATH,DEVICE,UUID con s -act
 lang: C
 returncode: 0
@@ -1277,7 +1277,7 @@ ACTIVE-PATH                                         DEVICE  UUID
 
 <<<
 size: 460
-location: clients/tests/test-client.py:921:test_003()/45
+location: clients/tests/test-client.py:937:test_003()/45
 cmd: $NMCLI -f ACTIVE-PATH,DEVICE,UUID con s -act
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1289,7 +1289,7 @@ ACTIVE-PATH                                         DEVICE  UUID
 
 <<<
 size: 241
-location: clients/tests/test-client.py:924:test_003()/46
+location: clients/tests/test-client.py:940:test_003()/46
 cmd: $NMCLI -f UUID,NAME con s --active
 lang: C
 returncode: 0
@@ -1300,7 +1300,7 @@ UUID-ethernet-REPLACED-REPLACED-REPL  ethernet
 
 <<<
 size: 251
-location: clients/tests/test-client.py:924:test_003()/47
+location: clients/tests/test-client.py:940:test_003()/47
 cmd: $NMCLI -f UUID,NAME con s --active
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1311,7 +1311,7 @@ UUID-ethernet-REPLACED-REPLACED-REPL  ethernet
 
 <<<
 size: 3805
-location: clients/tests/test-client.py:927:test_003()/48
+location: clients/tests/test-client.py:943:test_003()/48
 cmd: $NMCLI -f ALL con s ethernet
 lang: C
 returncode: 0
@@ -1401,7 +1401,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 3833
-location: clients/tests/test-client.py:927:test_003()/49
+location: clients/tests/test-client.py:943:test_003()/49
 cmd: $NMCLI -f ALL con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1491,7 +1491,7 @@ proxy.pac-script:                       --
 
 <<<
 size: 251
-location: clients/tests/test-client.py:930:test_003()/50
+location: clients/tests/test-client.py:946:test_003()/50
 cmd: $NMCLI -f GENERAL.STATE con s ethernet
 lang: C
 returncode: 0
@@ -1503,7 +1503,7 @@ GENERAL.STATE:                          activated
 
 <<<
 size: 263
-location: clients/tests/test-client.py:930:test_003()/51
+location: clients/tests/test-client.py:946:test_003()/51
 cmd: $NMCLI -f GENERAL.STATE con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1515,7 +1515,7 @@ GENERAL.STATE:                          aktywowano
 
 <<<
 size: 5127
-location: clients/tests/test-client.py:933:test_003()/52
+location: clients/tests/test-client.py:949:test_003()/52
 cmd: $NMCLI con s ethernet
 lang: C
 returncode: 0
@@ -1630,7 +1630,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5163
-location: clients/tests/test-client.py:933:test_003()/53
+location: clients/tests/test-client.py:949:test_003()/53
 cmd: $NMCLI con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1745,7 +1745,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1243
-location: clients/tests/test-client.py:936:test_003()/54
+location: clients/tests/test-client.py:952:test_003()/54
 cmd: $NMCLI -f ALL dev s eth0
 lang: C
 returncode: 0
@@ -1765,7 +1765,7 @@ Unknown parameter: eth0
 
 <<<
 size: 1258
-location: clients/tests/test-client.py:936:test_003()/55
+location: clients/tests/test-client.py:952:test_003()/55
 cmd: $NMCLI -f ALL dev s eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1785,7 +1785,7 @@ Nieznany parametr: eth0
 
 <<<
 size: 3390
-location: clients/tests/test-client.py:939:test_003()/56
+location: clients/tests/test-client.py:955:test_003()/56
 cmd: $NMCLI -f ALL dev show eth0
 lang: C
 returncode: 0
@@ -1849,7 +1849,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3423
-location: clients/tests/test-client.py:939:test_003()/57
+location: clients/tests/test-client.py:955:test_003()/57
 cmd: $NMCLI -f ALL dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -1913,7 +1913,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 2165
-location: clients/tests/test-client.py:942:test_003()/58
+location: clients/tests/test-client.py:958:test_003()/58
 cmd: $NMCLI -f ALL -t dev show eth0
 lang: C
 returncode: 0
@@ -1977,7 +1977,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2175
-location: clients/tests/test-client.py:942:test_003()/59
+location: clients/tests/test-client.py:958:test_003()/59
 cmd: $NMCLI -f ALL -t dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2041,7 +2041,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2068
-location: clients/tests/test-client.py:957:test_003()/60
+location: clients/tests/test-client.py:973:test_003()/60
 cmd: $NMCLI -f ALL con
 lang: C
 returncode: 0
@@ -2056,7 +2056,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2090
-location: clients/tests/test-client.py:957:test_003()/61
+location: clients/tests/test-client.py:973:test_003()/61
 cmd: $NMCLI -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2071,7 +2071,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 375
-location: clients/tests/test-client.py:960:test_003()/62
+location: clients/tests/test-client.py:976:test_003()/62
 cmd: $NMCLI -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -2085,7 +2085,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 385
-location: clients/tests/test-client.py:960:test_003()/63
+location: clients/tests/test-client.py:976:test_003()/63
 cmd: $NMCLI -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2099,7 +2099,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 5130
-location: clients/tests/test-client.py:963:test_003()/64
+location: clients/tests/test-client.py:979:test_003()/64
 cmd: $NMCLI con s ethernet
 lang: C
 returncode: 0
@@ -2214,7 +2214,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5167
-location: clients/tests/test-client.py:963:test_003()/65
+location: clients/tests/test-client.py:979:test_003()/65
 cmd: $NMCLI con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2329,7 +2329,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4505
-location: clients/tests/test-client.py:966:test_003()/66
+location: clients/tests/test-client.py:982:test_003()/66
 cmd: $NMCLI c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -2431,7 +2431,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4538
-location: clients/tests/test-client.py:966:test_003()/67
+location: clients/tests/test-client.py:982:test_003()/67
 cmd: $NMCLI c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2533,7 +2533,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3390
-location: clients/tests/test-client.py:969:test_003()/68
+location: clients/tests/test-client.py:985:test_003()/68
 cmd: $NMCLI -f all dev show eth0
 lang: C
 returncode: 0
@@ -2597,7 +2597,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3423
-location: clients/tests/test-client.py:969:test_003()/69
+location: clients/tests/test-client.py:985:test_003()/69
 cmd: $NMCLI -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2661,7 +2661,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 2350
-location: clients/tests/test-client.py:957:test_003()/70
+location: clients/tests/test-client.py:973:test_003()/70
 cmd: $NMCLI --color yes -f ALL con
 lang: C
 returncode: 0
@@ -2676,7 +2676,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2372
-location: clients/tests/test-client.py:957:test_003()/71
+location: clients/tests/test-client.py:973:test_003()/71
 cmd: $NMCLI --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2691,7 +2691,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 405
-location: clients/tests/test-client.py:960:test_003()/72
+location: clients/tests/test-client.py:976:test_003()/72
 cmd: $NMCLI --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -2705,7 +2705,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 415
-location: clients/tests/test-client.py:960:test_003()/73
+location: clients/tests/test-client.py:976:test_003()/73
 cmd: $NMCLI --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2719,7 +2719,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 5142
-location: clients/tests/test-client.py:963:test_003()/74
+location: clients/tests/test-client.py:979:test_003()/74
 cmd: $NMCLI --color yes con s ethernet
 lang: C
 returncode: 0
@@ -2834,7 +2834,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5179
-location: clients/tests/test-client.py:963:test_003()/75
+location: clients/tests/test-client.py:979:test_003()/75
 cmd: $NMCLI --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -2949,7 +2949,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4517
-location: clients/tests/test-client.py:966:test_003()/76
+location: clients/tests/test-client.py:982:test_003()/76
 cmd: $NMCLI --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -3051,7 +3051,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4550
-location: clients/tests/test-client.py:966:test_003()/77
+location: clients/tests/test-client.py:982:test_003()/77
 cmd: $NMCLI --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3153,7 +3153,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3402
-location: clients/tests/test-client.py:969:test_003()/78
+location: clients/tests/test-client.py:985:test_003()/78
 cmd: $NMCLI --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -3217,7 +3217,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3435
-location: clients/tests/test-client.py:969:test_003()/79
+location: clients/tests/test-client.py:985:test_003()/79
 cmd: $NMCLI --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3281,7 +3281,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 2554
-location: clients/tests/test-client.py:957:test_003()/80
+location: clients/tests/test-client.py:973:test_003()/80
 cmd: $NMCLI --pretty -f ALL con
 lang: C
 returncode: 0
@@ -3300,7 +3300,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2598
-location: clients/tests/test-client.py:957:test_003()/81
+location: clients/tests/test-client.py:973:test_003()/81
 cmd: $NMCLI --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3319,7 +3319,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 586
-location: clients/tests/test-client.py:960:test_003()/82
+location: clients/tests/test-client.py:976:test_003()/82
 cmd: $NMCLI --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -3337,7 +3337,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 616
-location: clients/tests/test-client.py:960:test_003()/83
+location: clients/tests/test-client.py:976:test_003()/83
 cmd: $NMCLI --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3355,7 +3355,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 6384
-location: clients/tests/test-client.py:963:test_003()/84
+location: clients/tests/test-client.py:979:test_003()/84
 cmd: $NMCLI --pretty con s ethernet
 lang: C
 returncode: 0
@@ -3486,7 +3486,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 6440
-location: clients/tests/test-client.py:963:test_003()/85
+location: clients/tests/test-client.py:979:test_003()/85
 cmd: $NMCLI --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3617,7 +3617,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5446
-location: clients/tests/test-client.py:966:test_003()/86
+location: clients/tests/test-client.py:982:test_003()/86
 cmd: $NMCLI --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -3731,7 +3731,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5491
-location: clients/tests/test-client.py:966:test_003()/87
+location: clients/tests/test-client.py:982:test_003()/87
 cmd: $NMCLI --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3845,7 +3845,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4250
-location: clients/tests/test-client.py:969:test_003()/88
+location: clients/tests/test-client.py:985:test_003()/88
 cmd: $NMCLI --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -3920,7 +3920,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4289
-location: clients/tests/test-client.py:969:test_003()/89
+location: clients/tests/test-client.py:985:test_003()/89
 cmd: $NMCLI --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -3995,7 +3995,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 2836
-location: clients/tests/test-client.py:957:test_003()/90
+location: clients/tests/test-client.py:973:test_003()/90
 cmd: $NMCLI --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -4014,7 +4014,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2880
-location: clients/tests/test-client.py:957:test_003()/91
+location: clients/tests/test-client.py:973:test_003()/91
 cmd: $NMCLI --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4033,7 +4033,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 616
-location: clients/tests/test-client.py:960:test_003()/92
+location: clients/tests/test-client.py:976:test_003()/92
 cmd: $NMCLI --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -4051,7 +4051,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 646
-location: clients/tests/test-client.py:960:test_003()/93
+location: clients/tests/test-client.py:976:test_003()/93
 cmd: $NMCLI --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4069,7 +4069,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 6396
-location: clients/tests/test-client.py:963:test_003()/94
+location: clients/tests/test-client.py:979:test_003()/94
 cmd: $NMCLI --pretty --color yes con s ethernet
 lang: C
 returncode: 0
@@ -4200,7 +4200,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 6452
-location: clients/tests/test-client.py:963:test_003()/95
+location: clients/tests/test-client.py:979:test_003()/95
 cmd: $NMCLI --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4331,7 +4331,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5458
-location: clients/tests/test-client.py:966:test_003()/96
+location: clients/tests/test-client.py:982:test_003()/96
 cmd: $NMCLI --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -4445,7 +4445,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5503
-location: clients/tests/test-client.py:966:test_003()/97
+location: clients/tests/test-client.py:982:test_003()/97
 cmd: $NMCLI --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4559,7 +4559,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4262
-location: clients/tests/test-client.py:969:test_003()/98
+location: clients/tests/test-client.py:985:test_003()/98
 cmd: $NMCLI --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -4634,7 +4634,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4301
-location: clients/tests/test-client.py:969:test_003()/99
+location: clients/tests/test-client.py:985:test_003()/99
 cmd: $NMCLI --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4709,7 +4709,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 1185
-location: clients/tests/test-client.py:957:test_003()/100
+location: clients/tests/test-client.py:973:test_003()/100
 cmd: $NMCLI --terse -f ALL con
 lang: C
 returncode: 0
@@ -4723,7 +4723,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1195
-location: clients/tests/test-client.py:957:test_003()/101
+location: clients/tests/test-client.py:973:test_003()/101
 cmd: $NMCLI --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4737,7 +4737,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 341
-location: clients/tests/test-client.py:960:test_003()/102
+location: clients/tests/test-client.py:976:test_003()/102
 cmd: $NMCLI --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -4750,7 +4750,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 351
-location: clients/tests/test-client.py:960:test_003()/103
+location: clients/tests/test-client.py:976:test_003()/103
 cmd: $NMCLI --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4763,7 +4763,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 2769
-location: clients/tests/test-client.py:963:test_003()/104
+location: clients/tests/test-client.py:979:test_003()/104
 cmd: $NMCLI --terse con s ethernet
 lang: C
 returncode: 0
@@ -4878,7 +4878,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2779
-location: clients/tests/test-client.py:963:test_003()/105
+location: clients/tests/test-client.py:979:test_003()/105
 cmd: $NMCLI --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -4993,7 +4993,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2441
-location: clients/tests/test-client.py:966:test_003()/106
+location: clients/tests/test-client.py:982:test_003()/106
 cmd: $NMCLI --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -5095,7 +5095,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2451
-location: clients/tests/test-client.py:966:test_003()/107
+location: clients/tests/test-client.py:982:test_003()/107
 cmd: $NMCLI --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5197,7 +5197,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2171
-location: clients/tests/test-client.py:969:test_003()/108
+location: clients/tests/test-client.py:985:test_003()/108
 cmd: $NMCLI --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -5261,7 +5261,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2181
-location: clients/tests/test-client.py:969:test_003()/109
+location: clients/tests/test-client.py:985:test_003()/109
 cmd: $NMCLI --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5325,7 +5325,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 1467
-location: clients/tests/test-client.py:957:test_003()/110
+location: clients/tests/test-client.py:973:test_003()/110
 cmd: $NMCLI --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -5339,7 +5339,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1477
-location: clients/tests/test-client.py:957:test_003()/111
+location: clients/tests/test-client.py:973:test_003()/111
 cmd: $NMCLI --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5353,7 +5353,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 371
-location: clients/tests/test-client.py:960:test_003()/112
+location: clients/tests/test-client.py:976:test_003()/112
 cmd: $NMCLI --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -5366,7 +5366,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 381
-location: clients/tests/test-client.py:960:test_003()/113
+location: clients/tests/test-client.py:976:test_003()/113
 cmd: $NMCLI --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5379,7 +5379,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 2781
-location: clients/tests/test-client.py:963:test_003()/114
+location: clients/tests/test-client.py:979:test_003()/114
 cmd: $NMCLI --terse --color yes con s ethernet
 lang: C
 returncode: 0
@@ -5494,7 +5494,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2791
-location: clients/tests/test-client.py:963:test_003()/115
+location: clients/tests/test-client.py:979:test_003()/115
 cmd: $NMCLI --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5609,7 +5609,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2453
-location: clients/tests/test-client.py:966:test_003()/116
+location: clients/tests/test-client.py:982:test_003()/116
 cmd: $NMCLI --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -5711,7 +5711,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2463
-location: clients/tests/test-client.py:966:test_003()/117
+location: clients/tests/test-client.py:982:test_003()/117
 cmd: $NMCLI --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5813,7 +5813,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2183
-location: clients/tests/test-client.py:969:test_003()/118
+location: clients/tests/test-client.py:985:test_003()/118
 cmd: $NMCLI --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -5877,7 +5877,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2193
-location: clients/tests/test-client.py:969:test_003()/119
+location: clients/tests/test-client.py:985:test_003()/119
 cmd: $NMCLI --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5941,7 +5941,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2084
-location: clients/tests/test-client.py:957:test_003()/120
+location: clients/tests/test-client.py:973:test_003()/120
 cmd: $NMCLI --mode tabular -f ALL con
 lang: C
 returncode: 0
@@ -5956,7 +5956,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2106
-location: clients/tests/test-client.py:957:test_003()/121
+location: clients/tests/test-client.py:973:test_003()/121
 cmd: $NMCLI --mode tabular -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5971,7 +5971,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 391
-location: clients/tests/test-client.py:960:test_003()/122
+location: clients/tests/test-client.py:976:test_003()/122
 cmd: $NMCLI --mode tabular -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -5985,7 +5985,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 401
-location: clients/tests/test-client.py:960:test_003()/123
+location: clients/tests/test-client.py:976:test_003()/123
 cmd: $NMCLI --mode tabular -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -5999,7 +5999,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 3416
-location: clients/tests/test-client.py:963:test_003()/124
+location: clients/tests/test-client.py:979:test_003()/124
 cmd: $NMCLI --mode tabular con s ethernet
 lang: C
 returncode: 0
@@ -6030,7 +6030,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 3450
-location: clients/tests/test-client.py:963:test_003()/125
+location: clients/tests/test-client.py:979:test_003()/125
 cmd: $NMCLI --mode tabular con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6061,7 +6061,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2974
-location: clients/tests/test-client.py:966:test_003()/126
+location: clients/tests/test-client.py:982:test_003()/126
 cmd: $NMCLI --mode tabular c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -6088,7 +6088,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 3006
-location: clients/tests/test-client.py:966:test_003()/127
+location: clients/tests/test-client.py:982:test_003()/127
 cmd: $NMCLI --mode tabular c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6115,7 +6115,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2899
-location: clients/tests/test-client.py:969:test_003()/128
+location: clients/tests/test-client.py:985:test_003()/128
 cmd: $NMCLI --mode tabular -f all dev show eth0
 lang: C
 returncode: 0
@@ -6147,7 +6147,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2930
-location: clients/tests/test-client.py:969:test_003()/129
+location: clients/tests/test-client.py:985:test_003()/129
 cmd: $NMCLI --mode tabular -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6179,7 +6179,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2366
-location: clients/tests/test-client.py:957:test_003()/130
+location: clients/tests/test-client.py:973:test_003()/130
 cmd: $NMCLI --mode tabular --color yes -f ALL con
 lang: C
 returncode: 0
@@ -6194,7 +6194,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2388
-location: clients/tests/test-client.py:957:test_003()/131
+location: clients/tests/test-client.py:973:test_003()/131
 cmd: $NMCLI --mode tabular --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6209,7 +6209,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 421
-location: clients/tests/test-client.py:960:test_003()/132
+location: clients/tests/test-client.py:976:test_003()/132
 cmd: $NMCLI --mode tabular --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -6223,7 +6223,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 431
-location: clients/tests/test-client.py:960:test_003()/133
+location: clients/tests/test-client.py:976:test_003()/133
 cmd: $NMCLI --mode tabular --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6237,7 +6237,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 3428
-location: clients/tests/test-client.py:963:test_003()/134
+location: clients/tests/test-client.py:979:test_003()/134
 cmd: $NMCLI --mode tabular --color yes con s ethernet
 lang: C
 returncode: 0
@@ -6268,7 +6268,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 3462
-location: clients/tests/test-client.py:963:test_003()/135
+location: clients/tests/test-client.py:979:test_003()/135
 cmd: $NMCLI --mode tabular --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6299,7 +6299,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2986
-location: clients/tests/test-client.py:966:test_003()/136
+location: clients/tests/test-client.py:982:test_003()/136
 cmd: $NMCLI --mode tabular --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -6326,7 +6326,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 3018
-location: clients/tests/test-client.py:966:test_003()/137
+location: clients/tests/test-client.py:982:test_003()/137
 cmd: $NMCLI --mode tabular --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6353,7 +6353,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2911
-location: clients/tests/test-client.py:969:test_003()/138
+location: clients/tests/test-client.py:985:test_003()/138
 cmd: $NMCLI --mode tabular --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -6385,7 +6385,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2942
-location: clients/tests/test-client.py:969:test_003()/139
+location: clients/tests/test-client.py:985:test_003()/139
 cmd: $NMCLI --mode tabular --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6417,7 +6417,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2570
-location: clients/tests/test-client.py:957:test_003()/140
+location: clients/tests/test-client.py:973:test_003()/140
 cmd: $NMCLI --mode tabular --pretty -f ALL con
 lang: C
 returncode: 0
@@ -6436,7 +6436,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2614
-location: clients/tests/test-client.py:957:test_003()/141
+location: clients/tests/test-client.py:973:test_003()/141
 cmd: $NMCLI --mode tabular --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6455,7 +6455,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 602
-location: clients/tests/test-client.py:960:test_003()/142
+location: clients/tests/test-client.py:976:test_003()/142
 cmd: $NMCLI --mode tabular --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -6473,7 +6473,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 632
-location: clients/tests/test-client.py:960:test_003()/143
+location: clients/tests/test-client.py:976:test_003()/143
 cmd: $NMCLI --mode tabular --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6491,7 +6491,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 5607
-location: clients/tests/test-client.py:963:test_003()/144
+location: clients/tests/test-client.py:979:test_003()/144
 cmd: $NMCLI --mode tabular --pretty con s ethernet
 lang: C
 returncode: 0
@@ -6538,7 +6538,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 5701
-location: clients/tests/test-client.py:963:test_003()/145
+location: clients/tests/test-client.py:979:test_003()/145
 cmd: $NMCLI --mode tabular --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6585,7 +6585,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4713
-location: clients/tests/test-client.py:966:test_003()/146
+location: clients/tests/test-client.py:982:test_003()/146
 cmd: $NMCLI --mode tabular --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -6624,7 +6624,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 4785
-location: clients/tests/test-client.py:966:test_003()/147
+location: clients/tests/test-client.py:982:test_003()/147
 cmd: $NMCLI --mode tabular --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6663,7 +6663,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4360
-location: clients/tests/test-client.py:969:test_003()/148
+location: clients/tests/test-client.py:985:test_003()/148
 cmd: $NMCLI --mode tabular --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -6706,7 +6706,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 4428
-location: clients/tests/test-client.py:969:test_003()/149
+location: clients/tests/test-client.py:985:test_003()/149
 cmd: $NMCLI --mode tabular --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6749,7 +6749,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2852
-location: clients/tests/test-client.py:957:test_003()/150
+location: clients/tests/test-client.py:973:test_003()/150
 cmd: $NMCLI --mode tabular --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -6768,7 +6768,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2896
-location: clients/tests/test-client.py:957:test_003()/151
+location: clients/tests/test-client.py:973:test_003()/151
 cmd: $NMCLI --mode tabular --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6787,7 +6787,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 632
-location: clients/tests/test-client.py:960:test_003()/152
+location: clients/tests/test-client.py:976:test_003()/152
 cmd: $NMCLI --mode tabular --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -6805,7 +6805,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 662
-location: clients/tests/test-client.py:960:test_003()/153
+location: clients/tests/test-client.py:976:test_003()/153
 cmd: $NMCLI --mode tabular --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6823,7 +6823,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 5619
-location: clients/tests/test-client.py:963:test_003()/154
+location: clients/tests/test-client.py:979:test_003()/154
 cmd: $NMCLI --mode tabular --pretty --color yes con s ethernet
 lang: C
 returncode: 0
@@ -6870,7 +6870,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 5713
-location: clients/tests/test-client.py:963:test_003()/155
+location: clients/tests/test-client.py:979:test_003()/155
 cmd: $NMCLI --mode tabular --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6917,7 +6917,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4725
-location: clients/tests/test-client.py:966:test_003()/156
+location: clients/tests/test-client.py:982:test_003()/156
 cmd: $NMCLI --mode tabular --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -6956,7 +6956,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 4797
-location: clients/tests/test-client.py:966:test_003()/157
+location: clients/tests/test-client.py:982:test_003()/157
 cmd: $NMCLI --mode tabular --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -6995,7 +6995,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4372
-location: clients/tests/test-client.py:969:test_003()/158
+location: clients/tests/test-client.py:985:test_003()/158
 cmd: $NMCLI --mode tabular --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -7038,7 +7038,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 4440
-location: clients/tests/test-client.py:969:test_003()/159
+location: clients/tests/test-client.py:985:test_003()/159
 cmd: $NMCLI --mode tabular --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7081,7 +7081,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 1200
-location: clients/tests/test-client.py:957:test_003()/160
+location: clients/tests/test-client.py:973:test_003()/160
 cmd: $NMCLI --mode tabular --terse -f ALL con
 lang: C
 returncode: 0
@@ -7095,7 +7095,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1210
-location: clients/tests/test-client.py:957:test_003()/161
+location: clients/tests/test-client.py:973:test_003()/161
 cmd: $NMCLI --mode tabular --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7109,7 +7109,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 356
-location: clients/tests/test-client.py:960:test_003()/162
+location: clients/tests/test-client.py:976:test_003()/162
 cmd: $NMCLI --mode tabular --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -7122,7 +7122,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 366
-location: clients/tests/test-client.py:960:test_003()/163
+location: clients/tests/test-client.py:976:test_003()/163
 cmd: $NMCLI --mode tabular --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7135,7 +7135,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 828
-location: clients/tests/test-client.py:963:test_003()/164
+location: clients/tests/test-client.py:979:test_003()/164
 cmd: $NMCLI --mode tabular --terse con s ethernet
 lang: C
 returncode: 0
@@ -7152,7 +7152,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 838
-location: clients/tests/test-client.py:963:test_003()/165
+location: clients/tests/test-client.py:979:test_003()/165
 cmd: $NMCLI --mode tabular --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7169,7 +7169,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 681
-location: clients/tests/test-client.py:966:test_003()/166
+location: clients/tests/test-client.py:982:test_003()/166
 cmd: $NMCLI --mode tabular --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -7184,7 +7184,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 691
-location: clients/tests/test-client.py:966:test_003()/167
+location: clients/tests/test-client.py:982:test_003()/167
 cmd: $NMCLI --mode tabular --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7199,7 +7199,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 1351
-location: clients/tests/test-client.py:969:test_003()/168
+location: clients/tests/test-client.py:985:test_003()/168
 cmd: $NMCLI --mode tabular --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -7216,7 +7216,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1361
-location: clients/tests/test-client.py:969:test_003()/169
+location: clients/tests/test-client.py:985:test_003()/169
 cmd: $NMCLI --mode tabular --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7233,7 +7233,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1482
-location: clients/tests/test-client.py:957:test_003()/170
+location: clients/tests/test-client.py:973:test_003()/170
 cmd: $NMCLI --mode tabular --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -7247,7 +7247,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1492
-location: clients/tests/test-client.py:957:test_003()/171
+location: clients/tests/test-client.py:973:test_003()/171
 cmd: $NMCLI --mode tabular --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7261,7 +7261,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 386
-location: clients/tests/test-client.py:960:test_003()/172
+location: clients/tests/test-client.py:976:test_003()/172
 cmd: $NMCLI --mode tabular --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -7274,7 +7274,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 396
-location: clients/tests/test-client.py:960:test_003()/173
+location: clients/tests/test-client.py:976:test_003()/173
 cmd: $NMCLI --mode tabular --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7287,7 +7287,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 840
-location: clients/tests/test-client.py:963:test_003()/174
+location: clients/tests/test-client.py:979:test_003()/174
 cmd: $NMCLI --mode tabular --terse --color yes con s ethernet
 lang: C
 returncode: 0
@@ -7304,7 +7304,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 850
-location: clients/tests/test-client.py:963:test_003()/175
+location: clients/tests/test-client.py:979:test_003()/175
 cmd: $NMCLI --mode tabular --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7321,7 +7321,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 693
-location: clients/tests/test-client.py:966:test_003()/176
+location: clients/tests/test-client.py:982:test_003()/176
 cmd: $NMCLI --mode tabular --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -7336,7 +7336,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 703
-location: clients/tests/test-client.py:966:test_003()/177
+location: clients/tests/test-client.py:982:test_003()/177
 cmd: $NMCLI --mode tabular --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7351,7 +7351,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 1363
-location: clients/tests/test-client.py:969:test_003()/178
+location: clients/tests/test-client.py:985:test_003()/178
 cmd: $NMCLI --mode tabular --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -7368,7 +7368,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1373
-location: clients/tests/test-client.py:969:test_003()/179
+location: clients/tests/test-client.py:985:test_003()/179
 cmd: $NMCLI --mode tabular --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7385,7 +7385,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 4198
-location: clients/tests/test-client.py:957:test_003()/180
+location: clients/tests/test-client.py:973:test_003()/180
 cmd: $NMCLI --mode multiline -f ALL con
 lang: C
 returncode: 0
@@ -7469,7 +7469,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4220
-location: clients/tests/test-client.py:957:test_003()/181
+location: clients/tests/test-client.py:973:test_003()/181
 cmd: $NMCLI --mode multiline -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7553,7 +7553,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 652
-location: clients/tests/test-client.py:960:test_003()/182
+location: clients/tests/test-client.py:976:test_003()/182
 cmd: $NMCLI --mode multiline -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -7570,7 +7570,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 662
-location: clients/tests/test-client.py:960:test_003()/183
+location: clients/tests/test-client.py:976:test_003()/183
 cmd: $NMCLI --mode multiline -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7587,7 +7587,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 5148
-location: clients/tests/test-client.py:963:test_003()/184
+location: clients/tests/test-client.py:979:test_003()/184
 cmd: $NMCLI --mode multiline con s ethernet
 lang: C
 returncode: 0
@@ -7702,7 +7702,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5185
-location: clients/tests/test-client.py:963:test_003()/185
+location: clients/tests/test-client.py:979:test_003()/185
 cmd: $NMCLI --mode multiline con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -7817,7 +7817,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4523
-location: clients/tests/test-client.py:966:test_003()/186
+location: clients/tests/test-client.py:982:test_003()/186
 cmd: $NMCLI --mode multiline c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -7919,7 +7919,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4556
-location: clients/tests/test-client.py:966:test_003()/187
+location: clients/tests/test-client.py:982:test_003()/187
 cmd: $NMCLI --mode multiline c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8021,7 +8021,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3408
-location: clients/tests/test-client.py:969:test_003()/188
+location: clients/tests/test-client.py:985:test_003()/188
 cmd: $NMCLI --mode multiline -f all dev show eth0
 lang: C
 returncode: 0
@@ -8085,7 +8085,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3441
-location: clients/tests/test-client.py:969:test_003()/189
+location: clients/tests/test-client.py:985:test_003()/189
 cmd: $NMCLI --mode multiline -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8149,7 +8149,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4480
-location: clients/tests/test-client.py:957:test_003()/190
+location: clients/tests/test-client.py:973:test_003()/190
 cmd: $NMCLI --mode multiline --color yes -f ALL con
 lang: C
 returncode: 0
@@ -8233,7 +8233,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4502
-location: clients/tests/test-client.py:957:test_003()/191
+location: clients/tests/test-client.py:973:test_003()/191
 cmd: $NMCLI --mode multiline --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8317,7 +8317,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 682
-location: clients/tests/test-client.py:960:test_003()/192
+location: clients/tests/test-client.py:976:test_003()/192
 cmd: $NMCLI --mode multiline --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -8334,7 +8334,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 692
-location: clients/tests/test-client.py:960:test_003()/193
+location: clients/tests/test-client.py:976:test_003()/193
 cmd: $NMCLI --mode multiline --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8351,7 +8351,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 5160
-location: clients/tests/test-client.py:963:test_003()/194
+location: clients/tests/test-client.py:979:test_003()/194
 cmd: $NMCLI --mode multiline --color yes con s ethernet
 lang: C
 returncode: 0
@@ -8466,7 +8466,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5197
-location: clients/tests/test-client.py:963:test_003()/195
+location: clients/tests/test-client.py:979:test_003()/195
 cmd: $NMCLI --mode multiline --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8581,7 +8581,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4535
-location: clients/tests/test-client.py:966:test_003()/196
+location: clients/tests/test-client.py:982:test_003()/196
 cmd: $NMCLI --mode multiline --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -8683,7 +8683,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4568
-location: clients/tests/test-client.py:966:test_003()/197
+location: clients/tests/test-client.py:982:test_003()/197
 cmd: $NMCLI --mode multiline --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8785,7 +8785,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3420
-location: clients/tests/test-client.py:969:test_003()/198
+location: clients/tests/test-client.py:985:test_003()/198
 cmd: $NMCLI --mode multiline --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -8849,7 +8849,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 3453
-location: clients/tests/test-client.py:969:test_003()/199
+location: clients/tests/test-client.py:985:test_003()/199
 cmd: $NMCLI --mode multiline --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -8913,7 +8913,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4824
-location: clients/tests/test-client.py:957:test_003()/200
+location: clients/tests/test-client.py:973:test_003()/200
 cmd: $NMCLI --mode multiline --pretty -f ALL con
 lang: C
 returncode: 0
@@ -9005,7 +9005,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4852
-location: clients/tests/test-client.py:957:test_003()/201
+location: clients/tests/test-client.py:973:test_003()/201
 cmd: $NMCLI --mode multiline --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9097,7 +9097,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 1199
-location: clients/tests/test-client.py:960:test_003()/202
+location: clients/tests/test-client.py:976:test_003()/202
 cmd: $NMCLI --mode multiline --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -9121,7 +9121,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 1215
-location: clients/tests/test-client.py:960:test_003()/203
+location: clients/tests/test-client.py:976:test_003()/203
 cmd: $NMCLI --mode multiline --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9145,7 +9145,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 6402
-location: clients/tests/test-client.py:963:test_003()/204
+location: clients/tests/test-client.py:979:test_003()/204
 cmd: $NMCLI --mode multiline --pretty con s ethernet
 lang: C
 returncode: 0
@@ -9276,7 +9276,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 6458
-location: clients/tests/test-client.py:963:test_003()/205
+location: clients/tests/test-client.py:979:test_003()/205
 cmd: $NMCLI --mode multiline --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9407,7 +9407,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5464
-location: clients/tests/test-client.py:966:test_003()/206
+location: clients/tests/test-client.py:982:test_003()/206
 cmd: $NMCLI --mode multiline --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -9521,7 +9521,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5509
-location: clients/tests/test-client.py:966:test_003()/207
+location: clients/tests/test-client.py:982:test_003()/207
 cmd: $NMCLI --mode multiline --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9635,7 +9635,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4268
-location: clients/tests/test-client.py:969:test_003()/208
+location: clients/tests/test-client.py:985:test_003()/208
 cmd: $NMCLI --mode multiline --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -9710,7 +9710,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4307
-location: clients/tests/test-client.py:969:test_003()/209
+location: clients/tests/test-client.py:985:test_003()/209
 cmd: $NMCLI --mode multiline --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9785,7 +9785,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 5106
-location: clients/tests/test-client.py:957:test_003()/210
+location: clients/tests/test-client.py:973:test_003()/210
 cmd: $NMCLI --mode multiline --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -9877,7 +9877,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 5134
-location: clients/tests/test-client.py:957:test_003()/211
+location: clients/tests/test-client.py:973:test_003()/211
 cmd: $NMCLI --mode multiline --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -9969,7 +9969,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 1229
-location: clients/tests/test-client.py:960:test_003()/212
+location: clients/tests/test-client.py:976:test_003()/212
 cmd: $NMCLI --mode multiline --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -9993,7 +9993,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 1245
-location: clients/tests/test-client.py:960:test_003()/213
+location: clients/tests/test-client.py:976:test_003()/213
 cmd: $NMCLI --mode multiline --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10017,7 +10017,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 6414
-location: clients/tests/test-client.py:963:test_003()/214
+location: clients/tests/test-client.py:979:test_003()/214
 cmd: $NMCLI --mode multiline --pretty --color yes con s ethernet
 lang: C
 returncode: 0
@@ -10148,7 +10148,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 6470
-location: clients/tests/test-client.py:963:test_003()/215
+location: clients/tests/test-client.py:979:test_003()/215
 cmd: $NMCLI --mode multiline --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10279,7 +10279,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5476
-location: clients/tests/test-client.py:966:test_003()/216
+location: clients/tests/test-client.py:982:test_003()/216
 cmd: $NMCLI --mode multiline --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -10393,7 +10393,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 5521
-location: clients/tests/test-client.py:966:test_003()/217
+location: clients/tests/test-client.py:982:test_003()/217
 cmd: $NMCLI --mode multiline --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10507,7 +10507,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4280
-location: clients/tests/test-client.py:969:test_003()/218
+location: clients/tests/test-client.py:985:test_003()/218
 cmd: $NMCLI --mode multiline --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -10582,7 +10582,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 4319
-location: clients/tests/test-client.py:969:test_003()/219
+location: clients/tests/test-client.py:985:test_003()/219
 cmd: $NMCLI --mode multiline --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10657,7 +10657,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   UUID-ethernet-REPLACED-REPLACED-REPL | e
 
 <<<
 size: 1897
-location: clients/tests/test-client.py:957:test_003()/220
+location: clients/tests/test-client.py:973:test_003()/220
 cmd: $NMCLI --mode multiline --terse -f ALL con
 lang: C
 returncode: 0
@@ -10741,7 +10741,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 1907
-location: clients/tests/test-client.py:957:test_003()/221
+location: clients/tests/test-client.py:973:test_003()/221
 cmd: $NMCLI --mode multiline --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10825,7 +10825,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 398
-location: clients/tests/test-client.py:960:test_003()/222
+location: clients/tests/test-client.py:976:test_003()/222
 cmd: $NMCLI --mode multiline --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -10842,7 +10842,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 408
-location: clients/tests/test-client.py:960:test_003()/223
+location: clients/tests/test-client.py:976:test_003()/223
 cmd: $NMCLI --mode multiline --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -10859,7 +10859,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 2786
-location: clients/tests/test-client.py:963:test_003()/224
+location: clients/tests/test-client.py:979:test_003()/224
 cmd: $NMCLI --mode multiline --terse con s ethernet
 lang: C
 returncode: 0
@@ -10974,7 +10974,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2796
-location: clients/tests/test-client.py:963:test_003()/225
+location: clients/tests/test-client.py:979:test_003()/225
 cmd: $NMCLI --mode multiline --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11089,7 +11089,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2458
-location: clients/tests/test-client.py:966:test_003()/226
+location: clients/tests/test-client.py:982:test_003()/226
 cmd: $NMCLI --mode multiline --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -11191,7 +11191,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2468
-location: clients/tests/test-client.py:966:test_003()/227
+location: clients/tests/test-client.py:982:test_003()/227
 cmd: $NMCLI --mode multiline --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11293,7 +11293,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2188
-location: clients/tests/test-client.py:969:test_003()/228
+location: clients/tests/test-client.py:985:test_003()/228
 cmd: $NMCLI --mode multiline --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -11357,7 +11357,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2198
-location: clients/tests/test-client.py:969:test_003()/229
+location: clients/tests/test-client.py:985:test_003()/229
 cmd: $NMCLI --mode multiline --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11421,7 +11421,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2179
-location: clients/tests/test-client.py:957:test_003()/230
+location: clients/tests/test-client.py:973:test_003()/230
 cmd: $NMCLI --mode multiline --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -11505,7 +11505,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 2189
-location: clients/tests/test-client.py:957:test_003()/231
+location: clients/tests/test-client.py:973:test_003()/231
 cmd: $NMCLI --mode multiline --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11589,7 +11589,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 428
-location: clients/tests/test-client.py:960:test_003()/232
+location: clients/tests/test-client.py:976:test_003()/232
 cmd: $NMCLI --mode multiline --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -11606,7 +11606,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 438
-location: clients/tests/test-client.py:960:test_003()/233
+location: clients/tests/test-client.py:976:test_003()/233
 cmd: $NMCLI --mode multiline --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11623,7 +11623,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 2798
-location: clients/tests/test-client.py:963:test_003()/234
+location: clients/tests/test-client.py:979:test_003()/234
 cmd: $NMCLI --mode multiline --terse --color yes con s ethernet
 lang: C
 returncode: 0
@@ -11738,7 +11738,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2808
-location: clients/tests/test-client.py:963:test_003()/235
+location: clients/tests/test-client.py:979:test_003()/235
 cmd: $NMCLI --mode multiline --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 0
@@ -11853,7 +11853,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2470
-location: clients/tests/test-client.py:966:test_003()/236
+location: clients/tests/test-client.py:982:test_003()/236
 cmd: $NMCLI --mode multiline --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -11955,7 +11955,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2480
-location: clients/tests/test-client.py:966:test_003()/237
+location: clients/tests/test-client.py:982:test_003()/237
 cmd: $NMCLI --mode multiline --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12057,7 +12057,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2200
-location: clients/tests/test-client.py:969:test_003()/238
+location: clients/tests/test-client.py:985:test_003()/238
 cmd: $NMCLI --mode multiline --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -12121,7 +12121,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2210
-location: clients/tests/test-client.py:969:test_003()/239
+location: clients/tests/test-client.py:985:test_003()/239
 cmd: $NMCLI --mode multiline --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12185,7 +12185,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:UUID-ethernet-REPLACED-REPLACED-REPL | ethe
 
 <<<
 size: 2069
-location: clients/tests/test-client.py:957:test_003()/240
+location: clients/tests/test-client.py:973:test_003()/240
 cmd: $NMCLI -f ALL con
 lang: C
 returncode: 0
@@ -12200,7 +12200,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2091
-location: clients/tests/test-client.py:957:test_003()/241
+location: clients/tests/test-client.py:973:test_003()/241
 cmd: $NMCLI -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12215,7 +12215,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 328
-location: clients/tests/test-client.py:960:test_003()/242
+location: clients/tests/test-client.py:976:test_003()/242
 cmd: $NMCLI -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -12228,7 +12228,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 338
-location: clients/tests/test-client.py:960:test_003()/243
+location: clients/tests/test-client.py:976:test_003()/243
 cmd: $NMCLI -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12241,7 +12241,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 180
-location: clients/tests/test-client.py:963:test_003()/244
+location: clients/tests/test-client.py:979:test_003()/244
 cmd: $NMCLI con s ethernet
 lang: C
 returncode: 10
@@ -12251,7 +12251,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 202
-location: clients/tests/test-client.py:963:test_003()/245
+location: clients/tests/test-client.py:979:test_003()/245
 cmd: $NMCLI con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -12261,7 +12261,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 841
-location: clients/tests/test-client.py:966:test_003()/246
+location: clients/tests/test-client.py:982:test_003()/246
 cmd: $NMCLI c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -12282,7 +12282,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 856
-location: clients/tests/test-client.py:966:test_003()/247
+location: clients/tests/test-client.py:982:test_003()/247
 cmd: $NMCLI c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12303,7 +12303,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3411
-location: clients/tests/test-client.py:969:test_003()/248
+location: clients/tests/test-client.py:985:test_003()/248
 cmd: $NMCLI -f all dev show eth0
 lang: C
 returncode: 0
@@ -12367,7 +12367,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 3444
-location: clients/tests/test-client.py:969:test_003()/249
+location: clients/tests/test-client.py:985:test_003()/249
 cmd: $NMCLI -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12431,7 +12431,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 2351
-location: clients/tests/test-client.py:957:test_003()/250
+location: clients/tests/test-client.py:973:test_003()/250
 cmd: $NMCLI --color yes -f ALL con
 lang: C
 returncode: 0
@@ -12446,7 +12446,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2373
-location: clients/tests/test-client.py:957:test_003()/251
+location: clients/tests/test-client.py:973:test_003()/251
 cmd: $NMCLI --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12461,7 +12461,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 340
-location: clients/tests/test-client.py:960:test_003()/252
+location: clients/tests/test-client.py:976:test_003()/252
 cmd: $NMCLI --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -12474,7 +12474,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 350
-location: clients/tests/test-client.py:960:test_003()/253
+location: clients/tests/test-client.py:976:test_003()/253
 cmd: $NMCLI --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12487,7 +12487,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 192
-location: clients/tests/test-client.py:963:test_003()/254
+location: clients/tests/test-client.py:979:test_003()/254
 cmd: $NMCLI --color yes con s ethernet
 lang: C
 returncode: 10
@@ -12497,7 +12497,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 214
-location: clients/tests/test-client.py:963:test_003()/255
+location: clients/tests/test-client.py:979:test_003()/255
 cmd: $NMCLI --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -12507,7 +12507,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 853
-location: clients/tests/test-client.py:966:test_003()/256
+location: clients/tests/test-client.py:982:test_003()/256
 cmd: $NMCLI --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -12528,7 +12528,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 868
-location: clients/tests/test-client.py:966:test_003()/257
+location: clients/tests/test-client.py:982:test_003()/257
 cmd: $NMCLI --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12549,7 +12549,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3423
-location: clients/tests/test-client.py:969:test_003()/258
+location: clients/tests/test-client.py:985:test_003()/258
 cmd: $NMCLI --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -12613,7 +12613,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 3456
-location: clients/tests/test-client.py:969:test_003()/259
+location: clients/tests/test-client.py:985:test_003()/259
 cmd: $NMCLI --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12677,7 +12677,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 2555
-location: clients/tests/test-client.py:957:test_003()/260
+location: clients/tests/test-client.py:973:test_003()/260
 cmd: $NMCLI --pretty -f ALL con
 lang: C
 returncode: 0
@@ -12696,7 +12696,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2599
-location: clients/tests/test-client.py:957:test_003()/261
+location: clients/tests/test-client.py:973:test_003()/261
 cmd: $NMCLI --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12715,7 +12715,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 539
-location: clients/tests/test-client.py:960:test_003()/262
+location: clients/tests/test-client.py:976:test_003()/262
 cmd: $NMCLI --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -12732,7 +12732,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 569
-location: clients/tests/test-client.py:960:test_003()/263
+location: clients/tests/test-client.py:976:test_003()/263
 cmd: $NMCLI --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12749,7 +12749,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 189
-location: clients/tests/test-client.py:963:test_003()/264
+location: clients/tests/test-client.py:979:test_003()/264
 cmd: $NMCLI --pretty con s ethernet
 lang: C
 returncode: 10
@@ -12759,7 +12759,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 211
-location: clients/tests/test-client.py:963:test_003()/265
+location: clients/tests/test-client.py:979:test_003()/265
 cmd: $NMCLI --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -12769,7 +12769,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1377
-location: clients/tests/test-client.py:966:test_003()/266
+location: clients/tests/test-client.py:982:test_003()/266
 cmd: $NMCLI --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -12797,7 +12797,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1404
-location: clients/tests/test-client.py:966:test_003()/267
+location: clients/tests/test-client.py:982:test_003()/267
 cmd: $NMCLI --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12825,7 +12825,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4271
-location: clients/tests/test-client.py:969:test_003()/268
+location: clients/tests/test-client.py:985:test_003()/268
 cmd: $NMCLI --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -12900,7 +12900,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4310
-location: clients/tests/test-client.py:969:test_003()/269
+location: clients/tests/test-client.py:985:test_003()/269
 cmd: $NMCLI --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -12975,7 +12975,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 2837
-location: clients/tests/test-client.py:957:test_003()/270
+location: clients/tests/test-client.py:973:test_003()/270
 cmd: $NMCLI --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -12994,7 +12994,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2881
-location: clients/tests/test-client.py:957:test_003()/271
+location: clients/tests/test-client.py:973:test_003()/271
 cmd: $NMCLI --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13013,7 +13013,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 551
-location: clients/tests/test-client.py:960:test_003()/272
+location: clients/tests/test-client.py:976:test_003()/272
 cmd: $NMCLI --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -13030,7 +13030,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 581
-location: clients/tests/test-client.py:960:test_003()/273
+location: clients/tests/test-client.py:976:test_003()/273
 cmd: $NMCLI --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13047,7 +13047,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 201
-location: clients/tests/test-client.py:963:test_003()/274
+location: clients/tests/test-client.py:979:test_003()/274
 cmd: $NMCLI --pretty --color yes con s ethernet
 lang: C
 returncode: 10
@@ -13057,7 +13057,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 223
-location: clients/tests/test-client.py:963:test_003()/275
+location: clients/tests/test-client.py:979:test_003()/275
 cmd: $NMCLI --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -13067,7 +13067,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1389
-location: clients/tests/test-client.py:966:test_003()/276
+location: clients/tests/test-client.py:982:test_003()/276
 cmd: $NMCLI --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -13095,7 +13095,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1416
-location: clients/tests/test-client.py:966:test_003()/277
+location: clients/tests/test-client.py:982:test_003()/277
 cmd: $NMCLI --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13123,7 +13123,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4283
-location: clients/tests/test-client.py:969:test_003()/278
+location: clients/tests/test-client.py:985:test_003()/278
 cmd: $NMCLI --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -13198,7 +13198,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4322
-location: clients/tests/test-client.py:969:test_003()/279
+location: clients/tests/test-client.py:985:test_003()/279
 cmd: $NMCLI --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13273,7 +13273,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 1161
-location: clients/tests/test-client.py:957:test_003()/280
+location: clients/tests/test-client.py:973:test_003()/280
 cmd: $NMCLI --terse -f ALL con
 lang: C
 returncode: 0
@@ -13287,7 +13287,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1171
-location: clients/tests/test-client.py:957:test_003()/281
+location: clients/tests/test-client.py:973:test_003()/281
 cmd: $NMCLI --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13301,7 +13301,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 289
-location: clients/tests/test-client.py:960:test_003()/282
+location: clients/tests/test-client.py:976:test_003()/282
 cmd: $NMCLI --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -13313,7 +13313,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 299
-location: clients/tests/test-client.py:960:test_003()/283
+location: clients/tests/test-client.py:976:test_003()/283
 cmd: $NMCLI --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13325,7 +13325,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 188
-location: clients/tests/test-client.py:963:test_003()/284
+location: clients/tests/test-client.py:979:test_003()/284
 cmd: $NMCLI --terse con s ethernet
 lang: C
 returncode: 10
@@ -13335,7 +13335,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 210
-location: clients/tests/test-client.py:963:test_003()/285
+location: clients/tests/test-client.py:979:test_003()/285
 cmd: $NMCLI --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -13345,7 +13345,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 552
-location: clients/tests/test-client.py:966:test_003()/286
+location: clients/tests/test-client.py:982:test_003()/286
 cmd: $NMCLI --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -13366,7 +13366,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 562
-location: clients/tests/test-client.py:966:test_003()/287
+location: clients/tests/test-client.py:982:test_003()/287
 cmd: $NMCLI --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13387,7 +13387,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2191
-location: clients/tests/test-client.py:969:test_003()/288
+location: clients/tests/test-client.py:985:test_003()/288
 cmd: $NMCLI --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -13451,7 +13451,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2201
-location: clients/tests/test-client.py:969:test_003()/289
+location: clients/tests/test-client.py:985:test_003()/289
 cmd: $NMCLI --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13515,7 +13515,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 1443
-location: clients/tests/test-client.py:957:test_003()/290
+location: clients/tests/test-client.py:973:test_003()/290
 cmd: $NMCLI --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -13529,7 +13529,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1453
-location: clients/tests/test-client.py:957:test_003()/291
+location: clients/tests/test-client.py:973:test_003()/291
 cmd: $NMCLI --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13543,7 +13543,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 301
-location: clients/tests/test-client.py:960:test_003()/292
+location: clients/tests/test-client.py:976:test_003()/292
 cmd: $NMCLI --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -13555,7 +13555,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 311
-location: clients/tests/test-client.py:960:test_003()/293
+location: clients/tests/test-client.py:976:test_003()/293
 cmd: $NMCLI --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13567,7 +13567,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 200
-location: clients/tests/test-client.py:963:test_003()/294
+location: clients/tests/test-client.py:979:test_003()/294
 cmd: $NMCLI --terse --color yes con s ethernet
 lang: C
 returncode: 10
@@ -13577,7 +13577,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 222
-location: clients/tests/test-client.py:963:test_003()/295
+location: clients/tests/test-client.py:979:test_003()/295
 cmd: $NMCLI --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -13587,7 +13587,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 564
-location: clients/tests/test-client.py:966:test_003()/296
+location: clients/tests/test-client.py:982:test_003()/296
 cmd: $NMCLI --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -13608,7 +13608,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 574
-location: clients/tests/test-client.py:966:test_003()/297
+location: clients/tests/test-client.py:982:test_003()/297
 cmd: $NMCLI --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13629,7 +13629,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2203
-location: clients/tests/test-client.py:969:test_003()/298
+location: clients/tests/test-client.py:985:test_003()/298
 cmd: $NMCLI --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -13693,7 +13693,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2213
-location: clients/tests/test-client.py:969:test_003()/299
+location: clients/tests/test-client.py:985:test_003()/299
 cmd: $NMCLI --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13757,7 +13757,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2084
-location: clients/tests/test-client.py:957:test_003()/300
+location: clients/tests/test-client.py:973:test_003()/300
 cmd: $NMCLI --mode tabular -f ALL con
 lang: C
 returncode: 0
@@ -13772,7 +13772,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2106
-location: clients/tests/test-client.py:957:test_003()/301
+location: clients/tests/test-client.py:973:test_003()/301
 cmd: $NMCLI --mode tabular -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13787,7 +13787,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 343
-location: clients/tests/test-client.py:960:test_003()/302
+location: clients/tests/test-client.py:976:test_003()/302
 cmd: $NMCLI --mode tabular -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -13800,7 +13800,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 353
-location: clients/tests/test-client.py:960:test_003()/303
+location: clients/tests/test-client.py:976:test_003()/303
 cmd: $NMCLI --mode tabular -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13813,7 +13813,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 195
-location: clients/tests/test-client.py:963:test_003()/304
+location: clients/tests/test-client.py:979:test_003()/304
 cmd: $NMCLI --mode tabular con s ethernet
 lang: C
 returncode: 10
@@ -13823,7 +13823,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 217
-location: clients/tests/test-client.py:963:test_003()/305
+location: clients/tests/test-client.py:979:test_003()/305
 cmd: $NMCLI --mode tabular con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -13833,7 +13833,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 676
-location: clients/tests/test-client.py:966:test_003()/306
+location: clients/tests/test-client.py:982:test_003()/306
 cmd: $NMCLI --mode tabular c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -13845,7 +13845,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 690
-location: clients/tests/test-client.py:966:test_003()/307
+location: clients/tests/test-client.py:982:test_003()/307
 cmd: $NMCLI --mode tabular c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13857,7 +13857,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2939
-location: clients/tests/test-client.py:969:test_003()/308
+location: clients/tests/test-client.py:985:test_003()/308
 cmd: $NMCLI --mode tabular -f all dev show eth0
 lang: C
 returncode: 0
@@ -13889,7 +13889,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2970
-location: clients/tests/test-client.py:969:test_003()/309
+location: clients/tests/test-client.py:985:test_003()/309
 cmd: $NMCLI --mode tabular -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13921,7 +13921,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2366
-location: clients/tests/test-client.py:957:test_003()/310
+location: clients/tests/test-client.py:973:test_003()/310
 cmd: $NMCLI --mode tabular --color yes -f ALL con
 lang: C
 returncode: 0
@@ -13936,7 +13936,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2388
-location: clients/tests/test-client.py:957:test_003()/311
+location: clients/tests/test-client.py:973:test_003()/311
 cmd: $NMCLI --mode tabular --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13951,7 +13951,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 355
-location: clients/tests/test-client.py:960:test_003()/312
+location: clients/tests/test-client.py:976:test_003()/312
 cmd: $NMCLI --mode tabular --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -13964,7 +13964,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 365
-location: clients/tests/test-client.py:960:test_003()/313
+location: clients/tests/test-client.py:976:test_003()/313
 cmd: $NMCLI --mode tabular --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -13977,7 +13977,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 207
-location: clients/tests/test-client.py:963:test_003()/314
+location: clients/tests/test-client.py:979:test_003()/314
 cmd: $NMCLI --mode tabular --color yes con s ethernet
 lang: C
 returncode: 10
@@ -13987,7 +13987,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 229
-location: clients/tests/test-client.py:963:test_003()/315
+location: clients/tests/test-client.py:979:test_003()/315
 cmd: $NMCLI --mode tabular --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -13997,7 +13997,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 688
-location: clients/tests/test-client.py:966:test_003()/316
+location: clients/tests/test-client.py:982:test_003()/316
 cmd: $NMCLI --mode tabular --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -14009,7 +14009,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 702
-location: clients/tests/test-client.py:966:test_003()/317
+location: clients/tests/test-client.py:982:test_003()/317
 cmd: $NMCLI --mode tabular --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14021,7 +14021,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 2951
-location: clients/tests/test-client.py:969:test_003()/318
+location: clients/tests/test-client.py:985:test_003()/318
 cmd: $NMCLI --mode tabular --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -14053,7 +14053,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2982
-location: clients/tests/test-client.py:969:test_003()/319
+location: clients/tests/test-client.py:985:test_003()/319
 cmd: $NMCLI --mode tabular --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14085,7 +14085,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2570
-location: clients/tests/test-client.py:957:test_003()/320
+location: clients/tests/test-client.py:973:test_003()/320
 cmd: $NMCLI --mode tabular --pretty -f ALL con
 lang: C
 returncode: 0
@@ -14104,7 +14104,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2614
-location: clients/tests/test-client.py:957:test_003()/321
+location: clients/tests/test-client.py:973:test_003()/321
 cmd: $NMCLI --mode tabular --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14123,7 +14123,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 554
-location: clients/tests/test-client.py:960:test_003()/322
+location: clients/tests/test-client.py:976:test_003()/322
 cmd: $NMCLI --mode tabular --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -14140,7 +14140,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 584
-location: clients/tests/test-client.py:960:test_003()/323
+location: clients/tests/test-client.py:976:test_003()/323
 cmd: $NMCLI --mode tabular --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14157,7 +14157,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 204
-location: clients/tests/test-client.py:963:test_003()/324
+location: clients/tests/test-client.py:979:test_003()/324
 cmd: $NMCLI --mode tabular --pretty con s ethernet
 lang: C
 returncode: 10
@@ -14167,7 +14167,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 226
-location: clients/tests/test-client.py:963:test_003()/325
+location: clients/tests/test-client.py:979:test_003()/325
 cmd: $NMCLI --mode tabular --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -14177,7 +14177,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1232
-location: clients/tests/test-client.py:966:test_003()/326
+location: clients/tests/test-client.py:982:test_003()/326
 cmd: $NMCLI --mode tabular --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -14196,7 +14196,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 1277
-location: clients/tests/test-client.py:966:test_003()/327
+location: clients/tests/test-client.py:982:test_003()/327
 cmd: $NMCLI --mode tabular --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14215,7 +14215,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4420
-location: clients/tests/test-client.py:969:test_003()/328
+location: clients/tests/test-client.py:985:test_003()/328
 cmd: $NMCLI --mode tabular --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -14258,7 +14258,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 4488
-location: clients/tests/test-client.py:969:test_003()/329
+location: clients/tests/test-client.py:985:test_003()/329
 cmd: $NMCLI --mode tabular --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14301,7 +14301,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 2852
-location: clients/tests/test-client.py:957:test_003()/330
+location: clients/tests/test-client.py:973:test_003()/330
 cmd: $NMCLI --mode tabular --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -14320,7 +14320,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never      
 
 <<<
 size: 2896
-location: clients/tests/test-client.py:957:test_003()/331
+location: clients/tests/test-client.py:973:test_003()/331
 cmd: $NMCLI --mode tabular --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14339,7 +14339,7 @@ con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          nigdy      
 
 <<<
 size: 566
-location: clients/tests/test-client.py:960:test_003()/332
+location: clients/tests/test-client.py:976:test_003()/332
 cmd: $NMCLI --mode tabular --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -14356,7 +14356,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 596
-location: clients/tests/test-client.py:960:test_003()/333
+location: clients/tests/test-client.py:976:test_003()/333
 cmd: $NMCLI --mode tabular --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14373,7 +14373,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet
 
 <<<
 size: 216
-location: clients/tests/test-client.py:963:test_003()/334
+location: clients/tests/test-client.py:979:test_003()/334
 cmd: $NMCLI --mode tabular --pretty --color yes con s ethernet
 lang: C
 returncode: 10
@@ -14383,7 +14383,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 238
-location: clients/tests/test-client.py:963:test_003()/335
+location: clients/tests/test-client.py:979:test_003()/335
 cmd: $NMCLI --mode tabular --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -14393,7 +14393,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1244
-location: clients/tests/test-client.py:966:test_003()/336
+location: clients/tests/test-client.py:982:test_003()/336
 cmd: $NMCLI --mode tabular --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -14412,7 +14412,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     deactivating  
 
 <<<
 size: 1289
-location: clients/tests/test-client.py:966:test_003()/337
+location: clients/tests/test-client.py:982:test_003()/337
 cmd: $NMCLI --mode tabular --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14431,7 +14431,7 @@ GENERAL  ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  eth0     dezaktywowanie
 
 <<<
 size: 4432
-location: clients/tests/test-client.py:969:test_003()/338
+location: clients/tests/test-client.py:985:test_003()/338
 cmd: $NMCLI --mode tabular --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -14474,7 +14474,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 4500
-location: clients/tests/test-client.py:969:test_003()/339
+location: clients/tests/test-client.py:985:test_003()/339
 cmd: $NMCLI --mode tabular --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14517,7 +14517,7 @@ CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}  5fcfd6
 
 <<<
 size: 1176
-location: clients/tests/test-client.py:957:test_003()/340
+location: clients/tests/test-client.py:973:test_003()/340
 cmd: $NMCLI --mode tabular --terse -f ALL con
 lang: C
 returncode: 0
@@ -14531,7 +14531,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1186
-location: clients/tests/test-client.py:957:test_003()/341
+location: clients/tests/test-client.py:973:test_003()/341
 cmd: $NMCLI --mode tabular --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14545,7 +14545,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 304
-location: clients/tests/test-client.py:960:test_003()/342
+location: clients/tests/test-client.py:976:test_003()/342
 cmd: $NMCLI --mode tabular --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -14557,7 +14557,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 314
-location: clients/tests/test-client.py:960:test_003()/343
+location: clients/tests/test-client.py:976:test_003()/343
 cmd: $NMCLI --mode tabular --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14569,7 +14569,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 203
-location: clients/tests/test-client.py:963:test_003()/344
+location: clients/tests/test-client.py:979:test_003()/344
 cmd: $NMCLI --mode tabular --terse con s ethernet
 lang: C
 returncode: 10
@@ -14579,7 +14579,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 225
-location: clients/tests/test-client.py:963:test_003()/345
+location: clients/tests/test-client.py:979:test_003()/345
 cmd: $NMCLI --mode tabular --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -14589,7 +14589,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 386
-location: clients/tests/test-client.py:966:test_003()/346
+location: clients/tests/test-client.py:982:test_003()/346
 cmd: $NMCLI --mode tabular --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -14599,7 +14599,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 396
-location: clients/tests/test-client.py:966:test_003()/347
+location: clients/tests/test-client.py:982:test_003()/347
 cmd: $NMCLI --mode tabular --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14609,7 +14609,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 1371
-location: clients/tests/test-client.py:969:test_003()/348
+location: clients/tests/test-client.py:985:test_003()/348
 cmd: $NMCLI --mode tabular --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -14626,7 +14626,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1381
-location: clients/tests/test-client.py:969:test_003()/349
+location: clients/tests/test-client.py:985:test_003()/349
 cmd: $NMCLI --mode tabular --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14643,7 +14643,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1458
-location: clients/tests/test-client.py:957:test_003()/350
+location: clients/tests/test-client.py:973:test_003()/350
 cmd: $NMCLI --mode tabular --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -14657,7 +14657,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 1468
-location: clients/tests/test-client.py:957:test_003()/351
+location: clients/tests/test-client.py:973:test_003()/351
 cmd: $NMCLI --mode tabular --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14671,7 +14671,7 @@ con-xx1:UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet:0:never:yes:0:no:/or
 
 <<<
 size: 316
-location: clients/tests/test-client.py:960:test_003()/352
+location: clients/tests/test-client.py:976:test_003()/352
 cmd: $NMCLI --mode tabular --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -14683,7 +14683,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 326
-location: clients/tests/test-client.py:960:test_003()/353
+location: clients/tests/test-client.py:976:test_003()/353
 cmd: $NMCLI --mode tabular --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14695,7 +14695,7 @@ UUID-con-xx1-REPLACED-REPLACED-REPLA:802-3-ethernet
 
 <<<
 size: 215
-location: clients/tests/test-client.py:963:test_003()/354
+location: clients/tests/test-client.py:979:test_003()/354
 cmd: $NMCLI --mode tabular --terse --color yes con s ethernet
 lang: C
 returncode: 10
@@ -14705,7 +14705,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 237
-location: clients/tests/test-client.py:963:test_003()/355
+location: clients/tests/test-client.py:979:test_003()/355
 cmd: $NMCLI --mode tabular --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -14715,7 +14715,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 398
-location: clients/tests/test-client.py:966:test_003()/356
+location: clients/tests/test-client.py:982:test_003()/356
 cmd: $NMCLI --mode tabular --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -14725,7 +14725,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 408
-location: clients/tests/test-client.py:966:test_003()/357
+location: clients/tests/test-client.py:982:test_003()/357
 cmd: $NMCLI --mode tabular --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14735,7 +14735,7 @@ GENERAL:ethernet:UUID-ethernet-REPLACED-REPLACED-REPL:eth0:deactivating:no:no::n
 
 <<<
 size: 1383
-location: clients/tests/test-client.py:969:test_003()/358
+location: clients/tests/test-client.py:985:test_003()/358
 cmd: $NMCLI --mode tabular --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -14752,7 +14752,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 1393
-location: clients/tests/test-client.py:969:test_003()/359
+location: clients/tests/test-client.py:985:test_003()/359
 cmd: $NMCLI --mode tabular --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14769,7 +14769,7 @@ CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{1,2,4}:5fcfd6d7
 
 <<<
 size: 4194
-location: clients/tests/test-client.py:957:test_003()/360
+location: clients/tests/test-client.py:973:test_003()/360
 cmd: $NMCLI --mode multiline -f ALL con
 lang: C
 returncode: 0
@@ -14853,7 +14853,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4214
-location: clients/tests/test-client.py:957:test_003()/361
+location: clients/tests/test-client.py:973:test_003()/361
 cmd: $NMCLI --mode multiline -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14937,7 +14937,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 526
-location: clients/tests/test-client.py:960:test_003()/362
+location: clients/tests/test-client.py:976:test_003()/362
 cmd: $NMCLI --mode multiline -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -14952,7 +14952,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 536
-location: clients/tests/test-client.py:960:test_003()/363
+location: clients/tests/test-client.py:976:test_003()/363
 cmd: $NMCLI --mode multiline -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -14967,7 +14967,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 197
-location: clients/tests/test-client.py:963:test_003()/364
+location: clients/tests/test-client.py:979:test_003()/364
 cmd: $NMCLI --mode multiline con s ethernet
 lang: C
 returncode: 10
@@ -14977,7 +14977,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 219
-location: clients/tests/test-client.py:963:test_003()/365
+location: clients/tests/test-client.py:979:test_003()/365
 cmd: $NMCLI --mode multiline con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -14987,7 +14987,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 858
-location: clients/tests/test-client.py:966:test_003()/366
+location: clients/tests/test-client.py:982:test_003()/366
 cmd: $NMCLI --mode multiline c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -15008,7 +15008,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 873
-location: clients/tests/test-client.py:966:test_003()/367
+location: clients/tests/test-client.py:982:test_003()/367
 cmd: $NMCLI --mode multiline c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15029,7 +15029,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3428
-location: clients/tests/test-client.py:969:test_003()/368
+location: clients/tests/test-client.py:985:test_003()/368
 cmd: $NMCLI --mode multiline -f all dev show eth0
 lang: C
 returncode: 0
@@ -15093,7 +15093,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 3461
-location: clients/tests/test-client.py:969:test_003()/369
+location: clients/tests/test-client.py:985:test_003()/369
 cmd: $NMCLI --mode multiline -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15157,7 +15157,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4476
-location: clients/tests/test-client.py:957:test_003()/370
+location: clients/tests/test-client.py:973:test_003()/370
 cmd: $NMCLI --mode multiline --color yes -f ALL con
 lang: C
 returncode: 0
@@ -15241,7 +15241,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4496
-location: clients/tests/test-client.py:957:test_003()/371
+location: clients/tests/test-client.py:973:test_003()/371
 cmd: $NMCLI --mode multiline --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15325,7 +15325,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 538
-location: clients/tests/test-client.py:960:test_003()/372
+location: clients/tests/test-client.py:976:test_003()/372
 cmd: $NMCLI --mode multiline --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -15340,7 +15340,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 548
-location: clients/tests/test-client.py:960:test_003()/373
+location: clients/tests/test-client.py:976:test_003()/373
 cmd: $NMCLI --mode multiline --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15355,7 +15355,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 209
-location: clients/tests/test-client.py:963:test_003()/374
+location: clients/tests/test-client.py:979:test_003()/374
 cmd: $NMCLI --mode multiline --color yes con s ethernet
 lang: C
 returncode: 10
@@ -15365,7 +15365,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 231
-location: clients/tests/test-client.py:963:test_003()/375
+location: clients/tests/test-client.py:979:test_003()/375
 cmd: $NMCLI --mode multiline --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -15375,7 +15375,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 870
-location: clients/tests/test-client.py:966:test_003()/376
+location: clients/tests/test-client.py:982:test_003()/376
 cmd: $NMCLI --mode multiline --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -15396,7 +15396,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 885
-location: clients/tests/test-client.py:966:test_003()/377
+location: clients/tests/test-client.py:982:test_003()/377
 cmd: $NMCLI --mode multiline --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15417,7 +15417,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 3440
-location: clients/tests/test-client.py:969:test_003()/378
+location: clients/tests/test-client.py:985:test_003()/378
 cmd: $NMCLI --mode multiline --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -15481,7 +15481,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 3473
-location: clients/tests/test-client.py:969:test_003()/379
+location: clients/tests/test-client.py:985:test_003()/379
 cmd: $NMCLI --mode multiline --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15545,7 +15545,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4820
-location: clients/tests/test-client.py:957:test_003()/380
+location: clients/tests/test-client.py:973:test_003()/380
 cmd: $NMCLI --mode multiline --pretty -f ALL con
 lang: C
 returncode: 0
@@ -15637,7 +15637,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 4846
-location: clients/tests/test-client.py:957:test_003()/381
+location: clients/tests/test-client.py:973:test_003()/381
 cmd: $NMCLI --mode multiline --pretty -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15729,7 +15729,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 992
-location: clients/tests/test-client.py:960:test_003()/382
+location: clients/tests/test-client.py:976:test_003()/382
 cmd: $NMCLI --mode multiline --pretty -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -15750,7 +15750,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 1008
-location: clients/tests/test-client.py:960:test_003()/383
+location: clients/tests/test-client.py:976:test_003()/383
 cmd: $NMCLI --mode multiline --pretty -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15771,7 +15771,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 206
-location: clients/tests/test-client.py:963:test_003()/384
+location: clients/tests/test-client.py:979:test_003()/384
 cmd: $NMCLI --mode multiline --pretty con s ethernet
 lang: C
 returncode: 10
@@ -15781,7 +15781,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 228
-location: clients/tests/test-client.py:963:test_003()/385
+location: clients/tests/test-client.py:979:test_003()/385
 cmd: $NMCLI --mode multiline --pretty con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -15791,7 +15791,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1394
-location: clients/tests/test-client.py:966:test_003()/386
+location: clients/tests/test-client.py:982:test_003()/386
 cmd: $NMCLI --mode multiline --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -15819,7 +15819,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1421
-location: clients/tests/test-client.py:966:test_003()/387
+location: clients/tests/test-client.py:982:test_003()/387
 cmd: $NMCLI --mode multiline --pretty c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15847,7 +15847,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4288
-location: clients/tests/test-client.py:969:test_003()/388
+location: clients/tests/test-client.py:985:test_003()/388
 cmd: $NMCLI --mode multiline --pretty -f all dev show eth0
 lang: C
 returncode: 0
@@ -15922,7 +15922,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4327
-location: clients/tests/test-client.py:969:test_003()/389
+location: clients/tests/test-client.py:985:test_003()/389
 cmd: $NMCLI --mode multiline --pretty -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -15997,7 +15997,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 5102
-location: clients/tests/test-client.py:957:test_003()/390
+location: clients/tests/test-client.py:973:test_003()/390
 cmd: $NMCLI --mode multiline --pretty --color yes -f ALL con
 lang: C
 returncode: 0
@@ -16089,7 +16089,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 5128
-location: clients/tests/test-client.py:957:test_003()/391
+location: clients/tests/test-client.py:973:test_003()/391
 cmd: $NMCLI --mode multiline --pretty --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16181,7 +16181,7 @@ FILENAME:                               /etc/NetworkManager/system-connections/c
 
 <<<
 size: 1004
-location: clients/tests/test-client.py:960:test_003()/392
+location: clients/tests/test-client.py:976:test_003()/392
 cmd: $NMCLI --mode multiline --pretty --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -16202,7 +16202,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 1020
-location: clients/tests/test-client.py:960:test_003()/393
+location: clients/tests/test-client.py:976:test_003()/393
 cmd: $NMCLI --mode multiline --pretty --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16223,7 +16223,7 @@ TYPE:                                   ethernet
 
 <<<
 size: 218
-location: clients/tests/test-client.py:963:test_003()/394
+location: clients/tests/test-client.py:979:test_003()/394
 cmd: $NMCLI --mode multiline --pretty --color yes con s ethernet
 lang: C
 returncode: 10
@@ -16233,7 +16233,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 240
-location: clients/tests/test-client.py:963:test_003()/395
+location: clients/tests/test-client.py:979:test_003()/395
 cmd: $NMCLI --mode multiline --pretty --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -16243,7 +16243,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 1406
-location: clients/tests/test-client.py:966:test_003()/396
+location: clients/tests/test-client.py:982:test_003()/396
 cmd: $NMCLI --mode multiline --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -16271,7 +16271,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 1433
-location: clients/tests/test-client.py:966:test_003()/397
+location: clients/tests/test-client.py:982:test_003()/397
 cmd: $NMCLI --mode multiline --pretty --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16299,7 +16299,7 @@ GENERAL.MASTER-PATH:                    --
 
 <<<
 size: 4300
-location: clients/tests/test-client.py:969:test_003()/398
+location: clients/tests/test-client.py:985:test_003()/398
 cmd: $NMCLI --mode multiline --pretty --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -16374,7 +16374,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 4339
-location: clients/tests/test-client.py:969:test_003()/399
+location: clients/tests/test-client.py:985:test_003()/399
 cmd: $NMCLI --mode multiline --pretty --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16449,7 +16449,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:   <invisible> | /org/freedesktop/NetworkMa
 
 <<<
 size: 1873
-location: clients/tests/test-client.py:957:test_003()/400
+location: clients/tests/test-client.py:973:test_003()/400
 cmd: $NMCLI --mode multiline --terse -f ALL con
 lang: C
 returncode: 0
@@ -16533,7 +16533,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 1883
-location: clients/tests/test-client.py:957:test_003()/401
+location: clients/tests/test-client.py:973:test_003()/401
 cmd: $NMCLI --mode multiline --terse -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16617,7 +16617,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 336
-location: clients/tests/test-client.py:960:test_003()/402
+location: clients/tests/test-client.py:976:test_003()/402
 cmd: $NMCLI --mode multiline --terse -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -16632,7 +16632,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 346
-location: clients/tests/test-client.py:960:test_003()/403
+location: clients/tests/test-client.py:976:test_003()/403
 cmd: $NMCLI --mode multiline --terse -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16647,7 +16647,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 205
-location: clients/tests/test-client.py:963:test_003()/404
+location: clients/tests/test-client.py:979:test_003()/404
 cmd: $NMCLI --mode multiline --terse con s ethernet
 lang: C
 returncode: 10
@@ -16657,7 +16657,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 227
-location: clients/tests/test-client.py:963:test_003()/405
+location: clients/tests/test-client.py:979:test_003()/405
 cmd: $NMCLI --mode multiline --terse con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -16667,7 +16667,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 569
-location: clients/tests/test-client.py:966:test_003()/406
+location: clients/tests/test-client.py:982:test_003()/406
 cmd: $NMCLI --mode multiline --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -16688,7 +16688,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 579
-location: clients/tests/test-client.py:966:test_003()/407
+location: clients/tests/test-client.py:982:test_003()/407
 cmd: $NMCLI --mode multiline --terse c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16709,7 +16709,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2208
-location: clients/tests/test-client.py:969:test_003()/408
+location: clients/tests/test-client.py:985:test_003()/408
 cmd: $NMCLI --mode multiline --terse -f all dev show eth0
 lang: C
 returncode: 0
@@ -16773,7 +16773,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2218
-location: clients/tests/test-client.py:969:test_003()/409
+location: clients/tests/test-client.py:985:test_003()/409
 cmd: $NMCLI --mode multiline --terse -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
@@ -16837,7 +16837,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2155
-location: clients/tests/test-client.py:957:test_003()/410
+location: clients/tests/test-client.py:973:test_003()/410
 cmd: $NMCLI --mode multiline --terse --color yes -f ALL con
 lang: C
 returncode: 0
@@ -16921,7 +16921,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 2165
-location: clients/tests/test-client.py:957:test_003()/411
+location: clients/tests/test-client.py:973:test_003()/411
 cmd: $NMCLI --mode multiline --terse --color yes -f ALL con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -17005,7 +17005,7 @@ FILENAME:/etc/NetworkManager/system-connections/con-xx1
 
 <<<
 size: 348
-location: clients/tests/test-client.py:960:test_003()/412
+location: clients/tests/test-client.py:976:test_003()/412
 cmd: $NMCLI --mode multiline --terse --color yes -f UUID,TYPE con
 lang: C
 returncode: 0
@@ -17020,7 +17020,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 358
-location: clients/tests/test-client.py:960:test_003()/413
+location: clients/tests/test-client.py:976:test_003()/413
 cmd: $NMCLI --mode multiline --terse --color yes -f UUID,TYPE con
 lang: pl_PL.UTF-8
 returncode: 0
@@ -17035,7 +17035,7 @@ TYPE:802-3-ethernet
 
 <<<
 size: 217
-location: clients/tests/test-client.py:963:test_003()/414
+location: clients/tests/test-client.py:979:test_003()/414
 cmd: $NMCLI --mode multiline --terse --color yes con s ethernet
 lang: C
 returncode: 10
@@ -17045,7 +17045,7 @@ Error: ethernet - no such connection profile.
 
 <<<
 size: 239
-location: clients/tests/test-client.py:963:test_003()/415
+location: clients/tests/test-client.py:979:test_003()/415
 cmd: $NMCLI --mode multiline --terse --color yes con s ethernet
 lang: pl_PL.UTF-8
 returncode: 10
@@ -17055,7 +17055,7 @@ Błąd: ethernet — nie ma takiego profilu połączenia.
 
 <<<
 size: 581
-location: clients/tests/test-client.py:966:test_003()/416
+location: clients/tests/test-client.py:982:test_003()/416
 cmd: $NMCLI --mode multiline --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: C
 returncode: 0
@@ -17076,7 +17076,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 591
-location: clients/tests/test-client.py:966:test_003()/417
+location: clients/tests/test-client.py:982:test_003()/417
 cmd: $NMCLI --mode multiline --terse --color yes c s /org/freedesktop/NetworkManager/ActiveConnection/1
 lang: pl_PL.UTF-8
 returncode: 0
@@ -17097,7 +17097,7 @@ GENERAL.MASTER-PATH:
 
 <<<
 size: 2220
-location: clients/tests/test-client.py:969:test_003()/418
+location: clients/tests/test-client.py:985:test_003()/418
 cmd: $NMCLI --mode multiline --terse --color yes -f all dev show eth0
 lang: C
 returncode: 0
@@ -17161,7 +17161,7 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[3]:<invisible> | /org/freedesktop/NetworkManag
 
 <<<
 size: 2230
-location: clients/tests/test-client.py:969:test_003()/419
+location: clients/tests/test-client.py:985:test_003()/419
 cmd: $NMCLI --mode multiline --terse --color yes -f all dev show eth0
 lang: pl_PL.UTF-8
 returncode: 0
