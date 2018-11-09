@@ -882,11 +882,11 @@ returncode: 0
 stdout: 1272 bytes
 >>>
 DEVICE  TYPE      STATE        IP4-CONNECTIVITY  IP6-CONNECTIVITY  DBUS-PATH                                  CONNECTION  CON-UUID                              CON-PATH                                           
+eth0    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
 eth1    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/2  --          --                                    --                                                 
 wlan0   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/3  --          --                                    --                                                 
 wlan1   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/4  --          --                                    --                                                 
 wlan1   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/5  --          --                                    --                                                 
-eth0    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
 
 <<<
 stderr: 24 bytes
@@ -902,11 +902,11 @@ returncode: 0
 stdout: 1277 bytes
 >>>
 DEVICE  TYPE      STATE        IP4-CONNECTIVITY  IP6-CONNECTIVITY  DBUS-PATH                                  CONNECTION  CON-UUID                              CON-PATH                                           
+eth0    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
 eth1    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/2  --          --                                    --                                                 
 wlan0   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/3  --          --                                    --                                                 
 wlan1   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/4  --          --                                    --                                                 
 wlan1   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/5  --          --                                    --                                                 
-eth0    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
 
 <<<
 stderr: 24 bytes
@@ -1196,8 +1196,8 @@ returncode: 0
 stdout: 396 bytes
 >>>
 NAME      UUID                                  TYPE      DEVICE 
-ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth0   
 ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth1   
+ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth0   
 con-1     5fcfd6d7-1e63-3332-8826-a7eda103792d  ethernet  --     
 con-gsm1  UUID-con-gsm1-REPLACED-REPLACED-REPL  gsm       --     
 con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --     
@@ -1211,8 +1211,8 @@ returncode: 0
 stdout: 396 bytes
 >>>
 NAME      UUID                                  TYPE      DEVICE 
-ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth0   
 ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth1   
+ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  eth0   
 con-1     5fcfd6d7-1e63-3332-8826-a7eda103792d  ethernet  --     
 con-gsm1  UUID-con-gsm1-REPLACED-REPLACED-REPL  gsm       --     
 con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  --     
@@ -1226,8 +1226,8 @@ returncode: 0
 stdout: 1920 bytes
 >>>
 NAME      UUID                                  TYPE      TIMESTAMP  TIMESTAMP-REAL  AUTOCONNECT  AUTOCONNECT-PRIORITY  READONLY  DBUS-PATH                                              ACTIVE  DEVICE  STATE      ACTIVE-PATH                                         SLAVE  FILENAME                                        
-ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never           yes          0                     no        /org/freedesktop/NetworkManager/Settings/Connection/4  yes     eth0    activated  /org/freedesktop/NetworkManager/ActiveConnection/1  --     /etc/NetworkManager/system-connections/ethernet 
 ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never           yes          0                     no        /org/freedesktop/NetworkManager/Settings/Connection/4  yes     eth1    activated  /org/freedesktop/NetworkManager/ActiveConnection/2  --     /etc/NetworkManager/system-connections/ethernet 
+ethernet  UUID-ethernet-REPLACED-REPLACED-REPL  ethernet  0          never           yes          0                     no        /org/freedesktop/NetworkManager/Settings/Connection/4  yes     eth0    activated  /org/freedesktop/NetworkManager/ActiveConnection/1  --     /etc/NetworkManager/system-connections/ethernet 
 con-1     5fcfd6d7-1e63-3332-8826-a7eda103792d  ethernet  0          never           yes          0                     no        /org/freedesktop/NetworkManager/Settings/Connection/1  no      --      --         --                                                  --     /etc/NetworkManager/system-connections/con-1    
 con-gsm1  UUID-con-gsm1-REPLACED-REPLACED-REPL  gsm       0          never           no           0                     no        /org/freedesktop/NetworkManager/Settings/Connection/3  no      --      --         --                                                  --     /etc/NetworkManager/system-connections/con-gsm1 
 con-xx1   UUID-con-xx1-REPLACED-REPLACED-REPLA  ethernet  0          never           yes          0                     no        /org/freedesktop/NetworkManager/Settings/Connection/2  no      --      --         --                                                  --     /etc/NetworkManager/system-connections/con-xx1  
@@ -1760,11 +1760,11 @@ returncode: 0
 stdout: 1272 bytes
 >>>
 DEVICE  TYPE      STATE        IP4-CONNECTIVITY  IP6-CONNECTIVITY  DBUS-PATH                                  CONNECTION  CON-UUID                              CON-PATH                                           
+eth0    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
+eth1    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/2  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/2 
 wlan0   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/3  --          --                                    --                                                 
 wlan1   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/4  --          --                                    --                                                 
 wlan1   wifi      unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/5  --          --                                    --                                                 
-eth0    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
-eth1    ethernet  unavailable  unknown           unknown           /org/freedesktop/NetworkManager/Devices/2  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/2 
 
 <<<
 stderr: 24 bytes
@@ -1780,11 +1780,11 @@ returncode: 0
 stdout: 1277 bytes
 >>>
 DEVICE  TYPE      STATE        IP4-CONNECTIVITY  IP6-CONNECTIVITY  DBUS-PATH                                  CONNECTION  CON-UUID                              CON-PATH                                           
+eth0    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
+eth1    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/2  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/2 
 wlan0   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/3  --          --                                    --                                                 
 wlan1   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/4  --          --                                    --                                                 
 wlan1   wifi      niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/5  --          --                                    --                                                 
-eth0    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/1  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/1 
-eth1    ethernet  niedostępne  nieznane          nieznane          /org/freedesktop/NetworkManager/Devices/2  ethernet    UUID-ethernet-REPLACED-REPLACED-REPL  /org/freedesktop/NetworkManager/ActiveConnection/2 
 
 <<<
 stderr: 24 bytes
