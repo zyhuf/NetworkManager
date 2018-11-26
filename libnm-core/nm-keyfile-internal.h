@@ -109,7 +109,8 @@ gboolean nm_keyfile_read_ensure_uuid (NMConnection *connection,
 /*****************************************************************************/
 
 typedef enum {
-	NM_KEYFILE_WRITE_TYPE_CERT              = 1,
+	NM_KEYFILE_WRITE_TYPE_SECRET            = 1,
+	NM_KEYFILE_WRITE_TYPE_CERT              = 2,
 } NMKeyfileWriteType;
 
 /**
@@ -141,6 +142,18 @@ typedef gboolean (*NMKeyfileWriteHandler) (NMConnection *connection,
                                            void *type_data,
                                            void *user_data,
                                            GError **error);
+
+/**
+ * NMKeyfileWriteTypeSecret:
+ *
+ * this struct is passed as @type_data for the @NMKeyfileWriteHandler of
+ * type %NM_KEYFILE_WRITE_TYPE_SECRET.
+ */
+typedef struct {
+	const char *setting_name;
+	const char *key;
+	NMSetting *setting;
+} NMKeyfileWriteTypeDataSecret;
 
 /**
  * NMKeyfileWriteTypeDataCert:

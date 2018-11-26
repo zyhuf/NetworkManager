@@ -742,6 +742,65 @@ test_vpn_1 (void)
 	CLEAR (&con, &keyfile);
 }
 
+static gboolean
+write_handler_secret (NMConnection *connection,
+                      GKeyFile *keyfile,
+                      NMKeyfileWriteType type,
+                      void *type_data,
+                      void *user_data,
+                      GError **error)
+{
+	if (type == NM_KEYFILE_WRITE_TYPE_SECRET) {
+		NMKeyfileWriteTypeDataSecret *data = type_data;
+		gs_free char *value = NULL;
+		const char *alias;
+
+		alias = nm_keyfile_plugin_get_alias_for_setting_name (data->setting_name);
+		g_object_get (G_OBJECT (data->setting), data->key, &value, NULL);
+		value = g_strdup_printf ("SECRET:%s", value);
+
+		g_key_file_set_string (keyfile,
+		                       alias ?: data->setting_name,
+		                       data->key,
+		                       value);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static void
+test_writer_secret (void)
+{
+	gs_unref_keyfile GKeyFile *keyfile = NULL;
+	gs_unref_object NMConnection *con = NULL;
+	gs_free_error GError *error = NULL;
+	gs_free char *value;
+
+	con = nmtst_create_connection_from_keyfile (
+	      "[connection]\n"
+	      "id=wifi1\n"
+	      "type=wifi\n"
+	      "interface-name=wlan0\n"
+
+	      "[wifi]\n"
+	      "mode=infrastructure\n"
+	      "ssid=abc\n"
+
+	      "[wifi-security]\n"
+	      "key-mgmt=wpa-psk\n"
+	      "psk=12341234\n",
+	      "/test_writer_secret/wifi1");
+	g_assert (con);
+
+	keyfile = nm_keyfile_write (con, write_handler_secret, NULL, &error);
+	nmtst_assert_success (keyfile, error);
+
+	value = g_key_file_get_string (keyfile, "wifi-security", "psk", &error);
+	nmtst_assert_success (value, error);
+
+	g_assert_cmpstr (value, ==, "SECRET:12341234");
+}
+
 /*****************************************************************************/
 
 NMTST_DEFINE ();
@@ -757,6 +816,7 @@ int main (int argc, char **argv)
 	g_test_add_func ("/core/keyfile/test_team_conf_read/invalid", test_team_conf_read_invalid);
 	g_test_add_func ("/core/keyfile/test_user/1", test_user_1);
 	g_test_add_func ("/core/keyfile/test_vpn/1", test_vpn_1);
+	g_test_add_func ("/core/keyfile/test_writer_secret/1", test_writer_secret);
 
 	return g_test_run ();
 }

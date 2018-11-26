@@ -3018,6 +3018,25 @@ write_setting_value (NMSetting *setting,
 		return;
 	}
 
+	if (   (pspec->flags & NM_SETTING_PARAM_SECRET)
+	    && info->handler) {
+		NMKeyfileWriteTypeDataSecret data = {
+			.setting_name = setting_name,
+			.key = key,
+			.setting = setting,
+		};
+
+		if (info->handler (info->connection,
+		                   info->keyfile,
+		                   NM_KEYFILE_WRITE_TYPE_SECRET,
+		                   &data,
+		                   info->user_data,
+		                   &info->error))
+			return;
+		if (info->error)
+			return;
+	}
+
 	if (pip && pip->writer) {
 		pip->writer (info, setting, key, value);
 		return;
