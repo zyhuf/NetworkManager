@@ -64,6 +64,118 @@ typedef struct {
 	guint index;
 } LldpNeighborRow;
 
+static char**
+lldp_format_management_addresses (NMLldpNeighbor *neighbor)
+{
+	GVariant *variant, *item, *value;
+	GPtrArray *array = NULL;
+	GVariantIter iter;
+
+	variant = nm_lldp_neighbor_get_attr_value (neighbor, NM_LLDP_ATTR_MANAGEMENT_ADDRESSES);
+	if (!variant || !g_variant_is_of_type (variant, G_VARIANT_TYPE ("aa{sv}")))
+		return NULL;
+
+	g_variant_iter_init (&iter, variant);
+	array = g_ptr_array_sized_new (g_variant_iter_n_children (&iter) + 1);
+	while ((item = g_variant_iter_next_value (&iter))) {
+		_nm_unused gs_unref_variant GVariant *item_free = item;
+		nm_auto_free_gstring GString *str = NULL;
+		char addr_str[NM_UTILS_INET_ADDRSTRLEN];
+		guint interface, subtype;
+		const guint8 *bytes;
+		gsize bytes_len, i;
+		char *addr;
+
+		value = g_variant_lookup_value (item, "address-subtype", G_VARIANT_TYPE_UINT32);
+		if (!value)
+			continue;
+		subtype = g_variant_get_uint32 (value);
+		g_variant_unref (value);
+
+		value = g_variant_lookup_value (item, "address", G_VARIANT_TYPE ("ay"));
+		if (!value)
+			continue;
+		bytes = g_variant_get_fixed_array (value, &bytes_len, sizeof (guint8));
+		g_variant_unref (value);
+
+		str = g_string_new ("");
+
+		/* https://www.iana.org/assignments/address-family-numbers/address-family-numbers.txt */
+		switch (subtype) {
+		case 1: {
+			in_addr_t addr4;
+
+			if (bytes_len != sizeof (in_addr_t))
+				continue;
+
+			memcpy (&addr4, bytes, sizeof (in_addr_t));
+			g_string_append_printf (str,
+			                        "%s (IPv4)",
+			                        nm_utils_inet4_ntop (addr4, addr_str));
+			break;
+		}
+		case 2:
+			if (bytes_len != sizeof (struct in6_addr))
+				continue;
+			g_string_append_printf (str,
+			                        "%s (IPv6)",
+			                        nm_utils_inet6_ntop ((struct in6_addr *) bytes, addr_str));
+			break;
+		case 6:
+			addr = nm_utils_bin2hexstr_full (bytes, bytes_len, ':', TRUE, NULL);
+			g_string_append_printf (str, "%s (MAC)", addr);
+			g_free (addr);
+			break;
+		default:
+			addr = nm_utils_bin2hexstr_full (bytes, bytes_len, ':', TRUE, NULL);
+			g_string_append_printf (str, "%s (type %u)", addr, subtype);
+			g_free (addr);
+		}
+
+		value = g_variant_lookup_value (item, "interface-number", G_VARIANT_TYPE_UINT32);
+		if (value) {
+			interface = g_variant_get_uint32 (value);
+			g_variant_unref (value);
+			value = g_variant_lookup_value (item, "interface-number-subtype", G_VARIANT_TYPE_UINT32);
+			if (value) {
+				subtype = g_variant_get_uint32 (value);
+				g_string_append_printf (str, ", interface %u ", interface);
+				switch (subtype) {
+				case 2:
+					g_string_append (str, "(ifindex)");
+					break;
+				case 3:
+					g_string_append (str, "(port-number)");
+					break;
+				default:
+					g_string_append_printf (str, "(type %u)", subtype);
+				}
+				g_variant_unref (value);
+			}
+		}
+
+		value = g_variant_lookup_value (item, "object-id", G_VARIANT_TYPE ("ay"));
+		if (value) {
+			bytes = g_variant_get_fixed_array (value, &bytes_len, sizeof (guint8));
+			if (bytes_len != 0) {
+				char separator = ' ';
+
+				g_string_append (str, ", OID");
+				for (i = 0; i < bytes_len; i++) {
+					g_string_append_printf (str, "%c%hhu", separator, bytes[i]);
+					separator = '.';
+				}
+			}
+			g_variant_unref (value);
+		}
+
+		g_ptr_array_add (array, g_string_free (g_steal_pointer (&str), FALSE));
+	}
+	g_ptr_array_add (array, NULL);
+
+	return (char **) g_ptr_array_free (array, FALSE);
+}
+
 static gconstpointer
 _metagen_device_lldp_get_fcn (NMC_META_GENERIC_INFO_GET_FCN_ARGS)
 {
@@ -73,6 +185,7 @@ _metagen_device_lldp_get_fcn (NMC_META_GENERIC_INFO_GET_FCN_ARGS)
 	const char *cstr = NULL;
 	char *str = NULL;
 	char *capabilities;
+	char **strv;
 	const char *attr;
 	const GVariantType *type;
 	guint u;
@@ -95,6 +208,17 @@ _metagen_device_lldp_get_fcn (NMC_META_GENERIC_INFO_GET_FCN_ARGS)
 	case NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_DEVICE:
 		*out_is_default = FALSE;
 		return nm_device_get_iface (device);
+	case NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_MANAGEMENT_ADDRESSES:
+		if (!NM_FLAGS_HAS (get_flags, NM_META_ACCESSOR_GET_FLAGS_ACCEPT_STRV))
+			return NULL;
+		*out_flags |= NM_META_ACCESSOR_GET_OUT_FLAGS_STRV;
+		strv = lldp_format_management_addresses (neighbor);
+		if (strv) {
+			*out_is_default = FALSE;
+			*out_flags &= ~NM_META_ACCESSOR_GET_OUT_FLAGS_HIDE;
+			*out_to_free = strv;
+		}
+		return strv;
 	case NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_SYSTEM_CAPABILITIES:
 		if (nm_lldp_neighbor_get_attr_uint_value (neighbor,
 		                                          NM_LLDP_ATTR_SYSTEM_CAPABILITIES,
@@ -143,6 +267,7 @@ const NmcMetaGenericInfo *const metagen_device_lldp[_NMC_GENERIC_INFO_TYPE_DEVIC
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_SYSTEM_DESCRIPTION, "SYSTEM-DESCRIPTION"),
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_SYSTEM_NAME, "SYSTEM-NAME"),
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_SYSTEM_CAPABILITIES, "SYSTEM-CAPABILITIES"),
+	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_MANAGEMENT_ADDRESSES, "MANAGEMENT-ADDRESSES"),
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_PVID, "IEEE-802-1-PVID"),
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_PPVID, "IEEE-802-1-PPVID"),
 	_METAGEN_GENERAL_LLDP (NMC_GENERIC_INFO_TYPE_DEVICE_LLDP_PPVID_FLAGS, "IEEE-802-1-PPVID-FLAGS"),
@@ -155,8 +280,8 @@ const NmcMetaGenericInfo *const metagen_device_lldp[_NMC_GENERIC_INFO_TYPE_DEVIC
 };
 
 #define NMC_FIELDS_DEV_LLDP_LIST_COMMON  "CHASSIS-ID,PORT-ID,PORT-DESCRIPTION,SYSTEM-NAME,"\
-                                         "SYSTEM-DESCRIPTION,SYSTEM-CAPABILITIES,IEEE-802-1-PVID,"\
-                                         "IEEE-802-1-PPVID,IEEE-802-1-PPVID-FLAGS," \
+                                         "SYSTEM-DESCRIPTION,SYSTEM-CAPABILITIES,MANAGEMENT-ADDRESSES,"\
+                                         "IEEE-802-1-PVID,IEEE-802-1-PPVID,IEEE-802-1-PPVID-FLAGS," \
                                          "IEEE-802-1-VID,IEEE-802-1-VLAN-NAME,DEVICE"
 
 /*****************************************************************************/
