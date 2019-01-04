@@ -3622,64 +3622,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS: /org/freedesktop/NetworkManager/Settings
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1434
+size: 1436
 location: clients/tests/test-client.py:1089:test_004()/69
 cmd: $NMCLI dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
-size: 1444
+size: 1446
 location: clients/tests/test-client.py:1089:test_004()/70
 cmd: $NMCLI dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
 size: 4615
@@ -6584,64 +6588,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS: /org/freedesktop/NetworkManager/Settings
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1447
+size: 1449
 location: clients/tests/test-client.py:1089:test_004()/117
 cmd: $NMCLI --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
-size: 1457
+size: 1459
 location: clients/tests/test-client.py:1089:test_004()/118
 cmd: $NMCLI --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
 size: 5625
@@ -10148,75 +10156,91 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | c
 -------------------------------------------------------------------------------
 
 <<<
-size: 1898
+size: 2307
 location: clients/tests/test-client.py:1089:test_004()/165
 cmd: $NMCLI --pretty dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1742 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                         Device LLDP neighbors (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
-size: 1912
+size: 2317
 location: clients/tests/test-client.py:1089:test_004()/166
 cmd: $NMCLI --pretty dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1746 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                        Sąsiedzi LLDP urządzenia (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
@@ -13724,75 +13748,91 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | c
 -------------------------------------------------------------------------------
 
 <<<
-size: 1910
+size: 2319
 location: clients/tests/test-client.py:1089:test_004()/213
 cmd: $NMCLI --pretty --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1742 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                         Device LLDP neighbors (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
-size: 1924
+size: 2329
 location: clients/tests/test-client.py:1089:test_004()/214
 cmd: $NMCLI --pretty --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1746 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                        Sąsiedzi LLDP urządzenia (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
@@ -16668,64 +16708,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS:/org/freedesktop/NetworkManager/Settings/
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1136
+size: 1138
 location: clients/tests/test-client.py:1089:test_004()/261
 cmd: $NMCLI --terse dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
-size: 1146
+size: 1148
 location: clients/tests/test-client.py:1089:test_004()/262
 cmd: $NMCLI --terse dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
 size: 2335
@@ -19600,64 +19644,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS:/org/freedesktop/NetworkManager/Settings/
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1148
+size: 1150
 location: clients/tests/test-client.py:1089:test_004()/309
 cmd: $NMCLI --terse --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
-size: 1158
+size: 1160
 location: clients/tests/test-client.py:1089:test_004()/310
 cmd: $NMCLI --terse --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
 size: 2978
@@ -21155,10 +21203,14 @@ lang: C
 returncode: 0
 stdout: 984 bytes
 >>>
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 1155
@@ -21168,10 +21220,14 @@ lang: pl_PL.UTF-8
 returncode: 0
 stdout: 984 bytes
 >>>
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 2990
@@ -22669,10 +22725,14 @@ lang: C
 returncode: 0
 stdout: 984 bytes
 >>>
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 1167
@@ -22682,10 +22742,14 @@ lang: pl_PL.UTF-8
 returncode: 0
 stdout: 984 bytes
 >>>
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 4742
@@ -24764,38 +24828,62 @@ NAME         AVAILABLE-CONNECTION-PATHS                               AVAILABLE-
 CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{2}  UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1 
 
 <<<
-size: 1531
+size: 1856
 location: clients/tests/test-client.py:1089:test_004()/453
 cmd: $NMCLI --mode tabular --pretty dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1360 bytes
+stdout: 1685 bytes
 >>>
-================================
-  Device LLDP neighbors (eth0)
-================================
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
-size: 1555
+size: 1866
 location: clients/tests/test-client.py:1089:test_004()/454
 cmd: $NMCLI --mode tabular --pretty dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1374 bytes
+stdout: 1685 bytes
 >>>
-===================================
-  Sąsiedzi LLDP urządzenia (eth0)
-===================================
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 4754
@@ -26874,38 +26962,62 @@ NAME         AVAILABLE-CONNECTION-PATHS                               AVAILABLE-
 CONNECTIONS  /org/freedesktop/NetworkManager/Settings/Connection/{2}  UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1 
 
 <<<
-size: 1543
+size: 1868
 location: clients/tests/test-client.py:1089:test_004()/501
 cmd: $NMCLI --mode tabular --pretty --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1360 bytes
+stdout: 1685 bytes
 >>>
-================================
-  Device LLDP neighbors (eth0)
-================================
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
-size: 1567
+size: 1878
 location: clients/tests/test-client.py:1089:test_004()/502
 cmd: $NMCLI --mode tabular --pretty --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1374 bytes
+stdout: 1685 bytes
 >>>
-===================================
-  Sąsiedzi LLDP urządzenia (eth0)
-===================================
-DEVICE  CHASSIS-ID         PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                         
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-eth0    00:11:22:33:44:00  Uplink port        GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)                                                                                                                      
-eth0    chassis1           44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr) 
-eth0    00:11:22:33:44:22  port1              GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)                                                                                                            
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID      PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES     DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:00  Uplink port  GigabitEthernet #1  test1.example.com  Test system #1      20 (mac-bridge,router)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID  PORT-ID            PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES                                                                                                                          DEVICE 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+chassis1    44:44:44:44:44:44  GigabitEthernet #2  test2.example.com  Test system #2      2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)  eth0   
+
+=================
+  LLDP Neighbor
+=================
+CHASSIS-ID         PORT-ID  PORT-DESCRIPTION    SYSTEM-NAME        SYSTEM-DESCRIPTION  SYSTEM-CAPABILITIES               DEVICE 
+--------------------------------------------------------------------------------------------------------------------------------------------------
+00:11:22:33:44:22  port1    GigabitEthernet #3  test3.example.com  Test system #3      40 (wlan-access-point,telephone)  eth0   
 
 <<<
 size: 791
@@ -27760,28 +27872,32 @@ DHCP6:dhcp-6-opt-1 = val-1 | dhcp-6-opt-2 = val-2 | dhcp-6-opt-3 = val-3 | dhcp-
 CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{2}:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 632
+size: 634
 location: clients/tests/test-client.py:1089:test_004()/549
 cmd: $NMCLI --mode tabular --terse dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 463 bytes
+stdout: 465 bytes
 >>>
-eth0:00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router)
-eth0:chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-eth0:00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone)
+00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router):eth0
+
+chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr):eth0
+
+00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone):eth0
 
 <<<
-size: 642
+size: 644
 location: clients/tests/test-client.py:1089:test_004()/550
 cmd: $NMCLI --mode tabular --terse dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 463 bytes
+stdout: 465 bytes
 >>>
-eth0:00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router)
-eth0:chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-eth0:00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone)
+00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router):eth0
+
+chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr):eth0
+
+00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone):eth0
 
 <<<
 size: 803
@@ -28636,28 +28752,32 @@ DHCP6:dhcp-6-opt-1 = val-1 | dhcp-6-opt-2 = val-2 | dhcp-6-opt-3 = val-3 | dhcp-
 CONNECTIONS:/org/freedesktop/NetworkManager/Settings/Connection/{2}:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 644
+size: 646
 location: clients/tests/test-client.py:1089:test_004()/597
 cmd: $NMCLI --mode tabular --terse --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 463 bytes
+stdout: 465 bytes
 >>>
-eth0:00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router)
-eth0:chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-eth0:00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone)
+00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router):eth0
+
+chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr):eth0
+
+00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone):eth0
 
 <<<
-size: 654
+size: 656
 location: clients/tests/test-client.py:1089:test_004()/598
 cmd: $NMCLI --mode tabular --terse --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 463 bytes
+stdout: 465 bytes
 >>>
-eth0:00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router)
-eth0:chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-eth0:00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone)
+00\:11\:22\:33\:44\:00:Uplink port:GigabitEthernet #1:test1.example.com:Test system #1:20 (mac-bridge,router):eth0
+
+chassis1:44\:44\:44\:44\:44\:44:GigabitEthernet #2:test2.example.com:Test system #2:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr):eth0
+
+00\:11\:22\:33\:44\:22:port1:GigabitEthernet #3:test3.example.com:Test system #3:40 (wlan-access-point,telephone):eth0
 
 <<<
 size: 4621
@@ -32052,64 +32172,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS: /org/freedesktop/NetworkManager/Settings
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1452
+size: 1454
 location: clients/tests/test-client.py:1089:test_004()/645
 cmd: $NMCLI --mode multiline dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
-size: 1462
+size: 1464
 location: clients/tests/test-client.py:1089:test_004()/646
 cmd: $NMCLI --mode multiline dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
 size: 4633
@@ -35504,64 +35628,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS: /org/freedesktop/NetworkManager/Settings
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1464
+size: 1466
 location: clients/tests/test-client.py:1089:test_004()/693
 cmd: $NMCLI --mode multiline --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
-size: 1474
+size: 1476
 location: clients/tests/test-client.py:1089:test_004()/694
 cmd: $NMCLI --mode multiline --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1288 bytes
+stdout: 1290 bytes
 >>>
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:                     eth0
+NEIGHBOR[0].DEVICE:                     eth0
+
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:                     eth0
+NEIGHBOR[1].DEVICE:                     eth0
+
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 
 <<<
 size: 5642
@@ -39588,75 +39716,91 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | c
 -------------------------------------------------------------------------------
 
 <<<
-size: 1915
+size: 2324
 location: clients/tests/test-client.py:1089:test_004()/741
 cmd: $NMCLI --mode multiline --pretty dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1742 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                         Device LLDP neighbors (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
-size: 1929
+size: 2334
 location: clients/tests/test-client.py:1089:test_004()/742
 cmd: $NMCLI --mode multiline --pretty dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1746 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                        Sąsiedzi LLDP urządzenia (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
@@ -43684,75 +43828,91 @@ CONNECTIONS.AVAILABLE-CONNECTIONS[1]:   UUID-con-xx1-REPLACED-REPLACED-REPLA | c
 -------------------------------------------------------------------------------
 
 <<<
-size: 1927
+size: 2336
 location: clients/tests/test-client.py:1089:test_004()/789
 cmd: $NMCLI --mode multiline --pretty --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 1742 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                         Device LLDP neighbors (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
-size: 1941
+size: 2346
 location: clients/tests/test-client.py:1089:test_004()/790
 cmd: $NMCLI --mode multiline --pretty --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1746 bytes
+stdout: 2151 bytes
 >>>
 ===============================================================================
-                        Sąsiedzi LLDP urządzenia (eth0)
+                                 LLDP Neighbor
 ===============================================================================
-NEIGHBOR[0].DEVICE:                     eth0
 NEIGHBOR[0].CHASSIS-ID:                 00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:                    Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:           GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:                test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:         Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:        20 (mac-bridge,router)
+NEIGHBOR[0].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[1].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[1].CHASSIS-ID:                 chassis1
 NEIGHBOR[1].PORT-ID:                    44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:           GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:                test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:         Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:        2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
+NEIGHBOR[1].DEVICE:                     eth0
 -------------------------------------------------------------------------------
-NEIGHBOR[2].DEVICE:                     eth0
+
+===============================================================================
+                                 LLDP Neighbor
+===============================================================================
 NEIGHBOR[2].CHASSIS-ID:                 00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:                    port1
 NEIGHBOR[2].PORT-DESCRIPTION:           GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:                test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:         Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:        40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:                     eth0
 -------------------------------------------------------------------------------
 
 <<<
@@ -47148,64 +47308,68 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS:/org/freedesktop/NetworkManager/Settings/
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1153
+size: 1155
 location: clients/tests/test-client.py:1089:test_004()/837
 cmd: $NMCLI --mode multiline --terse dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
-size: 1163
+size: 1165
 location: clients/tests/test-client.py:1089:test_004()/838
 cmd: $NMCLI --mode multiline --terse dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
 size: 2352
@@ -50600,63 +50764,67 @@ CONNECTIONS.AVAILABLE-CONNECTION-PATHS:/org/freedesktop/NetworkManager/Settings/
 CONNECTIONS.AVAILABLE-CONNECTIONS[1]:UUID-con-xx1-REPLACED-REPLACED-REPLA | con-xx1
 
 <<<
-size: 1165
+size: 1167
 location: clients/tests/test-client.py:1089:test_004()/885
 cmd: $NMCLI --mode multiline --terse --color yes dev lldp list ifname eth0
 lang: C
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
-size: 1175
+size: 1177
 location: clients/tests/test-client.py:1089:test_004()/886
 cmd: $NMCLI --mode multiline --terse --color yes dev lldp list ifname eth0
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 982 bytes
+stdout: 984 bytes
 >>>
-NEIGHBOR[0].DEVICE:eth0
 NEIGHBOR[0].CHASSIS-ID:00:11:22:33:44:00
 NEIGHBOR[0].PORT-ID:Uplink port
 NEIGHBOR[0].PORT-DESCRIPTION:GigabitEthernet #1
 NEIGHBOR[0].SYSTEM-NAME:test1.example.com
 NEIGHBOR[0].SYSTEM-DESCRIPTION:Test system #1
 NEIGHBOR[0].SYSTEM-CAPABILITIES:20 (mac-bridge,router)
-NEIGHBOR[1].DEVICE:eth0
+NEIGHBOR[0].DEVICE:eth0
+
 NEIGHBOR[1].CHASSIS-ID:chassis1
 NEIGHBOR[1].PORT-ID:44:44:44:44:44:44
 NEIGHBOR[1].PORT-DESCRIPTION:GigabitEthernet #2
 NEIGHBOR[1].SYSTEM-NAME:test2.example.com
 NEIGHBOR[1].SYSTEM-DESCRIPTION:Test system #2
 NEIGHBOR[1].SYSTEM-CAPABILITIES:2047 (other,repeater,mac-bridge,wlan-access-point,router,telephone,docsis-cable-device,station-only,c-vlan-component,s-vlan-component,tpmr)
-NEIGHBOR[2].DEVICE:eth0
+NEIGHBOR[1].DEVICE:eth0
+
 NEIGHBOR[2].CHASSIS-ID:00:11:22:33:44:22
 NEIGHBOR[2].PORT-ID:port1
 NEIGHBOR[2].PORT-DESCRIPTION:GigabitEthernet #3
 NEIGHBOR[2].SYSTEM-NAME:test3.example.com
 NEIGHBOR[2].SYSTEM-DESCRIPTION:Test system #3
 NEIGHBOR[2].SYSTEM-CAPABILITIES:40 (wlan-access-point,telephone)
+NEIGHBOR[2].DEVICE:eth0
 
 <<<
