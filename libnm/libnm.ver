@@ -1475,4 +1475,5 @@ global:
 	nm_setting_p2p_wireless_new;
 	nm_team_link_watcher_get_vlanid;
 	nm_team_link_watcher_new_arp_ping2;
+	nm_lldp_neighbor_get_attr_value;
 } libnm_1_14_0;
