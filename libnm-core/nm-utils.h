@@ -148,6 +148,7 @@ const char *nm_utils_file_search_in_paths (const char *progname,
                                            GError **error);
 
 guint32 nm_utils_wifi_freq_to_channel (guint32 freq);
+const char* nm_utils_wifi_freq_to_band (guint32 freq);
 guint32 nm_utils_wifi_channel_to_freq (guint32 channel, const char *band);
 guint32 nm_utils_wifi_find_next_channel (guint32 channel, int direction, char *band);
 gboolean nm_utils_wifi_is_channel_valid (guint32 channel, const char *band);
