@@ -1213,6 +1213,7 @@ gboolean nm_platform_link_is_connected (NMPlatform *self, int ifindex);
 gboolean nm_platform_link_uses_arp (NMPlatform *self, int ifindex);
 guint32 nm_platform_link_get_mtu (NMPlatform *self, int ifindex);
 gboolean nm_platform_link_get_user_ipv6ll_enabled (NMPlatform *self, int ifindex);
+gboolean nm_platform_link_is_ovs_system (NMPlatform *self, int ifindex, const NMPlatformLink *plink);
 
 gconstpointer nm_platform_link_get_address (NMPlatform *self, int ifindex, size_t *length);
 

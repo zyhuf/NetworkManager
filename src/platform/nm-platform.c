@@ -1641,6 +1641,32 @@ nm_platform_link_get_mtu (NMPlatform *self, int ifindex)
 }
 
 /**
+ * nm_platform_link_is_ovs_system:
+ * @self: platform instance
+ * @ifindex: Interface index
+ * @pllink: platform link
+ *
+ * Checks whether the given interface is the ovs-master one.
+ * The check is performed on @ifindex if it is set (> 0),
+ * otherwise on @pllink.
+ *
+ * Returns: %TRUE if the interface is the ovs-master, %FALSE otherwise.
+ */
+gboolean
+nm_platform_link_is_ovs_system (NMPlatform *self, int ifindex, const NMPlatformLink *pllink)
+{
+	_CHECK_SELF (self, klass, FALSE);
+	g_return_val_if_fail ((ifindex > 0) ^ (!!pllink), FALSE);
+
+	if (ifindex > 0)
+		pllink = nm_platform_link_get (self, ifindex);
+
+	return    pllink
+	       && pllink->type == NM_LINK_TYPE_OPENVSWITCH
+	       && nm_streq0 (pllink->name, "ovs-system");
+}
+
+/**
  * nm_platform_link_set_name:
  * @self: platform instance
  * @ifindex: Interface index
