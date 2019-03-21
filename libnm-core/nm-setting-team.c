@@ -692,21 +692,21 @@ static const _NMUtilsTeamPropertyKeys _prop_to_keys[_PROPERTY_ENUMS_LAST] = {
 
 typedef struct {
 	char *config;
+	char *runner;
+	char *runner_hwaddr_policy;
+	char *runner_tx_balancer;
+	char *runner_agg_select_policy;
+	GPtrArray *runner_tx_hash;
+	GPtrArray *link_watchers;
 	int notify_peers_count;
 	int notify_peers_interval;
 	int mcast_rejoin_count;
 	int mcast_rejoin_interval;
-	char *runner;
-	char *runner_hwaddr_policy;
-	GPtrArray *runner_tx_hash;
-	char *runner_tx_balancer;
 	int runner_tx_balancer_interval;
-	gboolean runner_active;
-	gboolean runner_fast_rate;
 	int runner_sys_prio;
 	int runner_min_ports;
-	char *runner_agg_select_policy;
-	GPtrArray *link_watchers; /* Array of NMTeamLinkWatcher */
+	bool runner_active;
+	bool runner_fast_rate;
 } NMSettingTeamPrivate;
 
 G_DEFINE_TYPE (NMSettingTeam, nm_setting_team, NM_TYPE_SETTING)
@@ -1358,36 +1358,33 @@ compare_property (const NMSettInfoSetting *sett_info,
 	                                                                          flags);
 }
 
-#define JSON_TO_VAL(typ, id)   _nm_utils_json_extract_##typ (priv->config, _prop_to_keys[id], FALSE)
-
 static void
-_align_team_properties (NMSettingTeam *setting)
+_align_team_properties (NMSettingTeam *self)
 {
-	NMSettingTeamPrivate *priv = NM_SETTING_TEAM_GET_PRIVATE (setting);
+	NMSettingTeamPrivate *priv = NM_SETTING_TEAM_GET_PRIVATE (self);
+	GPtrArray *ptrarr;
 	char **strv;
 	gsize i;
 
-	priv->notify_peers_count =          JSON_TO_VAL (int, PROP_NOTIFY_PEERS_COUNT);
-	priv->notify_peers_interval =       JSON_TO_VAL (int, PROP_NOTIFY_PEERS_INTERVAL);
-	priv->mcast_rejoin_count =          JSON_TO_VAL (int, PROP_MCAST_REJOIN_COUNT);
-	priv->mcast_rejoin_interval =       JSON_TO_VAL (int, PROP_MCAST_REJOIN_INTERVAL);
-	priv->runner_tx_balancer_interval = JSON_TO_VAL (int, PROP_RUNNER_TX_BALANCER_INTERVAL);
-	priv->runner_sys_prio =             JSON_TO_VAL (int, PROP_RUNNER_SYS_PRIO);
-	priv->runner_min_ports =            JSON_TO_VAL (int, PROP_RUNNER_MIN_PORTS);
+	g_object_freeze_notify (G_OBJECT (self));
 
-	priv->runner_active =    JSON_TO_VAL (boolean, PROP_RUNNER_ACTIVE);
-	priv->runner_fast_rate = JSON_TO_VAL (boolean, PROP_RUNNER_FAST_RATE);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_count,          PROP_NOTIFY_PEERS_COUNT);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_interval,       PROP_NOTIFY_PEERS_INTERVAL);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->mcast_rejoin_count,          PROP_MCAST_REJOIN_COUNT);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->mcast_rejoin_interval,       PROP_MCAST_REJOIN_INTERVAL);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->runner_tx_balancer_interval, PROP_RUNNER_TX_BALANCER_INTERVAL);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->runner_sys_prio,             PROP_RUNNER_SYS_PRIO);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->runner_min_ports,            PROP_RUNNER_MIN_PORTS);
 
-	g_free (priv->runner);
-	g_free (priv->runner_hwaddr_policy);
-	g_free (priv->runner_tx_balancer);
-	g_free (priv->runner_agg_select_policy);
-	priv->runner =                   JSON_TO_VAL (string, PROP_RUNNER);
-	priv->runner_hwaddr_policy =     JSON_TO_VAL (string, PROP_RUNNER_HWADDR_POLICY);
-	priv->runner_tx_balancer =       JSON_TO_VAL (string, PROP_RUNNER_TX_BALANCER);
-	priv->runner_agg_select_policy = JSON_TO_VAL (string, PROP_RUNNER_AGG_SELECT_POLICY);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_bool,   self, priv->config, &priv->runner_active,               PROP_RUNNER_ACTIVE);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_bool,   self, priv->config, &priv->runner_fast_rate,            PROP_RUNNER_FAST_RATE);
 
-	strv = JSON_TO_VAL (strv, PROP_RUNNER_TX_HASH);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_string, self, priv->config, &priv->runner,                      PROP_RUNNER);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_string, self, priv->config, &priv->runner_hwaddr_policy,        PROP_RUNNER_HWADDR_POLICY);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_string, self, priv->config, &priv->runner_tx_balancer,          PROP_RUNNER_TX_BALANCER);
+	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_string, self, priv->config, &priv->runner_agg_select_policy,    PROP_RUNNER_AGG_SELECT_POLICY);
+
+	strv = _nm_utils_json_extract_strv (priv->config, _prop_to_keys[PROP_RUNNER_TX_HASH], FALSE);
 	if (_nm_utils_strv_cmp_n ((  priv->runner_tx_hash
 	                           ? (const char *const*) priv->runner_tx_hash->pdata
 	                           : NULL),
@@ -1403,11 +1400,21 @@ _align_team_properties (NMSettingTeam *setting)
 				g_ptr_array_add (priv->runner_tx_hash, strv[i]);
 			nm_clear_g_free (&strv);
 		}
+		_notify (self, PROP_RUNNER_TX_HASH);
 	}
 	nm_clear_pointer (&strv, g_strfreev);
 
-	g_ptr_array_unref (priv->link_watchers);
-	priv->link_watchers = JSON_TO_VAL (ptr_array, PROP_LINK_WATCHERS);
+	ptrarr = _nm_utils_json_extract_ptr_array (priv->config, _prop_to_keys[PROP_LINK_WATCHERS], FALSE);
+	if (!_nm_team_link_watchers_equal (priv->link_watchers,
+	                                   ptrarr,
+	                                   FALSE)) {
+		g_ptr_array_unref (priv->link_watchers);
+		priv->link_watchers = g_steal_pointer (&ptrarr);
+		_notify (self, PROP_LINK_WATCHERS);
+	} else
+		nm_clear_pointer (&ptrarr, g_ptr_array_unref);
+
+	g_object_thaw_notify (G_OBJECT (self));
 }
 
 /*****************************************************************************/

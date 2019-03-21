@@ -63,12 +63,12 @@ static const _NMUtilsTeamPropertyKeys _prop_to_keys[_PROPERTY_ENUMS_LAST] = {
 
 typedef struct {
 	char *config;
+	GPtrArray *link_watchers;
 	int queue_id;
 	int prio;
-	gboolean sticky;
 	int lacp_prio;
 	int lacp_key;
-	GPtrArray *link_watchers; /* Array of NMTeamLinkWatcher */
+	bool sticky;
 } NMSettingTeamPortPrivate;
 
 G_DEFINE_TYPE (NMSettingTeamPort, nm_setting_team_port, NM_TYPE_SETTING)

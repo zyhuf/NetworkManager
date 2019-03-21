@@ -126,8 +126,10 @@ typedef struct {
 	};
 } _NMUtilsTeamPropertyKeys;
 
+/* FIXME: don't have all these large function in the header. */
+
 static inline int
-_nm_utils_json_extract_int (char *conf,
+_nm_utils_json_extract_int (const char *conf,
                             _NMUtilsTeamPropertyKeys key,
                             gboolean is_port)
 {
@@ -141,7 +143,7 @@ _nm_utils_json_extract_int (char *conf,
 }
 
 static inline gboolean
-_nm_utils_json_extract_boolean (char *conf,
+_nm_utils_json_extract_boolean (const char *conf,
                                 _NMUtilsTeamPropertyKeys key,
                                 gboolean is_port)
 {
@@ -155,7 +157,7 @@ _nm_utils_json_extract_boolean (char *conf,
 }
 
 static inline char *
-_nm_utils_json_extract_string (char *conf,
+_nm_utils_json_extract_string (const char *conf,
                                _NMUtilsTeamPropertyKeys key,
                                gboolean is_port)
 {
@@ -214,5 +216,62 @@ _nm_utils_json_append_gvalue (char **conf,
 {
 	_nm_utils_team_config_set (conf, key.key1, key.key2, key.key3, val);
 }
+
+static inline gboolean
+_nm_team_align_prop_int (NMSettingTeam *self,
+                         const char *config,
+                         int *p_value,
+                         const _NMUtilsTeamPropertyKeys *property)
+{
+	int v;
+
+	v = _nm_utils_json_extract_int (config, *property, FALSE);
+	if (v != *p_value) {
+		*p_value = v;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static inline gboolean
+_nm_team_align_prop_bool (NMSettingTeam *self,
+                          const char *config,
+                          bool *p_value,
+                          const _NMUtilsTeamPropertyKeys *property)
+{
+	bool v;
+
+	v = _nm_utils_json_extract_boolean (config, *property, FALSE);
+	if (v != *p_value) {
+		*p_value = v;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static inline gboolean
+_nm_team_align_prop_string (NMSettingTeam *self,
+                            const char *config,
+                            char **p_value,
+                            const _NMUtilsTeamPropertyKeys *property)
+{
+	gs_free char *v = NULL;
+
+	v = _nm_utils_json_extract_string (config, *property, FALSE);
+	if (!nm_streq0 (v, *p_value)) {
+		g_free (*p_value);
+		*p_value = g_steal_pointer (&v);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/* FIXME: ugly macro. */
+#define _NM_TEAM_ALIGN_PROP(func, self, config, var, prop_id) \
+	G_STMT_START { \
+		if ((func) ((self), (config), (var), &((_prop_to_keys)[(prop_id)]))) { \
+			_notify ((self), (prop_id)); \
+		} \
+	} G_STMT_END
 
 #endif
