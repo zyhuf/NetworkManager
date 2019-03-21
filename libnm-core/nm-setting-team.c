@@ -1536,8 +1536,8 @@ set_property (GObject *object, guint prop_id,
 			break;
 		g_free (priv->runner);
 		priv->runner = g_value_dup_string (value);
-		_nm_utils_json_append_gvalue (&priv->config, _prop_to_keys[prop_id], value);
-		_align_team_properties (setting);
+		align_value = value;
+		align_config = TRUE;
 		break;
 	case PROP_RUNNER_HWADDR_POLICY:
 		if (nm_streq0 (priv->runner_hwaddr_policy, g_value_get_string (value)))
