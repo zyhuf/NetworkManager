@@ -715,6 +715,30 @@ G_DEFINE_TYPE (NMSettingTeam, nm_setting_team, NM_TYPE_SETTING)
 
 /*****************************************************************************/
 
+static void _align_team_properties (NMSettingTeam *self);
+
+/*****************************************************************************/
+
+static void
+_notify_and_align (NMSettingTeam *self, _PropertyEnums prop_id)
+{
+	NMSettingTeamPrivate *priv = NM_SETTING_TEAM_GET_PRIVATE (self);
+	nm_auto_unset_gvalue GValue value = G_VALUE_INIT;
+
+	g_value_init (&value, obj_properties[prop_id]->value_type);
+
+	g_object_get_property (G_OBJECT (self), obj_properties[prop_id]->name, &value);
+
+	if (!_nm_utils_json_append_gvalue (&priv->config, _prop_to_keys[prop_id], &value))
+		return;
+
+	g_object_freeze_notify (G_OBJECT (self));
+	_align_team_properties (self);
+	_notify (self, prop_id);
+	_notify (self, PROP_CONFIG);
+	g_object_thaw_notify (G_OBJECT (self));
+}
+
 /**
  * nm_setting_team_get_config:
  * @setting: the #NMSettingTeam
@@ -962,7 +986,7 @@ nm_setting_team_remove_runner_tx_hash_by_value (NMSettingTeam *setting,
 		for (i = 0; i < priv->runner_tx_hash->len; i++) {
 			if (nm_streq (txhash, priv->runner_tx_hash->pdata[i])) {
 				g_ptr_array_remove_index (priv->runner_tx_hash, i);
-				_notify (setting, PROP_RUNNER_TX_HASH);
+				_notify_and_align (setting, PROP_RUNNER_TX_HASH);
 				return TRUE;
 			}
 		}
@@ -1026,7 +1050,7 @@ nm_setting_team_remove_runner_tx_hash (NMSettingTeam *setting, guint idx)
 	g_return_if_fail (idx < priv->runner_tx_hash->len);
 
 	g_ptr_array_remove_index (priv->runner_tx_hash, idx);
-	_notify (setting, PROP_RUNNER_TX_HASH);
+	_notify_and_align (setting, PROP_RUNNER_TX_HASH);
 }
 
 /**
@@ -1059,7 +1083,7 @@ nm_setting_team_add_runner_tx_hash (NMSettingTeam *setting, const char *txhash)
 	}
 
 	g_ptr_array_add (priv->runner_tx_hash, g_strdup (txhash));
-	_notify (setting, PROP_RUNNER_TX_HASH);
+	_notify_and_align (setting, PROP_RUNNER_TX_HASH);
 	return TRUE;
 }
 
@@ -1129,7 +1153,7 @@ nm_setting_team_add_link_watcher (NMSettingTeam *setting,
 	}
 
 	g_ptr_array_add (priv->link_watchers, nm_team_link_watcher_dup (link_watcher));
-	_notify (setting, PROP_LINK_WATCHERS);
+	_notify_and_align (setting, PROP_LINK_WATCHERS);
 	return TRUE;
 }
 
@@ -1151,7 +1175,7 @@ nm_setting_team_remove_link_watcher (NMSettingTeam *setting, guint idx)
 	g_return_if_fail (idx < priv->link_watchers->len);
 
 	g_ptr_array_remove_index (priv->link_watchers, idx);
-	_notify (setting, PROP_LINK_WATCHERS);
+	_notify_and_align (setting, PROP_LINK_WATCHERS);
 }
 
 /**
@@ -1177,7 +1201,7 @@ nm_setting_team_remove_link_watcher_by_value (NMSettingTeam *setting,
 	for (i = 0; i < priv->link_watchers->len; i++) {
 		if (nm_team_link_watcher_equal (priv->link_watchers->pdata[i], link_watcher)) {
 			g_ptr_array_remove_index (priv->link_watchers, i);
-			_notify (setting, PROP_LINK_WATCHERS);
+			_notify_and_align (setting, PROP_LINK_WATCHERS);
 			return TRUE;
 		}
 	}
@@ -1200,7 +1224,7 @@ nm_setting_team_clear_link_watchers (NMSettingTeam *setting) {
 
 	if (priv->link_watchers->len != 0) {
 		g_ptr_array_set_size (priv->link_watchers, 0);
-		_notify (setting, PROP_LINK_WATCHERS);
+		_notify_and_align (setting, PROP_LINK_WATCHERS);
 	}
 }
 
@@ -1366,8 +1390,6 @@ _align_team_properties (NMSettingTeam *self)
 	char **strv;
 	gsize i;
 
-	g_object_freeze_notify (G_OBJECT (self));
-
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_count,          PROP_NOTIFY_PEERS_COUNT);
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_interval,       PROP_NOTIFY_PEERS_INTERVAL);
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->mcast_rejoin_count,          PROP_MCAST_REJOIN_COUNT);
@@ -1413,8 +1435,6 @@ _align_team_properties (NMSettingTeam *self)
 		_notify (self, PROP_LINK_WATCHERS);
 	} else
 		nm_clear_pointer (&ptrarr, g_ptr_array_unref);
-
-	g_object_thaw_notify (G_OBJECT (self));
 }
 
 /*****************************************************************************/
@@ -1525,7 +1545,10 @@ set_property (GObject *object, guint prop_id,
 		break;
 	}
 
+	g_object_freeze_notify (G_OBJECT (self));
 	_align_team_properties (self);
+	_notify (self, PROP_CONFIG);
+	g_object_thaw_notify (G_OBJECT (self));
 }
 
 /*****************************************************************************/
