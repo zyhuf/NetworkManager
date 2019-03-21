@@ -1493,59 +1493,54 @@ set_property (GObject *object, guint prop_id,
 	NMSettingTeam *setting = NM_SETTING_TEAM (object);
 	NMSettingTeamPrivate *priv = NM_SETTING_TEAM_GET_PRIVATE (object);
 	const GValue *align_value = NULL;
-	gboolean align_config = FALSE;
 	char **strv;
+	const char *cstr;
 
 	switch (prop_id) {
 	case PROP_CONFIG:
+		cstr = g_value_get_string (value);
+		if (nm_streq0 (cstr, priv->config))
+			return;
 		g_free (priv->config);
-		priv->config = g_value_dup_string (value);
-		_align_team_properties (setting);
+		priv->config = g_strdup (cstr);
 		break;
 	case PROP_NOTIFY_PEERS_COUNT:
 		if (priv->notify_peers_count == g_value_get_int (value))
-			break;
+			return;
 		priv->notify_peers_count = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_NOTIFY_PEERS_INTERVAL:
 		if (priv->notify_peers_interval == g_value_get_int (value))
-			break;
+			return;
 		priv->notify_peers_interval = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_MCAST_REJOIN_COUNT:
 		if (priv->mcast_rejoin_count == g_value_get_int (value))
-			break;
+			return;
 		priv->mcast_rejoin_count = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_MCAST_REJOIN_INTERVAL:
 		if (priv->mcast_rejoin_interval == g_value_get_int (value))
-			break;
+			return;
 		priv->mcast_rejoin_interval = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER:
-		if (   !g_value_get_string (value)
-		    || nm_streq (priv->runner, g_value_get_string (value)))
-			break;
+		if (nm_streq0 (priv->runner, g_value_get_string (value)))
+			return;
 		g_free (priv->runner);
 		priv->runner = g_value_dup_string (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_HWADDR_POLICY:
 		if (nm_streq0 (priv->runner_hwaddr_policy, g_value_get_string (value)))
-			break;
+			return;
 		g_free (priv->runner_hwaddr_policy);
 		priv->runner_hwaddr_policy = g_value_dup_string (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_TX_HASH:
 		if (priv->runner_tx_hash)
@@ -1556,58 +1551,50 @@ set_property (GObject *object, guint prop_id,
 			align_value = value;
 		} else
 			priv->runner_tx_hash = NULL;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_TX_BALANCER:
 		if (nm_streq0 (priv->runner_tx_balancer, g_value_get_string (value)))
-			break;
+			return;
 		g_free (priv->runner_tx_balancer);
 		priv->runner_tx_balancer = g_value_dup_string (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_TX_BALANCER_INTERVAL:
 		if (priv->runner_tx_balancer_interval == g_value_get_int (value))
-			break;
+			return;
 		priv->runner_tx_balancer_interval = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_ACTIVE:
 		if (priv->runner_active == g_value_get_boolean (value))
-			break;
+			return;
 		priv->runner_active = g_value_get_boolean (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_FAST_RATE:
 		if (priv->runner_fast_rate == g_value_get_boolean (value))
-			break;
+			return;
 		priv->runner_fast_rate = g_value_get_boolean (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_SYS_PRIO:
 		if (priv->runner_sys_prio == g_value_get_int (value))
-			break;
+			return;
 		priv->runner_sys_prio = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_MIN_PORTS:
 		if (priv->runner_min_ports == g_value_get_int (value))
-			break;
+			return;
 		priv->runner_min_ports = g_value_get_int (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_RUNNER_AGG_SELECT_POLICY:
 		if (nm_streq0 (priv->runner_agg_select_policy, g_value_get_string (value)))
-			break;
+			return;
 		g_free (priv->runner_agg_select_policy);
 		priv->runner_agg_select_policy = g_value_dup_string (value);
 		align_value = value;
-		align_config = TRUE;
 		break;
 	case PROP_LINK_WATCHERS:
 		g_ptr_array_unref (priv->link_watchers);
@@ -1616,17 +1603,16 @@ set_property (GObject *object, guint prop_id,
 		                                            (GDestroyNotify) nm_team_link_watcher_unref);
 		if (priv->link_watchers->len)
 			align_value = value;
-		align_config = TRUE;
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
 	}
 
-	if (align_config) {
+	if (prop_id != PROP_CONFIG)
 		_nm_utils_json_append_gvalue (&priv->config, _prop_to_keys[prop_id], align_value);
-		_align_team_properties (setting);
-	}
+
+	_align_team_properties (setting);
 }
 
 /*****************************************************************************/
