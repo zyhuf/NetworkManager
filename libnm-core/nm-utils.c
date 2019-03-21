@@ -5936,16 +5936,15 @@ _nm_utils_team_config_set (char **conf,
 		return FALSE;
 
 	json = json_loads (*conf?: "{}", JSON_REJECT_DUPLICATES, &jerror);
-	if (!json)
-		return FALSE;
-
-	if (!value) {
-		if (!_json_del_object (json, key, key2, key3))
+	if (!json) {
+		json = json_loads ("{}", JSON_REJECT_DUPLICATES, &jerror);
+		if (!json)
 			return FALSE;
-		goto done;
 	}
 
-	if (G_VALUE_HOLDS_STRING (value))
+	if (!value) {
+		/* Indicate deletion by leaving json_value at NULL. */
+	} else if (G_VALUE_HOLDS_STRING (value))
 		json_value = json_string (g_value_get_string (value));
 	else if (G_VALUE_HOLDS_INT (value))
 		json_value = json_integer (g_value_get_int (value));
@@ -5958,30 +5957,29 @@ _nm_utils_team_config_set (char **conf,
 			guint i;
 
 			array = g_value_get_boxed (value);
-			if (!array || !array->len)
-				return FALSE;
+			if (array) {
+				for (i = 0; i < array->len; i++) {
+					json_t *el;
 
-			for (i = 0; i < array->len; i++) {
-				json_t *el;
+					el = _nm_utils_team_link_watcher_to_json (array->pdata[i]);
+					if (!el)
+						continue;
+					/* if there is only one watcher, it is added as-is. If there
+					 * are multiple watchers, they are added in an array. */
+					if (!json_value) {
+						json_value = el;
+						continue;
+					}
+					if (!has_array) {
+						json_t *el_arr;
 
-				el = _nm_utils_team_link_watcher_to_json (array->pdata[i]);
-				if (!el)
-					continue;
-				/* if there is only one watcher, it is added as-is. If there
-				 * are multiple watchers, they are added in an array. */
-				if (!json_value) {
-					json_value = el;
-					continue;
+						has_array = TRUE;
+						el_arr = json_array();
+						json_array_append_new (el_arr, json_value);
+						json_value = el_arr;
+					}
+					json_array_append_new (json_value, el);
 				}
-				if (!has_array) {
-					json_t *el_arr;
-
-					has_array = TRUE;
-					el_arr = json_array();
-					json_array_append_new (el_arr, json_value);
-					json_value = el_arr;
-				}
-				json_array_append_new (json_value, el);
 			}
 		} else if (   nm_streq (key, "runner")
 		           && nm_streq0 (key2, "tx_hash")) {
@@ -5989,12 +5987,16 @@ _nm_utils_team_config_set (char **conf,
 			gsize i;
 
 			strv = g_value_get_boxed (value);
-			if (!strv)
-				return FALSE;
 
-			json_value = json_array ();
-			for (i = 0; strv[i]; i++)
-				json_array_append_new (json_value, json_string (strv[i]));
+			/* we need to distinguish between
+			 *  - NULL (the default, missing array. teamd treats this as [eth,ipv4,ipv6].
+			 *  - empty array (set an empty json array), indicating no settings.
+			 */
+			if (strv) {
+				json_value = json_array ();
+				for (i = 0; strv[i]; i++)
+					json_array_append_new (json_value, json_string (strv[i]));
+			}
 		} else {
 			nm_assert_not_reached ();
 			return FALSE;
@@ -6005,32 +6007,36 @@ _nm_utils_team_config_set (char **conf,
 		return FALSE;
 	}
 
-	/* Simplest case: first level key only */
-	json_element = json;
-	json_link = NULL;
+	if (json_value) {
+		/* Simplest case: first level key only */
+		json_element = json;
+		json_link = NULL;
 
-	if (key2) {
-		json_link = json;
-		json_element = json_object_get (json, iter_key);
-		if (!json_element) {
-			json_element = json_object ();
-			json_object_set_new (json_link, iter_key, json_element);
+		if (key2) {
+			json_link = json;
+			json_element = json_object_get (json, iter_key);
+			if (!json_element) {
+				json_element = json_object ();
+				json_object_set_new (json_link, iter_key, json_element);
+			}
+			iter_key = key2;
 		}
-		iter_key = key2;
-	}
-	if (key3) {
-		json_link = json_element;
-		json_element = json_object_get (json_link, iter_key);
-		if (!json_element) {
-			json_element = json_object ();
-			json_object_set_new (json_link, iter_key, json_element);
+		if (key3) {
+			json_link = json_element;
+			json_element = json_object_get (json_link, iter_key);
+			if (!json_element) {
+				json_element = json_object ();
+				json_object_set_new (json_link, iter_key, json_element);
+			}
+			iter_key = key3;
 		}
-		iter_key = key3;
+
+		json_object_set_new (json_element, iter_key, g_steal_pointer (&json_value));
+	} else {
+		if (!_json_del_object (json, key, key2, key3))
+			return FALSE;
 	}
 
-	json_object_set_new (json_element, iter_key, g_steal_pointer (&json_value));
-
-done:
 	_json_team_normalize_defaults (json, (   nm_streq0 (key, "runner")
 	                                      && nm_streq0 (key2, "name")));
 	conf_new = json_dumps (json, JSON_PRESERVE_ORDER);
