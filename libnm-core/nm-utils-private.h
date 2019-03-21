@@ -209,12 +209,12 @@ _nm_utils_json_extract_ptr_array (char *conf,
 	return ret;
 }
 
-static inline void
+static inline gboolean
 _nm_utils_json_append_gvalue (char **conf,
                               _NMUtilsTeamPropertyKeys key,
                               const GValue *val)
 {
-	_nm_utils_team_config_set (conf, key.key1, key.key2, key.key3, val);
+	return _nm_utils_team_config_set (conf, key.key1, key.key2, key.key3, val);
 }
 
 static inline gboolean
