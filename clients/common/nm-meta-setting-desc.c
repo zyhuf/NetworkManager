@@ -1055,6 +1055,9 @@ _set_fcn_gobject_bool (ARGS_SET_FCN)
 {
 	gboolean val_bool;
 
+	if (nm_streq (property_info->property_name, NM_SETTING_TEAM_RUNNER_ACTIVE))
+		g_print (">>>team[%p] nmcli set runner-active to \"%s\"\n", setting, value);
+
 	if (!nmc_string_to_bool (value, &val_bool, error))
 		return FALSE;
 

@@ -799,7 +799,20 @@ _nm_setting_to_dbus (NMSetting *setting, NMConnection *connection, NMConnectionS
 		}
 	}
 
-	return g_variant_builder_end (&builder);
+	{
+		GVariant *v;
+
+		v = g_variant_builder_end (&builder);
+
+		if (nm_streq (nm_setting_get_name (setting), "team")) {
+			gs_free char *ss = NULL;
+
+			g_print (">>> convert %p to D-Bus: %s (runner-active=%d)\n", setting,
+			         (ss = g_variant_print (v, TRUE)),
+			         nm_setting_team_get_runner_active ((gpointer) setting));
+		}
+		return v;
+	}
 }
 
 /**
@@ -852,6 +865,13 @@ _nm_setting_new_from_dbus (GType setting_type,
 	 * that we do know about.
 	 */
 	setting = (NMSetting *) g_object_new (setting_type, NULL);
+
+	if (nm_streq (nm_setting_get_name (setting), "team")) {
+		gs_free char *ss = NULL;
+
+		g_print (">>> parse %p from D-Bus: %s\n", setting,
+		         (ss = g_variant_print (setting_dict, TRUE)));
+	}
 
 	if (NM_FLAGS_HAS (parse_flags, NM_SETTING_PARSE_FLAGS_STRICT)) {
 		GVariantIter iter;

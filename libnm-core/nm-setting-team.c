@@ -732,6 +732,7 @@ _notify_and_align (NMSettingTeam *self, _PropertyEnums prop_id)
 	if (!_nm_utils_json_append_gvalue (&priv->config, _prop_to_keys[prop_id], &value))
 		return;
 
+	g_print (">>>team[%p] CALL property %s (notify+align)\n", self, obj_properties[prop_id]->name);
 	g_object_freeze_notify (G_OBJECT (self));
 	_align_team_properties (self);
 	_notify (self, prop_id);
@@ -1389,6 +1390,7 @@ _align_team_properties (NMSettingTeam *self)
 	GPtrArray *ptrarr;
 	char **strv;
 	gsize i;
+	bool old;
 
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_count,          PROP_NOTIFY_PEERS_COUNT);
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->notify_peers_interval,       PROP_NOTIFY_PEERS_INTERVAL);
@@ -1398,7 +1400,9 @@ _align_team_properties (NMSettingTeam *self)
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->runner_sys_prio,             PROP_RUNNER_SYS_PRIO);
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_int,    self, priv->config, &priv->runner_min_ports,            PROP_RUNNER_MIN_PORTS);
 
+	old = priv->runner_active;
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_bool,   self, priv->config, &priv->runner_active,               PROP_RUNNER_ACTIVE);
+	g_print (">>> align runner-active: %d -> %d    (%s)\n", old, priv->runner_active, priv->config);
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_bool,   self, priv->config, &priv->runner_fast_rate,            PROP_RUNNER_FAST_RATE);
 
 	_NM_TEAM_ALIGN_PROP (_nm_team_align_prop_string, self, priv->config, &priv->runner,                      PROP_RUNNER);
@@ -1514,6 +1518,7 @@ set_property (GObject *object, guint prop_id,
 	NMSettingTeamPrivate *priv = NM_SETTING_TEAM_GET_PRIVATE (object);
 	const char *cstr;
 
+	g_print (">>>team[%p] CALL property %s (set-prop)\n", object, obj_properties[prop_id]->name);
 	switch (prop_id) {
 	case PROP_CONFIG:
 		cstr = g_value_get_string (value);
