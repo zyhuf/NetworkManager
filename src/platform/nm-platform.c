@@ -34,6 +34,7 @@
 #include <linux/if_tun.h>
 #include <linux/if_tunnel.h>
 #include <linux/rtnetlink.h>
+#include <linux/tc_act/tc_mirred.h>
 #include <libudev.h>
 
 #include "nm-utils.h"
@@ -6480,6 +6481,13 @@ nm_platform_tfilter_to_string (const NMPlatformTfilter *tfilter, char *buf, gsiz
 			                                                        NM_UTILS_STR_UTF8_SAFE_FLAG_ESCAPE_CTRL
 			                                                      | NM_UTILS_STR_UTF8_SAFE_FLAG_ESCAPE_NON_ASCII,
 			                                                      &t));
+		} else if (nm_streq (tfilter->action.kind, NM_PLATFORM_ACTION_KIND_MIRRED)) {
+			nm_utils_strbuf_append (&p, &l, "%s%s%s%s dev %d",
+			                        tfilter->action.mirred.ingress ? " ingress" : "",
+			                        tfilter->action.mirred.egress ? " egress" : "",
+			                        tfilter->action.mirred.mirror ? " mirror" : "",
+			                        tfilter->action.mirred.redirect ? " redirect" : "",
+			                        tfilter->action.mirred.ifindex);
 		}
 	} else
 		act_buf[0] = '\0';
@@ -6508,8 +6516,16 @@ nm_platform_tfilter_hash_update (const NMPlatformTfilter *obj, NMHashState *h)
 	                     obj->info);
 	if (obj->action.kind) {
 		nm_hash_update_str (h, obj->action.kind);
-		if (nm_streq (obj->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE))
+		if (nm_streq (obj->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE)) {
 			nm_hash_update_strarr (h, obj->action.simple.sdata);
+		} else if (nm_streq (obj->action.kind, NM_PLATFORM_ACTION_KIND_MIRRED)) {
+			nm_hash_update_vals (h,
+			                     obj->action.mirred.ingress,
+			                     obj->action.mirred.egress,
+			                     obj->action.mirred.mirror,
+			                     obj->action.mirred.redirect,
+			                     obj->action.mirred.ifindex);
+		}
 	}
 }
 
@@ -6526,8 +6542,15 @@ nm_platform_tfilter_cmp (const NMPlatformTfilter *a, const NMPlatformTfilter *b)
 
 	NM_CMP_FIELD_STR_INTERNED (a, b, action.kind);
 	if (a->action.kind) {
-		if (nm_streq (a->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE))
+		if (nm_streq (a->action.kind, NM_PLATFORM_ACTION_KIND_SIMPLE)) {
 			NM_CMP_FIELD_STR (a, b, action.simple.sdata);
+		} else if (nm_streq (a->action.kind, NM_PLATFORM_ACTION_KIND_MIRRED)) {
+			NM_CMP_FIELD (a, b, action.mirred.ingress);
+			NM_CMP_FIELD (a, b, action.mirred.egress);
+			NM_CMP_FIELD (a, b, action.mirred.mirror);
+			NM_CMP_FIELD (a, b, action.mirred.redirect);
+			NM_CMP_FIELD (a, b, action.mirred.ifindex);
+		}
 	}
 
 	return 0;
