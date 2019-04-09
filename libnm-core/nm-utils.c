@@ -2309,6 +2309,15 @@ static const NMVariantAttributeSpec * const tc_object_attribute_spec[] = {
 	NULL,
 };
 
+typedef struct {
+	const char *kind;
+	const NMVariantAttributeSpec * const *attrs;
+} NMQdiscAttributeSpec;
+
+NMQdiscAttributeSpec * const tc_qdisc_attribute_spec[] = {
+	NULL,
+};
+
 /*****************************************************************************/
 
 /**
@@ -2323,8 +2332,12 @@ static const NMVariantAttributeSpec * const tc_object_attribute_spec[] = {
 void
 _nm_utils_string_append_tc_qdisc_rest (GString *string, NMTCQdisc *qdisc)
 {
+	gs_unref_hashtable GHashTable *ht = NULL;
 	guint32 handle = nm_tc_qdisc_get_handle (qdisc);
 	const char *kind = nm_tc_qdisc_get_kind (qdisc);
+	gs_strfreev char **attr_names = NULL;
+	gs_free char *str = NULL;
+	int i;
 
 	if (handle != TC_H_UNSPEC && strcmp (kind, "ingress") != 0) {
 		g_string_append (string, "handle ");
@@ -2333,6 +2346,20 @@ _nm_utils_string_append_tc_qdisc_rest (GString *string, NMTCQdisc *qdisc)
 	}
 
 	g_string_append (string, kind);
+
+	ht = g_hash_table_new_full (nm_str_hash, g_str_equal, NULL, NULL);
+
+	attr_names = nm_tc_qdisc_get_attribute_names (qdisc);
+	for (i = 0; attr_names[i]; i++) {
+		g_hash_table_insert (ht, attr_names[i],
+		                     nm_tc_qdisc_get_attribute (qdisc, attr_names[i]));
+	}
+
+	if (i) {
+		str = nm_utils_format_variant_attributes (ht, ' ', ' ');
+		g_string_append_c (string, ' ');
+		g_string_append (string, str);
+	}
 }
 
 /**
@@ -2455,20 +2482,44 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 	gs_free char *kind = NULL;
 	gs_free char *rest = NULL;
 	NMTCQdisc *qdisc = NULL;
-	gs_unref_hashtable GHashTable *ht = NULL;
+	gs_unref_hashtable GHashTable *options = NULL;
+	GHashTableIter iter;
+	gpointer key, value;
+	int i;
 
 	nm_assert (str);
 	nm_assert (!error || !*error);
 
-	ht = nm_utils_parse_variant_attributes (str,
+	options = nm_utils_parse_variant_attributes (str,
 	                                        ' ', ' ', FALSE,
 	                                        tc_object_attribute_spec,
 	                                        error);
-	if (!ht)
+	if (!options)
 		return NULL;
+	g_clear_pointer (&options, g_hash_table_unref);
 
 	if (!_tc_read_common_opts (str, &handle, &parent, &kind, &rest, error))
 		return NULL;
+
+	for (i = 0; rest && tc_qdisc_attribute_spec[i]; i++) {
+		if (strcmp (tc_qdisc_attribute_spec[i]->kind, kind) == 0) {
+			options = nm_utils_parse_variant_attributes (rest,
+			                                             ' ', ' ', FALSE,
+			                                             tc_qdisc_attribute_spec[i]->attrs,
+			                                             error);
+			if (!options)
+				return NULL;
+			break;
+		}
+	}
+
+	if (options) {
+		value = g_hash_table_lookup (options, "");
+		if (value)
+			rest = g_variant_dup_string (value, NULL);
+		else
+			rest = NULL;
+	}
 
 	if (rest) {
 		g_set_error (error, 1, 0, _("unsupported qdisc option: '%s'."), rest);
@@ -2481,8 +2532,15 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 
 	nm_tc_qdisc_set_handle (qdisc, handle);
 
+	if (options) {
+		g_hash_table_iter_init (&iter, options);
+		while (g_hash_table_iter_next (&iter, &key, &value))
+			nm_tc_qdisc_set_attribute (qdisc, key, g_variant_ref_sink (value));
+	}
+
 	return qdisc;
 }
+
 /*****************************************************************************/
 
 static const NMVariantAttributeSpec * const tc_action_simple_attribute_spec[] = {
