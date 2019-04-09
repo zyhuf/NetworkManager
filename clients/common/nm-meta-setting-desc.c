@@ -3584,7 +3584,7 @@ _objlist_set_fcn_tc_config_qdiscs (NMSetting *setting,
 		nm_utils_error_set (error, NM_UTILS_ERROR_INVALID_ARGUMENT,
 		                    "%s %s",
 		                    local->message,
-		                    _("The valid syntax is: '[root | parent <handle>] [handle <handle>] <qdisc>'"));
+		                    _("The valid syntax is: '[root | parent <handle>] [handle <handle>] <kind>'"));
 		return FALSE;
 	}
 	if (do_add)
@@ -3660,7 +3660,7 @@ _objlist_set_fcn_tc_config_tfilters (NMSetting *setting,
 		nm_utils_error_set (error, NM_UTILS_ERROR_INVALID_ARGUMENT,
 		                    "%s %s",
 		                    local->message,
-		                    _("The valid syntax is: '[root | parent <handle>] [handle <handle>] <tfilter>'"));
+		                    _("The valid syntax is: '[root | parent <handle>] [handle <handle>] <kind>'"));
 		return FALSE;
 	}
 	if (do_add)

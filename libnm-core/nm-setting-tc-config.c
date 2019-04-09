@@ -62,11 +62,19 @@ nm_tc_qdisc_new (const char *kind,
 {
 	NMTCQdisc *qdisc;
 
+	if (!kind || !*kind) {
+		g_set_error (error,
+		             NM_CONNECTION_ERROR,
+		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		             _("kind is missing."));
+		return NULL;
+	}
+
 	if (!kind || !*kind || strchr (kind, ' ') || strchr (kind, '\t')) {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
-		             _("'%s' is not a valid kind"), kind);
+		             _("'%s' is not a valid kind."), kind);
 		return NULL;
 	}
 
@@ -290,11 +298,19 @@ nm_tc_action_new (const char *kind,
 {
 	NMTCAction *action;
 
+	if (!kind || !*kind) {
+		g_set_error (error,
+		             NM_CONNECTION_ERROR,
+		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		             _("kind is missing."));
+		return NULL;
+	}
+
 	if (!kind || !*kind || strchr (kind, ' ') || strchr (kind, '\t')) {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
-		             _("'%s' is not a valid kind"), kind);
+		             _("'%s' is not a valid kind."), kind);
 		return NULL;
 	}
 
@@ -544,11 +560,19 @@ nm_tc_tfilter_new (const char *kind,
 {
 	NMTCTfilter *tfilter;
 
+	if (!kind || !*kind) {
+		g_set_error (error,
+		             NM_CONNECTION_ERROR,
+		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
+		             _("kind is missing."));
+		return NULL;
+	}
+
 	if (!kind || !*kind || strchr (kind, ' ') || strchr (kind, '\t')) {
 		g_set_error (error,
 		             NM_CONNECTION_ERROR,
 		             NM_CONNECTION_ERROR_INVALID_PROPERTY,
-		             _("'%s' is not a valid kind"), kind);
+		             _("'%s' is not a valid kind."), kind);
 		return NULL;
 	}
 
