@@ -3549,6 +3549,7 @@ _new_from_nl_qdisc (struct nlmsghdr *nlh, gboolean id_only)
 {
 	static const struct nla_policy policy[] = {
 		[TCA_KIND] = { .type = NLA_STRING },
+		[TCA_OPTIONS] = { .type = NLA_NESTED },
 	};
 	struct nlattr *tb[G_N_ELEMENTS (policy)];
 	const struct tcmsg *tcm;
@@ -3573,6 +3574,40 @@ _new_from_nl_qdisc (struct nlmsghdr *nlh, gboolean id_only)
 	obj->qdisc.handle = tcm->tcm_handle;
 	obj->qdisc.parent = tcm->tcm_parent;
 	obj->qdisc.info = tcm->tcm_info;
+
+	if (tb[TCA_OPTIONS]) {
+		struct nlattr *options_attr;
+		int remaining;
+
+		nla_for_each_nested (options_attr, tb[TCA_OPTIONS], remaining) {
+			switch (nla_type (options_attr)) {
+			case TCA_FQ_CODEL_LIMIT:
+				obj->qdisc.fq_codel.limit = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_FLOWS:
+				obj->qdisc.fq_codel.flows = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_TARGET:
+				obj->qdisc.fq_codel.target = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_INTERVAL:
+				obj->qdisc.fq_codel.interval = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_QUANTUM:
+				obj->qdisc.fq_codel.quantum = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_CE_THRESHOLD:
+				obj->qdisc.fq_codel.ce_threshold = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_MEMORY_LIMIT:
+				obj->qdisc.fq_codel.memory = nla_get_u32 (options_attr);
+				break;
+			case TCA_FQ_CODEL_ECN:
+				obj->qdisc.fq_codel.ecn = nla_get_u32 (options_attr);
+				break;
+			}
+		}
+	}
 
 	return obj;
 }
@@ -4231,6 +4266,7 @@ _nl_msg_new_qdisc (int nlmsg_type,
                    const NMPlatformQdisc *qdisc)
 {
 	nm_auto_nlmsg struct nl_msg *msg = NULL;
+	struct nlattr *tc_options;
 	const struct tcmsg tcm = {
 		.tcm_family = qdisc->addr_family,
 		.tcm_ifindex = qdisc->ifindex,
@@ -4245,6 +4281,31 @@ _nl_msg_new_qdisc (int nlmsg_type,
 		goto nla_put_failure;
 
 	NLA_PUT_STRING (msg, TCA_KIND, qdisc->kind);
+
+	if (!(tc_options = nla_nest_start (msg, TCA_OPTIONS)))
+		goto nla_put_failure;
+
+	if (strcmp (qdisc->kind, "fq_codel") == 0) {
+		if (qdisc->fq_codel.limit)
+			NLA_PUT_U32 (msg, TCA_FQ_CODEL_LIMIT, qdisc->fq_codel.limit);
+
+			if (qdisc->fq_codel.flows)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_FLOWS, qdisc->fq_codel.flows);
+			if (qdisc->fq_codel.target)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_TARGET, qdisc->fq_codel.target);
+			if (qdisc->fq_codel.interval)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_INTERVAL, qdisc->fq_codel.interval);
+			if (qdisc->fq_codel.quantum)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_QUANTUM, qdisc->fq_codel.quantum);
+			if (qdisc->fq_codel.ce_threshold != -1)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_CE_THRESHOLD, qdisc->fq_codel.ce_threshold);
+			if (qdisc->fq_codel.memory != -1)
+				NLA_PUT_U32 (msg, TCA_FQ_CODEL_MEMORY_LIMIT, qdisc->fq_codel.memory);
+			if (qdisc->fq_codel.ecn)
+				NLA_PUT_S32 (msg, TCA_FQ_CODEL_ECN, qdisc->fq_codel.ecn);
+	}
+
+	nla_nest_end (msg, tc_options);
 
 	return g_steal_pointer (&msg);
 

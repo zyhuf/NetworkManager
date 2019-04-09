@@ -6527,6 +6527,46 @@ tc_commit (NMDevice *self)
 			qdisc->parent = nm_tc_qdisc_get_parent (s_qdisc);
 			qdisc->info = 0;
 
+			if (strcmp (qdisc->kind, "fq_codel") == 0) {
+				GVariant *var;
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "limit");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.limit = g_variant_get_uint32 (var);
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "flows");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.flows = g_variant_get_uint32 (var);
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "target");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.target = g_variant_get_uint32 (var);
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "interval");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.interval = g_variant_get_uint32 (var);
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "quantum");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.quantum = g_variant_get_uint32 (var);
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "ce_threshold");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.ce_threshold = g_variant_get_uint32 (var);
+				else
+					qdisc->fq_codel.ce_threshold = -1;
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "memory");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_UINT32))
+					qdisc->fq_codel.memory = g_variant_get_uint32 (var);
+				else
+					qdisc->fq_codel.memory = -1;
+
+				var = nm_tc_qdisc_get_attribute (s_qdisc, "ecn");
+				if (var && g_variant_is_of_type (var, G_VARIANT_TYPE_BOOLEAN))
+					qdisc->fq_codel.ecn = g_variant_get_boolean (var);
+			}
+
 			g_ptr_array_add (qdiscs, q);
 		}
 
