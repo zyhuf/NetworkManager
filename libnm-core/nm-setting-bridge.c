@@ -113,15 +113,17 @@ nm_bridge_vlan_new (guint16 vid_start, guint16 vid_end)
 {
 	NMBridgeVlan *vlan;
 
+	if (vid_end == 0)
+		vid_end = vid_start;
+
 	g_return_val_if_fail (vid_start >= NM_BRIDGE_VLAN_VID_MIN, NULL);
-	g_return_val_if_fail (vid_start <= NM_BRIDGE_VLAN_VID_MAX, NULL);
-	g_return_val_if_fail (!vid_end || vid_end >= vid_start, NULL);
-	g_return_val_if_fail (!vid_end || vid_end <= NM_BRIDGE_VLAN_VID_MAX, NULL);
+	g_return_val_if_fail (vid_end <= NM_BRIDGE_VLAN_VID_MAX, NULL);
+	g_return_val_if_fail (vid_start <= vid_end, NULL);
 
 	vlan = g_slice_new0 (NMBridgeVlan);
 	vlan->refcount = 1;
 	vlan->vid_start = vid_start;
-	vlan->vid_end = vid_end ?: vid_start;
+	vlan->vid_end = vid_end;
 
 	return vlan;
 }
@@ -854,7 +856,7 @@ nm_setting_bridge_remove_vlan_by_vid (NMSettingBridge *setting,
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), FALSE);
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	if (!vid_end)
+	if (vid_end == 0)
 		vid_end = vid_start;
 
 	for (i = 0; i < priv->vlans->len; i++) {

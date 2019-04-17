@@ -256,6 +256,9 @@ nm_setting_bridge_port_remove_vlan_by_vid (NMSettingBridgePort *setting,
 	NMBridgeVlan *vlan;
 	guint i;
 
+	if (vid_end == 0)
+		vid_end = vid_start;
+
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE_PORT (setting), FALSE);
 	priv = NM_SETTING_BRIDGE_PORT_GET_PRIVATE (setting);
 
