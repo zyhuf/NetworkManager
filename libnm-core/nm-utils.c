@@ -6800,13 +6800,13 @@ _nm_utils_bridge_vlans_to_dbus (NMSetting *setting, const char *property)
 		for (i = 0; i < vlans->len; i++) {
 			NMBridgeVlan *vlan = vlans->pdata[i];
 			GVariantBuilder vlan_builder;
-			guint16 vid, vid_end;
+			guint16 vid_start, vid_end;
 
-			nm_bridge_vlan_get_vid_range (vlan, &vid, &vid_end);
+			nm_bridge_vlan_get_vid_range (vlan, &vid_start, &vid_end);
 
 			g_variant_builder_init (&vlan_builder, G_VARIANT_TYPE_VARDICT);
 			g_variant_builder_add (&vlan_builder, "{sv}", "vid-start",
-			                       g_variant_new_uint16 (vid));
+			                       g_variant_new_uint16 (vid_start));
 			g_variant_builder_add (&vlan_builder, "{sv}", "vid-end",
 			                       g_variant_new_uint16 (vid_end));
 			g_variant_builder_add (&vlan_builder, "{sv}", "pvid",
