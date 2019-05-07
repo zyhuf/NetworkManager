@@ -5631,7 +5631,10 @@ nm_device_complete_connection (NMDevice *self,
 	                                 error))
 		return FALSE;
 
-	return nm_connection_verify (connection, error);
+	if (!nm_connection_verify (connection, error))
+		return FALSE;
+
+	return nm_device_check_connection_compatible (self, connection, error);
 }
 
 gboolean
