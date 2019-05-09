@@ -58,7 +58,7 @@ void                 nm_vpn_connection_activate        (NMVpnConnection *self,
                                                         NMVpnPluginInfo *plugin_info);
 NMVpnConnectionState nm_vpn_connection_get_vpn_state   (NMVpnConnection *self);
 const char *         nm_vpn_connection_get_banner      (NMVpnConnection *self);
-const char *        nm_vpn_connection_get_service     (NMVpnConnection *self);
+const char *         nm_vpn_connection_get_service     (NMVpnConnection *self);
 
 gboolean             nm_vpn_connection_deactivate      (NMVpnConnection *self,
                                                         NMActiveConnectionStateReason reason,
@@ -73,9 +73,6 @@ NMIP4Config *        nm_vpn_connection_get_ip4_config  (NMVpnConnection *self);
 NMIP6Config *        nm_vpn_connection_get_ip6_config  (NMVpnConnection *self);
 const char *         nm_vpn_connection_get_ip_iface    (NMVpnConnection *self, gboolean fallback_device);
 int                  nm_vpn_connection_get_ip_ifindex  (NMVpnConnection *self, gboolean fallback_device);
-guint32              nm_vpn_connection_get_ip4_internal_gateway (NMVpnConnection *self);
-struct in6_addr *    nm_vpn_connection_get_ip6_internal_gateway (NMVpnConnection *self);
-
 guint32              nm_vpn_connection_get_ip4_route_metric (NMVpnConnection *self);
 guint32              nm_vpn_connection_get_ip6_route_metric (NMVpnConnection *self);
 

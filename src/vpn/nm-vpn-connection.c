@@ -112,7 +112,6 @@ typedef struct {
 	NMVpnPluginInfo *plugin_info;
 	char *bus_name;
 
-	/* Firewall */
 	NMFirewallManagerCallId fw_call;
 
 	NMNetns *netns;
@@ -653,15 +652,19 @@ _set_vpn_state (NMVpnConnection *self,
 static gboolean
 _service_and_connection_can_persist (NMVpnConnection *self)
 {
-	return NM_VPN_CONNECTION_GET_PRIVATE (self)->connection_can_persist &&
-	       NM_VPN_CONNECTION_GET_PRIVATE (self)->service_can_persist;
+	NMVpnConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (self);
+
+	return    priv->connection_can_persist
+	       && priv->service_can_persist;
 }
 
 static gboolean
 _connection_only_can_persist (NMVpnConnection *self)
 {
-	return NM_VPN_CONNECTION_GET_PRIVATE (self)->connection_can_persist &&
-	       !NM_VPN_CONNECTION_GET_PRIVATE (self)->service_can_persist;
+	NMVpnConnectionPrivate *priv = NM_VPN_CONNECTION_GET_PRIVATE (self);
+
+	return    priv->connection_can_persist
+	       && !priv->service_can_persist;
 }
 
 static void
@@ -2464,22 +2467,6 @@ nm_vpn_connection_get_ip_ifindex (NMVpnConnection *self, gboolean fallback_devic
 		return 0;
 
 	return _get_ip_iface_for_device (self, NULL);
-}
-
-guint32
-nm_vpn_connection_get_ip4_internal_gateway (NMVpnConnection *self)
-{
-	g_return_val_if_fail (NM_IS_VPN_CONNECTION (self), 0);
-
-	return NM_VPN_CONNECTION_GET_PRIVATE (self)->ip4_internal_gw;
-}
-
-struct in6_addr *
-nm_vpn_connection_get_ip6_internal_gateway (NMVpnConnection *self)
-{
-	g_return_val_if_fail (NM_IS_VPN_CONNECTION (self), 0);
-
-	return NM_VPN_CONNECTION_GET_PRIVATE (self)->ip6_internal_gw;
 }
 
 void
