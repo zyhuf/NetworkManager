@@ -2175,26 +2175,32 @@ vpn_connection_retry_after_failure (NMVpnConnection *vpn, NMPolicy *self)
 {
 	NMPolicyPrivate *priv = NM_POLICY_GET_PRIVATE (self);
 	NMActiveConnection *ac = NM_ACTIVE_CONNECTION (vpn);
-	NMSettingsConnection *connection = nm_active_connection_get_settings_connection (ac);
+	NMActiveConnection *ac_new;
+	NMSettingsConnection *connection;
 	GError *error = NULL;
 
+	connection = nm_active_connection_get_settings_connection (ac);
+
 	/* Attempt to reconnect VPN connections that failed after being connected */
-	if (!nm_manager_activate_connection (priv->manager,
-	                                     connection,
-	                                     NULL,
-	                                     NULL,
-	                                     NULL,
-	                                     nm_active_connection_get_subject (ac),
-	                                     NM_ACTIVATION_TYPE_MANAGED,
-	                                     nm_active_connection_get_activation_reason (ac),
-	                                     (  nm_active_connection_get_state_flags (ac)
-	                                      & NM_ACTIVATION_STATE_FLAG_LIFETIME_BOUND_TO_PROFILE_VISIBILITY),
-	                                     &error)) {
+	ac_new = nm_manager_activate_connection (priv->manager,
+	                                         connection,
+	                                         NULL,
+	                                         NULL,
+	                                         NULL,
+	                                         nm_active_connection_get_subject (ac),
+	                                         NM_ACTIVATION_TYPE_MANAGED,
+	                                         nm_active_connection_get_activation_reason (ac),
+	                                         (  nm_active_connection_get_state_flags (ac)
+	                                          & NM_ACTIVATION_STATE_FLAG_LIFETIME_BOUND_TO_PROFILE_VISIBILITY),
+	                                         &error);
+	if (!ac_new) {
 		_LOGW (LOGD_DEVICE, "VPN '%s' reconnect failed: %s",
 		       nm_settings_connection_get_id (connection),
 		       error->message ?: "unknown");
 		g_clear_error (&error);
 	}
+
+	nm_vpn_connection_set_retried (NM_VPN_CONNECTION (ac_new));
 }
 
 static void

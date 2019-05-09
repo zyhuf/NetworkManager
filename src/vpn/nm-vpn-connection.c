@@ -144,6 +144,7 @@ typedef struct {
 	int ip_ifindex;
 	char *banner;
 	guint32 mtu;
+	gboolean retried;
 } NMVpnConnectionPrivate;
 
 struct _NMVpnConnection {
@@ -981,7 +982,7 @@ plugin_state_changed (NMVpnConnection *self, NMVpnServiceState new_service_state
 			/* If the connection failed, the service cannot persist, but the
 			 * connection can persist, ask listeners to re-activate the connection.
 			 */
-			if (   old_state == STATE_ACTIVATED
+			if (   (old_state == STATE_ACTIVATED || priv->retried)
 			    && priv->vpn_state == STATE_FAILED
 			    && _connection_only_can_persist (self))
 				g_signal_emit (self, signals[INTERNAL_RETRY_AFTER_FAILURE], 0);
@@ -2315,6 +2316,12 @@ on_proxy_acquired (GObject *object, GAsyncResult *result, gpointer user_data)
 
 		nm_vpn_connection_disconnect (self, NM_ACTIVE_CONNECTION_STATE_REASON_SERVICE_START_FAILED, FALSE);
 	}
+}
+
+void
+nm_vpn_connection_set_retried (NMVpnConnection *self)
+{
+	NM_VPN_CONNECTION_GET_PRIVATE (self)->retried = TRUE;
 }
 
 void
