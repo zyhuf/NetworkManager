@@ -2152,6 +2152,10 @@ _name_owner_changed (GObject *object,
 		 */
 		get_secrets (self, SECRETS_REQ_SYSTEM, NULL);
 	} else if (!owner && priv->service_running) {
+		if (   priv->service_state >= NM_VPN_SERVICE_STATE_STARTING
+		    && priv->service_state < NM_VPN_SERVICE_STATE_STOPPED)
+			plugin_state_changed (self, NM_VPN_SERVICE_STATE_STOPPED);
+
 		/* service went away */
 		priv->service_running = FALSE;
 		_LOGI ("VPN service disappeared");
