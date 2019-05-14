@@ -26,6 +26,14 @@
   ...
 }
 {
+  g_get_language_names_with_category
+  Memcheck:Leak
+  match-leak-kinds: definite
+  ...
+  fun:g_get_language_names_with_category
+  ...
+}
+{
   g_dbus_error_register_error
   Memcheck:Leak
   fun:calloc
