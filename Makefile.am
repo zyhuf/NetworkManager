@@ -1974,6 +1974,7 @@ src_libNetworkManagerBase_la_SOURCES = \
 	src/dhcp/nm-dhcp-client.c \
 	src/dhcp/nm-dhcp-client.h \
 	src/dhcp/nm-dhcp-client-logging.h \
+	src/dhcp/nm-dhcp-nettools.h \
 	src/dhcp/nm-dhcp-utils.c \
 	src/dhcp/nm-dhcp-utils.h \
 	src/dhcp/nm-dhcp-systemd.c \
