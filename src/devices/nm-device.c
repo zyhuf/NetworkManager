@@ -15212,6 +15212,8 @@ queued_state_set (gpointer user_data)
 
 	nm_assert (priv->queued_state.id);
 
+	g_object_ref (self);
+
 	_LOGD (LOGD_DEVICE, "queue-state[%s, reason:%s, id:%u]: %s",
 	       nm_device_state_to_str (priv->queued_state.state),
 	       reason_to_string_a (priv->queued_state.reason),
@@ -15227,6 +15229,8 @@ queued_state_set (gpointer user_data)
 
 	nm_device_state_changed (self, new_state, new_reason);
 	nm_device_remove_pending_action (self, queued_state_to_string (new_state), TRUE);
+
+	g_object_unref (self);
 
 	return G_SOURCE_REMOVE;
 }
