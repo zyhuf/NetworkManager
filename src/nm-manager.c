@@ -2993,12 +2993,15 @@ add_device (NMManager *self, NMDevice *device, GError **error)
 		return FALSE;
 	}
 
-	/* Remove existing devices owned by the new device; eg remove ethernet
-	 * ports that are owned by a WWAN modem, since udev may announce them
-	 * before the modem is fully discovered.
+	/*
+	 * Remove existing devices owned by the new device. This means that the
+	 * new device's factory didn't claim them and only now realized that it
+	 * should be owning them.
 	 *
-	 * FIXME: use parent/child device relationships instead of removing
-	 * the child NMDevice entirely
+	 * This is not good, because the device might already started to its
+	 * business (e.g. start activating) and now we need to backpedal.
+	 * Nevertheless, it could happen if the device is in fact a modem port,
+	 * but its driver is buggy and failed to set DEVTYPE=wwan in its uevent.
 	 */
 	c_list_for_each_entry (candidate, &priv->devices_lst_head, devices_lst) {
 		if (   nm_device_is_real (candidate)
@@ -3006,8 +3009,12 @@ add_device (NMManager *self, NMDevice *device, GError **error)
 		    && nm_device_owns_iface (device, iface))
 			remove = g_slist_prepend (remove, candidate);
 	}
-	for (iter = remove; iter; iter = iter->next)
-		remove_device (self, NM_DEVICE (iter->data), FALSE);
+	for (iter = remove; iter; iter = iter->next) {
+		candidate = NM_DEVICE (iter->data);
+		_LOGW (LOGD_DEVICE, "%s: device claims ownership of %s that likely has a buggy driver",
+		       nm_device_get_iface (candidate), iface);
+		remove_device (self, candidate, FALSE);
+	}
 	g_slist_free (remove);
 
 	g_object_ref (device);
