@@ -7539,11 +7539,15 @@ clear_config:
 static void
 dhcp4_dad_cb (NMDevice *self, NMIP4Config **configs, gboolean success)
 {
-	if (success)
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+
+	if (success) {
+		nm_dhcp_client_accept_ip4 (priv->dhcp4.client, NULL);
 		nm_device_activate_schedule_ip_config_result (self, AF_INET, NM_IP_CONFIG_CAST (configs[1]));
-	else {
+	} else {
+		nm_dhcp_client_decline_ip4 (priv->dhcp4.client, "Address conflict detected.", NULL);
 		nm_device_ip_method_failed (self, AF_INET,
-		                            NM_DEVICE_STATE_REASON_IP_ADDRESS_DUPLICATE);
+					    NM_DEVICE_STATE_REASON_IP_ADDRESS_DUPLICATE);
 	}
 }
 
