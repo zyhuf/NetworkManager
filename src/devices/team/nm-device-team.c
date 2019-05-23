@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #include <teamdctl.h>
 #include <stdlib.h>
+#include <glib/gprintf.h>
 
 #include "nm-glib-aux/nm-jansson.h"
 #include "NetworkManagerUtils.h"
@@ -112,6 +113,18 @@ complete_connection (NMDevice *device,
 	return TRUE;
 }
 
+static void
+teamdctl_log (struct teamdctl *tdc, int priority,
+              const char *file, int line,
+              const char *fn, const char *format,
+              va_list args)
+{
+	gs_free char *msg = NULL;
+
+	g_vasprintf (&msg, format, args);
+	nm_log_err (LOGD_TEAM, "libteamdctl: %s", msg);
+}
+
 static gboolean
 ensure_teamd_connection (NMDevice *device)
 {
@@ -122,8 +135,11 @@ ensure_teamd_connection (NMDevice *device)
 	if (priv->tdc)
 		return TRUE;
 
+	_LOGE (LOGD_TEAM, " ---- ensure teamd connection");
+
 	priv->tdc = teamdctl_alloc ();
 	g_assert (priv->tdc);
+	teamdctl_set_log_fn (priv->tdc, teamdctl_log);
 	err = teamdctl_connect (priv->tdc, nm_device_get_iface (device), NULL, NULL);
 	if (err != 0) {
 		_LOGE (LOGD_TEAM, "failed to connect to teamd (err=%d)", err);
@@ -147,6 +163,8 @@ teamd_read_config (NMDevice *device)
 	NMDeviceTeamPrivate *priv = NM_DEVICE_TEAM_GET_PRIVATE (self);
 	const char *config = NULL;
 	int err;
+
+	_LOGE (LOGD_TEAM, " ---- read config");
 
 	if (priv->tdc) {
 		err = teamdctl_config_actual_get_raw_direct (priv->tdc, (char **) &config);
@@ -186,6 +204,8 @@ update_connection (NMDevice *device, NMConnection *connection)
 	NMDeviceTeamPrivate *priv = NM_DEVICE_TEAM_GET_PRIVATE (self);
 	struct teamdctl *tdc = priv->tdc;
 
+	_LOGE (LOGD_TEAM, " ---- update connection");
+
 	if (!s_team) {
 		s_team = (NMSettingTeam *) nm_setting_team_new ();
 		nm_connection_add_setting (connection, (NMSetting *) s_team);
@@ -220,6 +240,8 @@ master_update_slave_connection (NMDevice *self,
 	const char *team_port_config = NULL;
 	const char *iface = nm_device_get_iface (self);
 	const char *iface_slave = nm_device_get_iface (slave);
+
+	nm_log_err (LOGD_TEAM, " ---- master update slave connection");
 
 	tdc = teamdctl_alloc ();
 	if (!tdc) {
@@ -303,6 +325,8 @@ teamd_cleanup (NMDevice *device, gboolean free_tdc)
 	nm_clear_g_source (&priv->teamd_timeout);
 	nm_clear_g_source (&priv->teamd_read_timeout);
 
+	nm_log_err (LOGD_TEAM, " ---- cleanup");
+
 	if (priv->teamd_pid > 0) {
 		priv->kill_in_progress = TRUE;
 		nm_utils_kill_child_async (priv->teamd_pid, SIGTERM,
@@ -363,7 +387,7 @@ teamd_dbus_appeared (GDBusConnection *connection,
 
 	g_return_if_fail (priv->teamd_dbus_watch);
 
-	_LOGI (LOGD_TEAM, "teamd appeared on D-Bus");
+	_LOGE (LOGD_TEAM, "teamd appeared on D-Bus");
 	nm_device_queue_recheck_assume (device);
 
 	/* If another teamd grabbed the bus name while our teamd was starting,
@@ -653,6 +677,8 @@ act_stage1_prepare (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	s_team = nm_connection_get_setting_team (connection);
 	g_return_val_if_fail (s_team, NM_ACT_STAGE_RETURN_FAILURE);
 
+	_LOGE (LOGD_TEAM, " ---- stage1 prepare");
+
 	if (priv->tdc) {
 		/* If the existing teamd config is the same as we're about to use,
 		 * then we can proceed.  If it's not the same, and we have a PID,
@@ -734,6 +760,8 @@ enslave_slave (NMDevice *device,
 				} else {
 					int err;
 					char *sanitized_config;
+
+					_LOGE (LOGD_TEAM, " ---- enslave slave: update port config");
 
 					sanitized_config = g_strdelimit (g_strdup (config), "\r\n", ' ');
 					err = teamdctl_port_config_update_raw (priv->tdc, slave_iface, sanitized_config);
