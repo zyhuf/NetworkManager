@@ -1022,8 +1022,8 @@ nettools_create (NMDhcpNettools *self,
 }
 
 static gboolean
-ip4_accept (NMDhcpClient *client,
-            GError **error)
+_accept (NMDhcpClient *client,
+         GError **error)
 {
 	NMDhcpNettools *self = NM_DHCP_NETTOOLS (client);
 	NMDhcpNettoolsPrivate *priv = NM_DHCP_NETTOOLS_GET_PRIVATE (self);
@@ -1045,9 +1045,9 @@ ip4_accept (NMDhcpClient *client,
 }
 
 static gboolean
-ip4_decline (NMDhcpClient *client,
-             const char *error_message,
-             GError **error)
+decline (NMDhcpClient *client,
+         const char *error_message,
+         GError **error)
 {
 	NMDhcpNettools *self = NM_DHCP_NETTOOLS (client);
 	NMDhcpNettoolsPrivate *priv = NM_DHCP_NETTOOLS_GET_PRIVATE (self);
@@ -1193,9 +1193,9 @@ nm_dhcp_nettools_class_init (NMDhcpNettoolsClass *class)
 	object_class->dispose = dispose;
 
 	client_class->ip4_start = ip4_start;
-	client_class->ip4_accept = ip4_accept;
-	client_class->ip4_decline = ip4_decline;
 	client_class->ip6_start = ip6_start;
+	client_class->accept = _accept;
+	client_class->decline = decline;
 	client_class->stop = stop;
 }
 
