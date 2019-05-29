@@ -533,13 +533,13 @@ nm_dhcp_client_start_ip4 (NMDhcpClient *self,
 
 gboolean
 nm_dhcp_client_accept_ip4 (NMDhcpClient *self,
-		           GError **error)
+                           GError **error)
 {
 	g_return_val_if_fail (NM_IS_DHCP_CLIENT (self), FALSE);
 
 	if (NM_DHCP_CLIENT_GET_CLASS (self)->ip4_accept) {
 		return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_accept (self,
-								    error);
+		                                                    error);
 	}
 
 	return TRUE;
@@ -547,15 +547,15 @@ nm_dhcp_client_accept_ip4 (NMDhcpClient *self,
 
 gboolean
 nm_dhcp_client_decline_ip4 (NMDhcpClient *self,
-			    const char *error_message,
-			    GError **error)
+                            const char *error_message,
+                            GError **error)
 {
 	g_return_val_if_fail (NM_IS_DHCP_CLIENT (self), FALSE);
 
 	if (NM_DHCP_CLIENT_GET_CLASS (self)->ip4_decline) {
 		return NM_DHCP_CLIENT_GET_CLASS (self)->ip4_decline (self,
-								     error_message,
-								     error);
+		                                                     error_message,
+		                                                     error);
 	}
 
 	return TRUE;
