@@ -162,7 +162,7 @@ in_addr_class (struct in_addr addr)
 {
 	switch (ntohl (addr.s_addr) >> 24) {
 	case   0 ... 127:
-		return NM_IN_ADDR_CLASS_A;	
+		return NM_IN_ADDR_CLASS_A;
 	case 128 ... 191:
 		return NM_IN_ADDR_CLASS_B;
 	case 192 ... 223:
@@ -174,9 +174,9 @@ in_addr_class (struct in_addr addr)
 
 static void
 take_option (GHashTable *options,
-	     const ReqOption *requests,
-	     guint option,
-	     char *value)
+             const ReqOption *requests,
+             guint option,
+             char *value)
 {
 	guint i;
 
@@ -281,7 +281,7 @@ lease_option_next_route (struct in_addr *destp,
 		if (!lease_option_next_in_addr (&dest, &data, &n_data))
 			return FALSE;
 
-		switch (in_addr_class(dest)) {
+		switch (in_addr_class (dest)) {
 		case NM_IN_ADDR_CLASS_A:
 			plen = 8;
 			break;
@@ -318,11 +318,11 @@ lease_get_in_addr (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, option, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, option, &data, &n_data);
 	if (r)
 		return FALSE;
 
-	if (!lease_option_next_in_addr(&addr, &data, &n_data))
+	if (!lease_option_next_in_addr (&addr, &data, &n_data))
 		return FALSE;
 
 	if (n_data != 0)
@@ -342,23 +342,23 @@ lease_get_u16 (NDhcp4ClientLease *lease,
 	uint16_t u16;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, option, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, option, &data, &n_data);
 	if (r)
 		return FALSE;
 
 	if (n_data != sizeof (u16))
 		return FALSE;
 
-	memcpy(&u16, data, sizeof (u16));
+	memcpy (&u16, data, sizeof (u16));
 
 	*u16p = u16;
 	return TRUE;
 }
 
 #define LOG_LEASE(domain, ...) \
-G_STMT_START { \
-	_LOG2I ((domain), (iface), "  "__VA_ARGS__); \
-} G_STMT_END
+    G_STMT_START { \
+        _LOG2I ((domain), (iface), "  "__VA_ARGS__); \
+    } G_STMT_END
 
 static gboolean
 lease_parse_address (NDhcp4ClientLease *lease,
@@ -426,13 +426,13 @@ lease_parse_domain_name_servers (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_DOMAIN_NAME_SERVER, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_DOMAIN_NAME_SERVER, &data, &n_data);
 	if (r)
 		return;
 
 	nm_gstring_prepare (&str);
 
-	while (lease_option_next_in_addr(&addr, &data, &n_data)) {
+	while (lease_option_next_in_addr (&addr, &data, &n_data)) {
 
 		nm_utils_inet4_ntop (addr.s_addr, addr_str);
 		g_string_append (nm_gstring_add_space_delimiter (str), addr_str);
@@ -471,13 +471,13 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_CLASSLESS_STATIC_ROUTE, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_CLASSLESS_STATIC_ROUTE, &data, &n_data);
 	if (!r) {
 		nm_gstring_prepare (&str);
 
 		has_classless = TRUE;
 
-		while (lease_option_next_route(&dest, &plen, &gateway, TRUE, &data, &n_data)) {
+		while (lease_option_next_route (&dest, &plen, &gateway, TRUE, &data, &n_data)) {
 
 			nm_utils_inet4_ntop (dest.s_addr, dest_str);
 			nm_utils_inet4_ntop (gateway.s_addr, gateway_str);
@@ -519,11 +519,11 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 		add_option (options, dhcp4_requests, DHCP_OPTION_CLASSLESS_STATIC_ROUTE, str->str);
 	}
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_STATIC_ROUTE, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_STATIC_ROUTE, &data, &n_data);
 	if (!r) {
 		nm_gstring_prepare (&str);
 
-		while (lease_option_next_route(&dest, &plen, &gateway, FALSE, &data, &n_data)) {
+		while (lease_option_next_route (&dest, &plen, &gateway, FALSE, &data, &n_data)) {
 
 			nm_utils_inet4_ntop (dest.s_addr, dest_str);
 			nm_utils_inet4_ntop (gateway.s_addr, gateway_str);
@@ -568,11 +568,11 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 		add_option (options, dhcp4_requests, DHCP_OPTION_STATIC_ROUTE, str->str);
 	}
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_ROUTER, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_ROUTER, &data, &n_data);
 	if (!r) {
 		nm_gstring_prepare (&str);
 
-		while (lease_option_next_in_addr(&gateway, &data, &n_data)) {
+		while (lease_option_next_in_addr (&gateway, &data, &n_data)) {
 			s = nm_utils_inet4_ntop (gateway.s_addr, gateway_str);
 			g_string_append (nm_gstring_add_space_delimiter (str), s);
 
@@ -613,9 +613,9 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 
 static void
 lease_parse_mtu (NDhcp4ClientLease *lease,
-		 const char *iface,
-		 NMIP4Config *ip4_config,
-		 GHashTable *options)
+                 const char *iface,
+                 NMIP4Config *ip4_config,
+                 GHashTable *options)
 {
 	uint16_t mtu;
 
@@ -641,7 +641,7 @@ lease_parse_metered (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_VENDOR_SPECIFIC, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_VENDOR_SPECIFIC, &data, &n_data);
 	if (r) {
 		metered = FALSE;
 	} else {
@@ -664,7 +664,7 @@ lease_parse_domainname (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_DOMAIN_NAME, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_DOMAIN_NAME, &data, &n_data);
 	if (r)
 		return;
 
@@ -693,7 +693,7 @@ lease_parse_search_domains (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_DOMAIN_SEARCH_LIST, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_DOMAIN_SEARCH_LIST, &data, &n_data);
 	if (r)
 		return;
 
@@ -710,7 +710,7 @@ lease_parse_search_domains (NDhcp4ClientLease *lease,
 	add_option (options, dhcp4_requests, DHCP_OPTION_DOMAIN_SEARCH_LIST, str->str);
 #endif
 }
-	
+
 static void
 lease_parse_ntps (NDhcp4ClientLease *lease,
                   const char *iface,
@@ -723,13 +723,13 @@ lease_parse_ntps (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_NTP_SERVER, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_NTP_SERVER, &data, &n_data);
 	if (r)
 		return;
 
 	nm_gstring_prepare (&str);
 
-	while (lease_option_next_in_addr(&addr, &data, &n_data)) {
+	while (lease_option_next_in_addr (&addr, &data, &n_data)) {
 		nm_utils_inet4_ntop (addr.s_addr, addr_str);
 		g_string_append (nm_gstring_add_space_delimiter (str), addr_str);
 	}
@@ -748,7 +748,7 @@ lease_parse_hostname (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_HOST_NAME, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_HOST_NAME, &data, &n_data);
 	if (r)
 		return;
 
@@ -771,7 +771,7 @@ lease_parse_root_path (NDhcp4ClientLease *lease,
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_ROOT_PATH, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_ROOT_PATH, &data, &n_data);
 	if (r)
 		return;
 
@@ -782,15 +782,15 @@ lease_parse_root_path (NDhcp4ClientLease *lease,
 
 static void
 lease_parse_wpad (NDhcp4ClientLease *lease,
-		  const char *iface,
-		  GHashTable *options)
+                  const char *iface,
+                  GHashTable *options)
 {
 	nm_auto_free_gstring GString *str = NULL;
 	uint8_t *data;
 	size_t n_data;
 	int r;
 
-	r = n_dhcp4_client_lease_query(lease, DHCP_OPTION_PRIVATE_PROXY_AUTODISCOVERY, &data, &n_data);
+	r = n_dhcp4_client_lease_query (lease, DHCP_OPTION_PRIVATE_PROXY_AUTODISCOVERY, &data, &n_data);
 	if (r)
 		return;
 
@@ -872,8 +872,9 @@ bound4_handle (NMDhcpNettools *self, NDhcp4ClientLease *lease)
 }
 
 static gboolean
-dhcp4_event_handle(NMDhcpNettools *self,
-                   NDhcp4ClientEvent *event) {
+dhcp4_event_handle (NMDhcpNettools *self,
+                    NDhcp4ClientEvent *event)
+{
 	NMDhcpNettoolsPrivate *priv = NM_DHCP_NETTOOLS_GET_PRIVATE (self);
 	int r;
 
@@ -882,9 +883,9 @@ dhcp4_event_handle(NMDhcpNettools *self,
 	switch (event->event) {
 	case N_DHCP4_CLIENT_EVENT_OFFER:
 		/* always accept the first lease */
-		r = n_dhcp4_client_lease_select(event->offer.lease);
+		r = n_dhcp4_client_lease_select (event->offer.lease);
 		if (r) {
-			_LOGW("selecting lease failed: %d", r);
+			_LOGW ("selecting lease failed: %d", r);
 		}
 		break;
 	case N_DHCP4_CLIENT_EVENT_EXPIRED:
@@ -895,7 +896,7 @@ dhcp4_event_handle(NMDhcpNettools *self,
 		nm_dhcp_client_set_state (NM_DHCP_CLIENT (self), NM_DHCP_STATE_FAIL, NULL, NULL);
 		break;
 	case N_DHCP4_CLIENT_EVENT_GRANTED:
-		priv->lease = n_dhcp4_client_lease_ref(event->granted.lease);
+		priv->lease = n_dhcp4_client_lease_ref (event->granted.lease);
 		bound4_handle (self, event->granted.lease);
 		break;
 	case N_DHCP4_CLIENT_EVENT_EXTENDED:
@@ -922,12 +923,12 @@ dhcp4_event_cb (GIOChannel *source,
 	NDhcp4ClientEvent *event;
 	int r;
 
-	r = n_dhcp4_client_dispatch(priv->client);
+	r = n_dhcp4_client_dispatch (priv->client);
 	if (r < 0)
 		return G_SOURCE_CONTINUE;
 
-	while (!n_dhcp4_client_pop_event(priv->client, &event) && event) {
-		dhcp4_event_handle(self, event);
+	while (!n_dhcp4_client_pop_event (priv->client, &event) && event) {
+		dhcp4_event_handle (self, event);
 	}
 
 	return G_SOURCE_CONTINUE;
@@ -936,7 +937,8 @@ dhcp4_event_cb (GIOChannel *source,
 static gboolean
 nettools_create (NMDhcpNettools *self,
                  const char *dhcp_anycast_addr,
-                 GError **error) {
+                 GError **error)
+{
 	NMDhcpNettoolsPrivate *priv = NM_DHCP_NETTOOLS_GET_PRIVATE (self);
 	nm_auto (n_dhcp4_client_config_freep) NDhcp4ClientConfig *config = NULL;
 	nm_auto (n_dhcp4_client_unrefp) NDhcp4Client *client = NULL;
@@ -1033,13 +1035,13 @@ _accept (NMDhcpClient *client,
 
 	_LOGT ("accept");
 
-	r = n_dhcp4_client_lease_accept(priv->lease);
+	r = n_dhcp4_client_lease_accept (priv->lease);
 	if (r) {
 		nm_utils_error_set_literal (error, NM_UTILS_ERROR_UNKNOWN, "failed to accept lease");
 		return FALSE;
 	}
 
-	priv->lease = n_dhcp4_client_lease_unref(priv->lease);
+	priv->lease = n_dhcp4_client_lease_unref (priv->lease);
 
 	return TRUE;
 }
@@ -1057,13 +1059,13 @@ decline (NMDhcpClient *client,
 
 	_LOGT ("dhcp4-client: decline");
 
-	r = n_dhcp4_client_lease_decline(priv->lease, error_message);
+	r = n_dhcp4_client_lease_decline (priv->lease, error_message);
 	if (r) {
 		nm_utils_error_set_literal (error, NM_UTILS_ERROR_UNKNOWN, "failed to decline lease");
 		return FALSE;
 	}
 
-	priv->lease = n_dhcp4_client_lease_unref(priv->lease);
+	priv->lease = n_dhcp4_client_lease_unref (priv->lease);
 
 	return TRUE;
 }
@@ -1083,10 +1085,10 @@ ip4_start (NMDhcpClient *client,
 
 	g_return_val_if_fail (!priv->probe, FALSE);
 
-	if (!nettools_create(self, dhcp_anycast_addr, error))
+	if (!nettools_create (self, dhcp_anycast_addr, error))
 		return FALSE;
 
-	r = n_dhcp4_client_probe_config_new(&config);
+	r = n_dhcp4_client_probe_config_new (&config);
 	if (r) {
 		nm_utils_error_set_errno (error, r, "failed to create dhcp-client-probe-config: %s");
 		return FALSE;
@@ -1107,24 +1109,24 @@ ip4_start (NMDhcpClient *client,
 	for (i = 0; dhcp4_requests[i].name; i++) {
 		if (dhcp4_requests[i].include) {
 			nm_assert (dhcp4_requests[i].option_num <= 255);
-			n_dhcp4_client_probe_config_request_option(config, dhcp4_requests[i].option_num);
+			n_dhcp4_client_probe_config_request_option (config, dhcp4_requests[i].option_num);
 		}
 	}
 
 	hostname = nm_dhcp_client_get_hostname (client);
 	if (hostname) {
 		/* XXX: select hostname/FQDN */
-		r = n_dhcp4_client_probe_config_append_option(config,
-		                                              DHCP_OPTION_HOST_NAME,
-		                                              hostname,
-		                                              strlen(hostname));
+		r = n_dhcp4_client_probe_config_append_option (config,
+		                                               DHCP_OPTION_HOST_NAME,
+		                                               hostname,
+		                                               strlen (hostname));
 		if (r) {
 			nm_utils_error_set_errno (error, r, "failed to set DHCP hostname: %s");
 			return FALSE;
 		}
 	}
 
-	r = n_dhcp4_client_probe(priv->client, &priv->probe, config);
+	r = n_dhcp4_client_probe (priv->client, &priv->probe, config);
 	if (r) {
 		nm_utils_error_set_errno (error, r, "failed to start DHCP client: %s");
 		return FALSE;
@@ -1160,7 +1162,7 @@ stop (NMDhcpClient *client,
 	_LOGT ("dhcp-client4: stop %p",
 	       (gpointer) priv->client);
 
-	priv->probe = n_dhcp4_client_probe_free(priv->probe);
+	priv->probe = n_dhcp4_client_probe_free (priv->probe);
 }
 
 /*****************************************************************************/
