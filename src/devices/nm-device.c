@@ -2723,7 +2723,7 @@ concheck_periodic_schedule_set (NMDevice *self, int addr_family, ConcheckSchedul
 		priv->concheck_x[IS_IPv4].p_cur_basetime_ns = (now_ns + tdiff) - (priv->concheck_x[IS_IPv4].p_cur_interval * NM_UTILS_NS_PER_SECOND);
 		if (concheck_periodic_schedule_do (self, addr_family, now_ns)) {
 			handle = concheck_start (self, addr_family, NULL, NULL, TRUE);
-			if (old_interval != priv->concheck_x[IS_IPv4].p_cur_interval) {
+			if (handle && old_interval != priv->concheck_x[IS_IPv4].p_cur_interval) {
 				/* we just bumped the interval already when scheduling this check.
 				 * When the handle returns, don't bump a second time.
 				 *
@@ -2816,6 +2816,7 @@ concheck_update_state (NMDevice *self,
 	                             NM_CONNECTIVITY_PORTAL,
 	                             NM_CONNECTIVITY_FULL,
 	                             NM_CONNECTIVITY_FAKE,
+	                             NM_CONNECTIVITY_NONE,
 	                             NM_CONNECTIVITY_ERROR));
 
 	if (state == NM_CONNECTIVITY_ERROR) {
@@ -3074,6 +3075,58 @@ check_handles:
 	concheck_handle_complete (handle, NULL);
 }
 
+static NMConnectivityState
+concheck_early_check (NMDevice *self, int addr_family)
+{
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+	NMIPConfig *ip_config;
+
+	/* Check if we can determine the connectivity check result
+	 * based on the device state without starting a probe.
+	 */
+
+	if (!nm_device_has_carrier (self))
+		return NM_CONNECTIVITY_NONE;
+
+	ip_config = priv->ip_config_x[addr_family == AF_INET];
+	if (!ip_config)
+		return NM_CONNECTIVITY_NONE;
+
+	if (   nm_ip_config_get_num_addresses (ip_config) == 0
+	    || nm_ip_config_get_num_routes (ip_config) == 0)
+		return NM_CONNECTIVITY_NONE;
+
+	switch (addr_family) {
+	case AF_INET: {
+		NMIP4Config *ip4_config = (NMIP4Config *) ip_config;
+		const NMPlatformIP4Route *route;
+		gboolean found_global = FALSE;
+		NMDedupMultiIter ipconf_iter;
+
+		/* For IPv4 also require a default route or any route with global scope. */
+		if (!nm_ip4_config_best_default_route_get (ip4_config)) {
+			nm_ip_config_iter_ip4_route_for_each (&ipconf_iter, ip4_config, &route) {
+				if (nm_platform_route_scope_inv (route->scope_inv) == RT_SCOPE_UNIVERSE) {
+					found_global = TRUE;
+					break;
+				}
+			}
+			if (!found_global)
+				return NM_CONNECTIVITY_LIMITED;
+		}
+		break;
+	}
+	case AF_INET6:
+		/* Route scopes aren't meaningful for IPv6 so any route is fine. */
+		break;
+	default:
+		g_return_val_if_reached (FALSE);
+	}
+
+	/* Do a real probe. */
+	return NM_CONNECTIVITY_UNKNOWN;
+}
+
 static NMDeviceConnectivityHandle *
 concheck_start (NMDevice *self,
                 int addr_family,
@@ -3085,10 +3138,17 @@ concheck_start (NMDevice *self,
 	NMDevicePrivate *priv;
 	NMDeviceConnectivityHandle *handle;
 	const char *ifname;
+	NMConnectivityState early_result;
 
 	g_return_val_if_fail (NM_IS_DEVICE (self), NULL);
 
 	priv = NM_DEVICE_GET_PRIVATE (self);
+
+	early_result = concheck_early_check (self, addr_family);
+	if (early_result != NM_CONNECTIVITY_UNKNOWN) {
+		concheck_update_state (self, addr_family, early_result, TRUE);
+		return NULL;
+	}
 
 	handle = g_slice_new0 (NMDeviceConnectivityHandle);
 	handle->seq = ++seq_counter;
