@@ -921,6 +921,7 @@ nm_connectivity_check_start (NMConnectivity *self,
 		                               &reason);
 		nm_assert ((state == NM_CONNECTIVITY_UNKNOWN) == !reason);
 		if (state != NM_CONNECTIVITY_UNKNOWN) {
+			_LOG2D ("skip connectivity check due to %s", reason);
 			cb_data->completed_state = state;
 			cb_data->completed_reason = reason;
 			cb_data->timeout_id = g_idle_add (_idle_cb, cb_data);
