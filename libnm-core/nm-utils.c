@@ -2598,6 +2598,16 @@ static const NMVariantAttributeSpec *const tc_action_attribute_spec[] = {
 	NULL,
 };
 
+static const NMVariantAttributeSpec *const *
+_action_atribute_spec_for_kind (const char *kind)
+{
+	if (strcmp (kind, "simple") == 0)
+		return tc_action_simple_attribute_spec;
+	if (strcmp (kind, "mirred") == 0)
+		return tc_action_mirred_attribute_spec;
+	return NULL;
+}
+
 static gboolean
 _string_append_tc_action (GString *string, NMTCAction *action, GError **error)
 {
@@ -2684,13 +2694,7 @@ nm_utils_tc_action_from_str (const char *str, GError **error)
 	}
 
 	kind = g_variant_get_string (variant, NULL);
-	if (strcmp (kind, "simple") == 0)
-		attrs = tc_action_simple_attribute_spec;
-	else if (strcmp (kind, "mirred") == 0)
-		attrs = tc_action_mirred_attribute_spec;
-	else
-		attrs = NULL;
-
+	attrs = _action_atribute_spec_for_kind (kind);
 	variant = g_hash_table_lookup (ht, "");
 	if (variant)
 		rest = g_variant_get_string (variant, NULL);
