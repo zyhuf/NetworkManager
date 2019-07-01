@@ -2033,6 +2033,23 @@ test_tc_config_tfilter (void)
 }
 
 static void
+test_tc_config_tfilter_str (void)
+{
+	const char *str_orig = "root matchall action mirred egress mirror dev dummy1";
+	char *str_new;
+	NMTCTfilter *tfilter1;
+	GError *error = NULL;
+
+	tfilter1 = nm_utils_tc_tfilter_from_str (str_orig,  &error);
+	nmtst_assert_success (tfilter1, error);
+	str_new = nm_utils_tc_tfilter_to_str (tfilter1, &error);
+	nmtst_assert_success (str_new, error);
+	g_assert_cmpstr (str_new, ==, str_orig);
+	g_free (str_new);
+	nm_tc_tfilter_unref (tfilter1);
+}
+
+static void
 test_tc_config_setting_valid (void)
 {
 	gs_unref_object NMSettingTCConfig *s_tc = NULL;
@@ -3358,6 +3375,7 @@ main (int argc, char **argv)
 	g_test_add_func ("/libnm/settings/tc_config/qdisc", test_tc_config_qdisc);
 	g_test_add_func ("/libnm/settings/tc_config/action", test_tc_config_action);
 	g_test_add_func ("/libnm/settings/tc_config/tfilter", test_tc_config_tfilter);
+	g_test_add_func ("/libnm/settings/tc_config/tfilter/str", test_tc_config_tfilter_str);
 	g_test_add_func ("/libnm/settings/tc_config/setting/valid", test_tc_config_setting_valid);
 	g_test_add_func ("/libnm/settings/tc_config/setting/duplicates", test_tc_config_setting_duplicates);
 	g_test_add_func ("/libnm/settings/tc_config/dbus", test_tc_config_dbus);
