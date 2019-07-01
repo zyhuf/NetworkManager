@@ -2210,6 +2210,44 @@ next:
 
 /*****************************************************************************/
 
+static char *
+attribute_escape (const char *src, char c1, char c2)
+{
+	char *ret, *dest;
+
+	dest = ret = malloc (strlen (src) * 2 + 1);
+
+	while (*src) {
+		if (*src == c1 || *src == c2 || *src == '\\')
+			*dest++ = '\\';
+		*dest++ = *src++;
+	}
+	*dest++ = '\0';
+
+	return ret;
+}
+
+static char *
+attribute_unescape (const char *start, const char *end)
+{
+	char *ret, *dest;
+
+	nm_assert (start <= end);
+	dest = ret = g_malloc (end - start + 1);
+
+	for (; start < end && *start; start++) {
+		if (*start == '\\') {
+			start++;
+			if (!*start)
+				break;
+		}
+		*dest++ = *start;
+	}
+	*dest = '\0';
+
+	return ret;
+}
+
 static void
 _string_append_tc_handle (GString *string, guint32 handle)
 {
@@ -5462,44 +5500,6 @@ nm_utils_is_json_object (const char *str, GError **error)
 
 	return _nm_utils_is_json_object_no_validation (str, error);
 #endif
-}
-
-static char *
-attribute_escape (const char *src, char c1, char c2)
-{
-	char *ret, *dest;
-
-	dest = ret = malloc (strlen (src) * 2 + 1);
-
-	while (*src) {
-		if (*src == c1 || *src == c2 || *src == '\\')
-			*dest++ = '\\';
-		*dest++ = *src++;
-	}
-	*dest++ = '\0';
-
-	return ret;
-}
-
-static char *
-attribute_unescape (const char *start, const char *end)
-{
-	char *ret, *dest;
-
-	nm_assert (start <= end);
-	dest = ret = g_malloc (end - start + 1);
-
-	for (; start < end && *start; start++) {
-		if (*start == '\\') {
-			start++;
-			if (!*start)
-				break;
-		}
-		*dest++ = *start;
-	}
-	*dest = '\0';
-
-	return ret;
 }
 
 /**
