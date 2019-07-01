@@ -2591,7 +2591,7 @@ static const NMVariantAttributeSpec *const tc_action_mirred_attribute_spec[] = {
 	NM_VARIANT_ATTRIBUTE_SPEC_DEFINE ("ingress",  G_VARIANT_TYPE_BOOLEAN, .no_value = TRUE,                  ),
 	NM_VARIANT_ATTRIBUTE_SPEC_DEFINE ("mirror",   G_VARIANT_TYPE_BOOLEAN, .no_value = TRUE,                  ),
 	NM_VARIANT_ATTRIBUTE_SPEC_DEFINE ("redirect", G_VARIANT_TYPE_BOOLEAN, .no_value = TRUE,                  ),
-	NM_VARIANT_ATTRIBUTE_SPEC_DEFINE ("dev",      G_VARIANT_TYPE_STRING,  .no_value = TRUE, .str_type = 'a', ),
+	NM_VARIANT_ATTRIBUTE_SPEC_DEFINE ("dev",      G_VARIANT_TYPE_STRING,  .no_value = FALSE, .str_type = 'a', ),
 	NULL,
 };
 
