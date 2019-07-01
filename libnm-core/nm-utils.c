@@ -2365,15 +2365,13 @@ static const NMVariantAttributeSpec *const tc_qdisc_fq_codel_spec[] = {
 	NULL,
 };
 
-typedef struct {
-	const char *kind;
-	const NMVariantAttributeSpec *const *attrs;
-} NMQdiscAttributeSpec;
-
-static const NMQdiscAttributeSpec *const tc_qdisc_attribute_spec[] = {
-	&(const NMQdiscAttributeSpec) { "fq_codel", tc_qdisc_fq_codel_spec },
-	NULL,
-};
+static const NMVariantAttributeSpec *const *
+_qdisc_atribute_spec_for_kind (const char *kind)
+{
+	if (strcmp (kind, "fq_codel") == 0)
+		return tc_qdisc_fq_codel_spec;
+	return NULL;
+}
 
 /*****************************************************************************/
 
@@ -2532,7 +2530,7 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 	gs_unref_hashtable GHashTable *options = NULL;
 	GHashTableIter iter;
 	gpointer key, value;
-	guint i;
+	const NMVariantAttributeSpec *const *attrs = NULL;
 
 	nm_assert (str);
 	nm_assert (!error || !*error);
@@ -2540,16 +2538,15 @@ nm_utils_tc_qdisc_from_str (const char *str, GError **error)
 	if (!_tc_read_common_opts (str, &handle, &parent, &kind, &rest, error))
 		return NULL;
 
-	for (i = 0; rest && tc_qdisc_attribute_spec[i]; i++) {
-		if (strcmp (tc_qdisc_attribute_spec[i]->kind, kind) == 0) {
-			options = nm_utils_parse_variant_attributes (rest,
-			                                             ' ', ' ', FALSE,
-			                                             tc_qdisc_attribute_spec[i]->attrs,
-			                                             error);
-			if (!options)
-				return NULL;
-			break;
-		}
+	if (rest)
+		attrs = _qdisc_atribute_spec_for_kind (kind);
+	if (attrs) {
+		options = nm_utils_parse_variant_attributes (rest,
+		                                             ' ', ' ', FALSE,
+		                                             attrs,
+		                                             error);
+		if (!options)
+			return NULL;
 	}
 	nm_clear_pointer (&rest, g_free);
 
