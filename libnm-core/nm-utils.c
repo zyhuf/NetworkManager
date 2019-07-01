@@ -2249,6 +2249,59 @@ attribute_unescape (const char *start, const char *end)
 }
 
 static void
+_format_variant_attributes (GString *string,
+                            GHashTable *attributes,
+                            const NMVariantAttributeSpec *const *spec)
+{
+	const NMVariantAttributeSpec *const *p;
+	const char *name, *value;
+	GVariant *variant;
+	char *escaped;
+	char buf[64];
+
+	if (!attributes || !g_hash_table_size (attributes))
+		return;
+
+	for (p = spec; *p; p++) {
+		name = (*p)->name;
+		variant = g_hash_table_lookup (attributes, (*p)->name);
+		value = NULL;
+
+		if (!variant)
+			continue;
+
+		if ((*p)->no_value)
+			value = NULL;
+		else if ((*p)->type == G_VARIANT_TYPE_UINT32)
+			value = nm_sprintf_buf (buf, "%u", g_variant_get_uint32 (variant));
+		else if ((*p)->type == G_VARIANT_TYPE_BYTE)
+			value = nm_sprintf_buf (buf, "%hhu", g_variant_get_byte (variant));
+		else if ((*p)->type == G_VARIANT_TYPE_BOOLEAN)
+			value = g_variant_get_boolean (variant) ? "true" : "false";
+		else if ((*p)->type == G_VARIANT_TYPE_STRING)
+			value = g_variant_get_string (variant, NULL);
+		else if ((*p)->type == G_VARIANT_TYPE_BYTESTRING)
+			value = g_variant_get_bytestring (variant);
+		else
+			continue;
+
+		g_string_append_c (string, ' ');
+		escaped = attribute_escape (name, ' ', ' ');
+		g_string_append (string, escaped);
+		g_free (escaped);
+
+		if (value) {
+			g_string_append_c (string, ' ');
+			escaped = attribute_escape (value, ' ', ' ');
+			g_string_append (string, escaped);
+			g_free (escaped);
+		}
+	}
+}
+
+/*****************************************************************************/
+
+static void
 _string_append_tc_handle (GString *string, guint32 handle)
 {
 	g_string_append_printf (string, "%x:", TC_H_MAJ (handle) >> 16);
@@ -2389,7 +2442,6 @@ _nm_utils_string_append_tc_qdisc_rest (GString *string, NMTCQdisc *qdisc)
 {
 	guint32 handle = nm_tc_qdisc_get_handle (qdisc);
 	const char *kind = nm_tc_qdisc_get_kind (qdisc);
-	gs_free char *str = NULL;
 
 	if (handle != TC_H_UNSPEC && strcmp (kind, "ingress") != 0) {
 		g_string_append (string, "handle ");
@@ -2398,13 +2450,9 @@ _nm_utils_string_append_tc_qdisc_rest (GString *string, NMTCQdisc *qdisc)
 	}
 
 	g_string_append (string, kind);
-
-	str = nm_utils_format_variant_attributes (_nm_tc_qdisc_get_attributes (qdisc),
-	                                          ' ', ' ');
-	if (str) {
-		g_string_append_c (string, ' ');
-		g_string_append (string, str);
-	}
+	_format_variant_attributes (string,
+	                            _nm_tc_qdisc_get_attributes (qdisc),
+	                            _qdisc_atribute_spec_for_kind (kind));
 }
 
 /**
@@ -2608,22 +2656,16 @@ _action_atribute_spec_for_kind (const char *kind)
 	return NULL;
 }
 
-static gboolean
-_string_append_tc_action (GString *string, NMTCAction *action, GError **error)
+static void
+_string_append_tc_action (GString *string, NMTCAction *action)
 {
 	const char *kind = nm_tc_action_get_kind (action);
 	gs_free char *str = NULL;
 
 	g_string_append (string, kind);
-
-	str = nm_utils_format_variant_attributes (_nm_tc_action_get_attributes (action),
-	                                          ' ', ' ');
-	if (str) {
-		g_string_append_c (string, ' ');
-		g_string_append (string, str);
-	}
-
-	return TRUE;
+	_format_variant_attributes (string,
+	                            _nm_tc_action_get_attributes (action),
+	                            _action_atribute_spec_for_kind (kind));
 }
 
 /**
@@ -2644,10 +2686,7 @@ nm_utils_tc_action_to_str (NMTCAction *action, GError **error)
 	GString *string;
 
 	string = g_string_sized_new (60);
-	if (!_string_append_tc_action (string, action, error)) {
-		g_string_free (string, TRUE);
-		return NULL;
-	}
+	_string_append_tc_action (string, action);
 
 	return g_string_free (string, FALSE);
 }
@@ -2759,8 +2798,7 @@ _nm_utils_string_append_tc_tfilter_rest (GString *string, NMTCTfilter *tfilter, 
 	action = nm_tc_tfilter_get_action (tfilter);
 	if (action) {
 		g_string_append (string, " action ");
-		if (!_string_append_tc_action (string, action, error))
-			return FALSE;
+		_string_append_tc_action (string, action);
 	}
 
 	return TRUE;
