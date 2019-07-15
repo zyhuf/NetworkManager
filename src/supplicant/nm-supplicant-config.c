@@ -854,10 +854,8 @@ nm_supplicant_config_add_setting_wireless_security (NMSupplicantConfig *self,
 		}
 	}
 
-	/* Force PMF with SAE, disable it on non-WPA networks */
-	if (!strcmp (key_mgmt, "sae"))
-		pmf = NM_SETTING_WIRELESS_SECURITY_PMF_REQUIRED;
-	else if (!NM_IN_STRSET (key_mgmt, "wpa-eap", "wpa-psk"))
+	/* Don't try to enable PMF on non-WPA networks */
+	if (!NM_IN_STRSET (key_mgmt, "wpa-eap", "wpa-psk"))
 		pmf = NM_SETTING_WIRELESS_SECURITY_PMF_DISABLE;
 
 	/* Check if we actually support PMF */
