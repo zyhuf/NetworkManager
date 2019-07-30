@@ -354,11 +354,6 @@ lease_get_u16 (NDhcp4ClientLease *lease,
 	return TRUE;
 }
 
-#define LOG_LEASE(domain, ...) \
-    G_STMT_START { \
-        _LOG2I ((domain), (iface), "  "__VA_ARGS__); \
-    } G_STMT_END
-
 static gboolean
 lease_parse_address (NDhcp4ClientLease *lease,
                      const char *iface,
@@ -415,7 +410,6 @@ lease_parse_address (NDhcp4ClientLease *lease,
 	nm_utils_inet4_ntop (a_address.s_addr, addr_str);
 	a_plen = nm_utils_ip4_netmask_to_prefix (a_netmask.s_addr);
 
-	LOG_LEASE (LOGD_DHCP4, "address %s/%u", addr_str, a_plen);
 	nm_dhcp_option_add_option (options,
 	                           _nm_dhcp_option_dhcp4_options,
 	                           NM_DHCP_OPTION_DHCP4_NM_IP_ADDRESS,
@@ -425,11 +419,6 @@ lease_parse_address (NDhcp4ClientLease *lease,
 	                           NM_DHCP_OPTION_DHCP4_SUBNET_MASK,
 	                           nm_utils_inet4_ntop (a_netmask.s_addr, addr_str));
 
-	LOG_LEASE (LOGD_DHCP4, "%s '%u' seconds (at %lld)",
-	           nm_dhcp_option_request_string (_nm_dhcp_option_dhcp4_options,
-	                                          NM_DHCP_OPTION_DHCP4_IP_ADDRESS_LEASE_TIME),
-	           (guint) a_lifetime,
-	           (long long) a_expiry);
 	nm_dhcp_option_add_option_u64 (options,
 	                               _nm_dhcp_option_dhcp4_options,
 	                               NM_DHCP_OPTION_DHCP4_IP_ADDRESS_LEASE_TIME,
@@ -487,7 +476,6 @@ lease_parse_domain_name_servers (NDhcp4ClientLease *lease,
 		nm_ip4_config_add_nameserver (ip4_config, addr.s_addr);
 	}
 
-	LOG_LEASE (LOGD_DHCP4, "nameserver '%s'", str->str);
 	nm_dhcp_option_add_option (options,
 	                           _nm_dhcp_option_dhcp4_options,
 	                           NM_DHCP_OPTION_DHCP4_DOMAIN_NAME_SERVER,
@@ -526,11 +514,6 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 			nm_utils_inet4_ntop (dest.s_addr, dest_str);
 			nm_utils_inet4_ntop (gateway.s_addr, gateway_str);
 
-			LOG_LEASE (LOGD_DHCP4,
-			           "classless static route %s/%d gw %s",
-			           dest_str,
-			           (int) plen,
-			           gateway_str);
 			g_string_append_printf (nm_gstring_add_space_delimiter (str),
 			                        "%s/%d %s",
 			                        dest_str,
@@ -575,11 +558,6 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 			nm_utils_inet4_ntop (dest.s_addr, dest_str);
 			nm_utils_inet4_ntop (gateway.s_addr, gateway_str);
 
-			LOG_LEASE (LOGD_DHCP4,
-			           "static route %s/%d gw %s",
-			           dest_str,
-			           (int) plen,
-			           gateway_str);
 			g_string_append_printf (nm_gstring_add_space_delimiter (str),
 			                        "%s/%d %s",
 			                        dest_str,
@@ -656,7 +634,6 @@ lease_parse_routes (NDhcp4ClientLease *lease,
 			                         }),
 			                         NULL);
 		}
-		LOG_LEASE (LOGD_DHCP4, "router %s", str->str);
 		nm_dhcp_option_add_option (options,
 		                           _nm_dhcp_option_dhcp4_options,
 		                           NM_DHCP_OPTION_DHCP4_ROUTER,
@@ -678,7 +655,6 @@ lease_parse_mtu (NDhcp4ClientLease *lease,
 	if (mtu < 68)
 		return;
 
-	LOG_LEASE (LOGD_DHCP4, "mtu %u", mtu);
 	nm_dhcp_option_add_option_u64 (options,
 	                               _nm_dhcp_option_dhcp4_options,
 	                               NM_DHCP_OPTION_DHCP4_INTERFACE_MTU,
@@ -704,7 +680,7 @@ lease_parse_metered (NDhcp4ClientLease *lease,
 		metered = !!memmem (data, n_data, "ANDROID_METERED", NM_STRLEN ("ANDROID_METERED"));
 	}
 
-	LOG_LEASE (LOGD_DHCP4, "%s", metered ? "metered" : "unmetered");
+	/* TODO: expose the vendor specific option when present */
 	nm_ip4_config_set_metered (ip4_config, metered);
 }
 
@@ -731,8 +707,10 @@ lease_parse_ntps (NDhcp4ClientLease *lease,
 		g_string_append (nm_gstring_add_space_delimiter (str), addr_str);
 	}
 
-	LOG_LEASE (LOGD_DHCP4, "ntp server '%s'", str->str);
-	nm_dhcp_option_add_option (options, _nm_dhcp_option_dhcp4_options, NM_DHCP_OPTION_DHCP4_NTP_SERVER, str->str);
+	nm_dhcp_option_add_option (options,
+	                           _nm_dhcp_option_dhcp4_options,
+	                           NM_DHCP_OPTION_DHCP4_NTP_SERVER,
+	                           str->str);
 }
 
 static void
@@ -754,8 +732,10 @@ lease_parse_hostname (NDhcp4ClientLease *lease,
 	if (is_localhost(str->str))
 		return;
 
-	LOG_LEASE (LOGD_DHCP4, "hostname '%s'", str->str);
-	nm_dhcp_option_add_option (options, _nm_dhcp_option_dhcp4_options, NM_DHCP_OPTION_DHCP4_HOST_NAME, str->str);
+	nm_dhcp_option_add_option (options,
+	                           _nm_dhcp_option_dhcp4_options,
+	                           NM_DHCP_OPTION_DHCP4_HOST_NAME,
+	                           str->str);
 }
 
 static void
@@ -787,8 +767,10 @@ lease_parse_domainname (NDhcp4ClientLease *lease,
 		g_string_append (nm_gstring_add_space_delimiter (str), *d);
 		nm_ip4_config_add_domain (ip4_config, *d);
 	}
-	LOG_LEASE (LOGD_DHCP4, "domain name '%s'", str->str);
-	nm_dhcp_option_add_option (options, _nm_dhcp_option_dhcp4_options, NM_DHCP_OPTION_DHCP4_DOMAIN_NAME, str->str);
+	nm_dhcp_option_add_option (options,
+	                           _nm_dhcp_option_dhcp4_options,
+	                           NM_DHCP_OPTION_DHCP4_DOMAIN_NAME,
+	                           str->str);
 }
 
 static void
@@ -821,7 +803,6 @@ lease_parse_search_domains (NDhcp4ClientLease *lease,
 		g_string_append (nm_gstring_add_space_delimiter (str), domain->str);
 		nm_ip4_config_add_search (ip4_config, domain->str);
 	}
-	LOG_LEASE (LOGD_DHCP4, "domain search '%s'", str->str);
 	nm_dhcp_option_add_option (options,
 	                           _nm_dhcp_option_dhcp4_options,
 	                           NM_DHCP_OPTION_DHCP4_DOMAIN_SEARCH_LIST,
@@ -843,8 +824,10 @@ lease_parse_root_path (NDhcp4ClientLease *lease,
 		return;
 
 	str = g_string_new_len ((char *)data, n_data);
-	LOG_LEASE (LOGD_DHCP4, "root path '%s'", str->str);
-	nm_dhcp_option_add_option (options, _nm_dhcp_option_dhcp4_options, NM_DHCP_OPTION_DHCP4_ROOT_PATH, str->str);
+	nm_dhcp_option_add_option (options,
+	                           _nm_dhcp_option_dhcp4_options,
+	                           NM_DHCP_OPTION_DHCP4_ROOT_PATH,
+	                           str->str);
 }
 
 static void
@@ -862,7 +845,6 @@ lease_parse_wpad (NDhcp4ClientLease *lease,
 		return;
 
 	str = g_string_new_len ((char *)data, n_data);
-	LOG_LEASE (LOGD_DHCP4, "wpad '%s'", str->str);
 	nm_dhcp_option_add_option (options,
 	                           _nm_dhcp_option_dhcp4_options,
 	                           NM_DHCP_OPTION_DHCP4_PRIVATE_PROXY_AUTODISCOVERY,
@@ -893,9 +875,6 @@ lease_parse_private_options (NDhcp4ClientLease *lease,
 			continue;
 
 		option_string = nm_utils_bin2hexstr_full (data, n_data, ':', FALSE, NULL);
-		LOG_LEASE (LOGD_DHCP4, "%s '%s'",
-		           nm_dhcp_option_request_string (_nm_dhcp_option_dhcp4_options, i),
-		           option_string);
 		if (options) {
 			nm_dhcp_option_take_option (options,
 			                            _nm_dhcp_option_dhcp4_options,
