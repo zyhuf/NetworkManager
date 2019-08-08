@@ -11245,6 +11245,11 @@ nm_device_reactivate_ip4_config (NMDevice *self,
 			_set_ip_state (self, AF_INET, NM_DEVICE_IP_STATE_WAIT);
 			if (!nm_device_activate_stage3_ip4_start (self))
 				_LOGW (LOGD_IP4, "Failed to apply IPv4 configuration");
+			/* Ensure the IP configuration exported on D-Bus is up to date
+			 * when we return.
+			 */
+			nm_platform_process_events (nm_device_get_platform (self));
+			queued_ip4_config_change (self);
 			return;
 		}
 
@@ -11278,6 +11283,8 @@ nm_device_reactivate_ip4_config (NMDevice *self,
 
 		if (!ip_config_merge_and_apply (self, AF_INET, TRUE))
 			_LOGW (LOGD_IP4, "Failed to reapply IPv4 configuration");
+
+
 	}
 }
 
@@ -11319,6 +11326,11 @@ nm_device_reactivate_ip6_config (NMDevice *self,
 			_set_ip_state (self, AF_INET6, NM_DEVICE_IP_STATE_WAIT);
 			if (!nm_device_activate_stage3_ip6_start (self))
 				_LOGW (LOGD_IP6, "Failed to apply IPv6 configuration");
+			/* Ensure the IP configuration exported on D-Bus is up to date
+			 * when we return.
+			 */
+			nm_platform_process_events (nm_device_get_platform (self));
+			queued_ip6_config_change (self);
 			return;
 		}
 
