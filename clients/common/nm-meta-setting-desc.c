@@ -869,8 +869,21 @@ _get_fcn_gobject_impl (const NMMetaPropertyInfo *property_info,
 	           || (   gtype_prop == G_TYPE_STRV
 	               && !glib_handles_str_transform));
 
-	if (glib_handles_str_transform)
-		RETURN_STR_TEMPORARY (g_value_get_string (&val));
+	if (glib_handles_str_transform) {
+		const char *s = g_value_get_string (&val);
+
+		if (   property_info->property_typ_data
+		    && property_info->property_typ_data->coerce_one_space_as_empty) {
+			/* maybe we should call _coerce_str_emptyunset(), but that quotes
+			 * the entire string. We don't want that either. Just coerce "" to
+			 * " ". */
+			if (   s
+			    && s[0] == '\0')
+				return " ";
+		}
+
+		RETURN_STR_TEMPORARY (s);
+	}
 
 	if (gtype_prop == G_TYPE_BOOLEAN) {
 		gboolean b;
@@ -1208,6 +1221,11 @@ _set_fcn_gobject_string (ARGS_SET_FCN)
 		return _gobject_property_reset_default (setting, property_info->property_name);
 
 	if (property_info->property_typ_data) {
+
+		if (   property_info->property_typ_data->coerce_one_space_as_empty
+		    && nm_streq0 (value, " "))
+			value = "";
+
 		if (property_info->property_typ_data->subtype.gobject_string.validate_fcn) {
 			value = property_info->property_typ_data->subtype.gobject_string.validate_fcn (value, &to_free, error);
 			if (!value)
@@ -5402,6 +5420,9 @@ static const NMMetaPropertyInfo *const property_infos_GSM[] = {
 	    .property_alias =               "apn",
 	    .prompt =                       N_("APN"),
 	    .property_type =                &_pt_gobject_string,
+	    .property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+	        .coerce_one_space_as_empty = TRUE,
+	    ),
 	),
 	PROPERTY_INFO_WITH_DESC (NM_SETTING_GSM_NETWORK_ID,
 	    .property_type =                &_pt_gobject_string,
