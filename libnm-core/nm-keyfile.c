@@ -2541,6 +2541,7 @@ struct _ParseInfoProperty {
 
 typedef struct {
 	const ParseInfoProperty*const*properties;
+	bool writer_no_empty_group:1;
 } ParseInfoSetting;
 
 #define PARSE_INFO_SETTING(setting_type, ...) \
@@ -2904,6 +2905,9 @@ static const ParseInfoSetting *const parse_infos[_NM_META_SETTING_TYPE_NUM] = {
 			),
 		),
 	),
+	PARSE_INFO_SETTING (NM_META_SETTING_TYPE_WIREGUARD,
+		.writer_no_empty_group = TRUE,
+	),
 };
 
 static void
@@ -2928,8 +2932,9 @@ _parse_info_find (NMSetting *setting,
 
 				if (!pis)
 					continue;
+				if (!pis->properties)
+					continue;
 
-				g_assert (pis->properties);
 				g_assert (pis->properties[0]);
 				for (j = 0; pis->properties[j]; j++) {
 					const ParseInfoProperty *pip0;
@@ -3867,6 +3872,8 @@ nm_keyfile_write (NMConnection *connection,
 	for (i = 0; i < n_settings; i++) {
 		const NMSettInfoSetting *sett_info;
 		NMSetting *setting = settings[i];
+		const char *setting_name;
+		const ParseInfoSetting *pis;
 
 		sett_info = _nm_setting_class_get_sett_info (NM_SETTING_GET_CLASS (setting));
 
@@ -3879,9 +3886,9 @@ nm_keyfile_write (NMConnection *connection,
 			n_keys = _nm_setting_gendata_get_all (setting, &keys, NULL);
 
 			if (n_keys > 0) {
-				const char *setting_name = sett_info->setting_class->setting_info->setting_name;
 				GHashTable *h = _nm_setting_gendata_hash (setting, FALSE);
 
+				setting_name = sett_info->setting_class->setting_info->setting_name;
 				for (k = 0; k < n_keys; k++) {
 					const char *key = keys[k];
 					GVariant *v;
@@ -3917,6 +3924,28 @@ nm_keyfile_write (NMConnection *connection,
 			_write_setting_wireguard (setting, &info);
 			if (info.error)
 				goto out_with_info_error;
+		}
+
+		_parse_info_find (setting, NULL, NULL, &pis, NULL);
+		if (   !pis
+		    || !pis->writer_no_empty_group) {
+			const char *group_name;
+
+			setting_name = sett_info->setting_class->setting_info->setting_name;
+
+			group_name = nm_keyfile_plugin_get_alias_for_setting_name (setting_name);
+			if (   (   group_name
+			        && g_key_file_has_group (info.keyfile, group_name))
+			    || g_key_file_has_group (info.keyfile, setting_name)) {
+				/* we have a section for the setting. Nothing to do. */
+			} else {
+				/* ensure the group is present. There is no API for that, so add and remove
+				 * a dummy key. */
+				if (!group_name)
+					group_name = setting_name;
+				g_key_file_set_value (info.keyfile, group_name, ".X", "1");
+				g_key_file_remove_key (info.keyfile, group_name, ".X", NULL);
+			}
 		}
 
 		nm_assert (!info.error);

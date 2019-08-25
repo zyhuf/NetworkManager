@@ -2581,7 +2581,7 @@ static void
 test_roundtrip_conversion (gconstpointer test_data)
 {
 	const int MODE = GPOINTER_TO_INT (test_data);
-	const char *ID= nm_sprintf_bufa (100, "roundtip-conversion-%d", MODE);
+	const char *ID= nm_sprintf_bufa (100, "roundtrip-conversion-%d", MODE);
 	const char *UUID= "63376701-b61e-4318-bf7e-664a1c1eeaab";
 	const char *INTERFACE_NAME = nm_sprintf_bufa (100, "ifname%d", MODE);
 	guint32 ETH_MTU = nmtst_rand_select ((guint32) 0u,
@@ -2663,6 +2663,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "addr-gen-mode=stable-privacy\n"
 		                     "dns-search=\n"
 		                     "method=auto\n"
+		                     "\n"
+		                     "[proxy]\n"
 		                     "",
 		                     ID,
 		                     UUID,
@@ -2730,6 +2732,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "addr-gen-mode=stable-privacy\n"
 		                     "dns-search=\n"
 		                     "method=ignore\n"
+		                     "\n"
+		                     "[proxy]\n"
 		                     "",
 		                     ID,
 		                     UUID,
@@ -2785,6 +2789,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "addr-gen-mode=stable-privacy\n"
 		                     "dns-search=\n"
 		                     "method=ignore\n"
+		                     "\n"
+		                     "[proxy]\n"
 		                     "",
 		                     ID,
 		                     UUID,
@@ -2887,6 +2893,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "routing-rule1=priority 1 from ::/0 table 1000\n"
 		                     "routing-rule2=priority 2 from 1:2:3:b::/65 table 1001\n"
 		                     "routing-rule3=priority 3 from 1:2:3:c::/66 table 1002\n"
+		                     "\n"
+		                     "[proxy]\n"
 		                     "",
 		                     ID,
 		                     UUID,
@@ -3309,10 +3317,8 @@ test_empty_setting (void)
 	kf = nm_keyfile_write (con, NULL, NULL, &error);
 	nmtst_assert_success (kf, error);
 
-	/* the [gsm] setting was lost because it only has default values.
-	 * As a result, the connection also became invalid. */
-
-	g_assert (!g_key_file_has_group (kf, "gsm"));
+	g_assert (g_key_file_has_group (kf, "gsm"));
+	g_assert_cmpint (nmtst_keyfile_get_num_keys (kf, "gsm"), ==, 0);
 
 	con2 = nm_keyfile_read (kf,
 	                        "/ignored/current/working/directory/for/loading/relative/paths",
@@ -3321,9 +3327,9 @@ test_empty_setting (void)
 	                        &error);
 	nmtst_assert_success (con2, error);
 
-	g_assert (!nm_connection_get_setting (con2, NM_TYPE_SETTING_GSM));
+	g_assert (nm_connection_get_setting (con2, NM_TYPE_SETTING_GSM));
 
-	nmtst_assert_connection_unnormalizable (con2, NM_CONNECTION_ERROR, NM_CONNECTION_ERROR_INVALID_SETTING);
+	nmtst_assert_connection_verifies_without_normalization (con2);
 }
 
 /*****************************************************************************/
