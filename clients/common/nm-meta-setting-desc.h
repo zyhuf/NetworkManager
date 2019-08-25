@@ -355,7 +355,7 @@ struct _NMMetaPropertyTypData {
 	gboolean (*is_default_fcn) (NMSetting *setting);
 	const char *const*values_static;
 	const NMMetaPropertyTypDataNested *nested;
-	NMMetaPropertyTypFlags typ_flags;
+	NMMetaPropertyTypFlags typ_flags:7;
 };
 
 typedef enum {
@@ -389,6 +389,8 @@ struct _NMMetaPropertyInfo {
 	bool is_secret:1;
 
 	bool is_cli_option:1;
+
+	bool coerce_one_space_as_empty:1;
 
 	const char *prompt;
 
