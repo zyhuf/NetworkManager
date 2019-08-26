@@ -549,6 +549,18 @@ nmc_setting_set_property (NMClient *client,
 	if (!property_info->property_type->set_fcn)
 		goto out_fail_read_only;
 
+	if (property_info->del_sets_null) {
+		/* Attempting to delete this property sets it to NULL */
+		if (modifier == NM_META_ACCESSOR_MODIFIER_DEL) {
+			modifier = NM_META_ACCESSOR_MODIFIER_SET;
+			value = NULL;
+		}
+	} else if (!value && value[0] == '\0') {
+		/* Empty string will reset the value to default */
+		value = NULL;
+	}
+
+
 	if (   modifier == NM_META_ACCESSOR_MODIFIER_DEL
 	    && !property_info->property_type->set_supports_remove) {
 		/* The property is a plain property. It does not support '-'.

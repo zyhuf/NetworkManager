@@ -391,6 +391,8 @@ struct _NMMetaPropertyInfo {
 
 	bool is_cli_option:1;
 
+	bool del_sets_null:1;
+
 	const char *prompt;
 
 	const char *def_hint;
