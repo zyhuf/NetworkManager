@@ -2541,7 +2541,6 @@ struct _ParseInfoProperty {
 
 typedef struct {
 	const ParseInfoProperty*const*properties;
-	bool writer_no_empty_group:1;
 } ParseInfoSetting;
 
 #define PARSE_INFO_SETTING(setting_type, ...) \
@@ -2904,9 +2903,6 @@ static const ParseInfoSetting *const parse_infos[_NM_META_SETTING_TYPE_NUM] = {
 				.parser        = mac_address_parser_ETHER,
 			),
 		),
-	),
-	PARSE_INFO_SETTING (NM_META_SETTING_TYPE_WIREGUARD,
-		.writer_no_empty_group = TRUE,
 	),
 };
 
@@ -3873,7 +3869,7 @@ nm_keyfile_write (NMConnection *connection,
 		const NMSettInfoSetting *sett_info;
 		NMSetting *setting = settings[i];
 		const char *setting_name;
-		const ParseInfoSetting *pis;
+		const char *group_name;
 
 		sett_info = _nm_setting_class_get_sett_info (NM_SETTING_GET_CLASS (setting));
 
@@ -3926,26 +3922,20 @@ nm_keyfile_write (NMConnection *connection,
 				goto out_with_info_error;
 		}
 
-		_parse_info_find (setting, NULL, NULL, &pis, NULL);
-		if (   !pis
-		    || !pis->writer_no_empty_group) {
-			const char *group_name;
+		setting_name = sett_info->setting_class->setting_info->setting_name;
 
-			setting_name = sett_info->setting_class->setting_info->setting_name;
-
-			group_name = nm_keyfile_plugin_get_alias_for_setting_name (setting_name);
-			if (   (   group_name
-			        && g_key_file_has_group (info.keyfile, group_name))
-			    || g_key_file_has_group (info.keyfile, setting_name)) {
-				/* we have a section for the setting. Nothing to do. */
-			} else {
-				/* ensure the group is present. There is no API for that, so add and remove
-				 * a dummy key. */
-				if (!group_name)
-					group_name = setting_name;
-				g_key_file_set_value (info.keyfile, group_name, ".X", "1");
-				g_key_file_remove_key (info.keyfile, group_name, ".X", NULL);
-			}
+		group_name = nm_keyfile_plugin_get_alias_for_setting_name (setting_name);
+		if (   (   group_name
+		        && g_key_file_has_group (info.keyfile, group_name))
+		    || g_key_file_has_group (info.keyfile, setting_name)) {
+			/* we have a section for the setting. Nothing to do. */
+		} else {
+			/* ensure the group is present. There is no API for that, so add and remove
+			 * a dummy key. */
+			if (!group_name)
+				group_name = setting_name;
+			g_key_file_set_value (info.keyfile, group_name, ".X", "1");
+			g_key_file_remove_key (info.keyfile, group_name, ".X", NULL);
 		}
 
 		nm_assert (!info.error);

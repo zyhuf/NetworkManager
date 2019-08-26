@@ -2724,6 +2724,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "interface-name=%s\n"
 		                     "permissions=\n"
 		                     "\n"
+		                     "[wireguard]\n"
+		                     "\n"
 		                     "[ipv4]\n"
 		                     "dns-search=\n"
 		                     "method=disabled\n"
@@ -2774,7 +2776,8 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "type=wireguard\n"
 		                     "interface-name=%s\n"
 		                     "permissions=\n"
-		                     "%s" /* [wireguard] */
+		                     "\n"
+		                     "[wireguard]\n"
 		                     "%s" /* fwmark */
 		                     "%s" /* listen-port */
 		                     "%s" /* private-key-flags */
@@ -2795,13 +2798,6 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     ID,
 		                     UUID,
 		                     INTERFACE_NAME,
-		                     (  (   (WG_FWMARK != 0)
-		                         || (WG_LISTEN_PORT != 0)
-		                         || (WG_PRIVATE_KEY_FLAGS != NM_SETTING_SECRET_FLAG_NONE)
-		                         || (   WG_PRIVATE_KEY
-		                             && WG_PRIVATE_KEY_FLAGS == NM_SETTING_SECRET_FLAG_NONE))
-		                      ? "\n[wireguard]\n"
-		                      : ""),
 		                     (  (WG_FWMARK != 0)
 		                      ? nm_sprintf_bufa (100, "fwmark=%u\n", WG_FWMARK)
 		                      : ""),
