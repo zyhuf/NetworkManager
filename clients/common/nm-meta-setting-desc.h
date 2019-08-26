@@ -386,11 +386,14 @@ struct _NMMetaPropertyInfo {
 	const char *property_alias;
 
 	NMMetaPropertyInfFlags inf_flags;
+
 	bool is_secret:1;
 
 	bool is_cli_option:1;
 
 	bool coerce_one_space_as_empty:1;
+
+	bool del_sets_null:1;
 
 	const char *prompt;
 

@@ -4694,11 +4694,7 @@ get_value (const char **value, int *argc, char ***argv, const char *option, GErr
 		return FALSE;
 	}
 
-	/* Empty string will reset the value to default */
-	if (**argv[0] == '\0')
-		*value = NULL;
-	else
-		*value = *argv[0];
+	*value = *argv[0];
 
 	(*argc)--;
 	(*argv)++;
