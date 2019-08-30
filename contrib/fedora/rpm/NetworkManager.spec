@@ -153,6 +153,7 @@ Requires(postun): systemd
 
 Requires: dbus >= %{dbus_version}
 Requires: glib2 >= %{glib2_version}
+Requires: dbus-tools
 Requires: %{name}-libnm%{?_isa} = %{epoch}:%{version}-%{release}
 Obsoletes: dhcdbd
 Obsoletes: NetworkManager < %{obsoletes_device_plugins}
