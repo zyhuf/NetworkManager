@@ -138,9 +138,8 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	const char *s_ipaddr = NULL;
 	const char *s_netmask = NULL;
 	const char *s_gateway = NULL;
-	NMIPAddress *ipaddr = NULL;
-	NMIPAddress *netmask = NULL;
-	NMIPAddress *gateway = NULL;
+	nm_auto_unref_ip_address NMIPAddress *ipaddr = NULL;
+	nm_auto_unref_ip_address NMIPAddress *gateway = NULL;
 	const char *duplex = NULL;
 	gs_free char *hwaddr = NULL;
 	gs_free char *local_hwaddr = NULL;
@@ -289,6 +288,8 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 		bootp = TRUE;
 
 	if (!bootp) {
+		nm_auto_unref_ip_address NMIPAddress *netmask = NULL;
+
 		netmask = dt_get_ipaddr_property (base, "chosen", "netmask-ip", &family);
 		gateway = dt_get_ipaddr_property (base, "chosen", "gateway-ip", &family);
 		if (gateway)
@@ -296,9 +297,9 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 		ipaddr = dt_get_ipaddr_property (base, "chosen", "client-ip", &family);
 
 		if (family == AF_UNSPEC) {
-			g_warn_if_fail (netmask == NULL);
-			g_warn_if_fail (ipaddr == NULL);
-			g_warn_if_fail (gateway == NULL);
+			nm_assert (netmask == NULL);
+			nm_assert (gateway == NULL);
+			nm_assert (ipaddr == NULL);
 
 			netmask = str_addr (s_netmask, &family);
 			ipaddr = str_addr (s_ipaddr, &family);
