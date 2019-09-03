@@ -44,19 +44,21 @@ dt_get_property (const char *base,
 {
 	gs_free char *filename = g_build_filename (base, dev, prop, NULL);
 	gs_free_error GError *error = NULL;
+	gs_free char *c = NULL;
+	gsize l;
 
-	if (!g_file_test (filename, G_FILE_TEST_EXISTS))
-		return FALSE;
+	nm_assert (!contents || !*contents);
 
-	if (!contents)
-		return TRUE;
-
-	if (!g_file_get_contents (filename, contents, length, &error)) {
-		_LOGW (LOGD_CORE, "%s: Can not read the %s property: %s",
-		       dev, prop, error->message);
+	if (!g_file_get_contents (filename, &c, &l, &error)) {
+		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
+			_LOGW (LOGD_CORE, "%s: Can not read the %s property: %s",
+			       dev, prop, error->message);
+		}
 		return FALSE;
 	}
 
+	NM_SET_OUT (contents, g_steal_pointer (&c));
+	NM_SET_OUT (length, l);
 	return TRUE;
 }
 
@@ -110,7 +112,7 @@ dt_get_hwaddr_property (const char *base,
 	gs_free guint8 *buf = NULL;
 	size_t len;
 
-	if (!dt_get_property (base, dev, prop, (char **)&buf, &len))
+	if (!dt_get_property (base, dev, prop, (char **) &buf, &len))
 		return NULL;
 
 	if (len != ETH_ALEN) {
