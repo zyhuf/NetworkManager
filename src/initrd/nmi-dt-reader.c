@@ -70,28 +70,20 @@ dt_get_ipaddr_property (const char *base,
 {
 	gs_free char *buf = NULL;
 	size_t len;
+	int f;
 
 	if (!dt_get_property (base, dev, prop, &buf, &len))
 		return NULL;
 
-	switch (len) {
-	case 4:
-		if (*family == AF_UNSPEC)
-			*family = AF_INET;
-		break;
-	case 16:
-		if (*family == AF_UNSPEC)
-			*family = AF_INET6;
-		break;
-	default:
-		break;
-	}
-
-	if (*family == AF_UNSPEC) {
+	f = nm_utils_addr_family_from_size (len);
+	if (   f == AF_UNSPEC
+	    || (   *family != AF_UNSPEC
+	        && *family != f)) {
 		_LOGW (LOGD_CORE, "%s: Address %s has unrecognized length (%zd)",
 		       dev, prop, len);
 		return NULL;
 	}
+	*family = f;
 
 	return nm_ip_address_new_binary (*family, buf, 0, NULL);
 }
