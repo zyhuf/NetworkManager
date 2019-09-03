@@ -181,7 +181,7 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	                         "base", NULL);
 
 	if (!dt_get_property (base, "chosen", "bootpath", &bootpath, NULL))
-		return FALSE;
+		return NULL;
 
 	c = strchr (bootpath, ':');
 	if (c) {
