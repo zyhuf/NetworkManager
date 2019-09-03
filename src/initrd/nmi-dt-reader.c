@@ -153,7 +153,7 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	gs_unref_object NMConnection *connection = NULL;
 	gs_free char *base = NULL;
 	gs_free char *bootpath = NULL;
-	gs_strfreev char **tokens = NULL;
+	gs_free const char **tokens = NULL;
 	const char *path;
 	gboolean bootp = FALSE;
 	const char *s_ipaddr = NULL;
@@ -188,7 +188,7 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 		*c = '\0';
 		path = &c[1];
 	} else
-		path = "";
+		path = NULL;
 
 	dt_get_property (base, "chosen", "client-name", &hostname, NULL);
 
@@ -197,7 +197,9 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	if (g_strcmp0 (local_hwaddr, hwaddr) == 0)
 		g_clear_pointer (&local_hwaddr, g_free);
 
-	tokens = g_strsplit (path, ",", 0);
+	tokens = nm_utils_strsplit_set_full (path, ",", NM_UTILS_STRSPLIT_SET_FLAGS_PRESERVE_EMPTY);
+	if (!tokens)
+		tokens = g_new0 (const char *, 1);
 
 	/*
 	 * Ethernet device settings. Defined by "Open Firmware,
