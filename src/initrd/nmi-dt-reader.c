@@ -154,7 +154,7 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	gs_free char *base = NULL;
 	gs_free char *bootpath = NULL;
 	gs_strfreev char **tokens = NULL;
-	char *path = NULL;
+	const char *path;
 	gboolean bootp = FALSE;
 	const char *s_ipaddr = NULL;
 	const char *s_netmask = NULL;
@@ -186,10 +186,9 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 	c = strchr (bootpath, ':');
 	if (c) {
 		*c = '\0';
-		path = g_strdup (c + 1);
-	} else {
-		path = g_strdup ("");
-	}
+		path = &c[1];
+	} else
+		path = "";
 
 	dt_get_property (base, "chosen", "client-name", &hostname, NULL);
 
