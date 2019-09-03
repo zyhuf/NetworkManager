@@ -68,10 +68,8 @@ dt_get_ipaddr_property (const char *base,
                         const char *prop,
                         int *family)
 {
-	NMIPAddress *addr;
 	gs_free char *buf = NULL;
 	size_t len;
-	gs_free_error GError *error = NULL;
 
 	if (!dt_get_property (base, dev, prop, &buf, &len))
 		return NULL;
@@ -95,13 +93,7 @@ dt_get_ipaddr_property (const char *base,
 		return NULL;
 	}
 
-	addr = nm_ip_address_new_binary (*family, buf, 0, &error);
-	if (!addr) {
-		_LOGW (LOGD_CORE, "%s: Address %s is malformed: %s",
-		       dev, prop, error->message);
-	}
-
-	return addr;
+	return nm_ip_address_new_binary (*family, buf, 0, NULL);
 }
 
 static char *
