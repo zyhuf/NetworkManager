@@ -150,7 +150,7 @@ str_addr (const char *str, int *family)
 NMConnection *
 nmi_dt_reader_parse (const char *sysfs_dir)
 {
-	NMConnection *connection;
+	gs_unref_object NMConnection *connection = NULL;
 	gs_free char *base = NULL;
 	gs_free char *bootpath = NULL;
 	gs_strfreev char **tokens = NULL;
@@ -399,5 +399,5 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 		g_clear_pointer (&connection, g_object_unref);
 	}
 
-	return connection;
+	return g_steal_pointer (&connection);
 }
