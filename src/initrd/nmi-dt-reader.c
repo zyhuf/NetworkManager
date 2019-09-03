@@ -264,7 +264,7 @@ nmi_dt_reader_parse (const char *sysfs_dir)
 
 	/* g-iaddr */
 	if (tokens[i]) {
-		s_gateway = g_strdup (tokens[i]);
+		s_gateway = tokens[i];
 		i++;
 	}
 
