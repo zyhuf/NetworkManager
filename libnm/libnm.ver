@@ -1630,5 +1630,7 @@ global:
 } libnm_1_18_0;
 
 libnm_1_22_0 {
+	nm_client_reload;
+	nm_client_reload_finish;
 	nm_manager_reload_flags_get_type;
 } libnm_1_20_0;
