@@ -848,6 +848,59 @@ test_client_nm_running (void)
 
 typedef struct {
 	GMainLoop *loop;
+	gint64 last_time;
+} TestNotBlockingInfo;
+
+static gboolean
+on_block_check_timeout (gpointer data)
+{
+	TestNotBlockingInfo *info = data;
+	gint64 now = g_get_monotonic_time();
+	gint64 timediff = (now - info->last_time) / 1000;
+
+	g_assert_cmpint (timediff, <=, 16);
+
+	info->last_time = now;
+
+	return G_SOURCE_CONTINUE;
+}
+
+static void
+test_client_async_nm_not_blocking (void)
+{
+	NMClient *client;
+	TestNotBlockingInfo info = { loop, 0 };
+	gint64 init_time;
+	guint timeout_id;
+
+	if (g_strcmp0 (g_getenv ("WITH_VALGRIND"), "1") == 0) {
+		g_test_skip ("This test is not reliable under valgrind or stressed hardware");
+		return;
+	}
+
+	sinfo = nmtstc_service_init ();
+	if (!nmtstc_service_available (sinfo))
+		return;
+
+	client = NULL;
+	init_time = g_get_monotonic_time ();
+	info.last_time = init_time;
+	timeout_id = g_timeout_add_full (G_PRIORITY_HIGH, 1, on_block_check_timeout,
+	                                 &info, NULL);
+	nm_client_new_async (NULL, new_client_cb, &client);
+	g_main_loop_run (loop);
+	nm_clear_g_source (&timeout_id);
+
+	g_assert_cmpint(info.last_time, !=, init_time);
+	g_assert (NM_IS_CLIENT (client));
+
+	g_object_unref (client);
+
+	g_clear_pointer (&sinfo, nmtstc_service_cleanup);
+}
+
+typedef struct {
+	GMainLoop *loop;
 	NMActiveConnection *ac;
 
 	int remaining;
@@ -1610,6 +1663,7 @@ main (int argc, char **argv)
 	g_test_add_func ("/libnm/wimax-nsp-added-removed", test_wimax_nsp_added_removed);
 	g_test_add_func ("/libnm/devices-array", test_devices_array);
 	g_test_add_func ("/libnm/client-nm-running", test_client_nm_running);
+	g_test_add_func ("/libnm/client-nm-not-blocking", test_client_async_nm_not_blocking);
 	g_test_add_func ("/libnm/active-connections", test_active_connections);
 	g_test_add_func ("/libnm/activate-virtual", test_activate_virtual);
 	g_test_add_func ("/libnm/activate-failed", test_activate_failed);
