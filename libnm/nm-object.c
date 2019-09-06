@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "nm-types.h"
 #include "nm-utils.h"
 #include "nm-dbus-interface.h"
 #include "nm-object-private.h"
@@ -1109,6 +1110,23 @@ init_async_complete (NMObjectInitData *init_data)
 	g_slice_free (NMObjectInitData, init_data);
 }
 
+static gboolean
+init_async_in_main_context (gpointer data)
+{
+	NMObjectInitData *init_data = data;
+	NMObject *self = NM_OBJECT (init_data->object);
+	NMObjectPrivate *priv = NM_OBJECT_GET_PRIVATE (self);
+        GList *interfaces;
+
+	interfaces = g_dbus_object_get_interfaces (priv->object);
+	g_list_foreach (interfaces, (GFunc) init_if, self);
+	g_list_free_full (interfaces, g_object_unref);
+
+	init_async_complete (init_data);
+
+	return FALSE;
+}
+
 static void
 init_async (GAsyncInitable *initable, int io_priority,
             GCancellable *cancellable, GAsyncReadyCallback callback,
@@ -1117,7 +1135,6 @@ init_async (GAsyncInitable *initable, int io_priority,
 	NMObject *self = NM_OBJECT (initable);
 	NMObjectPrivate *priv = NM_OBJECT_GET_PRIVATE (self);
 	NMObjectInitData *init_data;
-        GList *interfaces;
 
 	g_assert (priv->object && priv->object_manager);
 
@@ -1130,11 +1147,7 @@ init_async (GAsyncInitable *initable, int io_priority,
 		g_simple_async_result_set_check_cancellable (init_data->simple, cancellable);
 	init_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
-	interfaces = g_dbus_object_get_interfaces (priv->object);
-	g_list_foreach (interfaces, (GFunc) init_if, self);
-	g_list_free_full (interfaces, g_object_unref);
-
-	init_async_complete (init_data);
+	g_main_context_invoke (NULL, init_async_in_main_context, init_data);
 }
 
 static gboolean

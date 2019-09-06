@@ -102,11 +102,20 @@ G_DEFINE_TYPE_WITH_CODE (NMClient, nm_client, G_TYPE_OBJECT,
 #define NM_CLIENT_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_CLIENT, NMClientPrivate))
 
 typedef struct {
-	NMClient *client;
-	GCancellable *cancellable;
-	GSimpleAsyncResult *result;
+	GMainLoop *loop;
 	int pending_init;
+	gboolean all_inited;
 } NMClientInitData;
+
+static void
+nm_client_init_data_free (NMClientInitData *data)
+{
+	if (data->loop) {
+		g_main_context_unref (g_main_loop_get_context (data->loop));
+		g_main_loop_unref (data->loop);
+	}
+	g_slice_free (NMClientInitData, data);
+}
 
 typedef struct {
 	NMManager *manager;
@@ -3122,29 +3131,25 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 /* Asynchronous initialization. */
 
 static void
-init_async_complete (NMClientInitData *init_data)
-{
-	if (init_data->pending_init > 0)
-		return;
-	g_simple_async_result_complete (init_data->result);
-	g_object_unref (init_data->result);
-	g_clear_object (&init_data->cancellable);
-	g_slice_free (NMClientInitData, init_data);
-}
-
-static void
 async_inited_obj_nm (GObject *object, GAsyncResult *result, gpointer user_data)
 {
-	NMClientInitData *init_data = user_data;
+	GTask *task = user_data;
+	NMClientInitData *init_data;
 	GError *error = NULL;
 
-	nm_assert (init_data && init_data->pending_init > 0);
+	init_data = g_task_get_task_data (task);
 
-	if (!g_async_initable_init_finish (G_ASYNC_INITABLE (object), result, &error))
-		g_simple_async_result_take_error (init_data->result, error);
+	nm_assert (init_data && g_atomic_int_get (&init_data->pending_init) > 0);
 
-	init_data->pending_init--;
-	init_async_complete (init_data);
+	g_async_initable_init_finish (G_ASYNC_INITABLE (object), result, &error);
+
+	if (g_atomic_int_dec_and_test (&init_data->pending_init) &&
+	    g_atomic_int_get (&init_data->all_inited)) {
+		g_main_loop_quit (init_data->loop);
+	}
+
+	if (error)
+		g_task_return_error (task, error);
 }
 
 static void
@@ -3212,34 +3217,30 @@ new_object_manager (GObject *source_object, GAsyncResult *res, gpointer user_dat
 }
 
 static void
-got_object_manager (GObject *object, GAsyncResult *result, gpointer user_data)
+async_init_thread (GTask        *task,
+                   gpointer      source_object,
+                   gpointer      task_data,
+                   GCancellable *cancellable)
 {
-	NMClientInitData *init_data = user_data;
-	NMClient *client;
-	NMClientPrivate *priv;
+	NMClient *client = NM_CLIENT (source_object);
+	NMClientPrivate *priv = NM_CLIENT_GET_PRIVATE (client);
+	NMClientInitData *init_data = task_data;
 	GList *objects, *iter;
 	GError *error = NULL;
-	GDBusObjectManager *object_manager;
-
-	object_manager = g_dbus_object_manager_client_new_for_bus_finish (result, &error);
-	if (object_manager == NULL) {
-		g_simple_async_result_take_error (init_data->result, error);
-		init_async_complete (init_data);
-		return;
-	}
-
-	client = init_data->client;
-	priv = NM_CLIENT_GET_PRIVATE (client);
-	priv->object_manager = object_manager;
+	GMainContext *context;
+	int io_priority;
 
 	if (_om_has_name_owner (priv->object_manager)) {
 		if (!objects_created (client, priv->object_manager, &error)) {
-			g_simple_async_result_take_error (init_data->result, error);
-			init_async_complete (init_data);
+			g_task_return_error (task, error);
 			return;
 		}
 
+		context = g_main_context_new ();
+		init_data->loop = g_main_loop_new (context, FALSE);
+		io_priority = g_task_get_priority (task);
 		objects = g_dbus_object_manager_get_objects (priv->object_manager);
+
 		for (iter = objects; iter; iter = iter->next) {
 			NMObject *obj_nm;
 
@@ -3247,45 +3248,75 @@ got_object_manager (GObject *object, GAsyncResult *result, gpointer user_data)
 			if (!obj_nm)
 				continue;
 
-			init_data->pending_init++;
+			g_atomic_int_add (&init_data->pending_init, 1);
 			g_async_initable_init_async (G_ASYNC_INITABLE (obj_nm),
-			                             G_PRIORITY_DEFAULT, init_data->cancellable,
-			                             async_inited_obj_nm, init_data);
+			                             io_priority, cancellable,
+			                             async_inited_obj_nm, task);
 		}
 		g_list_free_full (objects, g_object_unref);
+
+		g_atomic_int_set (&init_data->all_inited, TRUE);
+		if (g_atomic_int_get (&init_data->pending_init) > 0) {
+			g_main_context_push_thread_default (context);
+			g_main_loop_run (init_data->loop);
+			g_main_context_pop_thread_default (context);
+		}
 	}
 
-	init_async_complete (init_data);
+	g_task_return_boolean (task, TRUE);
+}
+
+static void
+got_object_manager (GObject *object, GAsyncResult *result, gpointer user_data)
+{
+	GTask *task = user_data;
+	NMClient *client;
+	NMClientPrivate *priv;
+	GError *error = NULL;
+	GDBusObjectManager *object_manager;
+
+	object_manager = g_dbus_object_manager_client_new_for_bus_finish (result, &error);
+	if (object_manager == NULL) {
+		g_task_return_error (task, error);
+		return;
+	}
+
+	client = g_task_get_source_object (task);
+	priv = NM_CLIENT_GET_PRIVATE (client);
+	priv->object_manager = object_manager;
 
 	g_signal_connect (priv->object_manager, "notify::name-owner",
 	                  G_CALLBACK (name_owner_changed), client);
+
+	g_task_run_in_thread (task, async_init_thread);
+	g_object_unref (task);
 }
 
 static void
 prepare_object_manager (NMClient *client,
+                        int io_priority,
                         GCancellable *cancellable,
                         GAsyncReadyCallback callback,
                         gpointer user_data)
 {
+	GTask *task;
 	NMClientInitData *init_data;
 
+	task = g_task_new (client, cancellable, callback, user_data);
+	g_task_set_priority(task, io_priority);
+	g_task_set_source_tag (task, prepare_object_manager);
+
 	init_data = g_slice_new0 (NMClientInitData);
-	init_data->client = client;
-	init_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-	init_data->result = g_simple_async_result_new (G_OBJECT (client), callback,
-	                                               user_data, init_async);
-	if (cancellable)
-		g_simple_async_result_set_check_cancellable (init_data->result, cancellable);
-	g_simple_async_result_set_op_res_gboolean (init_data->result, TRUE);
+	g_task_set_task_data (task, init_data, (GDestroyNotify) nm_client_init_data_free);
 
 	g_dbus_object_manager_client_new_for_bus (_nm_dbus_bus_type (),
 	                                          G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_DO_NOT_AUTO_START,
 	                                          "org.freedesktop.NetworkManager",
 	                                          "/org/freedesktop",
 	                                          proxy_type, NULL, NULL,
-	                                          init_data->cancellable,
+	                                          cancellable,
 	                                          got_object_manager,
-	                                          init_data);
+	                                          task);
 }
 
 static void
@@ -3302,8 +3333,9 @@ name_owner_changed (GObject *object, GParamSpec *pspec, gpointer user_data)
 		g_clear_object (&priv->object_manager);
 		nm_clear_g_cancellable (&priv->new_object_manager_cancellable);
 		priv->new_object_manager_cancellable = g_cancellable_new ();
-		prepare_object_manager (self, priv->new_object_manager_cancellable,
-		                        new_object_manager, self);
+		prepare_object_manager (self, G_PRIORITY_DEFAULT,
+		                        priv->new_object_manager_cancellable,
+														new_object_manager, self);
 	} else {
 		g_signal_handlers_disconnect_by_func (object_manager, object_added, self);
 		unhook_om (self);
@@ -3315,18 +3347,7 @@ init_async (GAsyncInitable *initable, int io_priority,
             GCancellable *cancellable, GAsyncReadyCallback callback,
             gpointer user_data)
 {
-	prepare_object_manager (NM_CLIENT (initable), cancellable, callback, user_data);
-}
-
-static gboolean
-init_finish (GAsyncInitable *initable, GAsyncResult *result, GError **error)
-{
-	GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-
-	if (g_simple_async_result_propagate_error (simple, error))
-		return FALSE;
-	else
-		return TRUE;
+	prepare_object_manager (NM_CLIENT (initable), io_priority, cancellable, callback, user_data);
 }
 
 static void
@@ -4045,7 +4066,7 @@ static void
 nm_client_async_initable_iface_init (GAsyncInitableIface *iface)
 {
 	iface->init_async = init_async;
-	iface->init_finish = init_finish;
+	/* Use default implementation for init_finish */
 }
 
 /*****************************************************************************
