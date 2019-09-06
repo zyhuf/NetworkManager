@@ -1728,21 +1728,6 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 	return TRUE;
 }
 
-typedef struct {
-	NMManager *manager;
-	GCancellable *cancellable;
-	GSimpleAsyncResult *result;
-} NMManagerInitData;
-
-static void
-init_async_complete (NMManagerInitData *init_data)
-{
-	g_simple_async_result_complete (init_data->result);
-	g_object_unref (init_data->result);
-	g_clear_object (&init_data->cancellable);
-	g_slice_free (NMManagerInitData, init_data);
-}
-
 static void
 init_async_got_permissions (GObject *object, GAsyncResult *result, gpointer user_data)
 {
@@ -1763,22 +1748,24 @@ init_async_got_permissions (GObject *object, GAsyncResult *result, gpointer user
 static void
 init_async_parent_inited (GObject *source, GAsyncResult *result, gpointer user_data)
 {
-	NMManagerInitData *init_data = user_data;
-	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (init_data->manager);
+	GTask *task = user_data;
+	NMManager *manager = g_task_get_source_object (task);
+	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (manager);
 	GError *error = NULL;
 
-	if (!nm_manager_parent_async_initable_iface->init_finish (G_ASYNC_INITABLE (source), result, &error)) {
-		g_simple_async_result_take_error (init_data->result, error);
-		init_async_complete (init_data);
+	if (!nm_manager_parent_async_initable_iface->
+				init_finish (G_ASYNC_INITABLE (source), result, &error)) {
+		g_task_return_error (task, error);
 		return;
 	}
 
 	nmdbus_manager_call_get_permissions (priv->proxy,
-	                                     init_data->cancellable,
+	                                     g_task_get_cancellable (task),
 	                                     init_async_got_permissions,
-	                                     g_object_ref (init_data->manager));
+	                                     g_object_ref (manager));
 
-	init_async_complete (init_data);
+	g_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -1786,30 +1773,14 @@ init_async (GAsyncInitable *initable, int io_priority,
             GCancellable *cancellable, GAsyncReadyCallback callback,
             gpointer user_data)
 {
-	NMManagerInitData *init_data;
+	GTask *task;
 
-	init_data = g_slice_new0 (NMManagerInitData);
-	init_data->manager = NM_MANAGER (initable);
-	init_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-	init_data->result = g_simple_async_result_new (G_OBJECT (initable), callback,
-	                                               user_data, init_async);
-	if (cancellable)
-		g_simple_async_result_set_check_cancellable (init_data->result, cancellable);
-	g_simple_async_result_set_op_res_gboolean (init_data->result, TRUE);
+	task = g_task_new (initable, cancellable, callback, user_data);
+	g_task_set_source_tag (task, init_async);
+	g_task_set_priority (task, io_priority);
 
-	nm_manager_parent_async_initable_iface->init_async (initable, io_priority, cancellable,
-	                                                   init_async_parent_inited, init_data);
-}
-
-static gboolean
-init_finish (GAsyncInitable *initable, GAsyncResult *result, GError **error)
-{
-	GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-
-	if (g_simple_async_result_propagate_error (simple, error))
-		return FALSE;
-	else
-		return TRUE;
+	nm_manager_parent_async_initable_iface->
+		init_async (initable, io_priority, cancellable, init_async_parent_inited, task);
 }
 
 static void
@@ -2226,8 +2197,11 @@ nm_manager_initable_iface_init (GInitableIface *iface)
 static void
 nm_manager_async_initable_iface_init (GAsyncInitableIface *iface)
 {
+	GAsyncInitableIface *default_iface;
+
+	default_iface = g_type_default_interface_peek (G_TYPE_ASYNC_INITABLE);
 	nm_manager_parent_async_initable_iface = g_type_interface_peek_parent (iface);
 
 	iface->init_async = init_async;
-	iface->init_finish = init_finish;
+	iface->init_finish = default_iface->init_finish;
 }

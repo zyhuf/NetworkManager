@@ -819,35 +819,13 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 	return TRUE;
 }
 
-typedef struct {
-	NMRemoteConnection *connection;
-	GCancellable *cancellable;
-	GSimpleAsyncResult *result;
-	GAsyncInitable *initable;
-	int io_priority;
-} NMRemoteConnectionInitData;
-
-static void
-init_async_complete (NMRemoteConnectionInitData *init_data, GError *error)
-{
-	if (error)
-		g_simple_async_result_take_error (init_data->result, error);
-	else
-		g_simple_async_result_set_op_res_gboolean (init_data->result, TRUE);
-
-	g_simple_async_result_complete (init_data->result);
-	g_object_unref (init_data->result);
-	g_clear_object (&init_data->cancellable);
-	g_slice_free (NMRemoteConnectionInitData, init_data);
-}
-
 static void
 init_async_parent_inited (GObject *source, GAsyncResult *result, gpointer user_data)
 {
-	NMRemoteConnectionInitData *init_data = user_data;
-	GError *error = NULL;
+	GTask *task = user_data;
 
-	init_async_complete (init_data, error);
+	g_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -855,8 +833,9 @@ init_get_settings_cb (GObject *proxy,
                       GAsyncResult *result,
                       gpointer user_data)
 {
-	NMRemoteConnectionInitData *init_data = user_data;
-	NMRemoteConnectionPrivate *priv = NM_REMOTE_CONNECTION_GET_PRIVATE (init_data->initable);
+	GTask *task = user_data;
+	NMRemoteConnection *connection = g_task_get_source_object (task);
+	NMRemoteConnectionPrivate *priv = NM_REMOTE_CONNECTION_GET_PRIVATE (connection);
 	GVariant *settings;
 	GError *error = NULL;
 
@@ -865,12 +844,13 @@ init_get_settings_cb (GObject *proxy,
 		g_error_free (error);
 	} else {
 		priv->visible = TRUE;
-		replace_settings (NM_REMOTE_CONNECTION (init_data->initable), settings);
+		replace_settings (connection, settings);
 		g_variant_unref (settings);
 	}
 
 	nm_remote_connection_parent_async_initable_iface->
-		init_async (init_data->initable, init_data->io_priority, init_data->cancellable, init_async_parent_inited, init_data);
+		init_async (G_ASYNC_INITABLE (connection), g_task_get_priority (task),
+		            g_task_get_cancellable (task), init_async_parent_inited, task);
 }
 
 static void
@@ -878,27 +858,21 @@ init_async (GAsyncInitable *initable, int io_priority,
             GCancellable *cancellable, GAsyncReadyCallback callback,
             gpointer user_data)
 {
-	NMRemoteConnectionInitData *init_data;
+	GTask *task;
 	NMRemoteConnectionPrivate *priv = NM_REMOTE_CONNECTION_GET_PRIVATE (initable);
-
-	init_data = g_slice_new0 (NMRemoteConnectionInitData);
-	init_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-	init_data->result = g_simple_async_result_new (G_OBJECT (initable), callback,
-	                                               user_data, init_async);
-	if (cancellable)
-		g_simple_async_result_set_check_cancellable (init_data->result, cancellable);
-	init_data->initable = initable;
-	init_data->io_priority = io_priority;
 
 	priv->proxy = NMDBUS_SETTINGS_CONNECTION (_nm_object_get_proxy (NM_OBJECT (initable),
 	                                          NM_DBUS_INTERFACE_SETTINGS_CONNECTION));
 
+	task = g_task_new (initable, cancellable, callback, user_data);
+	g_task_set_source_tag (task, init_async);
+	g_task_set_priority (task, io_priority);
+
 	g_signal_connect_object (priv->proxy, "updated",
 	                         G_CALLBACK (updated_cb), initable, 0);
 
-	nmdbus_settings_connection_call_get_settings (NM_REMOTE_CONNECTION_GET_PRIVATE (init_data->initable)->proxy,
-	                                              init_data->cancellable,
-	                                              init_get_settings_cb, init_data);
+	nmdbus_settings_connection_call_get_settings (priv->proxy, cancellable,
+	                                              init_get_settings_cb, task);
 }
 
 static void

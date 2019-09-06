@@ -1089,40 +1089,20 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 
 /*****************************************************************************/
 
-typedef struct {
-	NMObject *object;
-	GSimpleAsyncResult *simple;
-	GCancellable *cancellable;
-	int proxies_pending;
-	GError *error;
-} NMObjectInitData;
-
-static void
-init_async_complete (NMObjectInitData *init_data)
-{
-	if (init_data->error)
-		g_simple_async_result_take_error (init_data->simple, init_data->error);
-	else
-		g_simple_async_result_set_op_res_gboolean (init_data->simple, TRUE);
-	g_simple_async_result_complete_in_idle (init_data->simple);
-	g_object_unref (init_data->simple);
-	g_clear_object (&init_data->cancellable);
-	g_slice_free (NMObjectInitData, init_data);
-}
-
 static gboolean
 init_async_in_main_context (gpointer data)
 {
-	NMObjectInitData *init_data = data;
-	NMObject *self = NM_OBJECT (init_data->object);
+	GTask *task = data;
+	NMObject *self = NM_OBJECT (g_task_get_source_object (task));
 	NMObjectPrivate *priv = NM_OBJECT_GET_PRIVATE (self);
-        GList *interfaces;
+	GList *interfaces;
 
 	interfaces = g_dbus_object_get_interfaces (priv->object);
 	g_list_foreach (interfaces, (GFunc) init_if, self);
 	g_list_free_full (interfaces, g_object_unref);
 
-	init_async_complete (init_data);
+	g_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 
 	return FALSE;
 }
@@ -1134,27 +1114,26 @@ init_async (GAsyncInitable *initable, int io_priority,
 {
 	NMObject *self = NM_OBJECT (initable);
 	NMObjectPrivate *priv = NM_OBJECT_GET_PRIVATE (self);
-	NMObjectInitData *init_data;
+	GTask *task;
 
 	g_assert (priv->object && priv->object_manager);
 
 	NM_OBJECT_GET_CLASS (self)->init_dbus (self);
 
-	init_data = g_slice_new0 (NMObjectInitData);
-	init_data->object = self;
-	init_data->simple = g_simple_async_result_new (G_OBJECT (initable), callback, user_data, init_async);
-	if (cancellable)
-		g_simple_async_result_set_check_cancellable (init_data->simple, cancellable);
-	init_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
+	task = g_task_new (initable, cancellable, callback, user_data);
+	g_task_set_source_tag (task, init_async);
+	g_task_set_priority (task, io_priority);
 
-	g_main_context_invoke (NULL, init_async_in_main_context, init_data);
+	g_main_context_invoke (NULL, init_async_in_main_context, task);
 }
 
 static gboolean
 init_finish (GAsyncInitable *initable, GAsyncResult *result, GError **error)
 {
-	GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
 	NMObjectPrivate *priv = NM_OBJECT_GET_PRIVATE (initable);
+
+	if (!g_task_propagate_boolean (G_TASK (result), error))
+		return FALSE;
 
 	priv->inited = TRUE;
 
@@ -1167,10 +1146,7 @@ init_finish (GAsyncInitable *initable, GAsyncResult *result, GError **error)
 		object_property_maybe_complete (odata->self);
 	}
 
-	if (g_simple_async_result_propagate_error (simple, error))
-		return FALSE;
-	else
-		return TRUE;
+	return TRUE;
 }
 
 /*****************************************************************************/
