@@ -2222,15 +2222,15 @@ nm_client_new (GCancellable  *cancellable,
 static void
 client_inited (GObject *source, GAsyncResult *result, gpointer user_data)
 {
-	GSimpleAsyncResult *simple = user_data;
+	GTask *task = user_data;
 	GError *error = NULL;
 
 	if (!g_async_initable_new_finish (G_ASYNC_INITABLE (source), result, &error))
-		g_simple_async_result_take_error (simple, error);
+		g_task_return_error (task, error);
 	else
-		g_simple_async_result_set_op_res_gpointer (simple, source, g_object_unref);
-	g_simple_async_result_complete (simple);
-	g_object_unref (simple);
+		g_task_return_pointer (task, source, g_object_unref);
+
+	g_object_unref (task);
 }
 
 /**
@@ -2249,14 +2249,13 @@ nm_client_new_async (GCancellable *cancellable,
                      GAsyncReadyCallback callback,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *simple;
+	GTask *task;
 
-	simple = g_simple_async_result_new (NULL, callback, user_data, nm_client_new_async);
-	if (cancellable)
-		g_simple_async_result_set_check_cancellable (simple, cancellable);
+	task = g_task_new (NULL, cancellable, callback, user_data);
+	g_task_set_source_tag (task, nm_client_new_async);
 
 	g_async_initable_new_async (NM_TYPE_CLIENT, G_PRIORITY_DEFAULT,
-	                            cancellable, client_inited, simple,
+	                            cancellable, client_inited, task,
 	                            NULL);
 }
 
@@ -2272,16 +2271,10 @@ nm_client_new_async (GCancellable *cancellable,
 NMClient *
 nm_client_new_finish (GAsyncResult *result, GError **error)
 {
-	GSimpleAsyncResult *simple;
+	g_return_val_if_fail (g_task_is_valid (result, NULL), NULL);
+	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL, nm_client_new_async), NULL);
-	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
-	simple = G_SIMPLE_ASYNC_RESULT (result);
-	if (g_simple_async_result_propagate_error (simple, error))
-		return NULL;
-	else
-		return g_object_ref (g_simple_async_result_get_op_res_gpointer (simple));
+	return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
