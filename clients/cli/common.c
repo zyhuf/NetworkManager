@@ -1218,7 +1218,6 @@ typedef struct {
 	const NMCCommand *cmd;
 	int argc;
 	char **argv;
-	GTask *task;
 } CmdCall;
 
 static void
@@ -1228,22 +1227,25 @@ static void
 got_client (GObject *source_object, GAsyncResult *res, gpointer user_data)
 {
 	GError *error = NULL;
-	CmdCall *call = user_data;
-	NmCli *nmc = g_task_get_task_data (call->task);
+	GTask *task = user_data;
+	NmCli *nmc = g_task_get_task_data (task);
 
 	nmc->should_wait--;
 	nmc->client = nm_client_new_finish (res, &error);
 
 	if (!nmc->client) {
-		g_task_return_new_error (call->task, NMCLI_ERROR, NMC_RESULT_ERROR_UNKNOWN,
+		g_task_return_new_error (task, NMCLI_ERROR, NMC_RESULT_ERROR_UNKNOWN,
 		                         _("Error: Could not create NMClient object: %s."),
 		                         error->message);
 		g_error_free (error);
 	} else {
-		call_cmd (nmc, call->task, call->cmd, call->argc, call->argv);
+		while (!g_queue_is_empty (nmc->waiting_calls)) {
+			CmdCall *call = g_queue_pop_head (nmc->waiting_calls);
+			call_cmd (nmc, task, call->cmd, call->argc, call->argv);
+			g_slice_free (CmdCall, call);
+		}
+		nm_clear_pointer (&nmc->waiting_calls, g_queue_free);
 	}
-
-	g_slice_free (CmdCall, call);
 }
 
 static void
@@ -1262,13 +1264,17 @@ call_cmd (NmCli *nmc, GTask *task, const NMCCommand *cmd, int argc, char **argv)
 		g_task_return_boolean (task, TRUE);
 		g_object_unref (task);
 	} else {
+		if (!nmc->waiting_calls) {
+			nmc->waiting_calls = g_queue_new ();
+			nm_client_new_async (NULL, got_client, task);
+		}
 		nmc->should_wait++;
+
 		call = g_slice_new0 (CmdCall);
 		call->cmd = cmd;
 		call->argc = argc;
 		call->argv = argv;
-		call->task = task;
-		nm_client_new_async (NULL, got_client, call);
+		g_queue_push_tail (nmc->waiting_calls, call);
 	}
 }
 

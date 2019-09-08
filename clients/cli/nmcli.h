@@ -134,6 +134,7 @@ typedef struct _NmCli {
 	struct _NMPolkitListener *pk_listener;            /* polkit agent listener */
 
 	int should_wait;                                  /* Semaphore indicating whether nmcli should not end or not yet */
+	GQueue *waiting_calls;                            /* Calls queued until we didn't get a client */
 	gboolean nowait_flag;                             /* '--nowait' option; used for passing to callbacks */
 	gboolean mode_specified;                          /* Whether tabular/multiline mode was specified via '--mode' option */
 	union {
