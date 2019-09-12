@@ -9,6 +9,7 @@
 
 #include "nm-manager.h"
 
+#include <linux/rfkill.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -53,7 +54,7 @@ typedef struct {
 	gboolean user_enabled;
 	gboolean sw_enabled;
 	gboolean hw_enabled;
-	RfKillType rtype;
+	int rtype;
 	NMConfigRunStatePropertyType key;
 	const char *desc;
 	const char *prop;
@@ -168,7 +169,7 @@ typedef struct {
 	CList connection_changed_on_idle_lst;
 	guint connection_changed_on_idle_id;
 
-	RadioState radio_states[RFKILL_TYPE_MAX];
+	RadioState radio_states[NUM_RFKILL_TYPES];
 	NMVpnManager *vpn_manager;
 
 	NMSleepMonitor *sleep_monitor;
@@ -2240,7 +2241,7 @@ radio_enabled_for_rstate (RadioState *rstate, gboolean check_changeable)
 }
 
 static gboolean
-radio_enabled_for_type (NMManager *self, RfKillType rtype, gboolean check_changeable)
+radio_enabled_for_type (NMManager *self, int rtype, gboolean check_changeable)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 
@@ -2278,15 +2279,15 @@ static void
 update_rstate_from_rfkill (NMRfkillManager *rfkill_mgr, RadioState *rstate)
 {
 	switch (nm_rfkill_manager_get_rfkill_state (rfkill_mgr, rstate->rtype)) {
-	case RFKILL_UNBLOCKED:
+	case RFKILL_STATE_UNBLOCKED:
 		rstate->sw_enabled = TRUE;
 		rstate->hw_enabled = TRUE;
 		break;
-	case RFKILL_SOFT_BLOCKED:
+	case RFKILL_STATE_SOFT_BLOCKED:
 		rstate->sw_enabled = FALSE;
 		rstate->hw_enabled = TRUE;
 		break;
-	case RFKILL_HARD_BLOCKED:
+	case RFKILL_STATE_HARD_BLOCKED:
 		rstate->sw_enabled = FALSE;
 		rstate->hw_enabled = FALSE;
 		break;
@@ -2299,7 +2300,7 @@ update_rstate_from_rfkill (NMRfkillManager *rfkill_mgr, RadioState *rstate)
 static void
 manager_rfkill_update_one_type (NMManager *self,
                                 RadioState *rstate,
-                                RfKillType rtype)
+                                int rtype)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	gboolean old_enabled, new_enabled, old_rfkilled, new_rfkilled, old_hwe;
@@ -2342,16 +2343,16 @@ manager_rfkill_update_one_type (NMManager *self,
 }
 
 static void
-nm_manager_rfkill_update (NMManager *self, RfKillType rtype)
+nm_manager_rfkill_update (NMManager *self, int rtype)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	guint i;
 
-	if (rtype != RFKILL_TYPE_UNKNOWN)
+	if (rtype != RFKILL_TYPE_ALL)
 		manager_rfkill_update_one_type (self, &priv->radio_states[rtype], rtype);
 	else {
 		/* Otherwise sync all radio types */
-		for (i = 0; i < RFKILL_TYPE_MAX; i++)
+		for (i = 0; i < NUM_RFKILL_TYPES; i++)
 			manager_rfkill_update_one_type (self, &priv->radio_states[i], i);
 	}
 }
@@ -3045,7 +3046,7 @@ add_device (NMManager *self, NMDevice *device, GError **error)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (self);
 	const char *iface, *type_desc;
-	RfKillType rtype;
+	int rtype;
 	GSList *iter, *remove = NULL;
 	int ifindex;
 	const char *dbus_path;
@@ -3131,7 +3132,7 @@ add_device (NMManager *self, NMDevice *device, GError **error)
 	 * global state.
 	 */
 	rtype = nm_device_get_rfkill_type (device);
-	if (rtype != RFKILL_TYPE_UNKNOWN) {
+	if (rtype) {
 		nm_manager_rfkill_update (self, rtype);
 		nm_device_set_enabled (device, radio_enabled_for_type (self, rtype, TRUE));
 	}
@@ -3471,8 +3472,8 @@ platform_query_devices (NMManager *self)
 
 static void
 rfkill_manager_rfkill_changed_cb (NMRfkillManager *rfkill_mgr,
-                                  RfKillType rtype,
-                                  RfKillState udev_state,
+                                  int rtype,
+                                  int udev_state,
                                   gpointer user_data)
 {
 	nm_manager_rfkill_update (NM_MANAGER (user_data), rtype);
@@ -5966,7 +5967,7 @@ do_sleep_wake (NMManager *self, gboolean sleeping_changed)
 		/* Ensure rfkill state is up-to-date since we don't respond to state
 		 * changes during sleep.
 		 */
-		nm_manager_rfkill_update (self, RFKILL_TYPE_UNKNOWN);
+		nm_manager_rfkill_update (self, RFKILL_TYPE_ALL);
 
 		/* Re-manage managed devices */
 		c_list_for_each_entry (device, &priv->devices_lst_head, devices_lst) {
@@ -5983,7 +5984,7 @@ do_sleep_wake (NMManager *self, gboolean sleeping_changed)
 			/* enable/disable wireless devices since that we don't respond
 			 * to killswitch changes during sleep.
 			 */
-			for (i = 0; i < RFKILL_TYPE_MAX; i++) {
+			for (i = 0; i < NUM_RFKILL_TYPES; i++) {
 				RadioState *rstate = &priv->radio_states[i];
 				gboolean enabled = radio_enabled_for_rstate (rstate, TRUE);
 
@@ -6589,7 +6590,7 @@ nm_manager_start (NMManager *self, GError **error)
 	nm_device_factory_manager_for_each_factory (start_factory, NULL);
 
 	/* Set initial radio enabled/disabled state */
-	for (i = 0; i < RFKILL_TYPE_MAX; i++) {
+	for (i = 0; i < NUM_RFKILL_TYPES; i++) {
 		RadioState *rstate = &priv->radio_states[i];
 		gboolean enabled;
 
@@ -7159,18 +7160,8 @@ auth_mgr_changed (NMAuthManager *auth_manager, gpointer user_data)
 	                            "()");
 }
 
-#define KERN_RFKILL_OP_CHANGE_ALL 3
-#define KERN_RFKILL_TYPE_WLAN     1
-#define KERN_RFKILL_TYPE_WWAN     5
-struct rfkill_event {
-	__u32 idx;
-	__u8  type;
-	__u8  op;
-	__u8  soft, hard;
-} _nm_packed;
-
 static void
-rfkill_change (NMManager *self, const char *desc, RfKillType rtype, gboolean enabled)
+rfkill_change (NMManager *self, const char *desc, int rtype, gboolean enabled)
 {
 	int fd;
 	struct rfkill_event event;
@@ -7194,17 +7185,8 @@ rfkill_change (NMManager *self, const char *desc, RfKillType rtype, gboolean ena
 	}
 
 	memset (&event, 0, sizeof (event));
-	event.op = KERN_RFKILL_OP_CHANGE_ALL;
-	switch (rtype) {
-	case RFKILL_TYPE_WLAN:
-		event.type = KERN_RFKILL_TYPE_WLAN;
-		break;
-	case RFKILL_TYPE_WWAN:
-		event.type = KERN_RFKILL_TYPE_WWAN;
-		break;
-	default:
-		g_assert_not_reached ();
-	}
+	event.op = RFKILL_OP_CHANGE_ALL;
+	event.type = rtype;
 	event.soft = enabled ? 0 : 1;
 
 	len = write (fd, &event, sizeof (event));
@@ -7456,7 +7438,7 @@ nm_manager_init (NMManager *self)
 	priv->radio_states[RFKILL_TYPE_WWAN].desc = "WWAN";
 	priv->radio_states[RFKILL_TYPE_WWAN].rtype = RFKILL_TYPE_WWAN;
 
-	for (i = 0; i < RFKILL_TYPE_MAX; i++)
+	for (i = 0; i < NUM_RFKILL_TYPES; i++)
 		priv->radio_states[i].hw_enabled = TRUE;
 
 	priv->sleeping = FALSE;

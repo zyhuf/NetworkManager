@@ -21,6 +21,7 @@
 #include <linux/if_arp.h>
 #include <linux/rtnetlink.h>
 #include <linux/pkt_sched.h>
+#include <linux/rfkill.h>
 
 #include "nm-std-aux/unaligned.h"
 #include "nm-glib-aux/nm-dedup-multi.h"
@@ -285,7 +286,7 @@ typedef struct _NMDevicePrivate {
 	char *        driver;
 	char *        driver_version;
 	char *        firmware_version;
-	RfKillType    rfkill_type;
+	int           rfkill_type;
 	bool          firmware_missing:1;
 	bool          nm_plugin_missing:1;
 	bool          hw_addr_perm_fake:1; /* whether the permanent HW address could not be read and is a fake */
@@ -2537,7 +2538,7 @@ nm_device_get_applied_setting (NMDevice *self, GType setting_type)
 	return connection ? nm_connection_get_setting (connection, setting_type) : NULL;
 }
 
-RfKillType
+int
 nm_device_get_rfkill_type (NMDevice *self)
 {
 	g_return_val_if_fail (NM_IS_DEVICE (self), FALSE);
@@ -16530,7 +16531,7 @@ nm_device_init (NMDevice *self)
 	priv->capabilities = NM_DEVICE_CAP_NM_SUPPORTED;
 	priv->state = NM_DEVICE_STATE_UNMANAGED;
 	priv->state_reason = NM_DEVICE_STATE_REASON_NONE;
-	priv->rfkill_type = RFKILL_TYPE_UNKNOWN;
+	priv->rfkill_type = 0;
 	priv->unmanaged_flags = NM_UNMANAGED_PLATFORM_INIT;
 	priv->unmanaged_mask = priv->unmanaged_flags;
 	priv->available_connections = g_hash_table_new_full (nm_direct_hash, NULL, g_object_unref, NULL);
@@ -17331,9 +17332,9 @@ nm_device_class_init (NMDeviceClass *klass)
 	                         G_PARAM_STATIC_STRINGS);
 	obj_properties[PROP_RFKILL_TYPE] =
 	    g_param_spec_uint (NM_DEVICE_RFKILL_TYPE, "", "",
-	                       RFKILL_TYPE_WLAN,
-	                       RFKILL_TYPE_MAX,
-	                       RFKILL_TYPE_UNKNOWN,
+	                       0,
+	                       NUM_RFKILL_TYPES,
+	                       0,
 	                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
 	                       G_PARAM_STATIC_STRINGS);
 	obj_properties[PROP_IFINDEX] =

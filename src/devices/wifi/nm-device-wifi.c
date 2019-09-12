@@ -9,6 +9,7 @@
 
 #include "nm-device-wifi.h"
 
+#include <linux/rfkill.h>
 #include <netinet/in.h>
 #include <unistd.h>
 

@@ -6,6 +6,8 @@
 
 #include "nm-default.h"
 
+#include <linux/rfkill.h>
+
 #include "nm-device-iwd.h"
 
 #include "nm-libnm-core-intern/nm-common-macros.h"
