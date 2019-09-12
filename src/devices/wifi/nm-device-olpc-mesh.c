@@ -14,6 +14,7 @@
 
 #include "nm-device-olpc-mesh.h"
 
+#include <linux/rfkill.h>
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <sys/wait.h>

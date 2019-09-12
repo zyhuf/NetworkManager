@@ -602,7 +602,7 @@ gboolean nm_device_get_enabled (NMDevice *device);
 
 void nm_device_set_enabled (NMDevice *device, gboolean enabled);
 
-RfKillType nm_device_get_rfkill_type (NMDevice *device);
+int nm_device_get_rfkill_type (NMDevice *device);
 
 /* IPv6 prefix delegation */
 

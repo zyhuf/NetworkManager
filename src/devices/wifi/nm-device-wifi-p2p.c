@@ -8,6 +8,7 @@
 
 #include "nm-device-wifi-p2p.h"
 
+#include <linux/rfkill.h>
 #include <sys/socket.h>
 
 #include "supplicant/nm-supplicant-manager.h"

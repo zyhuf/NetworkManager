@@ -6,6 +6,8 @@
 
 #include "nm-default.h"
 
+#include <linux/rfkill.h>
+
 #include "nm-device-modem.h"
 
 #include "nm-modem.h"
