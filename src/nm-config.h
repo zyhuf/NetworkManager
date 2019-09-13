@@ -111,6 +111,7 @@ typedef enum {
 	NM_CONFIG_STATE_PROPERTY_NETWORKING_ENABLED,
 	NM_CONFIG_STATE_PROPERTY_WIFI_ENABLED,
 	NM_CONFIG_STATE_PROPERTY_WWAN_ENABLED,
+	NM_CONFIG_STATE_PROPERTY_BLUETOOTH_ENABLED,
 } NMConfigRunStatePropertyType;
 
 typedef enum {
@@ -124,6 +125,7 @@ typedef struct {
 	bool net_enabled;
 	bool wifi_enabled;
 	bool wwan_enabled;
+	bool bluetooth_enabled;
 
 	/* Whether the runstate is modified and not saved to disk. */
 	bool dirty;

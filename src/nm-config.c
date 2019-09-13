@@ -2019,6 +2019,7 @@ state_new (void)
 	state->p.net_enabled = TRUE;
 	state->p.wifi_enabled = TRUE;
 	state->p.wwan_enabled = TRUE;
+	state->p.bluetooth_enabled = TRUE;
 
 	return state;
 }
@@ -2058,6 +2059,7 @@ state_new_from_file (const char *filename)
 	state->p.net_enabled  = nm_config_keyfile_get_boolean (keyfile, "main", "NetworkingEnabled", state->p.net_enabled);
 	state->p.wifi_enabled = nm_config_keyfile_get_boolean (keyfile, "main", "WirelessEnabled", state->p.wifi_enabled);
 	state->p.wwan_enabled = nm_config_keyfile_get_boolean (keyfile, "main", "WWANEnabled", state->p.wwan_enabled);
+	state->p.bluetooth_enabled = nm_config_keyfile_get_boolean (keyfile, "main", "BluetoothEnabled", state->p.bluetooth_enabled);
 
 out:
 	g_key_file_unref (keyfile);
@@ -2112,6 +2114,7 @@ state_write (NMConfig *self)
 	g_string_append_printf (str, "NetworkingEnabled=%s\n", priv->state->p.net_enabled ? "true" : "false");
 	g_string_append_printf (str, "WirelessEnabled=%s\n", priv->state->p.wifi_enabled ? "true" : "false");
 	g_string_append_printf (str, "WWANEnabled=%s\n", priv->state->p.wwan_enabled ? "true" : "false");
+	g_string_append_printf (str, "BluetoothEnabled=%s\n", priv->state->p.bluetooth_enabled ? "true" : "false");
 
 	if (!g_file_set_contents (filename,
 	                          str->str, str->len,
@@ -2162,6 +2165,9 @@ _nm_config_state_set (NMConfig *self,
 			break;
 		case NM_CONFIG_STATE_PROPERTY_WWAN_ENABLED:
 			p_bool = &priv->state->p.wwan_enabled;
+			break;
+		case NM_CONFIG_STATE_PROPERTY_BLUETOOTH_ENABLED:
+			p_bool = &priv->state->p.bluetooth_enabled;
 			break;
 		default:
 			va_end (ap);
