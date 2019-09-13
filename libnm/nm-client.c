@@ -115,6 +115,8 @@ enum {
 	PROP_WIRELESS_HARDWARE_ENABLED,
 	PROP_WWAN_ENABLED,
 	PROP_WWAN_HARDWARE_ENABLED,
+	PROP_BLUETOOTH_ENABLED,
+	PROP_BLUETOOTH_HARDWARE_ENABLED,
 	PROP_WIMAX_ENABLED,
 	PROP_WIMAX_HARDWARE_ENABLED,
 	PROP_ACTIVE_CONNECTIONS,
@@ -414,6 +416,68 @@ nm_client_wwan_hardware_get_enabled (NMClient *client)
 		return FALSE;
 
 	return nm_manager_wwan_hardware_get_enabled (NM_CLIENT_GET_PRIVATE (client)->manager);
+}
+
+/**
+ * nm_client_bluetooth_get_enabled:
+ * @client: a #NMClient
+ *
+ * Determines whether Bluetooth is enabled.
+ *
+ * Returns: %TRUE if Bluetooth is enabled
+ *
+ * Since: 1.22
+ **/
+gboolean
+nm_client_bluetooth_get_enabled (NMClient *client)
+{
+	g_return_val_if_fail (NM_IS_CLIENT (client), FALSE);
+
+	if (!nm_client_get_nm_running (client))
+		return FALSE;
+
+	return nm_manager_bluetooth_get_enabled (NM_CLIENT_GET_PRIVATE (client)->manager);
+}
+
+/**
+ * nm_client_bluetooth_set_enabled:
+ * @client: a #NMClient
+ * @enabled: %TRUE to enable Bluetooth
+ *
+ * Enables or disables Bluetooth devices.
+ *
+ * Since: 1.22
+ **/
+void
+nm_client_bluetooth_set_enabled (NMClient *client, gboolean enabled)
+{
+	g_return_if_fail (NM_IS_CLIENT (client));
+
+	if (!_nm_client_check_nm_running (client, NULL))
+		return;
+
+	nm_manager_bluetooth_set_enabled (NM_CLIENT_GET_PRIVATE (client)->manager, enabled);
+}
+
+/**
+ * nm_client_bluetooth_hardware_get_enabled:
+ * @client: a #NMClient
+ *
+ * Determines whether the Bluetooth hardware is enabled.
+ *
+ * Returns: %TRUE if the Bluetooth hardware is enabled
+ *
+ * Since: 1.22
+ **/
+gboolean
+nm_client_bluetooth_hardware_get_enabled (NMClient *client)
+{
+	g_return_val_if_fail (NM_IS_CLIENT (client), FALSE);
+
+	if (!nm_client_get_nm_running (client))
+		return FALSE;
+
+	return nm_manager_bluetooth_hardware_get_enabled (NM_CLIENT_GET_PRIVATE (client)->manager);
 }
 
 /**
@@ -3368,6 +3432,7 @@ set_property (GObject *object, guint prop_id,
 	case PROP_NETWORKING_ENABLED:
 	case PROP_WIRELESS_ENABLED:
 	case PROP_WWAN_ENABLED:
+	case PROP_BLUETOOTH_ENABLED:
 	case PROP_WIMAX_ENABLED:
 	case PROP_CONNECTIVITY_CHECK_ENABLED:
 		if (priv->manager)
@@ -3417,6 +3482,15 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_boolean (value, nm_client_wwan_get_enabled (self));
 		break;
 	case PROP_WWAN_HARDWARE_ENABLED:
+		if (priv->manager)
+			g_object_get_property (G_OBJECT (priv->manager), pspec->name, value);
+		else
+			g_value_set_boolean (value, FALSE);
+		break;
+	case PROP_BLUETOOTH_ENABLED:
+		g_value_set_boolean (value, nm_client_bluetooth_get_enabled (self));
+		break;
+	case PROP_BLUETOOTH_HARDWARE_ENABLED:
 		if (priv->manager)
 			g_object_get_property (G_OBJECT (priv->manager), pspec->name, value);
 		else
@@ -3631,6 +3705,30 @@ nm_client_class_init (NMClientClass *client_class)
 	g_object_class_install_property
 		(object_class, PROP_WWAN_HARDWARE_ENABLED,
 		 g_param_spec_boolean (NM_CLIENT_WWAN_HARDWARE_ENABLED, "", "",
+		                       FALSE,
+		                       G_PARAM_READABLE |
+		                       G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMClient:bluetooth-enabled:
+	 *
+	 * Whether Bluetooth functionality is enabled.
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_BLUETOOTH_ENABLED,
+		 g_param_spec_boolean (NM_CLIENT_BLUETOOTH_ENABLED, "", "",
+		                       FALSE,
+		                       G_PARAM_READWRITE |
+		                       G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * NMClient:bluetooth-hardware-enabled:
+	 *
+	 * Whether the Bluetooth hardware is enabled.
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_BLUETOOTH_HARDWARE_ENABLED,
+		 g_param_spec_boolean (NM_CLIENT_BLUETOOTH_HARDWARE_ENABLED, "", "",
 		                       FALSE,
 		                       G_PARAM_READABLE |
 		                       G_PARAM_STATIC_STRINGS));

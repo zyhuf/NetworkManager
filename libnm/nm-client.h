@@ -31,6 +31,8 @@ G_BEGIN_DECLS
 #define NM_CLIENT_WIRELESS_HARDWARE_ENABLED "wireless-hardware-enabled"
 #define NM_CLIENT_WWAN_ENABLED "wwan-enabled"
 #define NM_CLIENT_WWAN_HARDWARE_ENABLED "wwan-hardware-enabled"
+#define NM_CLIENT_BLUETOOTH_ENABLED "bluetooth-enabled"
+#define NM_CLIENT_BLUETOOTH_HARDWARE_ENABLED "bluetooth-hardware-enabled"
 #define NM_CLIENT_WIMAX_ENABLED "wimax-enabled"
 #define NM_CLIENT_WIMAX_HARDWARE_ENABLED "wimax-hardware-enabled"
 #define NM_CLIENT_ACTIVE_CONNECTIONS "active-connections"
@@ -117,8 +119,9 @@ typedef enum {
 	NM_CLIENT_PERMISSION_ENABLE_DISABLE_STATISTICS = 15,
 	NM_CLIENT_PERMISSION_ENABLE_DISABLE_CONNECTIVITY_CHECK = 16,
 	NM_CLIENT_PERMISSION_WIFI_SCAN = 17,
+	NM_CLIENT_PERMISSION_ENABLE_DISABLE_BLUETOOTH = 18,
 
-	NM_CLIENT_PERMISSION_LAST = 17,
+	NM_CLIENT_PERMISSION_LAST = 18,
 } NMClientPermission;
 
 /**
@@ -236,6 +239,13 @@ gboolean nm_client_wireless_hardware_get_enabled (NMClient *client);
 gboolean nm_client_wwan_get_enabled (NMClient *client);
 void     nm_client_wwan_set_enabled (NMClient *client, gboolean enabled);
 gboolean nm_client_wwan_hardware_get_enabled (NMClient *client);
+
+NM_AVAILABLE_IN_1_22
+gboolean nm_client_bluetooth_get_enabled (NMClient *client);
+NM_AVAILABLE_IN_1_22
+void     nm_client_bluetooth_set_enabled (NMClient *client, gboolean enabled);
+NM_AVAILABLE_IN_1_22
+gboolean nm_client_bluetooth_hardware_get_enabled (NMClient *client);
 
 gboolean nm_client_wimax_get_enabled (NMClient *client);
 void     nm_client_wimax_set_enabled (NMClient *client, gboolean enabled);

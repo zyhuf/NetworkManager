@@ -1631,5 +1631,8 @@ global:
 
 libnm_1_22_0 {
 global:
+	nm_client_bluetooth_get_enabled;
+	nm_client_bluetooth_hardware_get_enabled;
+	nm_client_bluetooth_set_enabled;
 	nm_setting_gsm_get_auto_config;
 } libnm_1_20_0;

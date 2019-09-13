@@ -67,6 +67,9 @@ typedef struct {
 	gboolean wwan_enabled;
 	gboolean wwan_hw_enabled;
 
+	gboolean bluetooth_enabled;
+	gboolean bluetooth_hw_enabled;
+
 	gboolean wimax_enabled;
 	gboolean wimax_hw_enabled;
 
@@ -84,6 +87,8 @@ enum {
 	PROP_WIRELESS_HARDWARE_ENABLED,
 	PROP_WWAN_ENABLED,
 	PROP_WWAN_HARDWARE_ENABLED,
+	PROP_BLUETOOTH_ENABLED,
+	PROP_BLUETOOTH_HARDWARE_ENABLED,
 	PROP_WIMAX_ENABLED,
 	PROP_WIMAX_HARDWARE_ENABLED,
 	PROP_ACTIVE_CONNECTIONS,
@@ -208,26 +213,28 @@ init_dbus (NMObject *object)
 {
 	NMManagerPrivate *priv = NM_MANAGER_GET_PRIVATE (object);
 	const NMPropertiesInfo property_info[] = {
-		{ NM_MANAGER_VERSION,                   &priv->version },
-		{ NM_MANAGER_STATE,                     &priv->state },
-		{ NM_MANAGER_STARTUP,                   &priv->startup },
-		{ NM_MANAGER_NETWORKING_ENABLED,        &priv->networking_enabled },
-		{ NM_MANAGER_WIRELESS_ENABLED,          &priv->wireless_enabled },
-		{ NM_MANAGER_WIRELESS_HARDWARE_ENABLED, &priv->wireless_hw_enabled },
-		{ NM_MANAGER_WWAN_ENABLED,              &priv->wwan_enabled },
-		{ NM_MANAGER_WWAN_HARDWARE_ENABLED,     &priv->wwan_hw_enabled },
-		{ NM_MANAGER_WIMAX_ENABLED,             &priv->wimax_enabled },
-		{ NM_MANAGER_WIMAX_HARDWARE_ENABLED,    &priv->wimax_hw_enabled },
-		{ NM_MANAGER_ACTIVE_CONNECTIONS,        &priv->active_connections, NULL, NM_TYPE_ACTIVE_CONNECTION, "active-connection" },
-		{ NM_MANAGER_CONNECTIVITY,              &priv->connectivity },
+		{ NM_MANAGER_VERSION,                      &priv->version },
+		{ NM_MANAGER_STATE,                        &priv->state },
+		{ NM_MANAGER_STARTUP,                      &priv->startup },
+		{ NM_MANAGER_NETWORKING_ENABLED,           &priv->networking_enabled },
+		{ NM_MANAGER_WIRELESS_ENABLED,             &priv->wireless_enabled },
+		{ NM_MANAGER_WIRELESS_HARDWARE_ENABLED,    &priv->wireless_hw_enabled },
+		{ NM_MANAGER_WWAN_ENABLED,                 &priv->wwan_enabled },
+		{ NM_MANAGER_WWAN_HARDWARE_ENABLED,        &priv->wwan_hw_enabled },
+		{ NM_MANAGER_BLUETOOTH_ENABLED,            &priv->bluetooth_enabled },
+		{ NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED,   &priv->bluetooth_hw_enabled },
+		{ NM_MANAGER_WIMAX_ENABLED,                &priv->wimax_enabled },
+		{ NM_MANAGER_WIMAX_HARDWARE_ENABLED,       &priv->wimax_hw_enabled },
+		{ NM_MANAGER_ACTIVE_CONNECTIONS,           &priv->active_connections, NULL, NM_TYPE_ACTIVE_CONNECTION, "active-connection" },
+		{ NM_MANAGER_CONNECTIVITY,                 &priv->connectivity },
 		{ NM_MANAGER_CONNECTIVITY_CHECK_AVAILABLE, &priv->connectivity_check_available },
-		{ NM_MANAGER_CONNECTIVITY_CHECK_ENABLED, &priv->connectivity_check_enabled },
-		{ NM_MANAGER_PRIMARY_CONNECTION,        &priv->primary_connection, NULL, NM_TYPE_ACTIVE_CONNECTION },
-		{ NM_MANAGER_ACTIVATING_CONNECTION,     &priv->activating_connection, NULL, NM_TYPE_ACTIVE_CONNECTION },
-		{ NM_MANAGER_DEVICES,                   &priv->devices, NULL, NM_TYPE_DEVICE, "device" },
-		{ NM_MANAGER_CHECKPOINTS,               &priv->checkpoints, NULL, NM_TYPE_CHECKPOINT, "checkpoint" },
-		{ NM_MANAGER_METERED,                   &priv->metered },
-		{ NM_MANAGER_ALL_DEVICES,               &priv->all_devices, NULL, NM_TYPE_DEVICE, "any-device" },
+		{ NM_MANAGER_CONNECTIVITY_CHECK_ENABLED,   &priv->connectivity_check_enabled },
+		{ NM_MANAGER_PRIMARY_CONNECTION,           &priv->primary_connection, NULL, NM_TYPE_ACTIVE_CONNECTION },
+		{ NM_MANAGER_ACTIVATING_CONNECTION,        &priv->activating_connection, NULL, NM_TYPE_ACTIVE_CONNECTION },
+		{ NM_MANAGER_DEVICES,                      &priv->devices, NULL, NM_TYPE_DEVICE, "device" },
+		{ NM_MANAGER_CHECKPOINTS,                  &priv->checkpoints, NULL, NM_TYPE_CHECKPOINT, "checkpoint" },
+		{ NM_MANAGER_METERED,                      &priv->metered },
+		{ NM_MANAGER_ALL_DEVICES,                  &priv->all_devices, NULL, NM_TYPE_DEVICE, "any-device" },
 		{ NULL },
 	};
 
@@ -269,6 +276,8 @@ nm_permission_to_client (const char *nm)
 		return NM_CLIENT_PERMISSION_ENABLE_DISABLE_WIFI;
 	else if (!strcmp (nm, NM_AUTH_PERMISSION_ENABLE_DISABLE_WWAN))
 		return NM_CLIENT_PERMISSION_ENABLE_DISABLE_WWAN;
+	else if (!strcmp (nm, NM_AUTH_PERMISSION_ENABLE_DISABLE_BLUETOOTH))
+		return NM_CLIENT_PERMISSION_ENABLE_DISABLE_BLUETOOTH;
 	else if (!strcmp (nm, NM_AUTH_PERMISSION_ENABLE_DISABLE_WIMAX))
 		return NM_CLIENT_PERMISSION_ENABLE_DISABLE_WIMAX;
 	else if (!strcmp (nm, NM_AUTH_PERMISSION_SLEEP_WAKE))
@@ -537,6 +546,33 @@ nm_manager_wwan_hardware_get_enabled (NMManager *manager)
 	g_return_val_if_fail (NM_IS_MANAGER (manager), FALSE);
 
 	return NM_MANAGER_GET_PRIVATE (manager)->wwan_hw_enabled;
+}
+
+gboolean
+nm_manager_bluetooth_get_enabled (NMManager *manager)
+{
+	g_return_val_if_fail (NM_IS_MANAGER (manager), FALSE);
+
+	return NM_MANAGER_GET_PRIVATE (manager)->bluetooth_enabled;
+}
+
+void
+nm_manager_bluetooth_set_enabled (NMManager *manager, gboolean enabled)
+{
+	g_return_if_fail (NM_IS_MANAGER (manager));
+
+	_nm_object_set_property (NM_OBJECT (manager),
+	                         NM_DBUS_INTERFACE,
+	                         "BluetoothEnabled",
+	                         "b", enabled);
+}
+
+gboolean
+nm_manager_bluetooth_hardware_get_enabled (NMManager *manager)
+{
+	g_return_val_if_fail (NM_IS_MANAGER (manager), FALSE);
+
+	return NM_MANAGER_GET_PRIVATE (manager)->bluetooth_hw_enabled;
 }
 
 gboolean
@@ -1873,6 +1909,13 @@ set_property (GObject *object, guint prop_id,
 			/* Let the property value flip when we get the change signal from NM */
 		}
 		break;
+	case PROP_BLUETOOTH_ENABLED:
+		b = g_value_get_boolean (value);
+		if (priv->bluetooth_enabled != b) {
+			nm_manager_bluetooth_set_enabled (NM_MANAGER (object), b);
+			/* Let the property value flip when we get the change signal from NM */
+		}
+		break;
 	case PROP_WIMAX_ENABLED:
 		b = g_value_get_boolean (value);
 		if (priv->wimax_enabled != b) {
@@ -1926,6 +1969,12 @@ get_property (GObject *object,
 		break;
 	case PROP_WWAN_HARDWARE_ENABLED:
 		g_value_set_boolean (value, priv->wwan_hw_enabled);
+		break;
+	case PROP_BLUETOOTH_ENABLED:
+		g_value_set_boolean (value, priv->bluetooth_enabled);
+		break;
+	case PROP_BLUETOOTH_HARDWARE_ENABLED:
+		g_value_set_boolean (value, priv->bluetooth_hw_enabled);
 		break;
 	case PROP_WIMAX_ENABLED:
 		g_value_set_boolean (value, priv->wimax_enabled);
@@ -2041,6 +2090,18 @@ nm_manager_class_init (NMManagerClass *manager_class)
 	g_object_class_install_property
 		(object_class, PROP_WWAN_HARDWARE_ENABLED,
 		 g_param_spec_boolean (NM_MANAGER_WWAN_HARDWARE_ENABLED, "", "",
+		                       FALSE,
+		                       G_PARAM_READABLE |
+		                       G_PARAM_STATIC_STRINGS));
+	g_object_class_install_property
+		(object_class, PROP_BLUETOOTH_ENABLED,
+		 g_param_spec_boolean (NM_MANAGER_BLUETOOTH_ENABLED, "", "",
+		                       FALSE,
+		                       G_PARAM_READWRITE |
+		                       G_PARAM_STATIC_STRINGS));
+	g_object_class_install_property
+		(object_class, PROP_BLUETOOTH_HARDWARE_ENABLED,
+		 g_param_spec_boolean (NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED, "", "",
 		                       FALSE,
 		                       G_PARAM_READABLE |
 		                       G_PARAM_STATIC_STRINGS));

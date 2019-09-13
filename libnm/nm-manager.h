@@ -29,6 +29,8 @@
 #define NM_MANAGER_WIRELESS_HARDWARE_ENABLED "wireless-hardware-enabled"
 #define NM_MANAGER_WWAN_ENABLED "wwan-enabled"
 #define NM_MANAGER_WWAN_HARDWARE_ENABLED "wwan-hardware-enabled"
+#define NM_MANAGER_BLUETOOTH_ENABLED "bluetooth-enabled"
+#define NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED "bluetooth-hardware-enabled"
 #define NM_MANAGER_WIMAX_ENABLED "wimax-enabled"
 #define NM_MANAGER_WIMAX_HARDWARE_ENABLED "wimax-hardware-enabled"
 #define NM_MANAGER_ACTIVE_CONNECTIONS "active-connections"
@@ -82,6 +84,10 @@ gboolean  nm_manager_wireless_hardware_get_enabled (NMManager *manager);
 gboolean  nm_manager_wwan_get_enabled (NMManager *manager);
 void      nm_manager_wwan_set_enabled (NMManager *manager, gboolean enabled);
 gboolean  nm_manager_wwan_hardware_get_enabled (NMManager *manager);
+
+gboolean  nm_manager_bluetooth_get_enabled (NMManager *manager);
+void      nm_manager_bluetooth_set_enabled (NMManager *manager, gboolean enabled);
+gboolean  nm_manager_bluetooth_hardware_get_enabled (NMManager *manager);
 
 gboolean  nm_manager_wimax_get_enabled (NMManager *manager);
 void      nm_manager_wimax_set_enabled (NMManager *manager, gboolean enabled);
