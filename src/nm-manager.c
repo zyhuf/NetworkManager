@@ -114,6 +114,8 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMManager,
 	PROP_WIRELESS_HARDWARE_ENABLED,
 	PROP_WWAN_ENABLED,
 	PROP_WWAN_HARDWARE_ENABLED,
+	PROP_BLUETOOTH_ENABLED,
+	PROP_BLUETOOTH_HARDWARE_ENABLED,
 	PROP_WIMAX_ENABLED,
 	PROP_WIMAX_HARDWARE_ENABLED,
 	PROP_ACTIVE_CONNECTIONS,
@@ -6213,6 +6215,7 @@ get_permissions_done_cb (NMAuthChain *chain,
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_SLEEP_WAKE);
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_ENABLE_DISABLE_WIFI);
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_ENABLE_DISABLE_WWAN);
+	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_ENABLE_DISABLE_BLUETOOTH);
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_ENABLE_DISABLE_WIMAX);
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_NETWORK_CONTROL);
 	get_perm_add_result (self, chain, &results, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED);
@@ -6257,6 +6260,7 @@ impl_manager_get_permissions (NMDBusObject *obj,
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_SLEEP_WAKE, FALSE);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_ENABLE_DISABLE_WIFI, FALSE);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_ENABLE_DISABLE_WWAN, FALSE);
+	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_ENABLE_DISABLE_BLUETOOTH, FALSE);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_ENABLE_DISABLE_WIMAX, FALSE);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_NETWORK_CONTROL, FALSE);
 	nm_auth_chain_add_call (chain, NM_AUTH_PERMISSION_WIFI_SHARE_PROTECTED, FALSE);
@@ -7168,7 +7172,9 @@ rfkill_change (NMManager *self, const char *desc, int rtype, gboolean enabled)
 	ssize_t len;
 	int errsv;
 
-	g_return_if_fail (rtype == RFKILL_TYPE_WLAN || rtype == RFKILL_TYPE_WWAN);
+	g_return_if_fail (   rtype == RFKILL_TYPE_WLAN
+	                  || rtype == RFKILL_TYPE_WWAN
+	                  || rtype == RFKILL_TYPE_BLUETOOTH);
 
 	fd = open ("/dev/rfkill", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
@@ -7241,8 +7247,11 @@ manager_radio_user_toggled (NMManager *self,
 	new_enabled = radio_enabled_for_rstate (rstate, FALSE);
 	if (new_enabled != old_enabled) {
 		/* Try to change the kernel rfkill state */
-		if (rstate->rtype == RFKILL_TYPE_WLAN || rstate->rtype == RFKILL_TYPE_WWAN)
+		if (   rstate->rtype == RFKILL_TYPE_WLAN
+		    || rstate->rtype == RFKILL_TYPE_WWAN
+		    || rstate->rtype == RFKILL_TYPE_BLUETOOTH) {
 			rfkill_change (self, rstate->desc, rstate->rtype, new_enabled);
+		}
 
 		manager_update_radio_enabled (self, rstate, new_enabled);
 	}
@@ -7386,6 +7395,7 @@ constructed (GObject *object)
 
 	priv->radio_states[RFKILL_TYPE_WLAN].user_enabled = state->wifi_enabled;
 	priv->radio_states[RFKILL_TYPE_WWAN].user_enabled = state->wwan_enabled;
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].user_enabled = state->bluetooth_enabled;
 
 	priv->rfkill_mgr = nm_rfkill_manager_new ();
 	g_signal_connect (priv->rfkill_mgr,
@@ -7393,13 +7403,27 @@ constructed (GObject *object)
 	                  G_CALLBACK (rfkill_manager_rfkill_changed_cb),
 	                  self);
 
-	/* Force kernel Wi-Fi/WWAN rfkill state to follow NM saved Wi-Fi/WWAN state
-	 * in case the BIOS doesn't save rfkill state, and to be consistent with user
-	 * changes to the WirelessEnabled/WWANEnabled properties which toggle kernel
-	 * rfkill.
+	/*
+	 * Force kernel rfkill state to follow NM saved Wi-Fi/WWAN state in case the
+	 * BIOS doesn't save rfkill state, and to be consistent with user changes to
+	 * the WirelessEnabled/WWANEnabled/BluetoothEnabled properties which toggle
+	 * kernel rfkill.
 	 */
-	rfkill_change (self, priv->radio_states[RFKILL_TYPE_WLAN].desc, RFKILL_TYPE_WLAN, priv->radio_states[RFKILL_TYPE_WLAN].user_enabled);
-	rfkill_change (self, priv->radio_states[RFKILL_TYPE_WWAN].desc, RFKILL_TYPE_WWAN, priv->radio_states[RFKILL_TYPE_WWAN].user_enabled);
+
+	rfkill_change (self,
+	               priv->radio_states[RFKILL_TYPE_WLAN].desc,
+	               RFKILL_TYPE_WLAN,
+	               priv->radio_states[RFKILL_TYPE_WLAN].user_enabled);
+
+	rfkill_change (self,
+	               priv->radio_states[RFKILL_TYPE_WWAN].desc,
+	               RFKILL_TYPE_WWAN,
+	               priv->radio_states[RFKILL_TYPE_WWAN].user_enabled);
+
+	rfkill_change (self,
+	               priv->radio_states[RFKILL_TYPE_BLUETOOTH].desc,
+	               RFKILL_TYPE_BLUETOOTH,
+	               priv->radio_states[RFKILL_TYPE_BLUETOOTH].user_enabled);
 }
 
 static void
@@ -7437,6 +7461,13 @@ nm_manager_init (NMManager *self)
 	priv->radio_states[RFKILL_TYPE_WWAN].hw_prop = NM_MANAGER_WWAN_HARDWARE_ENABLED;
 	priv->radio_states[RFKILL_TYPE_WWAN].desc = "WWAN";
 	priv->radio_states[RFKILL_TYPE_WWAN].rtype = RFKILL_TYPE_WWAN;
+
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].user_enabled = TRUE;
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].key = NM_CONFIG_STATE_PROPERTY_BLUETOOTH_ENABLED;
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].prop = NM_MANAGER_BLUETOOTH_ENABLED;
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].hw_prop = NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED;
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].desc = "Bluetooth";
+	priv->radio_states[RFKILL_TYPE_BLUETOOTH].rtype = RFKILL_TYPE_BLUETOOTH;
 
 	for (i = 0; i < NUM_RFKILL_TYPES; i++)
 		priv->radio_states[i].hw_enabled = TRUE;
@@ -7525,6 +7556,12 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_WWAN_HARDWARE_ENABLED:
 		g_value_set_boolean (value, priv->radio_states[RFKILL_TYPE_WWAN].hw_enabled);
+		break;
+	case PROP_BLUETOOTH_ENABLED:
+		g_value_set_boolean (value, radio_enabled_for_type (self, RFKILL_TYPE_BLUETOOTH, TRUE));
+		break;
+	case PROP_BLUETOOTH_HARDWARE_ENABLED:
+		g_value_set_boolean (value, priv->radio_states[RFKILL_TYPE_BLUETOOTH].hw_enabled);
 		break;
 	case PROP_WIMAX_ENABLED:
 		g_value_set_boolean (value, FALSE);
@@ -7625,6 +7662,11 @@ set_property (GObject *object, guint prop_id,
 	case PROP_WWAN_ENABLED:
 		manager_radio_user_toggled (NM_MANAGER (object),
 		                            &priv->radio_states[RFKILL_TYPE_WWAN],
+		                            g_value_get_boolean (value));
+		break;
+	case PROP_BLUETOOTH_ENABLED:
+		manager_radio_user_toggled (NM_MANAGER (object),
+		                            &priv->radio_states[RFKILL_TYPE_BLUETOOTH],
 		                            g_value_get_boolean (value));
 		break;
 	case PROP_WIMAX_ENABLED:
@@ -8038,6 +8080,8 @@ static const NMDBusInterfaceInfoExtended interface_info_manager = {
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE_L     ("WirelessHardwareEnabled",    "b",     NM_MANAGER_WIRELESS_HARDWARE_ENABLED),
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READWRITABLE_L ("WwanEnabled",                "b",     NM_MANAGER_WWAN_ENABLED,                  NM_AUTH_PERMISSION_ENABLE_DISABLE_WWAN,               NM_AUDIT_OP_RADIO_CONTROL),
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE_L     ("WwanHardwareEnabled",        "b",     NM_MANAGER_WWAN_HARDWARE_ENABLED),
+			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READWRITABLE_L ("BluetoothEnabled",           "b",     NM_MANAGER_BLUETOOTH_ENABLED,             NM_AUTH_PERMISSION_ENABLE_DISABLE_BLUETOOTH,               NM_AUDIT_OP_RADIO_CONTROL),
+			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE_L     ("BluetoothHardwareEnabled",   "b",     NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED),
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READWRITABLE_L ("WimaxEnabled",               "b",     NM_MANAGER_WIMAX_ENABLED,                 NM_AUTH_PERMISSION_ENABLE_DISABLE_WIMAX,              NM_AUDIT_OP_RADIO_CONTROL),
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE_L     ("WimaxHardwareEnabled",       "b",     NM_MANAGER_WIMAX_HARDWARE_ENABLED),
 			NM_DEFINE_DBUS_PROPERTY_INFO_EXTENDED_READABLE_L     ("ActiveConnections",          "ao",    NM_MANAGER_ACTIVE_CONNECTIONS),
@@ -8125,6 +8169,18 @@ nm_manager_class_init (NMManagerClass *manager_class)
 
 	obj_properties[PROP_WWAN_HARDWARE_ENABLED] =
 	    g_param_spec_boolean (NM_MANAGER_WWAN_HARDWARE_ENABLED, "", "",
+	                          TRUE,
+	                          G_PARAM_READABLE |
+	                          G_PARAM_STATIC_STRINGS);
+
+	obj_properties[PROP_BLUETOOTH_ENABLED] =
+	    g_param_spec_boolean (NM_MANAGER_BLUETOOTH_ENABLED, "", "",
+	                          TRUE,
+	                          G_PARAM_READWRITE |
+	                          G_PARAM_STATIC_STRINGS);
+
+	obj_properties[PROP_BLUETOOTH_HARDWARE_ENABLED] =
+	    g_param_spec_boolean (NM_MANAGER_BLUETOOTH_HARDWARE_ENABLED, "", "",
 	                          TRUE,
 	                          G_PARAM_READABLE |
 	                          G_PARAM_STATIC_STRINGS);

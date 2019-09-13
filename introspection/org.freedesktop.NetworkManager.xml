@@ -370,6 +370,25 @@
     <property name="WwanHardwareEnabled" type="b" access="read"/>
 
     <!--
+        BluetoothEnabled:
+
+        Indicates if Bluetooth devices are currently enabled or not.
+
+        Since: 1.22
+    -->
+    <property name="BluetoothEnabled" type="b" access="readwrite"/>
+
+    <!--
+        BluetoothHardwareEnabled:
+
+        Indicates if the Bluetooth hardware is currently enabled, i.e. the
+        state of the RF kill switch.
+
+        Since: 1.22
+    -->
+    <property name="BluetoothHardwareEnabled" type="b" access="read"/>
+
+    <!--
         WimaxEnabled:
 
         Indicates if WiMAX devices are currently enabled or not.

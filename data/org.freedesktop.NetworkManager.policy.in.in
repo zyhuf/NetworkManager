@@ -55,6 +55,15 @@
     </defaults>
   </action>
 
+  <action id="org.freedesktop.NetworkManager.enable-disable-bluetooth">
+    <_description>Enable or disable Bluetooth devices</_description>
+    <_message>System policy prevents enabling or disabling Bluetooth devices</_message>
+    <defaults>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
   <action id="org.freedesktop.NetworkManager.enable-disable-wimax">
     <_description>Enable or disable WiMAX mobile broadband devices</_description>
     <_message>System policy prevents enabling or disabling WiMAX mobile broadband devices</_message>
