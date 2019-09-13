@@ -1,4 +1,5 @@
 [main]
 NetworkingEnabled=true
 WirelessEnabled=true
+BluetoothEnabled=true
 WWANEnabled=true

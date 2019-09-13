@@ -1297,22 +1297,24 @@ class ActiveConnection(ExportedObj):
 
 ###############################################################################
 
-PRP_NM_DEVICES                   = 'Devices'
-PRP_NM_ALL_DEVICES               = 'AllDevices'
-PRP_NM_NETWORKING_ENABLED        = 'NetworkingEnabled'
-PRP_NM_WWAN_ENABLED              = 'WwanEnabled'
-PRP_NM_WWAN_HARDWARE_ENABLED     = 'WwanHardwareEnabled'
-PRP_NM_WIRELESS_ENABLED          = 'WirelessEnabled'
-PRP_NM_WIRELESS_HARDWARE_ENABLED = 'WirelessHardwareEnabled'
-PRP_NM_WIMAX_ENABLED             = 'WimaxEnabled'
-PRP_NM_WIMAX_HARDWARE_ENABLED    = 'WimaxHardwareEnabled'
-PRP_NM_ACTIVE_CONNECTIONS        = 'ActiveConnections'
-PRP_NM_PRIMARY_CONNECTION        = 'PrimaryConnection'
-PRP_NM_ACTIVATING_CONNECTION     = 'ActivatingConnection'
-PRP_NM_STARTUP                   = 'Startup'
-PRP_NM_STATE                     = 'State'
-PRP_NM_VERSION                   = 'Version'
-PRP_NM_CONNECTIVITY              = 'Connectivity'
+PRP_NM_DEVICES                    = 'Devices'
+PRP_NM_ALL_DEVICES                = 'AllDevices'
+PRP_NM_NETWORKING_ENABLED         = 'NetworkingEnabled'
+PRP_NM_WIRELESS_ENABLED           = 'WirelessEnabled'
+PRP_NM_WIRELESS_HARDWARE_ENABLED  = 'WirelessHardwareEnabled'
+PRP_NM_WWAN_ENABLED               = 'WwanEnabled'
+PRP_NM_WWAN_HARDWARE_ENABLED      = 'WwanHardwareEnabled'
+PRP_NM_BLUETOOTH_ENABLED          = 'BluetoothEnabled'
+PRP_NM_BLUETOOTH_HARDWARE_ENABLED = 'BluetoothHardwareEnabled'
+PRP_NM_WIMAX_ENABLED              = 'WimaxEnabled'
+PRP_NM_WIMAX_HARDWARE_ENABLED     = 'WimaxHardwareEnabled'
+PRP_NM_ACTIVE_CONNECTIONS         = 'ActiveConnections'
+PRP_NM_PRIMARY_CONNECTION         = 'PrimaryConnection'
+PRP_NM_ACTIVATING_CONNECTION      = 'ActivatingConnection'
+PRP_NM_STARTUP                    = 'Startup'
+PRP_NM_STATE                      = 'State'
+PRP_NM_VERSION                    = 'Version'
+PRP_NM_CONNECTIVITY               = 'Connectivity'
 
 class NetworkManager(ExportedObj):
     def __init__(self):
@@ -1321,22 +1323,24 @@ class NetworkManager(ExportedObj):
         self.active_connections = []
 
         props = {
-            PRP_NM_DEVICES:                   ExportedObj.to_path_array(self.devices),
-            PRP_NM_ALL_DEVICES:               ExportedObj.to_path_array(self.devices),
-            PRP_NM_NETWORKING_ENABLED:        True,
-            PRP_NM_WWAN_ENABLED:              True,
-            PRP_NM_WWAN_HARDWARE_ENABLED:     True,
-            PRP_NM_WIRELESS_ENABLED:          True,
-            PRP_NM_WIRELESS_HARDWARE_ENABLED: True,
-            PRP_NM_WIMAX_ENABLED:             True,
-            PRP_NM_WIMAX_HARDWARE_ENABLED:    True,
-            PRP_NM_ACTIVE_CONNECTIONS:        ExportedObj.to_path_array(self.active_connections),
-            PRP_NM_PRIMARY_CONNECTION:        ExportedObj.to_path(None),
-            PRP_NM_ACTIVATING_CONNECTION:     ExportedObj.to_path(None),
-            PRP_NM_STARTUP:                   False,
-            PRP_NM_STATE:                     dbus.UInt32(NM.State.DISCONNECTED),
-            PRP_NM_VERSION:                   "0.9.9.0",
-            PRP_NM_CONNECTIVITY:              dbus.UInt32(NM.ConnectivityState.NONE),
+            PRP_NM_DEVICES:                    ExportedObj.to_path_array(self.devices),
+            PRP_NM_ALL_DEVICES:                ExportedObj.to_path_array(self.devices),
+            PRP_NM_NETWORKING_ENABLED:         True,
+            PRP_NM_WIRELESS_ENABLED:           True,
+            PRP_NM_WIRELESS_HARDWARE_ENABLED:  True,
+            PRP_NM_WWAN_ENABLED:               True,
+            PRP_NM_WWAN_HARDWARE_ENABLED:      True,
+            PRP_NM_BLUETOOTH_ENABLED:          True,
+            PRP_NM_BLUETOOTH_HARDWARE_ENABLED: True,
+            PRP_NM_WIMAX_ENABLED:              True,
+            PRP_NM_WIMAX_HARDWARE_ENABLED:     True,
+            PRP_NM_ACTIVE_CONNECTIONS:         ExportedObj.to_path_array(self.active_connections),
+            PRP_NM_PRIMARY_CONNECTION:         ExportedObj.to_path(None),
+            PRP_NM_ACTIVATING_CONNECTION:      ExportedObj.to_path(None),
+            PRP_NM_STARTUP:                    False,
+            PRP_NM_STATE:                      dbus.UInt32(NM.State.DISCONNECTED),
+            PRP_NM_VERSION:                    "0.9.9.0",
+            PRP_NM_CONNECTIVITY:               dbus.UInt32(NM.ConnectivityState.NONE),
         }
 
         self.dbus_interface_add(IFACE_NM, props, NetworkManager.PropertiesChanged)

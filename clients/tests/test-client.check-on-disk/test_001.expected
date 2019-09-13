@@ -92,12 +92,12 @@ stderr: 87 bytes
 Błąd: nie zrozumiano parametru „bogus”. Można użyć „--help” zamiast tego.
 
 <<<
-size: 1488
+size: 1563
 location: clients/tests/test-client.py:851:test_001()/9
 cmd: $NMCLI general permissions
 lang: C
 returncode: 0
-stdout: 1350 bytes
+stdout: 1425 bytes
 >>>
 PERMISSION                                                        VALUE   
 org.freedesktop.NetworkManager.enable-disable-network             yes     
@@ -117,14 +117,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1517
+size: 1593
 location: clients/tests/test-client.py:851:test_001()/10
 cmd: $NMCLI general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1368 bytes
+stdout: 1444 bytes
 >>>
 PERMISSION                                                        VALUE    
 org.freedesktop.NetworkManager.enable-disable-network             tak      
@@ -144,14 +145,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1618
+size: 1693
 location: clients/tests/test-client.py:851:test_001()/11
 cmd: $NMCLI --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1467 bytes
+stdout: 1542 bytes
 >>>
 PERMISSION                                                        VALUE   
 org.freedesktop.NetworkManager.enable-disable-network             [32myes[0m     
@@ -171,14 +173,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1646
+size: 1722
 location: clients/tests/test-client.py:851:test_001()/12
 cmd: $NMCLI --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1485 bytes
+stdout: 1561 bytes
 >>>
 PERMISSION                                                        VALUE    
 org.freedesktop.NetworkManager.enable-disable-network             [32mtak[0m      
@@ -198,14 +201,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1695
+size: 1770
 location: clients/tests/test-client.py:851:test_001()/13
 cmd: $NMCLI --pretty general permissions
 lang: C
 returncode: 0
-stdout: 1547 bytes
+stdout: 1622 bytes
 >>>
 ==============================
   NetworkManager permissions
@@ -229,14 +233,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1753
+size: 1829
 location: clients/tests/test-client.py:851:test_001()/14
 cmd: $NMCLI --pretty general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1595 bytes
+stdout: 1671 bytes
 >>>
 =====================================
   Uprawnienia usługi NetworkManager
@@ -260,14 +265,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1824
+size: 1899
 location: clients/tests/test-client.py:851:test_001()/15
 cmd: $NMCLI --pretty --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1664 bytes
+stdout: 1739 bytes
 >>>
 ==============================
   NetworkManager permissions
@@ -291,14 +297,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1882
+size: 1958
 location: clients/tests/test-client.py:851:test_001()/16
 cmd: $NMCLI --pretty --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1712 bytes
+stdout: 1788 bytes
 >>>
 =====================================
   Uprawnienia usługi NetworkManager
@@ -322,14 +329,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1094
+size: 1159
 location: clients/tests/test-client.py:851:test_001()/17
 cmd: $NMCLI --terse general permissions
 lang: C
 returncode: 0
-stdout: 948 bytes
+stdout: 1012 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:yes
 org.freedesktop.NetworkManager.enable-disable-wifi:yes
@@ -348,14 +356,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1104
+size: 1169
 location: clients/tests/test-client.py:851:test_001()/18
 cmd: $NMCLI --terse general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 948 bytes
+stdout: 1012 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:yes
 org.freedesktop.NetworkManager.enable-disable-wifi:yes
@@ -374,14 +383,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1224
+size: 1288
 location: clients/tests/test-client.py:851:test_001()/19
 cmd: $NMCLI --terse --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1065 bytes
+stdout: 1129 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:[32myes[0m
 org.freedesktop.NetworkManager.enable-disable-wifi:[32myes[0m
@@ -400,14 +410,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1234
+size: 1298
 location: clients/tests/test-client.py:851:test_001()/20
 cmd: $NMCLI --terse --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1065 bytes
+stdout: 1129 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:[32myes[0m
 org.freedesktop.NetworkManager.enable-disable-wifi:[32myes[0m
@@ -426,14 +437,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1504
+size: 1579
 location: clients/tests/test-client.py:851:test_001()/21
 cmd: $NMCLI --mode tabular general permissions
 lang: C
 returncode: 0
-stdout: 1350 bytes
+stdout: 1425 bytes
 >>>
 PERMISSION                                                        VALUE   
 org.freedesktop.NetworkManager.enable-disable-network             yes     
@@ -453,14 +465,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1532
+size: 1608
 location: clients/tests/test-client.py:851:test_001()/22
 cmd: $NMCLI --mode tabular general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1368 bytes
+stdout: 1444 bytes
 >>>
 PERMISSION                                                        VALUE    
 org.freedesktop.NetworkManager.enable-disable-network             tak      
@@ -480,14 +493,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1633
+size: 1708
 location: clients/tests/test-client.py:851:test_001()/23
 cmd: $NMCLI --mode tabular --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1467 bytes
+stdout: 1542 bytes
 >>>
 PERMISSION                                                        VALUE   
 org.freedesktop.NetworkManager.enable-disable-network             [32myes[0m     
@@ -507,14 +521,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1661
+size: 1737
 location: clients/tests/test-client.py:851:test_001()/24
 cmd: $NMCLI --mode tabular --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1485 bytes
+stdout: 1561 bytes
 >>>
 PERMISSION                                                        VALUE    
 org.freedesktop.NetworkManager.enable-disable-network             [32mtak[0m      
@@ -534,14 +549,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1710
+size: 1785
 location: clients/tests/test-client.py:851:test_001()/25
 cmd: $NMCLI --mode tabular --pretty general permissions
 lang: C
 returncode: 0
-stdout: 1547 bytes
+stdout: 1622 bytes
 >>>
 ==============================
   NetworkManager permissions
@@ -565,14 +581,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1768
+size: 1844
 location: clients/tests/test-client.py:851:test_001()/26
 cmd: $NMCLI --mode tabular --pretty general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1595 bytes
+stdout: 1671 bytes
 >>>
 =====================================
   Uprawnienia usługi NetworkManager
@@ -596,14 +613,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1839
+size: 1914
 location: clients/tests/test-client.py:851:test_001()/27
 cmd: $NMCLI --mode tabular --pretty --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1664 bytes
+stdout: 1739 bytes
 >>>
 ==============================
   NetworkManager permissions
@@ -627,14 +645,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                unknown
 org.freedesktop.NetworkManager.enable-disable-statistics          unknown 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  unknown 
 org.freedesktop.NetworkManager.wifi.scan                          unknown 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           unknown 
 
 <<<
-size: 1897
+size: 1973
 location: clients/tests/test-client.py:851:test_001()/28
 cmd: $NMCLI --mode tabular --pretty --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1712 bytes
+stdout: 1788 bytes
 >>>
 =====================================
   Uprawnienia usługi NetworkManager
@@ -658,14 +677,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback                nieznane
 org.freedesktop.NetworkManager.enable-disable-statistics          nieznane 
 org.freedesktop.NetworkManager.enable-disable-connectivity-check  nieznane 
 org.freedesktop.NetworkManager.wifi.scan                          nieznane 
+org.freedesktop.NetworkManager.enable-disable-bluetooth           nieznane 
 
 <<<
-size: 1109
+size: 1174
 location: clients/tests/test-client.py:851:test_001()/29
 cmd: $NMCLI --mode tabular --terse general permissions
 lang: C
 returncode: 0
-stdout: 948 bytes
+stdout: 1012 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:yes
 org.freedesktop.NetworkManager.enable-disable-wifi:yes
@@ -684,14 +704,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1119
+size: 1184
 location: clients/tests/test-client.py:851:test_001()/30
 cmd: $NMCLI --mode tabular --terse general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 948 bytes
+stdout: 1012 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:yes
 org.freedesktop.NetworkManager.enable-disable-wifi:yes
@@ -710,14 +731,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1239
+size: 1303
 location: clients/tests/test-client.py:851:test_001()/31
 cmd: $NMCLI --mode tabular --terse --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1065 bytes
+stdout: 1129 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:[32myes[0m
 org.freedesktop.NetworkManager.enable-disable-wifi:[32myes[0m
@@ -736,14 +758,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 1249
+size: 1313
 location: clients/tests/test-client.py:851:test_001()/32
 cmd: $NMCLI --mode tabular --terse --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1065 bytes
+stdout: 1129 bytes
 >>>
 org.freedesktop.NetworkManager.enable-disable-network:[32myes[0m
 org.freedesktop.NetworkManager.enable-disable-wifi:[32myes[0m
@@ -762,14 +785,15 @@ org.freedesktop.NetworkManager.checkpoint-rollback:unknown
 org.freedesktop.NetworkManager.enable-disable-statistics:unknown
 org.freedesktop.NetworkManager.enable-disable-connectivity-check:unknown
 org.freedesktop.NetworkManager.wifi.scan:unknown
+org.freedesktop.NetworkManager.enable-disable-bluetooth:unknown
 
 <<<
-size: 2464
+size: 2608
 location: clients/tests/test-client.py:851:test_001()/33
 cmd: $NMCLI --mode multiline general permissions
 lang: C
 returncode: 0
-stdout: 2308 bytes
+stdout: 2452 bytes
 >>>
 PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-network
 VALUE:                                  yes
@@ -805,14 +829,16 @@ PERMISSION:                             org.freedesktop.NetworkManager.enable-di
 VALUE:                                  unknown
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  unknown
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  unknown
 
 <<<
-size: 2481
+size: 2626
 location: clients/tests/test-client.py:851:test_001()/34
 cmd: $NMCLI --mode multiline general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 2315 bytes
+stdout: 2460 bytes
 >>>
 PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-network
 VALUE:                                  tak
@@ -848,14 +874,16 @@ PERMISSION:                             org.freedesktop.NetworkManager.enable-di
 VALUE:                                  nieznane
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  nieznane
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  nieznane
 
 <<<
-size: 2593
+size: 2737
 location: clients/tests/test-client.py:851:test_001()/35
 cmd: $NMCLI --mode multiline --color yes general permissions
 lang: C
 returncode: 0
-stdout: 2425 bytes
+stdout: 2569 bytes
 >>>
 PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-network
 VALUE:                                  [32myes[0m
@@ -891,14 +919,16 @@ PERMISSION:                             org.freedesktop.NetworkManager.enable-di
 VALUE:                                  unknown
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  unknown
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  unknown
 
 <<<
-size: 2610
+size: 2755
 location: clients/tests/test-client.py:851:test_001()/36
 cmd: $NMCLI --mode multiline --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 2432 bytes
+stdout: 2577 bytes
 >>>
 PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-network
 VALUE:                                  [32mtak[0m
@@ -934,14 +964,16 @@ PERMISSION:                             org.freedesktop.NetworkManager.enable-di
 VALUE:                                  nieznane
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  nieznane
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  nieznane
 
 <<<
-size: 4046
+size: 4270
 location: clients/tests/test-client.py:851:test_001()/37
 cmd: $NMCLI --mode multiline --pretty general permissions
 lang: C
 returncode: 0
-stdout: 3881 bytes
+stdout: 4105 bytes
 >>>
 ===============================================================================
                           NetworkManager permissions
@@ -997,14 +1029,17 @@ VALUE:                                  unknown
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  unknown
 -------------------------------------------------------------------------------
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  unknown
+-------------------------------------------------------------------------------
 
 <<<
-size: 4068
+size: 4293
 location: clients/tests/test-client.py:851:test_001()/38
 cmd: $NMCLI --mode multiline --pretty general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 3893 bytes
+stdout: 4118 bytes
 >>>
 ===============================================================================
                        Uprawnienia usługi NetworkManager
@@ -1060,14 +1095,17 @@ VALUE:                                  nieznane
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  nieznane
 -------------------------------------------------------------------------------
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  nieznane
+-------------------------------------------------------------------------------
 
 <<<
-size: 4175
+size: 4399
 location: clients/tests/test-client.py:851:test_001()/39
 cmd: $NMCLI --mode multiline --pretty --color yes general permissions
 lang: C
 returncode: 0
-stdout: 3998 bytes
+stdout: 4222 bytes
 >>>
 ===============================================================================
                           NetworkManager permissions
@@ -1123,14 +1161,17 @@ VALUE:                                  unknown
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  unknown
 -------------------------------------------------------------------------------
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  unknown
+-------------------------------------------------------------------------------
 
 <<<
-size: 4197
+size: 4422
 location: clients/tests/test-client.py:851:test_001()/40
 cmd: $NMCLI --mode multiline --pretty --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 4010 bytes
+stdout: 4235 bytes
 >>>
 ===============================================================================
                        Uprawnienia usługi NetworkManager
@@ -1186,14 +1227,17 @@ VALUE:                                  nieznane
 PERMISSION:                             org.freedesktop.NetworkManager.wifi.scan
 VALUE:                                  nieznane
 -------------------------------------------------------------------------------
+PERMISSION:                             org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:                                  nieznane
+-------------------------------------------------------------------------------
 
 <<<
-size: 1401
+size: 1482
 location: clients/tests/test-client.py:851:test_001()/41
 cmd: $NMCLI --mode multiline --terse general permissions
 lang: C
 returncode: 0
-stdout: 1237 bytes
+stdout: 1318 bytes
 >>>
 PERMISSION:org.freedesktop.NetworkManager.enable-disable-network
 VALUE:yes
@@ -1229,14 +1273,16 @@ PERMISSION:org.freedesktop.NetworkManager.enable-disable-connectivity-check
 VALUE:unknown
 PERMISSION:org.freedesktop.NetworkManager.wifi.scan
 VALUE:unknown
+PERMISSION:org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:unknown
 
 <<<
-size: 1411
+size: 1492
 location: clients/tests/test-client.py:851:test_001()/42
 cmd: $NMCLI --mode multiline --terse general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1237 bytes
+stdout: 1318 bytes
 >>>
 PERMISSION:org.freedesktop.NetworkManager.enable-disable-network
 VALUE:yes
@@ -1272,14 +1318,16 @@ PERMISSION:org.freedesktop.NetworkManager.enable-disable-connectivity-check
 VALUE:unknown
 PERMISSION:org.freedesktop.NetworkManager.wifi.scan
 VALUE:unknown
+PERMISSION:org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:unknown
 
 <<<
-size: 1530
+size: 1611
 location: clients/tests/test-client.py:851:test_001()/43
 cmd: $NMCLI --mode multiline --terse --color yes general permissions
 lang: C
 returncode: 0
-stdout: 1354 bytes
+stdout: 1435 bytes
 >>>
 PERMISSION:org.freedesktop.NetworkManager.enable-disable-network
 VALUE:[32myes[0m
@@ -1315,14 +1363,16 @@ PERMISSION:org.freedesktop.NetworkManager.enable-disable-connectivity-check
 VALUE:unknown
 PERMISSION:org.freedesktop.NetworkManager.wifi.scan
 VALUE:unknown
+PERMISSION:org.freedesktop.NetworkManager.enable-disable-bluetooth
+VALUE:unknown
 
 <<<
-size: 1540
+size: 1621
 location: clients/tests/test-client.py:851:test_001()/44
 cmd: $NMCLI --mode multiline --terse --color yes general permissions
 lang: pl_PL.UTF-8
 returncode: 0
-stdout: 1354 bytes
+stdout: 1435 bytes
 >>>
 PERMISSION:org.freedesktop.NetworkManager.enable-disable-network
 VALUE:[32myes[0m
@@ -1357,6 +1407,8 @@ VALUE:unknown
 PERMISSION:org.freedesktop.NetworkManager.enable-disable-connectivity-check
 VALUE:unknown
 PERMISSION:org.freedesktop.NetworkManager.wifi.scan
+VALUE:unknown
+PERMISSION:org.freedesktop.NetworkManager.enable-disable-bluetooth
 VALUE:unknown
 
 <<<

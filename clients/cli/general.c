@@ -85,6 +85,8 @@ permission_to_string (NMClientPermission perm)
 		return NM_AUTH_PERMISSION_ENABLE_DISABLE_WIFI;
 	case NM_CLIENT_PERMISSION_ENABLE_DISABLE_WWAN:
 		return NM_AUTH_PERMISSION_ENABLE_DISABLE_WWAN;
+	case NM_CLIENT_PERMISSION_ENABLE_DISABLE_BLUETOOTH:
+		return NM_AUTH_PERMISSION_ENABLE_DISABLE_BLUETOOTH;
 	case NM_CLIENT_PERMISSION_ENABLE_DISABLE_WIMAX:
 		return NM_AUTH_PERMISSION_ENABLE_DISABLE_WIMAX;
 	case NM_CLIENT_PERMISSION_SLEEP_WAKE:
@@ -186,6 +188,12 @@ _metagen_general_status_get_fcn (NMC_META_GENERIC_INFO_GET_FCN_ARGS)
 	case NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WWAN:
 		v_bool = nm_client_wwan_get_enabled (nmc->client);
 		goto enabled_out;
+	case NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_BLUETOOTH_HW:
+		v_bool = nm_client_bluetooth_hardware_get_enabled (nmc->client);
+		goto enabled_out;
+	case NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_BLUETOOTH:
+		v_bool = nm_client_bluetooth_get_enabled (nmc->client);
+		goto enabled_out;
 	case NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WIMAX_HW:
 	case NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WIMAX:
 		/* deprecated fields. Don't return anything. */
@@ -223,16 +231,19 @@ static const NmcMetaGenericInfo *const metagen_general_status[_NMC_GENERIC_INFO_
 	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WIFI,          "WIFI"),
 	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WWAN_HW,       "WWAN-HW"),
 	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WWAN,          "WWAN"),
+	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_BLUETOOTH_HW,  "BLUETOOTH-HW"),
+	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_BLUETOOTH,     "BLUETOOTH"),
 	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WIMAX_HW,      "WIMAX-HW"),
 	_METAGEN_GENERAL_STATUS (NMC_GENERIC_INFO_TYPE_GENERAL_STATUS_WIMAX,         "WIMAX"),
 };
-#define NMC_FIELDS_NM_STATUS_ALL     "RUNNING,VERSION,STATE,STARTUP,CONNECTIVITY,NETWORKING,WIFI-HW,WIFI,WWAN-HW,WWAN"
-#define NMC_FIELDS_NM_STATUS_SWITCH  "NETWORKING,WIFI-HW,WIFI,WWAN-HW,WWAN"
-#define NMC_FIELDS_NM_STATUS_RADIO   "WIFI-HW,WIFI,WWAN-HW,WWAN"
-#define NMC_FIELDS_NM_STATUS_COMMON  "STATE,CONNECTIVITY,WIFI-HW,WIFI,WWAN-HW,WWAN"
+#define NMC_FIELDS_NM_STATUS_ALL     "RUNNING,VERSION,STATE,STARTUP,CONNECTIVITY,NETWORKING,WIFI-HW,WIFI,WWAN-HW,WWAN,BLUETOOTH-HW,BLUETOOTH"
+#define NMC_FIELDS_NM_STATUS_SWITCH  "NETWORKING,WIFI-HW,WIFI,WWAN-HW,WWAN,BLUETOOTH-HW,BLUETOOTH"
+#define NMC_FIELDS_NM_STATUS_RADIO   "WIFI-HW,WIFI,WWAN-HW,WWAN,BLUETOOTH-HW,BLUETOOTH"
+#define NMC_FIELDS_NM_STATUS_COMMON  "STATE,CONNECTIVITY,WIFI-HW,WIFI,WWAN-HW,WWAN,BLUETOOTH-HW,BLUETOOTH"
 #define NMC_FIELDS_NM_NETWORKING     "NETWORKING"
 #define NMC_FIELDS_NM_WIFI           "WIFI"
 #define NMC_FIELDS_NM_WWAN           "WWAN"
+#define NMC_FIELDS_NM_BLUETOOTH      "BLUETOOTH"
 #define NMC_FIELDS_NM_WIMAX          "WIMAX"
 #define NMC_FIELDS_NM_CONNECTIVITY   "CONNECTIVITY"
 
@@ -441,6 +452,16 @@ usage_radio_wwan (void)
 	              "ARGUMENTS := [on | off]\n"
 	              "\n"
 	              "Get status of mobile broadband radio switch, or turn it on/off.\n\n"));
+}
+
+static void
+usage_radio_bluetooth (void)
+{
+	g_printerr (_("Usage: nmcli radio bluetooth { ARGUMENTS | help }\n"
+	              "\n"
+	              "ARGUMENTS := [on | off]\n"
+	              "\n"
+	              "Get status of Bluetooth radio switch, or turn it on/off.\n\n"));
 }
 
 static void
@@ -949,6 +970,7 @@ do_radio_all (NmCli *nmc, int argc, char **argv)
 		nm_client_wireless_set_enabled (nmc->client, enable_flag);
 		nm_client_wimax_set_enabled (nmc->client, enable_flag);
 		nm_client_wwan_set_enabled (nmc->client, enable_flag);
+		nm_client_bluetooth_set_enabled (nmc->client, enable_flag);
 	}
 
 	return nmc->return_value;
@@ -1008,11 +1030,39 @@ do_radio_wwan (NmCli *nmc, int argc, char **argv)
 	return nmc->return_value;
 }
 
+static NMCResultCode
+do_radio_bluetooth (NmCli *nmc, int argc, char **argv)
+{
+	gboolean enable_flag;
+
+	next_arg (nmc, &argc, &argv, NULL);
+	if (argc == 0) {
+		if (nmc->complete)
+			return nmc->return_value;
+
+		/* no argument, show current Bluetooth state */
+		nmc_switch_show (nmc, NMC_FIELDS_NM_BLUETOOTH, N_("Bluetooth radio switch"));
+	} else {
+		if (nmc->complete) {
+			if (argc == 1)
+				nmc_complete_bool (*argv);
+			return nmc->return_value;
+		}
+		if (!nmc_switch_parse_on_off (nmc, *(argv-1), *argv, &enable_flag))
+			return nmc->return_value;
+
+		nm_client_bluetooth_set_enabled (nmc->client, enable_flag);
+	}
+
+	return nmc->return_value;
+}
+
 static const NMCCommand radio_cmds[] = {
-	{ "all",   do_radio_all,   usage_radio_all,   TRUE,   TRUE },
-	{ "wifi",  do_radio_wifi,  usage_radio_wifi,  TRUE,   TRUE },
-	{ "wwan",  do_radio_wwan,  usage_radio_wwan,  TRUE,   TRUE },
-	{ NULL,    do_radio_all,   usage_radio,       TRUE,   TRUE },
+	{ "all",        do_radio_all,   usage_radio_all,   TRUE,   TRUE },
+	{ "wifi",       do_radio_wifi,  usage_radio_wifi,  TRUE,   TRUE },
+	{ "wwan",       do_radio_wwan,  usage_radio_wwan,  TRUE,   TRUE },
+	{ "bluetooth",  do_radio_bluetooth,  usage_radio_bluetooth,  TRUE,   TRUE },
+	{ NULL,         do_radio_all,   usage_radio,       TRUE,   TRUE },
 };
 
 /*
