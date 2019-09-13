@@ -8,6 +8,7 @@
 
 #include "nm-device-bt.h"
 
+#include <linux/rfkill.h>
 #include <stdio.h>
 
 #include "nm-bluez-common.h"
@@ -1114,6 +1115,7 @@ nm_device_bt_new (NMBluezDevice *bt_device,
 	                                  NM_DEVICE_BT_CAPABILITIES, capabilities,
 	                                  NM_DEVICE_TYPE_DESC, "Bluetooth",
 	                                  NM_DEVICE_DEVICE_TYPE, NM_DEVICE_TYPE_BT,
+	                                  NM_DEVICE_RFKILL_TYPE, RFKILL_TYPE_BLUETOOTH,
 	                                  NULL);
 }
 
