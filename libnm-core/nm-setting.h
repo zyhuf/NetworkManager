@@ -110,7 +110,7 @@ typedef enum {
 	NM_SETTING_COMPARE_FLAG_DIFF_RESULT_NO_DEFAULT = 0x00000040,
 	NM_SETTING_COMPARE_FLAG_IGNORE_TIMESTAMP = 0x00000080,
 
-	/* Higher flags like 0x80000000 and 0x40000000 are used internally as private flags */
+	/* Flags higher than 0x1000000 are used internally as private flags */
 } NMSettingCompareFlags;
 
 /**

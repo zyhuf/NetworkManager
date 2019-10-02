@@ -110,6 +110,15 @@
  */
 #define NM_SETTING_COMPARE_FLAG_IGNORE_REAPPLY_IMMEDIATELY ((NMSettingCompareFlags) 0x40000000)
 
+ /* NM_SETTING_COMPARE_FLAG_DIFF_EFFECTIVE: this flag is to compare settings
+ *  according to the result when they are applied to a device. This is equivalent
+ *  to @NM_SETTING_COMPARE_FLAG_DIFF_RESULT_NO_DEFAULT for some settings (when
+ *  the absence of the setting is functionally equivalent to the presence of the setting
+ *  with default values) or to @NM_SETTING_COMPARE_FLAG_DIFF_RESULT_WITH_DEFAULT in
+ *  other cases.
+ */
+#define NM_SETTING_COMPARE_FLAG_DIFF_EFFECTIVE ((NMSettingCompareFlags) 0x20000000)
+
 /* NM_SETTING_COMPARE_FLAG_NONE: for convenience, define a special flag NONE -- which
  * equals to numeric zero (NM_SETTING_COMPARE_FLAG_EXACT).
  */

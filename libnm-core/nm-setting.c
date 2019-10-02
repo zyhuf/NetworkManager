@@ -1520,6 +1520,7 @@ _nm_setting_diff (NMConnection *con_a,
 	gboolean results_created = FALSE;
 	gboolean compared_any = FALSE;
 	gboolean diff_found = FALSE;
+	gboolean no_ignore_default;
 
 	g_return_val_if_fail (results != NULL, FALSE);
 	g_return_val_if_fail (NM_IS_SETTING (a), FALSE);
@@ -1559,6 +1560,7 @@ _nm_setting_diff (NMConnection *con_a,
 	}
 
 	sett_info = _nm_setting_class_get_sett_info (NM_SETTING_GET_CLASS (a));
+	no_ignore_default = NM_SETTING_GET_CLASS (a)->setting_info->no_ignore_default;
 
 	if (sett_info->detail.gendata_info) {
 		const char *key;
@@ -1667,7 +1669,9 @@ _nm_setting_diff (NMConnection *con_a,
 					} else
 						r |= a_result | b_result;
 				}
-			} else if ((flags & (NM_SETTING_COMPARE_FLAG_DIFF_RESULT_WITH_DEFAULT | NM_SETTING_COMPARE_FLAG_DIFF_RESULT_NO_DEFAULT)) == 0)
+			} else if ((flags & (  NM_SETTING_COMPARE_FLAG_DIFF_RESULT_WITH_DEFAULT
+			                     | NM_SETTING_COMPARE_FLAG_DIFF_RESULT_NO_DEFAULT
+			                     | NM_SETTING_COMPARE_FLAG_DIFF_EFFECTIVE)) == 0)
 				r = a_result;  /* only in A */
 			else {
 				if (prop_spec) {
@@ -1677,7 +1681,8 @@ _nm_setting_diff (NMConnection *con_a,
 					g_object_get_property (G_OBJECT (a), prop_spec->name, &value);
 					if (!g_param_value_defaults (prop_spec, &value))
 						r |= a_result;
-					else if (flags & NM_SETTING_COMPARE_FLAG_DIFF_RESULT_WITH_DEFAULT)
+					else if (   (flags & NM_SETTING_COMPARE_FLAG_DIFF_RESULT_WITH_DEFAULT)
+					         || no_ignore_default)
 						r |= a_result | a_result_default;
 
 					g_value_unset (&value);

@@ -344,6 +344,7 @@ const NMMetaSettingInfo nm_meta_setting_infos[] = {
 		.setting_priority =         NM_SETTING_PRIORITY_HW_AUX,
 		.setting_name =             NM_SETTING_SRIOV_SETTING_NAME,
 		.get_setting_gtype =        nm_setting_sriov_get_type,
+		.no_ignore_default =        TRUE,
 	},
 	[NM_META_SETTING_TYPE_TC_CONFIG] = {
 		.meta_type =                NM_META_SETTING_TYPE_TC_CONFIG,

@@ -175,6 +175,8 @@ struct _NMMetaSettingInfoXX {
 	GType (*get_setting_gtype) (void);
 	NMMetaSettingType meta_type;
 	NMSettingPriority setting_priority;
+	bool no_ignore_default; /* FALSE when a missing setting is equivalent
+	                           to a setting with all default values */
 };
 
 typedef struct _NMMetaSettingInfoXX NMMetaSettingInfo;

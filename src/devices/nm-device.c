@@ -11595,6 +11595,7 @@ check_and_reapply_connection (NMDevice *self,
 
 	nm_connection_diff (connection,
 	                    applied,
+	                    NM_SETTING_COMPARE_FLAG_DIFF_EFFECTIVE |
 	                    NM_SETTING_COMPARE_FLAG_IGNORE_TIMESTAMP |
 	                    NM_SETTING_COMPARE_FLAG_IGNORE_SECRETS,
 	                    &diffs);
