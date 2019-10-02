@@ -769,6 +769,33 @@ create_and_realize (NMDevice *device,
 	return TRUE;
 }
 
+static gboolean
+can_reapply_change (NMDevice *device,
+                    const char *setting_name,
+                    NMSetting *s_old,
+                    NMSetting *s_new,
+                    GHashTable *diffs,
+                    GError **error)
+{
+	NMDeviceClass *device_class;
+
+	if (nm_streq (setting_name, NM_SETTING_WIRED_SETTING_NAME)) {
+		return nm_device_hash_check_invalid_keys (diffs,
+		                                          NM_SETTING_WIRED_SETTING_NAME,
+		                                          error,
+		                                          /* reapplied with IP config */
+		                                          NM_SETTING_WIRED_MTU);
+	}
+
+	device_class = NM_DEVICE_CLASS (nm_device_bridge_parent_class);
+	return device_class->can_reapply_change (device,
+	                                         setting_name,
+	                                         s_old,
+	                                         s_new,
+	                                         diffs,
+	                                         error);
+}
+
 /*****************************************************************************/
 
 static void
@@ -816,6 +843,7 @@ nm_device_bridge_class_init (NMDeviceBridgeClass *klass)
 	device_class->act_stage1_prepare_set_hwaddr_ethernet = TRUE;
 	device_class->act_stage1_prepare = act_stage1_prepare;
 	device_class->act_stage2_config = act_stage2_config;
+	device_class->can_reapply_change = can_reapply_change;
 	device_class->deactivate = deactivate;
 	device_class->enslave_slave = enslave_slave;
 	device_class->release_slave = release_slave;

@@ -531,7 +531,14 @@ can_reapply_change (NMDevice *device,
 	NMDeviceClass *device_class;
 	NMSettingBond *s_bond_old, *s_bond_new;
 
-	/* Only handle bond setting here, delegate other settings to parent class */
+	if (nm_streq (setting_name, NM_SETTING_WIRED_SETTING_NAME)) {
+		return nm_device_hash_check_invalid_keys (diffs,
+		                                          NM_SETTING_WIRED_SETTING_NAME,
+		                                          error,
+		                                          /* reapplied with IP config */
+		                                          NM_SETTING_WIRED_MTU);
+	}
+
 	if (nm_streq (setting_name, NM_SETTING_BOND_SETTING_NAME)) {
 		if (!nm_device_hash_check_invalid_keys (diffs,
 		                                        NM_SETTING_BOND_SETTING_NAME,

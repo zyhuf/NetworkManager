@@ -852,6 +852,33 @@ create_and_realize (NMDevice *device,
 	return TRUE;
 }
 
+static gboolean
+can_reapply_change (NMDevice *device,
+                    const char *setting_name,
+                    NMSetting *s_old,
+                    NMSetting *s_new,
+                    GHashTable *diffs,
+                    GError **error)
+{
+	NMDeviceClass *device_class;
+
+	if (nm_streq (setting_name, NM_SETTING_WIRED_SETTING_NAME)) {
+		return nm_device_hash_check_invalid_keys (diffs,
+		                                          NM_SETTING_WIRED_SETTING_NAME,
+		                                          error,
+		                                          /* reapplied with IP config */
+		                                          NM_SETTING_WIRED_MTU);
+	}
+
+	device_class = NM_DEVICE_CLASS (nm_device_team_parent_class);
+	return device_class->can_reapply_change (device,
+	                                         setting_name,
+	                                         s_old,
+	                                         s_new,
+	                                         diffs,
+	                                         error);
+}
+
 /*****************************************************************************/
 
 static void
@@ -969,6 +996,7 @@ nm_device_team_class_init (NMDeviceTeamClass *klass)
 	device_class->master_update_slave_connection = master_update_slave_connection;
 
 	device_class->act_stage1_prepare = act_stage1_prepare;
+	device_class->can_reapply_change = can_reapply_change;
 	device_class->get_configured_mtu = nm_device_get_configured_mtu_for_wired;
 	device_class->deactivate = deactivate;
 	device_class->enslave_slave = enslave_slave;

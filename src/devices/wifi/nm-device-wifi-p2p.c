@@ -1279,7 +1279,7 @@ nm_device_wifi_p2p_class_init (NMDeviceWifiP2PClass *klass)
 	device_class->act_stage2_config                = act_stage2_config;
 	device_class->get_configured_mtu               = get_configured_mtu;
 	device_class->get_auto_ip_config_method        = get_auto_ip_config_method;
-	device_class->act_stage3_ip_config_start      = act_stage3_ip_config_start;
+	device_class->act_stage3_ip_config_start       = act_stage3_ip_config_start;
 
 	device_class->deactivate                       = deactivate;
 	device_class->unmanaged_on_quit                = unmanaged_on_quit;

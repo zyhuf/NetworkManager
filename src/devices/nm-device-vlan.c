@@ -502,6 +502,33 @@ act_stage1_prepare (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 	return NM_ACT_STAGE_RETURN_SUCCESS;
 }
 
+static gboolean
+can_reapply_change (NMDevice *device,
+                    const char *setting_name,
+                    NMSetting *s_old,
+                    NMSetting *s_new,
+                    GHashTable *diffs,
+                    GError **error)
+{
+	NMDeviceClass *device_class;
+
+	if (nm_streq (setting_name, NM_SETTING_WIRED_SETTING_NAME)) {
+		return nm_device_hash_check_invalid_keys (diffs,
+		                                          NM_SETTING_WIRED_SETTING_NAME,
+		                                          error,
+		                                          /* reapplied with IP config */
+		                                          NM_SETTING_WIRED_MTU);
+	}
+
+	device_class = NM_DEVICE_CLASS (nm_device_vlan_parent_class);
+	return device_class->can_reapply_change (device,
+	                                         setting_name,
+	                                         s_old,
+	                                         s_new,
+	                                         diffs,
+	                                         error);
+}
+
 /*****************************************************************************/
 
 static void
@@ -559,6 +586,7 @@ nm_device_vlan_class_init (NMDeviceVlanClass *klass)
 	device_class->link_types = NM_DEVICE_DEFINE_LINK_TYPES (NM_LINK_TYPE_VLAN);
 	device_class->mtu_parent_delta = 0; /* VLANs can have the same MTU of parent */
 
+	device_class->can_reapply_change = can_reapply_change;
 	device_class->create_and_realize = create_and_realize;
 	device_class->link_changed = link_changed;
 	device_class->unrealize_notify = unrealize_notify;
