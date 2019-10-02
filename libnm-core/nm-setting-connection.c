@@ -1354,6 +1354,9 @@ perm_permlist_to_strv (GSList *permlist)
 	GPtrArray *strings;
 	GSList *iter;
 
+	if (!permlist)
+		return NULL;
+
 	strings = g_ptr_array_new ();
 	for (iter = permlist; iter; iter = g_slist_next (iter))
 		g_ptr_array_add (strings, permission_to_string ((Permission *) iter->data));

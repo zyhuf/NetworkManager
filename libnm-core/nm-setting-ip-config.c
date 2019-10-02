@@ -5232,13 +5232,16 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_string (value, nm_setting_ip_config_get_method (setting));
 		break;
 	case PROP_DNS:
-		g_value_take_boxed (value, _nm_utils_ptrarray_to_strv (priv->dns));
+		g_value_take_boxed (value, _nm_utils_ptrarray_to_strv (priv->dns, TRUE));
 		break;
 	case PROP_DNS_SEARCH:
-		g_value_take_boxed (value, _nm_utils_ptrarray_to_strv (priv->dns_search));
+		g_value_take_boxed (value, _nm_utils_ptrarray_to_strv (priv->dns_search, TRUE));
 		break;
 	case PROP_DNS_OPTIONS:
-		g_value_take_boxed (value, priv->dns_options ? _nm_utils_ptrarray_to_strv (priv->dns_options) : NULL);
+		g_value_take_boxed (value,
+		                      priv->dns_options
+		                    ? _nm_utils_ptrarray_to_strv (priv->dns_options, FALSE)
+		                    : NULL);
 		break;
 	case PROP_DNS_PRIORITY:
 		g_value_set_int (value, priv->dns_priority);

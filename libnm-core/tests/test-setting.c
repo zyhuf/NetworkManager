@@ -2635,20 +2635,16 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "uuid=%s\n"
 		                     "type=ethernet\n"
 		                     "interface-name=%s\n"
-		                     "permissions=\n"
 		                     "\n"
 		                     "[ethernet]\n"
-		                     "mac-address-blacklist=\n"
 		                     "%s" /* mtu */
 		                     "\n"
 		                     "%s" /* [ethernet-s390-options] */
 		                     "[ipv4]\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "\n"
 		                     "[ipv6]\n"
 		                     "addr-gen-mode=stable-privacy\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "\n"
 		                     "[proxy]\n"
@@ -2667,20 +2663,16 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "uuid=%s\n"
 		                     "type=ethernet\n"
 		                     "interface-name=%s\n"
-		                     "permissions=\n"
 		                     "\n"
 		                     "[ethernet]\n"
-		                     "mac-address-blacklist=\n"
 		                     "%s" /* mtu */
 		                     "\n"
 		                     "%s" /* [ethernet-s390-options] */
 		                     "[ipv4]\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "\n"
 		                     "[ipv6]\n"
 		                     "addr-gen-mode=stable-privacy\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "",
 		                     ID,
@@ -2709,17 +2701,14 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "uuid=%s\n"
 		                     "type=wireguard\n"
 		                     "interface-name=%s\n"
-		                     "permissions=\n"
 		                     "\n"
 		                     "[wireguard]\n"
 		                     "\n"
 		                     "[ipv4]\n"
-		                     "dns-search=\n"
 		                     "method=disabled\n"
 		                     "\n"
 		                     "[ipv6]\n"
 		                     "addr-gen-mode=stable-privacy\n"
-		                     "dns-search=\n"
 		                     "method=ignore\n"
 		                     "\n"
 		                     "[proxy]\n"
@@ -2762,7 +2751,6 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "uuid=%s\n"
 		                     "type=wireguard\n"
 		                     "interface-name=%s\n"
-		                     "permissions=\n"
 		                     "\n"
 		                     "[wireguard]\n"
 		                     "%s" /* fwmark */
@@ -2772,12 +2760,10 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "%s" /* [wireguard-peers*] */
 		                     "\n"
 		                     "[ipv4]\n"
-		                     "dns-search=\n"
 		                     "method=disabled\n"
 		                     "\n"
 		                     "[ipv6]\n"
 		                     "addr-gen-mode=stable-privacy\n"
-		                     "dns-search=\n"
 		                     "method=ignore\n"
 		                     "\n"
 		                     "[proxy]\n"
@@ -2856,14 +2842,11 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "uuid=%s\n"
 		                     "type=ethernet\n"
 		                     "interface-name=%s\n"
-		                     "permissions=\n"
 		                     "\n"
 		                     "[ethernet]\n"
-		                     "mac-address-blacklist=\n"
 		                     "%s" /* mtu */
 		                     "\n"
 		                     "[ipv4]\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "routing-rule1=priority 1 from 0.0.0.0/0 table 1000\n"
 		                     "routing-rule2=priority 2 from 192.168.1.0/25 table 1001\n"
@@ -2871,7 +2854,6 @@ test_roundtrip_conversion (gconstpointer test_data)
 		                     "\n"
 		                     "[ipv6]\n"
 		                     "addr-gen-mode=stable-privacy\n"
-		                     "dns-search=\n"
 		                     "method=auto\n"
 		                     "routing-rule1=priority 1 from ::/0 table 1000\n"
 		                     "routing-rule2=priority 2 from 1:2:3:b::/65 table 1001\n"
@@ -3485,6 +3467,16 @@ test_setting_metadata (void)
 						g_assert_cmpstr (g_value_get_string (&val), ==, msi->setting_name);
 					else
 						g_assert_cmpstr (g_value_get_string (&val), ==, default_value);
+				} else if (NM_IN_SET (sip->param_spec->value_type,
+				                      G_TYPE_STRV,
+				                      G_TYPE_HASH_TABLE)) {
+					if (   meta_type == NM_META_SETTING_TYPE_BOND
+					    && nm_streq (sip->name, NM_SETTING_BOND_OPTIONS)) {
+						/* skip, bond options have a 'mode' key by default */
+					} else {
+						/* boxed properties should have NULL as default value */
+						g_assert (g_value_get_boxed (&val) == NULL);
+					}
 				}
 
 				if (NM_FLAGS_HAS (sip->param_spec->flags, NM_SETTING_PARAM_TO_DBUS_IGNORE_FLAGS))

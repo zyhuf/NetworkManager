@@ -1259,7 +1259,7 @@ vlan_priority_maplist_to_stringlist (NMSettingVlan *s_vlan, NMVlanPriorityMap ma
 	else
 		return NULL;
 
-	if (strlist[0])
+	if (strlist && strlist[0])
 		value = g_strjoinv (",", strlist);
 	else
 		value = NULL;

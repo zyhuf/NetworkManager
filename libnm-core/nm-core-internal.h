@@ -275,7 +275,7 @@ gboolean nm_utils_is_valid_iface_name_utf8safe (const char *utf8safe_name);
 
 GSList *    _nm_utils_hash_values_to_slist (GHashTable *hash);
 
-GHashTable *_nm_utils_copy_strdict (GHashTable *strdict);
+GHashTable *_nm_utils_copy_strdict (GHashTable *strdict, gboolean allow_null);
 
 typedef gpointer (*NMUtilsCopyFunc) (gpointer);
 
@@ -301,7 +301,7 @@ GSList *    _nm_utils_strv_to_slist (char **strv, gboolean deep_copy);
 char **     _nm_utils_slist_to_strv (const GSList *slist, gboolean deep_copy);
 
 GPtrArray * _nm_utils_strv_to_ptrarray (char **strv);
-char **     _nm_utils_ptrarray_to_strv (const GPtrArray *ptrarray);
+char **     _nm_utils_ptrarray_to_strv (const GPtrArray *ptrarray, gboolean allow_null);
 
 gboolean _nm_utils_check_file (const char *filename,
                                gint64 check_owner,

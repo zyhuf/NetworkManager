@@ -875,11 +875,15 @@ const NMSettInfoPropertType nm_sett_info_propert_type_strdict = {
 };
 
 GHashTable *
-_nm_utils_copy_strdict (GHashTable *strdict)
+_nm_utils_copy_strdict (GHashTable *strdict, gboolean allow_null)
 {
 	GHashTable *copy;
 	GHashTableIter iter;
 	gpointer key, value;
+
+	if (   allow_null
+	    && (!strdict || g_hash_table_size (strdict) == 0))
+		return NULL;
 
 	copy = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_free);
 	if (strdict) {
@@ -1024,10 +1028,14 @@ _nm_utils_strv_to_ptrarray (char **strv)
 }
 
 char **
-_nm_utils_ptrarray_to_strv (const GPtrArray *ptrarray)
+_nm_utils_ptrarray_to_strv (const GPtrArray *ptrarray, gboolean allow_null)
 {
 	char **strv;
 	guint i;
+
+	if (   allow_null
+	    && (!ptrarray || ptrarray->len == 0))
+		return NULL;
 
 	if (!ptrarray)
 		return g_new0 (char *, 1);

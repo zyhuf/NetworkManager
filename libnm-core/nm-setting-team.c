@@ -1360,7 +1360,7 @@ get_property (GObject *object, guint prop_id,
 		v_ptrarr = priv->team_setting->d.master.runner_tx_hash;
 		g_value_take_boxed (value,
 		                      v_ptrarr
-		                    ? _nm_utils_ptrarray_to_strv ((GPtrArray *) v_ptrarr)
+		                    ? _nm_utils_ptrarray_to_strv ((GPtrArray *) v_ptrarr, TRUE)
 		                    : NULL);
 		break;
 	case NM_TEAM_ATTRIBUTE_LINK_WATCHERS:

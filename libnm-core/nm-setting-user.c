@@ -422,21 +422,26 @@ get_property (GObject *object, guint prop_id,
 	NMSettingUser *self = NM_SETTING_USER (object);
 	NMSettingUserPrivate *priv = NM_SETTING_USER_GET_PRIVATE (self);
 	GHashTableIter iter;
-	GHashTable *data;
+	GHashTable *data = NULL;
 	const char *key, *val;
 
 	switch (prop_id) {
 	case PROP_DATA:
-		data = _create_data_hash ();
 		if (priv->data) {
 			g_hash_table_iter_init (&iter, priv->data);
-			while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &val))
+			while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &val)) {
+				if (!data)
+					data = _create_data_hash ();
 				g_hash_table_insert (data, g_strdup (key), g_strdup (val));
+			}
 		}
 		if (priv->data_invalid) {
 			g_hash_table_iter_init (&iter, priv->data_invalid);
-			while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &val))
+			while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &val)) {
+				if (!data)
+					data = _create_data_hash ();
 				g_hash_table_insert (data, g_strdup (key), g_strdup (val));
+			}
 		}
 		g_value_take_boxed (value, data);
 		break;

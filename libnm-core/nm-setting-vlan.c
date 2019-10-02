@@ -713,6 +713,9 @@ priority_maplist_to_strv (GSList *list)
 	GSList *iter;
 	GPtrArray *strv;
 
+	if (!list)
+		return NULL;
+
 	strv = g_ptr_array_new ();
 
 	for (iter = list; iter; iter = g_slist_next (iter)) {

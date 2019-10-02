@@ -871,7 +871,7 @@ get_property (GObject *object, guint prop_id,
 
 	switch (prop_id) {
 	case PROP_OPTIONS:
-		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->options));
+		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->options, TRUE));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -889,7 +889,7 @@ set_property (GObject *object, guint prop_id,
 	case PROP_OPTIONS:
 		nm_clear_g_free (&priv->options_idx_cache);
 		g_hash_table_unref (priv->options);
-		priv->options = _nm_utils_copy_strdict (g_value_get_boxed (value));
+		priv->options = _nm_utils_copy_strdict (g_value_get_boxed (value), FALSE);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);

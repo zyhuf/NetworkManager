@@ -1064,7 +1064,10 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_string (value, nm_setting_wireless_get_generate_mac_address_mask (setting));
 		break;
 	case PROP_MAC_ADDRESS_BLACKLIST:
-		g_value_set_boxed (value, (char **) priv->mac_address_blacklist->data);
+		g_value_set_boxed (value,
+		                     priv->mac_address_blacklist->len
+		                   ? (char **) priv->mac_address_blacklist->data
+		                   : NULL);
 		break;
 	case PROP_MTU:
 		g_value_set_uint (value, nm_setting_wireless_get_mtu (setting));

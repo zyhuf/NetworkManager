@@ -962,10 +962,10 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_boolean (value, priv->persistent);
 		break;
 	case PROP_DATA:
-		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->data));
+		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->data, TRUE));
 		break;
 	case PROP_SECRETS:
-		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->secrets));
+		g_value_take_boxed (value, _nm_utils_copy_strdict (priv->secrets, TRUE));
 		break;
 	case PROP_TIMEOUT:
 		g_value_set_uint (value, nm_setting_vpn_get_timeout (setting));
@@ -996,11 +996,11 @@ set_property (GObject *object, guint prop_id,
 		break;
 	case PROP_DATA:
 		g_hash_table_unref (priv->data);
-		priv->data = _nm_utils_copy_strdict (g_value_get_boxed (value));
+		priv->data = _nm_utils_copy_strdict (g_value_get_boxed (value), FALSE);
 		break;
 	case PROP_SECRETS:
 		g_hash_table_unref (priv->secrets);
-		priv->secrets = _nm_utils_copy_strdict (g_value_get_boxed (value));
+		priv->secrets = _nm_utils_copy_strdict (g_value_get_boxed (value), FALSE);
 		break;
 	case PROP_TIMEOUT:
 		priv->timeout = g_value_get_uint (value);

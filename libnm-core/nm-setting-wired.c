@@ -967,7 +967,10 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_string (value, nm_setting_wired_get_generate_mac_address_mask (setting));
 		break;
 	case PROP_MAC_ADDRESS_BLACKLIST:
-		g_value_set_boxed (value, (char **) priv->mac_address_blacklist->data);
+		g_value_set_boxed (value,
+		                     priv->mac_address_blacklist->len
+		                   ? (char **) priv->mac_address_blacklist->data
+		                   : NULL);
 		break;
 	case PROP_MTU:
 		g_value_set_uint (value, nm_setting_wired_get_mtu (setting));
@@ -979,14 +982,18 @@ get_property (GObject *object, guint prop_id,
 		g_value_set_string (value, nm_setting_wired_get_s390_nettype (setting));
 		break;
 	case PROP_S390_OPTIONS:
-		hash = g_hash_table_new_full (nm_str_hash,
-		                              g_str_equal,
-		                              g_free,
-		                              g_free);
-		for (i = 0; i < priv->s390_options.len; i++) {
-			g_hash_table_insert (hash,
-			                     g_strdup (priv->s390_options.arr[i].name),
-			                     g_strdup (priv->s390_options.arr[i].value_str));
+		if (priv->s390_options.len == 0)
+			hash = NULL;
+		else {
+			hash = g_hash_table_new_full (nm_str_hash,
+			                              g_str_equal,
+			                              g_free,
+			                              g_free);
+			for (i = 0; i < priv->s390_options.len; i++) {
+				g_hash_table_insert (hash,
+				                     g_strdup (priv->s390_options.arr[i].name),
+				                     g_strdup (priv->s390_options.arr[i].value_str));
+			}
 		}
 		g_value_take_boxed (value, hash);
 		break;
