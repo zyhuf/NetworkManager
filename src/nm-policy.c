@@ -1240,12 +1240,20 @@ auto_activate_device (NMPolicy *self,
 	if (nm_device_get_act_request (device))
 		return;
 
-	if (!nm_device_autoconnect_allowed (device))
+	if (!nm_device_autoconnect_allowed (device)) {
+		_LOGT (LOGD_AUTOCONNECT,
+		       "autoconnect (%s): not allowed",
+		       nm_device_get_iface (device));
 		return;
+	}
 
 	connections = nm_manager_get_activatable_connections (priv->manager, TRUE, TRUE, &len);
-	if (!connections[0])
+	if (!connections[0]) {
+		_LOGT (LOGD_AUTOCONNECT,
+		       "autoconnect (%s): no activatable connections",
+		       nm_device_get_iface (device));
 		return;
+	}
 
 	/* Find the first connection that should be auto-activated */
 	best_connection = NULL;
@@ -1255,30 +1263,54 @@ auto_activate_device (NMPolicy *self,
 		NMSettingConnection *s_con;
 		const char *permission;
 
-		if (nm_settings_connection_autoconnect_is_blocked (candidate))
+		if (nm_settings_connection_autoconnect_is_blocked (candidate)) {
+			_LOGT (LOGD_AUTOCONNECT,
+			       "autoconnect (%s): connection %s is blocked",
+			       nm_device_get_iface (device),
+			       nm_settings_connection_get_uuid (candidate));
 			continue;
+		}
 
 		cand_conn = nm_settings_connection_get_connection (candidate);
 
 		s_con = nm_connection_get_setting_connection (cand_conn);
-		if (!nm_setting_connection_get_autoconnect (s_con))
+		if (!nm_setting_connection_get_autoconnect (s_con)) {
+			_LOGT (LOGD_AUTOCONNECT,
+			       "autoconnect (%s): connection %s has autoconnect=no",
+			       nm_device_get_iface (device),
+			       nm_settings_connection_get_uuid (candidate));
 			continue;
+		}
 
 		permission = nm_utils_get_shared_wifi_permission (cand_conn);
 		if (   permission
-		    && !nm_settings_connection_check_permission (candidate, permission))
+		    && !nm_settings_connection_check_permission (candidate, permission)) {
+			_LOGT (LOGD_AUTOCONNECT,
+			       "autoconnect (%s): connection %s has no permission",
+			       nm_device_get_iface (device),
+			       nm_settings_connection_get_uuid (candidate));
 			continue;
-
-		if (nm_device_can_auto_connect (device, candidate, &specific_object)) {
-			best_connection = candidate;
-			break;
 		}
+
+		if (!nm_device_can_auto_connect (device, candidate, &specific_object, &error)) {
+			_LOGT (LOGD_AUTOCONNECT,
+			       "autoconnect (%s): connection %s can't autoconnect: %s",
+			       nm_device_get_iface (device),
+			       nm_settings_connection_get_uuid (candidate),
+			       error->message);
+			g_clear_error (&error);
+			continue;
+		}
+
+		best_connection = candidate;
+		break;
 	}
 
 	if (!best_connection)
 		return;
 
-	_LOGI (LOGD_DEVICE, "auto-activating connection '%s' (%s)",
+	_LOGI (LOGD_DEVICE | LOGD_AUTOCONNECT,
+	       "autoconnect: auto-activating connection '%s' (%s)",
 	       nm_settings_connection_get_id (best_connection),
 	       nm_settings_connection_get_uuid (best_connection));
 
@@ -1294,7 +1326,8 @@ auto_activate_device (NMPolicy *self,
 	                                     NM_ACTIVATION_STATE_FLAG_LIFETIME_BOUND_TO_PROFILE_VISIBILITY,
 	                                     &error);
 	if (!ac) {
-		_LOGI (LOGD_DEVICE, "connection '%s' auto-activation failed: %s",
+		_LOGI (LOGD_DEVICE | LOGD_AUTOCONNECT,
+		       "autoconnect: '%s' auto-activation failed: %s",
 		       nm_settings_connection_get_id (best_connection),
 		       error->message);
 		nm_settings_connection_autoconnect_blocked_reason_set (best_connection,

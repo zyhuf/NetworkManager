@@ -955,7 +955,8 @@ get_autoconnect_allowed (NMDevice *device)
 static gboolean
 can_auto_connect (NMDevice *device,
                   NMSettingsConnection *sett_conn,
-                  char **specific_object)
+                  char **specific_object,
+                  GError **error)
 {
 	NMDeviceWifi *self = NM_DEVICE_WIFI (device);
 	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
@@ -968,7 +969,7 @@ can_auto_connect (NMDevice *device,
 
 	nm_assert (!specific_object || !*specific_object);
 
-	if (!NM_DEVICE_CLASS (nm_device_wifi_parent_class)->can_auto_connect (device, sett_conn, NULL))
+	if (!NM_DEVICE_CLASS (nm_device_wifi_parent_class)->can_auto_connect (device, sett_conn, NULL, error))
 		return FALSE;
 
 	connection = nm_settings_connection_get_connection (sett_conn);
@@ -997,8 +998,12 @@ can_auto_connect (NMDevice *device,
 	 * from the menu and the user may not know the password.
 	 */
 	if (nm_settings_connection_get_timestamp (sett_conn, &timestamp)) {
-		if (timestamp == 0)
+		if (timestamp == 0) {
+			nm_utils_error_set_literal (error,
+			                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_TEMPORARY,
+			                            "connection never activated successfully");
 			return FALSE;
+		}
 	}
 
 	ap = nm_wifi_aps_find_first_compatible (&priv->aps_lst_head, connection);
@@ -1008,6 +1013,9 @@ can_auto_connect (NMDevice *device,
 		return TRUE;
 	}
 
+	nm_utils_error_set_literal (error,
+	                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_TEMPORARY,
+	                            "no compatible AP found");
 	return FALSE;
 }
 

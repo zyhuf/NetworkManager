@@ -793,7 +793,7 @@ do_general_logging (NmCli *nmc, int argc, char **argv)
 					                             "AGENTS", "SETTINGS", "SUSPEND", "CORE", "DEVICE", "OLPC",
 					                             "INFINIBAND", "FIREWALL", "ADSL", "BOND", "VLAN", "BRIDGE",
 					                             "DBUS_PROPS", "TEAM", "CONCHECK", "DCB", "DISPATCH", "AUDIT",
-					                             "SYSTEMD", "VPN_PLUGIN", "PROXY", "TC", NULL);
+					                             "SYSTEMD", "VPN_PLUGIN", "PROXY", "TC", "AUTOCONNECT", NULL);
 				}
 				domains = *argv;
 			} else {

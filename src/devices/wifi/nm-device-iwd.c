@@ -923,7 +923,8 @@ get_autoconnect_allowed (NMDevice *device)
 static gboolean
 can_auto_connect (NMDevice *device,
                   NMSettingsConnection *sett_conn,
-                  char **specific_object)
+                  char **specific_object,
+                  GError **error)
 {
 	NMDeviceIwd *self = NM_DEVICE_IWD (device);
 	NMDeviceIwdPrivate *priv = NM_DEVICE_IWD_GET_PRIVATE (self);
@@ -935,7 +936,7 @@ can_auto_connect (NMDevice *device,
 
 	nm_assert (!specific_object || !*specific_object);
 
-	if (!NM_DEVICE_CLASS (nm_device_iwd_parent_class)->can_auto_connect (device, sett_conn, NULL))
+	if (!NM_DEVICE_CLASS (nm_device_iwd_parent_class)->can_auto_connect (device, sett_conn, NULL, error))
 		return FALSE;
 
 	connection = nm_settings_connection_get_connection (sett_conn);
@@ -947,16 +948,24 @@ can_auto_connect (NMDevice *device,
 	 * Note the wpa_supplicant backend has the opposite policy.
 	 */
 	mode = nm_setting_wireless_get_mode (s_wifi);
-	if (mode && g_strcmp0 (mode, NM_SETTING_WIRELESS_MODE_INFRA) != 0)
+	if (mode && g_strcmp0 (mode, NM_SETTING_WIRELESS_MODE_INFRA) != 0) {
+		nm_utils_error_set_literal (error,
+		                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_INCOMPATIBLE,
+		                            "only infrastructure mode connections can autoconnect");
 		return FALSE;
+	}
 
 	/* Don't autoconnect to networks that have been tried at least once
 	 * but haven't been successful, since these are often accidental choices
 	 * from the menu and the user may not know the password.
 	 */
 	if (nm_settings_connection_get_timestamp (sett_conn, &timestamp)) {
-		if (timestamp == 0)
+		if (timestamp == 0) {
+			nm_utils_error_set_literal (error,
+			                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_TEMPORARY,
+			                            "connection never activated successfully");
 			return FALSE;
+		}
 	}
 
 	ap = nm_wifi_aps_find_first_compatible (&priv->aps_lst_head, connection);
@@ -966,6 +975,9 @@ can_auto_connect (NMDevice *device,
 		return TRUE;
 	}
 
+	nm_utils_error_set_literal (error,
+	                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_TEMPORARY,
+	                            "no compatible AP found");
 	return FALSE;
 }
 

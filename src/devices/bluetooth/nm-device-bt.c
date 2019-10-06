@@ -166,7 +166,8 @@ get_generic_capabilities (NMDevice *device)
 static gboolean
 can_auto_connect (NMDevice *device,
                   NMSettingsConnection *sett_conn,
-                  char **specific_object)
+                  char **specific_object,
+                  GError **error)
 {
 	NMDeviceBt *self = NM_DEVICE_BT (device);
 	NMDeviceBtPrivate *priv = NM_DEVICE_BT_GET_PRIVATE (self);
@@ -174,19 +175,23 @@ can_auto_connect (NMDevice *device,
 
 	nm_assert (!specific_object || !*specific_object);
 
-	if (!NM_DEVICE_CLASS (nm_device_bt_parent_class)->can_auto_connect (device, sett_conn, NULL))
+	if (!NM_DEVICE_CLASS (nm_device_bt_parent_class)->can_auto_connect (device, sett_conn, NULL, error))
 		return FALSE;
 
 	if (!get_connection_bt_type_check (self,
 	                                   nm_settings_connection_get_connection (sett_conn),
 	                                   &bt_type,
-	                                   NULL))
+	                                   error))
 		return FALSE;
 
 	/* Can't auto-activate a DUN connection without ModemManager */
 	if (   bt_type == NM_BT_CAPABILITY_DUN
-	    && priv->mm_running == FALSE)
+	    && priv->mm_running == FALSE) {
+		nm_utils_error_set_literal (error,
+		                            NM_UTILS_ERROR_CONNECTION_AVAILABLE_TEMPORARY,
+		                            "bluetooth DUN connection requires ModemManager");
 		return FALSE;
+	}
 
 	return TRUE;
 }
