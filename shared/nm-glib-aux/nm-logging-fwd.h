@@ -64,6 +64,7 @@ typedef enum  { /*< skip >*/
 	LOGD_SYSTEMD    = (1LL << 35),
 	LOGD_VPN_PLUGIN = (1LL << 36),
 	LOGD_PROXY      = (1LL << 37),
+	LOGD_AUTOCONNECT= (1LL << 38),
 
 	__LOGD_MAX,
 	LOGD_ALL       = (((__LOGD_MAX - 1LL) << 1) - 1LL),
@@ -71,6 +72,7 @@ typedef enum  { /*< skip >*/
 	                              LOGD_DBUS_PROPS |
 	                              LOGD_WIFI_SCAN |
 	                              LOGD_VPN_PLUGIN |
+	                              LOGD_AUTOCONNECT |
 	                              0),
 
 	/* aliases: */

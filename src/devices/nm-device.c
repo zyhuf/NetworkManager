@@ -5476,7 +5476,8 @@ nm_device_autoconnect_allowed (NMDevice *self)
 static gboolean
 can_auto_connect (NMDevice *self,
                   NMSettingsConnection *sett_conn,
-                  char **specific_object)
+                  char **specific_object,
+                  GError **error)
 {
 	nm_assert (!specific_object || !*specific_object);
 	return TRUE;
@@ -5489,6 +5490,7 @@ can_auto_connect (NMDevice *self,
  * @specific_object: (out) (transfer full): on output, the path of an
  *   object associated with the returned connection, to be passed to
  *   nm_manager_activate_connection(), or %NULL.
+ * @error: location to store error, or %NULL
  *
  * Checks if @sett_conn can be auto-activated on @self right now.
  * This requires, at a minimum, that the connection be compatible with
@@ -5502,11 +5504,13 @@ can_auto_connect (NMDevice *self,
 gboolean
 nm_device_can_auto_connect (NMDevice *self,
                             NMSettingsConnection *sett_conn,
-                            char **specific_object)
+                            char **specific_object,
+                            GError **error)
 {
 	g_return_val_if_fail (NM_IS_DEVICE (self), FALSE);
 	g_return_val_if_fail (NM_IS_SETTINGS_CONNECTION (sett_conn), FALSE);
 	g_return_val_if_fail (!specific_object || !*specific_object, FALSE);
+	g_return_val_if_fail (!error || !*error, FALSE);
 
 	/* the caller must ensure that nm_device_autoconnect_allowed() returns
 	 * TRUE as well. This is done, because nm_device_can_auto_connect()
@@ -5521,10 +5525,10 @@ nm_device_can_auto_connect (NMDevice *self,
 	                                           nm_settings_connection_get_connection (sett_conn),
 	                                           NM_DEVICE_CHECK_CON_AVAILABLE_NONE,
 	                                           NULL,
-	                                           NULL))
+	                                           error))
 		return FALSE;
 
-	if (!NM_DEVICE_GET_CLASS (self)->can_auto_connect (self, sett_conn, specific_object))
+	if (!NM_DEVICE_GET_CLASS (self)->can_auto_connect (self, sett_conn, specific_object, error))
 		return FALSE;
 
 	return TRUE;

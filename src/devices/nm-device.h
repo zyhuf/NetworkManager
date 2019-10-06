@@ -333,7 +333,8 @@ typedef struct _NMDeviceClass {
 
 	gboolean    (* can_auto_connect) (NMDevice *self,
 	                                  NMSettingsConnection *sett_conn,
-	                                  char **specific_object);
+	                                  char **specific_object,
+	                                  GError **error);
 
 	guint32     (*get_configured_mtu) (NMDevice *self, NMDeviceMtuSource *out_source);
 
@@ -584,7 +585,8 @@ gboolean nm_device_master_update_slave_connection (NMDevice *master,
 
 gboolean nm_device_can_auto_connect (NMDevice *self,
                                      NMSettingsConnection *sett_conn,
-                                     char **specific_object);
+                                     char **specific_object,
+                                     GError **error);
 
 gboolean nm_device_complete_connection (NMDevice *device,
                                         NMConnection *connection,
