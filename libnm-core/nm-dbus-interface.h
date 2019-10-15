@@ -34,6 +34,7 @@
 #define NM_DBUS_INTERFACE_DEVICE_BLUETOOTH     NM_DBUS_INTERFACE_DEVICE ".Bluetooth"
 #define NM_DBUS_INTERFACE_DEVICE_BOND          NM_DBUS_INTERFACE_DEVICE ".Bond"
 #define NM_DBUS_INTERFACE_DEVICE_BRIDGE        NM_DBUS_INTERFACE_DEVICE ".Bridge"
+#define NM_DBUS_INTERFACE_DEVICE_CONTRAIL_VROUTER NM_DBUS_INTERFACE_DEVICE ".ContrailVrouter"
 #define NM_DBUS_INTERFACE_DEVICE_DUMMY         NM_DBUS_INTERFACE_DEVICE ".Dummy"
 #define NM_DBUS_INTERFACE_DEVICE_GENERIC       NM_DBUS_INTERFACE_DEVICE ".Generic"
 #define NM_DBUS_INTERFACE_DEVICE_GRE           NM_DBUS_INTERFACE_DEVICE ".Gre"
@@ -209,6 +210,7 @@ typedef enum {
  * @NM_DEVICE_TYPE_6LOWPAN: 6LoWPAN interface
  * @NM_DEVICE_TYPE_WIREGUARD: a WireGuard interface
  * @NM_DEVICE_TYPE_WIFI_P2P: an 802.11 Wi-Fi P2P device (Since: 1.16)
+ * @NM_DEVICE_TYPE_CONTRAIL_VROUTER: a Contrail Vrouter
  *
  * #NMDeviceType values indicate the type of hardware represented by a
  * device object.
@@ -245,6 +247,7 @@ typedef enum {
 	NM_DEVICE_TYPE_6LOWPAN       = 28,
 	NM_DEVICE_TYPE_WIREGUARD     = 29,
 	NM_DEVICE_TYPE_WIFI_P2P      = 30,
+	NM_DEVICE_TYPE_CONTRAIL_VROUTER = 31,
 } NMDeviceType;
 
 /**
@@ -565,6 +568,7 @@ typedef enum {
  * @NM_DEVICE_STATE_REASON_IP_METHOD_UNSUPPORTED: The selected IP method is not supported
  * @NM_DEVICE_STATE_REASON_SRIOV_CONFIGURATION_FAILED: configuration of SR-IOV parameters failed
  * @NM_DEVICE_STATE_REASON_PEER_NOT_FOUND: The Wi-Fi P2P peer could not be found
+ * @NM_DEVICE_STATE_REASON_CONTRAIL_VROUTER_FAILED: Contrail Vrouter kernel module failed
  *
  * Device state change reason codes
  */
@@ -637,6 +641,7 @@ typedef enum {
 	NM_DEVICE_STATE_REASON_IP_METHOD_UNSUPPORTED          = 65,
 	NM_DEVICE_STATE_REASON_SRIOV_CONFIGURATION_FAILED     = 66,
 	NM_DEVICE_STATE_REASON_PEER_NOT_FOUND                 = 67,
+	NM_DEVICE_STATE_REASON_CONTRAIL_VROUTER_FAILED        = 68,
 } NMDeviceStateReason;
 
 /**

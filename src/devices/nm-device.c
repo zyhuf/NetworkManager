@@ -774,6 +774,7 @@ NM_UTILS_LOOKUP_STR_DEFINE (nm_device_state_reason_to_str, NMDeviceStateReason,
 	NM_UTILS_LOOKUP_STR_ITEM (NM_DEVICE_STATE_REASON_IP_METHOD_UNSUPPORTED,          "ip-method-unsupported"),
 	NM_UTILS_LOOKUP_STR_ITEM (NM_DEVICE_STATE_REASON_SRIOV_CONFIGURATION_FAILED,     "sriov-configuration-failed"),
 	NM_UTILS_LOOKUP_STR_ITEM (NM_DEVICE_STATE_REASON_PEER_NOT_FOUND,                 "peer-not-found"),
+    NM_UTILS_LOOKUP_STR_ITEM (NM_DEVICE_STATE_REASON_CONTRAIL_VROUTER_FAILED,                 "contrail-vrouter-failed"),
 );
 
 #define reason_to_string_a(reason) NM_UTILS_LOOKUP_STR_A (nm_device_state_reason_to_str, reason)
@@ -2134,6 +2135,7 @@ nm_device_get_route_metric_default (NMDeviceType device_type)
 		return 10000;
 	case NM_DEVICE_TYPE_UNUSED1:
 	case NM_DEVICE_TYPE_UNUSED2:
+    case NM_DEVICE_TYPE_CONTRAIL_VROUTER:
 		/* omit default: to get compiler warning about missing switch cases */
 		break;
 	}

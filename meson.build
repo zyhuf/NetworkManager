@@ -582,6 +582,9 @@ if enable_ovs
   assert(jansson_dep.found(), 'jansson is needed for Open vSwitch integration. Use -Dovs=false to disable it')
 endif
 
+# Contrail vrouter integration
+enable_contrail = get_option('contrail_vrouter')
+
 # DNS resolv.conf managers
 config_dns_rc_manager_default = get_option('config_dns_rc_manager_default')
 config_h.set_quoted('NM_CONFIG_DEFAULT_MAIN_RC_MANAGER', config_dns_rc_manager_default)
@@ -931,6 +934,7 @@ output += '  ofono: ' + enable_ofono.to_string() + '\n'
 output += '  concheck: ' + enable_concheck.to_string() + '\n'
 output += '  libteamdctl: ' + enable_teamdctl.to_string() + '\n'
 output += '  ovs: ' + enable_ovs.to_string() + '\n'
+output += '  contrail: ' + enable_contrail.to_string() + '\n'
 output += '  nmcli: ' + enable_nmcli.to_string() + '\n'
 output += '  nmtui: ' + enable_nmtui.to_string() + '\n'
 output += '\nConfiguration_plugins (main.plugins=' + config_plugins_default + ')\n'
