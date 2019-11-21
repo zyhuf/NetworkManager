@@ -21,14 +21,18 @@
 G_DEFINE_BOXED_TYPE (NMDnsEntry, nm_dns_entry, nm_dns_entry_ref, nm_dns_entry_unref)
 
 struct NMDnsEntry {
-	char *interface;
-	char **nameservers;
-	char **domains;
+	const char **nameservers;
+	const char **domains;
 
 	int ref_count;
 
 	int priority;
 	bool vpn:1;
+	bool has_interface:1;
+	bool has_nameservers:1;
+	bool has_domains:1;
+
+	char interface[0];
 };
 
 /**
@@ -46,16 +50,25 @@ nm_dns_entry_new (const char *interface,
                   gboolean vpn)
 {
 	NMDnsEntry *entry;
+	gsize l;
 
-	entry = g_slice_new (NMDnsEntry);
-	*entry = (NMDnsEntry) {
-		.ref_count   = 1,
-		.interface   = g_strdup (interface),
-		.priority    = priority,
-		.vpn         = vpn,
-		.nameservers = g_strdupv ((char **) nameservers),
-		.domains     = g_strdupv ((char **) domains),
-	};
+	l = interface ? strlen (interface) + 1u : 0u;
+
+	entry = g_malloc (sizeof (NMDnsEntry) + l);
+	entry->ref_count       = 1,
+	entry->priority        = priority,
+	entry->vpn             = vpn,
+	entry->nameservers     = nm_utils_strv_dup_inline (nameservers, -1);
+	entry->domains         = nm_utils_strv_dup_inline (domains, -1);
+
+	/* for empty arrays, we don't allocation a strv array. However, we
+	 * need to remember whether the array was NULL or empty. */
+	entry->has_nameservers = (!!nameservers);
+	entry->has_domains     = (!!domains);
+
+	entry->has_interface   = (!!interface);
+	if (interface)
+		memcpy (entry->interface, interface, l);
 
 	return entry;
 }
@@ -96,10 +109,9 @@ nm_dns_entry_unref (NMDnsEntry *entry)
 	if (!g_atomic_int_dec_and_test (&entry->ref_count))
 		return;
 
-	g_free (entry->interface);
-	g_strfreev (entry->nameservers);
-	g_strfreev (entry->domains);
-	g_slice_free (NMDnsEntry, entry);
+	g_free (entry->nameservers);
+	g_free (entry->domains);
+	g_free (entry);
 }
 
 /**
@@ -118,7 +130,7 @@ nm_dns_entry_get_interface (NMDnsEntry *entry)
 	g_return_val_if_fail (entry, 0);
 	g_return_val_if_fail (entry->ref_count > 0, 0);
 
-	return entry->interface;
+	return entry->has_interface ? entry->interface : NULL;
 }
 
 /**
@@ -137,7 +149,10 @@ nm_dns_entry_get_nameservers (NMDnsEntry *entry)
 	g_return_val_if_fail (entry, 0);
 	g_return_val_if_fail (entry->ref_count > 0, 0);
 
-	return (const char *const*) entry->nameservers;
+	return    entry->nameservers
+	       ?: (  entry->has_nameservers
+	           ? (const char *const*) &entry->nameservers
+	           : NULL);
 }
 
 /**
@@ -156,7 +171,10 @@ nm_dns_entry_get_domains (NMDnsEntry *entry)
 	g_return_val_if_fail (entry, 0);
 	g_return_val_if_fail (entry->ref_count > 0, 0);
 
-	return (const char *const*) entry->domains;
+	return    entry->domains
+	       ?: (  entry->has_domains
+	           ? (const char *const*) &entry->domains
+	           : NULL);
 }
 
 /**
