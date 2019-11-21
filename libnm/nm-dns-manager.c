@@ -18,16 +18,17 @@
  * NMDnsEntry
  *****************************************************************************/
 
-G_DEFINE_BOXED_TYPE (NMDnsEntry, nm_dns_entry, nm_dns_entry_dup, nm_dns_entry_unref)
+G_DEFINE_BOXED_TYPE (NMDnsEntry, nm_dns_entry, nm_dns_entry_ref, nm_dns_entry_unref)
 
 struct NMDnsEntry {
-	guint refcount;
-
 	char *interface;
 	char **nameservers;
 	char **domains;
+
+	int ref_count;
+
 	int priority;
-	gboolean vpn;
+	bool vpn:1;
 };
 
 /**
@@ -39,62 +40,42 @@ struct NMDnsEntry {
  **/
 NMDnsEntry *
 nm_dns_entry_new (const char *interface,
-                  const char * const *nameservers,
-                  const char * const *domains,
+                  const char *const*nameservers,
+                  const char *const*domains,
                   int priority,
                   gboolean vpn)
 {
 	NMDnsEntry *entry;
-	guint i, len;
 
-	entry = g_slice_new0 (NMDnsEntry);
-	entry->refcount = 1;
-
-	entry->interface = g_strdup (interface);
-
-	if (nameservers) {
-		len = g_strv_length ((char **) nameservers);
-		entry->nameservers = g_new (char *, len + 1);
-		for (i = 0; i < len + 1; i++)
-			entry->nameservers[i] = g_strdup (nameservers[i]);
-	}
-
-	if (domains) {
-		len = g_strv_length ((char **) domains);
-		entry->domains = g_new (char *, len + 1);
-		for (i = 0; i < len + 1; i++)
-			entry->domains[i] = g_strdup (domains[i]);
-	}
-
-	entry->priority = priority;
-	entry->vpn = vpn;
+	entry = g_slice_new (NMDnsEntry);
+	*entry = (NMDnsEntry) {
+		.ref_count   = 1,
+		.interface   = g_strdup (interface),
+		.priority    = priority,
+		.vpn         = vpn,
+		.nameservers = g_strdupv ((char **) nameservers),
+		.domains     = g_strdupv ((char **) domains),
+	};
 
 	return entry;
 }
 
 /**
- * nm_dns_entry_dup:
+ * nm_dns_entry_ref:
  * @entry: the #NMDnsEntry
  *
- * Creates a copy of @entry
+ * Increase the reference count of the entry.
  *
- * Returns: (transfer full): a copy of @entry
+ * Returns: (transfer full): returns @entry.
  **/
 NMDnsEntry *
-nm_dns_entry_dup (NMDnsEntry *entry)
+nm_dns_entry_ref (NMDnsEntry *entry)
 {
-	NMDnsEntry *copy;
-
 	g_return_val_if_fail (entry != NULL, NULL);
-	g_return_val_if_fail (entry->refcount > 0, NULL);
+	g_return_val_if_fail (entry->ref_count > 0, NULL);
 
-	copy = nm_dns_entry_new (entry->interface,
-	                         (const char * const *) entry->nameservers,
-	                         (const char * const *) entry->domains,
-	                         entry->priority,
-	                         entry->vpn);
-
-	return copy;
+	g_atomic_int_inc (&entry->ref_count);
+	return entry;
 }
 
 /**
@@ -110,15 +91,15 @@ void
 nm_dns_entry_unref (NMDnsEntry *entry)
 {
 	g_return_if_fail (entry != NULL);
-	g_return_if_fail (entry->refcount > 0);
+	g_return_if_fail (entry->ref_count > 0);
 
-	entry->refcount--;
-	if (entry->refcount == 0) {
-		g_free (entry->interface);
-		g_strfreev (entry->nameservers);
-		g_strfreev (entry->domains);
-		g_slice_free (NMDnsEntry, entry);
-	}
+	if (!g_atomic_int_dec_and_test (&entry->ref_count))
+		return;
+
+	g_free (entry->interface);
+	g_strfreev (entry->nameservers);
+	g_strfreev (entry->domains);
+	g_slice_free (NMDnsEntry, entry);
 }
 
 /**
@@ -135,7 +116,7 @@ const char *
 nm_dns_entry_get_interface (NMDnsEntry *entry)
 {
 	g_return_val_if_fail (entry, 0);
-	g_return_val_if_fail (entry->refcount > 0, 0);
+	g_return_val_if_fail (entry->ref_count > 0, 0);
 
 	return entry->interface;
 }
@@ -150,13 +131,13 @@ nm_dns_entry_get_interface (NMDnsEntry *entry)
  *
  * Since: 1.6
  **/
-const char * const *
+const char *const*
 nm_dns_entry_get_nameservers (NMDnsEntry *entry)
 {
 	g_return_val_if_fail (entry, 0);
-	g_return_val_if_fail (entry->refcount > 0, 0);
+	g_return_val_if_fail (entry->ref_count > 0, 0);
 
-	return (const char * const *) entry->nameservers;
+	return (const char *const*) entry->nameservers;
 }
 
 /**
@@ -169,13 +150,13 @@ nm_dns_entry_get_nameservers (NMDnsEntry *entry)
  *
  * Since: 1.6
  **/
-const char * const *
+const char *const*
 nm_dns_entry_get_domains (NMDnsEntry *entry)
 {
 	g_return_val_if_fail (entry, 0);
-	g_return_val_if_fail (entry->refcount > 0, 0);
+	g_return_val_if_fail (entry->ref_count > 0, 0);
 
-	return (const char * const *)entry->domains;
+	return (const char *const*) entry->domains;
 }
 
 /**
@@ -192,7 +173,7 @@ gboolean
 nm_dns_entry_get_vpn (NMDnsEntry *entry)
 {
 	g_return_val_if_fail (entry, 0);
-	g_return_val_if_fail (entry->refcount > 0, 0);
+	g_return_val_if_fail (entry->ref_count > 0, 0);
 
 	return entry->vpn;
 }
@@ -211,7 +192,7 @@ int
 nm_dns_entry_get_priority (NMDnsEntry *entry)
 {
 	g_return_val_if_fail (entry, 0);
-	g_return_val_if_fail (entry->refcount > 0, 0);
+	g_return_val_if_fail (entry->ref_count > 0, 0);
 
 	return entry->priority;
 }

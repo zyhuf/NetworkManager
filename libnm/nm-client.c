@@ -6835,7 +6835,7 @@ get_property (GObject *object, guint prop_id,
 		break;
 	case PROP_DNS_CONFIGURATION:
 		g_value_take_boxed (value, _nm_utils_copy_array (nm_client_get_dns_configuration (self),
-		                                                 (NMUtilsCopyFunc) nm_dns_entry_dup,
+		                                                 (NMUtilsCopyFunc) nm_dns_entry_ref,
 		                                                 (GDestroyNotify) nm_dns_entry_unref));
 		break;
 

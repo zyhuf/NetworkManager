@@ -10,13 +10,12 @@
 #error Cannot use this header.
 #endif
 
-#include "nm-client.h"
-
 NMDnsEntry *nm_dns_entry_new (const char *interface,
-                              const char * const *nameservers,
-                              const char * const *domains,
+                              const char *const*nameservers,
+                              const char *const*domains,
                               int priority,
                               gboolean vpn);
-NMDnsEntry *nm_dns_entry_dup (NMDnsEntry *entry);
+
+NMDnsEntry *nm_dns_entry_ref (NMDnsEntry *entry);
 
 #endif /* __NM_DNS_MANAGER_H__ */
