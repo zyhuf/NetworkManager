@@ -5887,6 +5887,7 @@ check_connection_compatible (NMDevice *self, NMConnection *connection, GError **
 	conn_iface = nm_manager_get_connection_iface (NM_MANAGER_GET,
 	                                              connection,
 	                                              NULL,
+	                                              NULL,
 	                                              &local);
 
 	/* We always need a interface name for virtual devices, but for
