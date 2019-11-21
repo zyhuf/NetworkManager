@@ -554,6 +554,88 @@ test_nm_ref_string (void)
 
 /*****************************************************************************/
 
+static void
+test_nm_utils_strv_dup (void)
+{
+	static const char *const STRINGS[] = {
+		"",
+		"a",
+		"bc",
+		"def",
+		"ghij",
+		"klmno",
+		"pqrstu",
+		"vwxyz01",
+		"23456789",
+	};
+	const char *strv[G_N_ELEMENTS (STRINGS) * 3];
+	int i_test;
+
+	for (i_test = 0; i_test < 100; i_test++) {
+		int strv_len;
+		int i;
+		int j;
+		gs_free const char **arr_1 = NULL;
+		gs_free const char **arr_2 = NULL;
+		gs_free char **arr_3 = NULL;
+		gs_free char **arr_4 = NULL;
+		gs_strfreev char **arr_5 = NULL;
+		gs_strfreev char **arr_6 = NULL;
+
+		strv_len = nmtst_get_rand_uint32 () % G_N_ELEMENTS (strv);
+
+		for (i = 0; i < strv_len; i++)
+			strv[i] = STRINGS[nmtst_get_rand_uint32 () % G_N_ELEMENTS (STRINGS)];
+		strv[i] = NULL;
+
+		arr_1 = nm_utils_strv_dup_inline (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, strv_len        );
+		arr_2 = nm_utils_strv_dup_inline (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, -1              );
+		arr_3 = nm_utils_strv_dup        (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, strv_len, FALSE );
+		arr_4 = nm_utils_strv_dup        (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, -1,       FALSE );
+		arr_5 = nm_utils_strv_dup        (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, strv_len, TRUE  );
+		arr_6 = nm_utils_strv_dup        (strv_len != 0 || nmtst_get_rand_bool () ? strv : NULL, -1,       TRUE  );
+
+		{
+			const char *const*arr_all[] = {
+				arr_1,
+				arr_2,
+				(const char *const*) arr_3,
+				(const char *const*) arr_4,
+				(const char *const*) arr_5,
+				(const char *const*) arr_6,
+			};
+
+			for (i = 0; i < G_N_ELEMENTS (arr_all); i++) {
+				const char *const*arr = arr_all[i];
+				gboolean is_copied;
+
+				is_copied = !NM_IN_SET ((gpointer) arr, arr_3, arr_4);
+
+				if (strv_len == 0) {
+					g_assert (!arr);
+					continue;
+				}
+
+				g_assert (arr);
+
+				for (j = 0; j < strv_len; j++) {
+					g_assert (strv[j]);
+					if (!is_copied) {
+						g_assert (strv[j] == arr[j]);
+						continue;
+					}
+					g_assert (strv[j] != arr[j]);
+					g_assert_cmpstr (strv[j], ==, arr[j]);
+				}
+				g_assert (!arr[j]);
+				g_assert_cmpint (NM_PTRARRAY_LEN (arr), ==, strv_len);
+			}
+		}
+	}
+}
+
+/*****************************************************************************/
+
 NMTST_DEFINE ();
 
 int main (int argc, char **argv)
@@ -572,6 +654,7 @@ int main (int argc, char **argv)
 	g_test_add_func ("/general/test_strstrip_avoid_copy", test_strstrip_avoid_copy);
 	g_test_add_func ("/general/test_nm_utils_bin2hexstr", test_nm_utils_bin2hexstr);
 	g_test_add_func ("/general/test_nm_ref_string", test_nm_ref_string);
+	g_test_add_func ("/general/test_nm_utils_strv_dup", test_nm_utils_strv_dup);
 
 	return g_test_run ();
 }

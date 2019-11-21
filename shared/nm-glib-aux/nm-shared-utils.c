@@ -2415,7 +2415,7 @@ nm_utils_strv_make_deep_copied_n (const char **strv, gsize len)
  *   cloned or not.
  */
 char **
-nm_utils_strv_dup (gpointer strv,
+nm_utils_strv_dup (gconstpointer strv,
                    gssize len,
                    gboolean deep_copied)
 {
@@ -2452,6 +2452,79 @@ nm_utils_strv_dup (gpointer strv,
 	}
 	v[l] = NULL;
 	return v;
+}
+
+/**
+ * nm_utils_strv_dup_inline:
+ * @strv: the @strv array or %NULL.
+ * @len: the length of the strv array. If this is a positive length,
+ *   then @strv must not be NULL. If this is negative, @strv must be
+ *   a NULL terminated strv array (or NULL).
+ *   The first @len strings in @strv MUST not be NULL.
+ *
+ * This copies the strv array, but only allocates one buffer. The
+ * strings are embedded after the buffer (that means, you cannot reallocate
+ * the buffer or free the individual strings). You may modify the individual
+ * strings as they are copied.
+ *
+ * This never returns an empty strv array. If you require that, handle
+ * empty arrays yourself.
+ *
+ * Returns: the copied strv array. You must free the returned buffer with
+ *   g_free(), not g_strfreev()!
+ */
+const char **
+nm_utils_strv_dup_inline (gconstpointer strv,
+                          gssize len)
+{
+	const char *const *const src = strv;
+	gsize i;
+	gsize arr_len;
+	gsize str_len;
+	const char **v_arr;
+	char *v_str;
+
+	arr_len = 0;
+	str_len = 0;
+	if (len < 0) {
+		if (src) {
+			for (arr_len = 0; src[arr_len]; arr_len++)
+				str_len += strlen (src[arr_len]);
+		}
+	}
+	else {
+		arr_len = len;
+		for (i = 0; i < arr_len; i++) {
+			if (G_UNLIKELY (!src[i])) {
+				/* NULL strings are not allowed. We assert and truncate the array here. */
+				nm_assert_not_reached ();
+				arr_len = i;
+				break;
+			}
+			str_len += strlen (src[i]);
+		}
+	}
+
+	if (arr_len == 0) {
+		/* this function never returns an empty strv array. If you
+		 * need that, handle it yourself. */
+		return NULL;
+	}
+
+	v_arr = g_malloc ((sizeof (char *) * (arr_len + 1)) + (str_len + arr_len));
+	v_str = (char *) (&v_arr[arr_len + 1]);
+	for (i = 0; i < arr_len; i++) {
+		gsize l;
+
+		l = strlen (src[i]) + 1;
+
+		v_arr[i] = v_str;
+		memcpy (v_str, src[i], l);
+		v_str += l;
+	}
+	v_arr[arr_len] = NULL;
+
+	return v_arr;
 }
 
 /*****************************************************************************/
