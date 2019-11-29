@@ -1563,7 +1563,6 @@ libnm_tests_test_remote_settings_client_CPPFLAGS = $(libnm_tests_cppflags)
 libnm_tests_test_secret_agent_CPPFLAGS = $(libnm_tests_cppflags)
 
 libnm_tests_test_libnm_SOURCES = \
-	shared/nm-utils/nm-compat.c \
 	libnm/tests/test-libnm.c \
 	$(NULL)
 
@@ -4921,8 +4920,6 @@ EXTRA_DIST += \
 	shared/nm-default.h \
 	shared/nm-test-libnm-utils.h \
 	shared/nm-test-utils-impl.c \
-	shared/nm-utils/nm-compat.c \
-	shared/nm-utils/nm-compat.h \
 	shared/nm-utils/nm-test-utils.h \
 	shared/nm-utils/nm-vpn-editor-plugin-call.h \
 	shared/nm-utils/nm-vpn-plugin-macros.h \
