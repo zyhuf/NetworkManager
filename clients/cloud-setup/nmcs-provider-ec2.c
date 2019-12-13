@@ -48,7 +48,7 @@ again:
 
 		nm_assert (!NM_STR_HAS_SUFFIX (base, "/"));
 
-		if (!g_atomic_pointer_compare_and_exchange (&base_cached, NULL, base))
+		if (!g_atomic_pointer_compare_and_exchange ((void **) &base_cached, NULL, (void *) base))
 			goto again;
 	}
 
