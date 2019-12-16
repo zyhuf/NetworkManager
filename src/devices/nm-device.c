@@ -1449,6 +1449,7 @@ nm_device_take_over_link (NMDevice *self, int ifindex, char **old_name)
 
 	if (success) {
 		priv->ifindex = ifindex;
+		_LOGD (LOGD_DEVICE, " ---- ifindex is now %d", priv->ifindex);
 		_notify (self, PROP_IFINDEX);
 	}
 
@@ -3862,6 +3863,8 @@ device_link_changed (NMDevice *self)
 	gboolean got_hw_addr = FALSE, had_hw_addr;
 	gboolean seen_down = priv->device_link_changed_down;
 
+	_LOGD (LOGD_DEVICE, " ---- link changed");
+
 	priv->device_link_changed_id = 0;
 	priv->device_link_changed_down = FALSE;
 
@@ -4284,6 +4287,7 @@ nm_device_update_from_platform_link (NMDevice *self, const NMPlatformLink *plink
 
 	ifindex = plink ? plink->ifindex : 0;
 	if (priv->ifindex != ifindex) {
+		_LOGD (LOGD_DEVICE, " ---- ifindex is now %d", ifindex);
 		priv->ifindex = ifindex;
 		_notify (self, PROP_IFINDEX);
 		NM_DEVICE_GET_CLASS (self)->link_changed (self, plink);
@@ -4766,6 +4770,7 @@ nm_device_unrealize (NMDevice *self, gboolean remove_resources, GError **error)
 	_parent_set_ifindex (self, 0, FALSE);
 
 	if (priv->ifindex > 0) {
+		_LOGD (LOGD_DEVICE, " ---- ifindex is now 0");
 		priv->ifindex = 0;
 		_notify (self, PROP_IFINDEX);
 	}
@@ -16874,6 +16879,7 @@ constructor (GType type,
 
 		if (pllink && link_type_compatible (self, pllink->type, NULL, NULL)) {
 			priv->ifindex = pllink->ifindex;
+			_LOGD (LOGD_DEVICE, " ---- ifindex is now %d", priv->ifindex);
 			priv->up = NM_FLAGS_HAS (pllink->n_ifi_flags, IFF_UP);
 		}
 	}

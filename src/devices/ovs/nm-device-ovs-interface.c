@@ -96,7 +96,14 @@ static void
 link_changed (NMDevice *device,
               const NMPlatformLink *pllink)
 {
+	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
 	NMDeviceOvsInterfacePrivate *priv = NM_DEVICE_OVS_INTERFACE_GET_PRIVATE (device);
+
+	_LOGD (LOGD_DEVICE,
+	       " ---- ovs-interface link changed (pllink %p, waiting %d, state %u)",
+	       pllink,
+	       priv->waiting_for_interface,
+	       (guint) nm_device_get_state (device));
 
 	if (   pllink
 	    && priv->waiting_for_interface
@@ -125,12 +132,22 @@ act_stage3_ip_config_start (NMDevice *device,
                             gpointer *out_config,
                             NMDeviceStateReason *out_failure_reason)
 {
+	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
 	NMDeviceOvsInterfacePrivate *priv = NM_DEVICE_OVS_INTERFACE_GET_PRIVATE (device);
+	int ifindex;
+	gboolean is_internal;
 
-	if (!_is_internal_interface (device))
+	ifindex = nm_device_get_ip_ifindex (device);
+	is_internal = _is_internal_interface (device);
+
+	_LOGD (LOGD_DEVICE,
+	       " ---- ovs-interface stage3: is-internal %d, ifindex %d",
+	       is_internal, ifindex);
+
+	if (!is_internal)
 		return NM_ACT_STAGE_RETURN_IP_FAIL;
 
-	if (nm_device_get_ip_ifindex (device) <= 0) {
+	if (ifindex <= 0) {
 		priv->waiting_for_interface = TRUE;
 		return NM_ACT_STAGE_RETURN_POSTPONE;
 	}
@@ -149,6 +166,8 @@ deactivate (NMDevice *device)
 {
 	NMDeviceOvsInterface *self = NM_DEVICE_OVS_INTERFACE (device);
 	NMDeviceOvsInterfacePrivate *priv = NM_DEVICE_OVS_INTERFACE_GET_PRIVATE (self);
+
+	_LOGD (LOGD_DEVICE, " ---- ovs-interface deactivate");
 
 	priv->waiting_for_interface = FALSE;
 }
