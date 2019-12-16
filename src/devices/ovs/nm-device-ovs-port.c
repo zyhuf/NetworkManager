@@ -86,19 +86,27 @@ add_iface_cb (GError *error, gpointer user_data)
 static gboolean
 enslave_slave (NMDevice *device, NMDevice *slave, NMConnection *connection, gboolean configure)
 {
+	NMDeviceOvsPort *self = NM_DEVICE_OVS_PORT (device);
 	NMActiveConnection *ac_port = NULL;
 	NMActiveConnection *ac_bridge = NULL;
+	NMActiveConnection *ac_master = NULL;
 	NMDevice *bridge_device;
 
 	if (!configure)
 		return TRUE;
 
 	ac_port = NM_ACTIVE_CONNECTION (nm_device_get_act_request (device));
-	ac_bridge = nm_active_connection_get_master (ac_port);
+	ac_master = ac_bridge = nm_active_connection_get_master (ac_port);
 	if (!ac_bridge)
 		ac_bridge = ac_port;
 
 	bridge_device = nm_active_connection_get_device (ac_bridge);
+	_LOGD (LOGD_CORE, "ac_master %p, ac_port %p, bridge_device %p", ac_master, ac_port, bridge_device);
+
+	if (!bridge_device) {
+		_LOGW (LOGD_CORE, " ---- enslaving failed due to missing bridge device");
+		return FALSE;
+	}
 
 	nm_ovsdb_add_interface (nm_ovsdb_get (),
 	                        nm_active_connection_get_applied_connection (ac_bridge),
