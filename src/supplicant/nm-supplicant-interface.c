@@ -103,7 +103,7 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMSupplicantInterface,
 	PROP_AUTH_STATE,
 );
 
-typedef struct {
+typedef struct _NMSupplicantInterfacePrivate {
 	char *         dev;
 	NMSupplicantDriver driver;
 	gboolean       has_credreq;  /* Whether querying 802.1x credentials is supported */
@@ -150,18 +150,13 @@ typedef struct {
 
 } NMSupplicantInterfacePrivate;
 
-struct _NMSupplicantInterface {
-	GObject parent;
-	NMSupplicantInterfacePrivate _priv;
-};
-
 struct _NMSupplicantInterfaceClass {
 	GObjectClass parent;
 };
 
 G_DEFINE_TYPE (NMSupplicantInterface, nm_supplicant_interface, G_TYPE_OBJECT)
 
-#define NM_SUPPLICANT_INTERFACE_GET_PRIVATE(self) _NM_GET_PRIVATE (self, NMSupplicantInterface, NM_IS_SUPPLICANT_INTERFACE)
+#define NM_SUPPLICANT_INTERFACE_GET_PRIVATE(self) _NM_GET_PRIVATE_PTR (self, NMSupplicantInterface, NM_IS_SUPPLICANT_INTERFACE)
 
 /*****************************************************************************/
 
@@ -2755,7 +2750,13 @@ set_property (GObject *object,
 static void
 nm_supplicant_interface_init (NMSupplicantInterface * self)
 {
-	NMSupplicantInterfacePrivate *priv = NM_SUPPLICANT_INTERFACE_GET_PRIVATE (self);
+	NMSupplicantInterfacePrivate *priv;
+
+	priv = G_TYPE_INSTANCE_GET_PRIVATE (self, NM_TYPE_SUPPLICANT_INTERFACE, NMSupplicantInterfacePrivate);
+
+	self->_priv = priv;
+
+	c_list_init (&self->supp_lst);
 
 	nm_assert (priv->global_capabilities == NM_SUPPL_CAP_MASK_NONE);
 	nm_assert (priv->iface_capabilities == NM_SUPPL_CAP_MASK_NONE);
@@ -2787,6 +2788,8 @@ dispose (GObject *object)
 {
 	NMSupplicantInterface *self = NM_SUPPLICANT_INTERFACE (object);
 	NMSupplicantInterfacePrivate *priv = NM_SUPPLICANT_INTERFACE_GET_PRIVATE (self);
+
+	nm_assert (c_list_is_empty (&self->supp_lst));
 
 	nm_supplicant_interface_cancel_wps (self);
 	if (priv->wps_data) {
@@ -2837,7 +2840,9 @@ nm_supplicant_interface_class_init (NMSupplicantInterfaceClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	object_class->dispose = dispose;
+	g_type_class_add_private (object_class, sizeof (NMSupplicantInterfacePrivate));
+
+	object_class->dispose      = dispose;
 	object_class->set_property = set_property;
 	object_class->get_property = get_property;
 
