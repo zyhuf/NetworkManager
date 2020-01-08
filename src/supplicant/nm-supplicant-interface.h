@@ -35,6 +35,8 @@ typedef enum {
 	NM_SUPPLICANT_INTERFACE_STATE_DOWN,
 } NMSupplicantInterfaceState;
 
+NMSupplicantInterfaceState wpas_state_string_to_enum (const char *);
+
 typedef enum {
 	NM_SUPPLICANT_AUTH_STATE_UNKNOWN,
 	NM_SUPPLICANT_AUTH_STATE_STARTED,

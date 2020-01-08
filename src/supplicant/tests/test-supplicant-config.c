@@ -18,6 +18,7 @@
 
 #include "supplicant/nm-supplicant-config.h"
 #include "supplicant/nm-supplicant-settings-verify.h"
+#include "supplicant/nm-supplicant-interface.h"
 
 #include "nm-test-utils-core.h"
 
@@ -663,6 +664,28 @@ NMTST_DEFINE ();
 int main (int argc, char **argv)
 {
 	nmtst_init_assert_logging (&argc, &argv, "INFO", "DEFAULT");
+
+	{
+		const char *val[100] = {
+		};
+		int i;
+		guint64 v;
+		const int i_start = NM_SUPPLICANT_INTERFACE_STATE_DISABLED;
+		const int i_last = NM_SUPPLICANT_INTERFACE_STATE_COMPLETED;
+
+		for (i = i_start; i <= i_last; i++)
+			val[i - i_start] = nm_supplicant_interface_state_to_string (i);
+
+		v = 0;
+		for (i = 0; i < 100000000; i++) {
+			int j = i % (i_last - i_start + 1);
+
+			//g_assert (val[j]);
+			v += wpas_state_string_to_enum (val[j]);
+		}
+		g_print (">>> done: %llu\n", (long long unsigned) v);
+		return 0;
+	}
 
 	g_test_add_func ("/supplicant-config/wifi-open", test_wifi_open);
 	g_test_add_func ("/supplicant-config/wifi-wep", test_wifi_wep);

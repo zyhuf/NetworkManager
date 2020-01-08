@@ -199,7 +199,7 @@ NM_UTILS_LOOKUP_STR_DEFINE (nm_supplicant_interface_state_to_string, NMSupplican
 	NM_UTILS_LOOKUP_STR_ITEM (NM_SUPPLICANT_INTERFACE_STATE_DOWN,            "down"),
 );
 
-NM_UTILS_STRING_TABLE_LOOKUP_DEFINE_STATIC (
+NM_UTILS_STRING_TABLE_LOOKUP_DEFINE (
 	wpas_state_string_to_enum,
 	NMSupplicantInterfaceState,
 	{ return NM_SUPPLICANT_INTERFACE_STATE_INVALID; },
