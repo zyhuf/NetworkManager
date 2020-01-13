@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 
 import sys
+import weakref
 
 import gi
 gi.require_version("NM", "1.0")
 from gi.repository import GLib, NM
+
+cbws = []
 
 class NmContext:
 
@@ -62,18 +65,22 @@ class NmContext:
             context = self.client.get_main_context()
             self.client.get_context_busy_watcher().weak_ref(lambda: is_done.append(1))
 
+        cbw = self.client.get_dbus_main_context()
         self.client = None
 
         while context.iteration(False):
             pass
 
         if not is_done:
+            raise Exception('false')
             timeout_source = GLib.timeout_source_new(50)
             timeout_source.set_callback(lambda x: is_done.append(1))
             timeout_source.attach(context)
             while not is_done:
                 context.iteration(True)
             timeout_source.destroy()
+
+        cbws.append(weakref.ref(cbw))
 
 n_runs = int(sys.argv[1])
 async_init = int(sys.argv[2]) != 0
@@ -85,3 +92,7 @@ for i_run in range(0, n_runs):
     if False and (i_run % 50 == 49):
         print("wait for D-Bus timeout...")
         NmContext.context_run(GLib.MainContext.default(), 20*1000)
+    for c in list(cbws):
+        if c():
+            raise Exception("Ups")
+        cbws.remove(c)
