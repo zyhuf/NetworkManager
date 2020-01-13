@@ -974,6 +974,22 @@ nm_client_get_main_context (NMClient *self)
 }
 
 /**
+ * nm_client_get_dbus_main_context:
+ * @self: the #NMClient instance
+ *
+ * Returns: (transfer none): the #GMainContext of the client.
+ *
+ * Since: 1.24
+ */
+GMainContext *
+nm_client_get_dbus_main_context (NMClient *self)
+{
+	g_return_val_if_fail (NM_IS_CLIENT (self), NULL);
+
+	return _nm_client_get_context_dbus (self);
+}
+
+/**
  * nm_client_get_context_busy_watcher:
  * @self: the NMClient instance.
  *
