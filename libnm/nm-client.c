@@ -66,6 +66,9 @@ static void
 _context_busy_watcher_attach_integration_source_cb (gpointer data,
                                                     GObject *where_the_object_was)
 {
+	NML_DBUS_LOG (NML_DBUS_LOG_LEVEL_TRACE,
+	              "context-watcher: destroy watcher %p",
+	              where_the_object_was);
 	nm_g_source_destroy_and_unref (data);
 }
 
@@ -7423,6 +7426,9 @@ init_sync (GInitable *initable, GCancellable *cancellable, GError **error)
 
 		source = nm_utils_g_main_context_create_integrate_source (priv->dbus_context);
 		g_source_attach (source, priv->main_context);
+		NML_DBUS_LOG (NML_DBUS_LOG_LEVEL_TRACE,
+		              "context-watcher: register watcher %p",
+		              priv->context_busy_watcher);
 		_context_busy_watcher_attach_integration_source (priv->context_busy_watcher,
 		                                                 g_steal_pointer (&source));
 	}
