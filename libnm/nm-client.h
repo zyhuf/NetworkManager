@@ -478,6 +478,8 @@ gboolean nm_client_reload_finish (NMClient *client,
                                   GAsyncResult *result,
                                   GError **error);
 
+void nm_utils_log (const char *msg);
+
 G_END_DECLS
 
 #endif /* __NM_CLIENT_H__ */

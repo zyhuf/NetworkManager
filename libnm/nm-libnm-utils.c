@@ -39,6 +39,16 @@ _nml_dbus_log_level_init (void)
 	return l;
 }
 
+/**
+ * nm_utils_log:
+ * @msg: string
+ */
+void
+nm_utils_log (const char *msg)
+{
+	g_printerr (">>>>> %s\n", msg);
+}
+
 void
 _nml_dbus_log (NMLDBusLogLevel level,
                const char *fmt,

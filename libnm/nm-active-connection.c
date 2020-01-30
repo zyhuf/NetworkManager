@@ -96,9 +96,16 @@ G_DEFINE_TYPE (NMActiveConnection, nm_active_connection, NM_TYPE_OBJECT);
 NMRemoteConnection *
 nm_active_connection_get_connection (NMActiveConnection *connection)
 {
+	NMRemoteConnection *con;
+
 	g_return_val_if_fail (NM_IS_ACTIVE_CONNECTION (connection), NULL);
 
-	return nml_dbus_property_o_get_obj (&NM_ACTIVE_CONNECTION_GET_PRIVATE (connection)->property_o[PROPERTY_O_IDX_CONNECTION]);
+	con = nml_dbus_property_o_get_obj (&NM_ACTIVE_CONNECTION_GET_PRIVATE (connection)->property_o[PROPERTY_O_IDX_CONNECTION]);
+
+	g_printerr (">>>>>>>>>> request ac.connection: %s -> %s\n",
+	            nm_object_get_path ((gpointer) connection),
+	            !con ? "(null)" : nm_object_get_path ((gpointer) con));
+	return con;
 }
 
 /**
@@ -425,12 +432,23 @@ _nm_active_connection_state_changed_commit (NMActiveConnection *self,
 	                                        _notify_event_state_changed,
 	                                        g_object_ref (self));
 }
+
 /*****************************************************************************/
 
 static gboolean
 is_ready (NMObject *nmobj)
 {
 	NMActiveConnectionPrivate *priv = NM_ACTIVE_CONNECTION_GET_PRIVATE (nmobj);
+
+	NMLDBusPropertyO *p;
+
+	p = &priv->property_o[PROPERTY_O_IDX_CONNECTION];
+
+	g_printerr (">>>>>>>>> is_ready[%s]: is-ready=%d, is-ready-fully=%d, obj=%p\n",
+	            nm_object_get_path ((gpointer) nmobj),
+	            nml_dbus_property_o_is_ready (p),
+	            nml_dbus_property_o_is_ready_fully (p),
+	            nml_dbus_property_o_get_obj (p));
 
 	/* Usually, we want not expose our NMObject instances until they are fully initialized.
 	 * For NMRemoteSetting this means to wait until GetSettings() returns.

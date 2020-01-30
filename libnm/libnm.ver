@@ -1676,4 +1676,5 @@ global:
 	nm_setting_vrf_get_table;
 	nm_setting_vrf_get_type;
 	nm_setting_vrf_new;
+	nm_utils_log;
 } libnm_1_22_0;

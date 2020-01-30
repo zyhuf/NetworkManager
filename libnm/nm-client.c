@@ -933,6 +933,8 @@ _nm_client_notify_event_emit (NMClient *self)
 
 	while ((base = c_list_first_entry (&priv->queue_notify_lst_head, NMObjectBase, queue_notify_lst))) {
 		c_list_unlink (&base->queue_notify_lst);
+		if (NM_IS_OBJECT (base))
+			g_printerr (">>>>>>> thaw object %s\n", nm_object_get_path ((gpointer) base));
 		g_object_thaw_notify (G_OBJECT (base));
 		g_object_unref (base);
 	}
