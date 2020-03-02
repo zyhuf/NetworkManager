@@ -954,6 +954,43 @@ struct _NMShutdownWaitObjHandle {
 
 static CList _shutdown_waitobj_lst_head;
 
+static int _shutdown_is_quitting = 0;
+
+static gboolean
+_shutdown_cancel_on_idle_cb (gpointer user_data)
+{
+	gs_unref_object GCancellable *cancellable = user_data;
+
+	g_cancellable_cancel (cancellable);
+	return G_SOURCE_REMOVE;
+}
+
+static void
+_shutdown_cancel_on_idle (GCancellable *cancellable)
+{
+	g_idle_add (_shutdown_cancel_on_idle_cb, g_object_ref (cancellable));
+}
+
+void
+_nm_shutdown_set_quitting (void)
+{
+	NMShutdownWaitObjHandle *handle;
+
+	if (!g_atomic_int_compare_and_exchange (&_shutdown_is_quitting, 0, 1))
+		return;
+
+	c_list_for_each_entry (handle, &_shutdown_waitobj_lst_head, lst) {
+		if (handle->is_cancellable)
+			_shutdown_cancel_on_idle (handle->watched_obj);
+	}
+}
+
+gboolean
+nm_shutdown_is_quitting (void)
+{
+	return g_atomic_int_get (&_shutdown_is_quitting) != 0;
+}
+
 static void
 _shutdown_waitobj_unregister (NMShutdownWaitObjHandle *handle)
 {
@@ -1051,6 +1088,11 @@ nm_shutdown_wait_obj_register_full (gpointer watched_obj,
 	c_list_link_tail (&_shutdown_waitobj_lst_head, &handle->lst);
 	if (watched_obj)
 		g_object_weak_ref (watched_obj, _shutdown_waitobj_cb, handle);
+
+	if (   wait_type == NM_SHUTDOWN_WAIT_TYPE_CANCELLABLE
+	    && nm_shutdown_is_quitting ())
+		_shutdown_cancel_on_idle (watched_obj);
+
 	return handle;
 }
 

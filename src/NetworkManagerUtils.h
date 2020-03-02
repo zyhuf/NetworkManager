@@ -126,6 +126,9 @@ nm_shutdown_wait_obj_register_cancellable_full (GCancellable *watched_obj,
 
 void nm_shutdown_wait_obj_unregister (NMShutdownWaitObjHandle *handle);
 
+void _nm_shutdown_set_quitting (void);
+gboolean nm_shutdown_is_quitting (void);
+
 /*****************************************************************************/
 
 const char *
