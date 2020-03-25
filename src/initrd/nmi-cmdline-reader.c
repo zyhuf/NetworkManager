@@ -248,7 +248,7 @@ static void
 read_all_connections_from_fw (Reader *reader, const char *sysfs_dir)
 {
 	gs_unref_hashtable GHashTable *ibft = NULL;
-	NMConnection *connection;
+	NMConnection *dt_connection;
 	const char *mac;
 	GHashTable *nic;
 	const char *index;
@@ -260,6 +260,7 @@ read_all_connections_from_fw (Reader *reader, const char *sysfs_dir)
 	keys = nm_utils_strdict_get_keys (ibft, TRUE, &length);
 
 	for (i = 0; i < length; i++) {
+		gs_unref_object NMConnection *connection = NULL;
 		gs_free char *name = NULL;
 
 		mac = keys[i];
@@ -275,15 +276,16 @@ read_all_connections_from_fw (Reader *reader, const char *sysfs_dir)
 		if (!nmi_ibft_update_connection_from_nic (connection, nic, &error)) {
 			_LOGW (LOGD_CORE, "Unable to merge iBFT configuration: %s", error->message);
 			g_error_free (error);
+			continue;
 		}
 
 		name = g_strdup_printf ("ibft%s", index);
-		add_connection (reader, name, connection);
+		add_connection (reader, name, g_steal_pointer (&connection));
 	}
 
-	connection = nmi_dt_reader_parse (sysfs_dir);
-	if (connection)
-		add_connection (reader, "ofw", connection);
+	dt_connection = nmi_dt_reader_parse (sysfs_dir);
+	if (dt_connection)
+		add_connection (reader, "ofw", dt_connection);
 }
 
 static void
