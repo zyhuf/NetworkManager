@@ -672,6 +672,7 @@ vpn_openconnect_get_secrets (NMConnection *connection, GPtrArray *secrets)
 
 static gboolean
 get_secrets_from_user (const NmcConfig *nmc_config,
+                       NmcReadlineStatus *readline_status,
                        const char *request_id,
                        const char *title,
                        const char *msg,
@@ -716,9 +717,9 @@ get_secrets_from_user (const NmcConfig *nmc_config,
 				          : TRUE;
 
 				if (secret->no_prompt_entry_id)
-					pwd = nmc_readline_echo (nmc_config, echo_on, "%s: ", secret->pretty_name);
+					pwd = nmc_readline_echo (nmc_config, readline_status, echo_on, "%s: ", secret->pretty_name);
 				else
-					pwd = nmc_readline_echo (nmc_config, echo_on, "%s (%s): ", secret->pretty_name, secret->entry_id);
+					pwd = nmc_readline_echo (nmc_config, readline_status, echo_on, "%s (%s): ", secret->pretty_name, secret->entry_id);
 
 				if (!pwd)
 					pwd = g_strdup ("");
@@ -782,6 +783,7 @@ nmc_secrets_requested (NMSecretAgentSimple *agent,
 	}
 
 	success = get_secrets_from_user (&nmc->nmc_config,
+	                                 &nmc->readline_status,
 	                                 request_id,
 	                                 title,
 	                                 msg,
@@ -826,7 +828,6 @@ nmc_unique_connection_name (const GPtrArray *connections, const char *try_name)
 }
 
 /* readline state variables */
-static gboolean nmcli_in_readline = FALSE;
 static gboolean rl_got_line;
 static char *rl_string;
 
@@ -844,15 +845,15 @@ nmc_cleanup_readline (void)
 }
 
 gboolean
-nmc_get_in_readline (void)
+nmc_get_in_readline (NmcReadlineStatus *readline_status)
 {
-	return nmcli_in_readline;
+	return readline_status->in_readline;
 }
 
 void
-nmc_set_in_readline (gboolean in_readline)
+nmc_set_in_readline (NmcReadlineStatus *readline_status, gboolean in_readline)
 {
-	nmcli_in_readline = in_readline;
+	readline_status->in_readline = in_readline;
 }
 
 static void
@@ -874,11 +875,12 @@ stdin_ready_cb (int fd,
 
 static char *
 nmc_readline_helper (const NmcConfig *nmc_config,
+                     NmcReadlineStatus *readline_status,
                      const char *prompt)
 {
 	GSource *io_source;
 
-	nmc_set_in_readline (TRUE);
+	nmc_set_in_readline (readline_status, TRUE);
 
 	io_source = nm_g_unix_fd_source_new (STDIN_FILENO,
 	                                     G_IO_IN,
@@ -895,11 +897,11 @@ read_again:
 
 	while (   !rl_got_line
 	       && g_main_loop_is_running (loop)
-	       && !nmc_seen_sigint ())
+	       && !nmc_seen_sigint (readline_status))
 		g_main_context_iteration (NULL, TRUE);
 
 	/* If Ctrl-C was detected, complete the line */
-	if (nmc_seen_sigint ()) {
+	if (nmc_seen_sigint (readline_status)) {
 		rl_echo_signal_char (SIGINT);
 		if (!rl_got_line) {
 			rl_stuff_char ('\n');
@@ -911,9 +913,9 @@ read_again:
 	if (rl_string && *rl_string)
 		add_history (rl_string);
 
-	if (nmc_seen_sigint ()) {
+	if (nmc_seen_sigint (readline_status)) {
 		/* Ctrl-C */
-		nmc_clear_sigint ();
+		nmc_clear_sigint (readline_status);
 		if (   nmc_config->in_editor
 		    || (rl_string  && *rl_string)) {
 			/* In editor, or the line is not empty */
@@ -937,7 +939,7 @@ read_again:
 
 	nm_clear_g_source_inst (&io_source);
 
-	nmc_set_in_readline (FALSE);
+	nmc_set_in_readline (readline_status, FALSE);
 
 	return rl_string;
 }
@@ -958,18 +960,19 @@ read_again:
  */
 char *
 nmc_readline (const NmcConfig *nmc_config,
+              NmcReadlineStatus *readline_status,
               const char *prompt_fmt,
               ...)
 {
-	va_list args;
 	gs_free char *prompt = NULL;
+	va_list args;
 
 	rl_initialize ();
 
 	va_start (args, prompt_fmt);
 	prompt = g_strdup_vprintf (prompt_fmt, args);
 	va_end (args);
-	return nmc_readline_helper (nmc_config, prompt);
+	return nmc_readline_helper (nmc_config, readline_status, prompt);
 }
 
 static void
@@ -1005,6 +1008,7 @@ nmc_secret_redisplay (void)
  */
 char *
 nmc_readline_echo (const NmcConfig *nmc_config,
+                   NmcReadlineStatus *readline_status,
                    gboolean echo_on,
                    const char *prompt_fmt,
                    ...)
@@ -1032,7 +1036,7 @@ nmc_readline_echo (const NmcConfig *nmc_config,
 		rl_redisplay_function = nmc_secret_redisplay;
 	}
 
-	str = nmc_readline_helper (nmc_config, prompt);
+	str = nmc_readline_helper (nmc_config, readline_status, prompt);
 
 	/* Restore the non-hiding behavior */
 	if (!echo_on) {
@@ -1196,101 +1200,40 @@ nmc_parse_lldp_capabilities (guint value)
 }
 
 static void
-command_done (GObject *object, GAsyncResult *res, gpointer user_data)
-{
-	GTask *task = G_TASK (res);
-	NmCli *nmc = user_data;
-	gs_free_error GError *error = NULL;
-
-	if (!g_task_propagate_boolean (task, &error)) {
-		nmc->return_value = error->code;
-		g_string_assign (nmc->return_text, error->message);
-	}
-
-	if (!nmc->should_wait)
-		g_main_loop_quit (loop);
-}
-
-typedef struct {
-	const NMCCommand *cmd;
-	int argc;
-	char **argv;
-	GTask *task;
-} CmdCall;
-
-static void
-call_cmd (NmCli *nmc, GTask *task, const NMCCommand *cmd, int argc, char **argv);
-
-static void
-got_client (GObject *source_object, GAsyncResult *res, gpointer user_data)
-{
-	gs_unref_object GTask *task = NULL;
-	gs_free_error GError *error = NULL;
-	CmdCall *call = user_data;
-	NmCli *nmc;
-
-	nm_assert (NM_IS_CLIENT (source_object));
-
-	task = g_steal_pointer (&call->task);
-	nmc = g_task_get_task_data (task);
-
-	nmc->should_wait--;
-
-	if (!g_async_initable_init_finish (G_ASYNC_INITABLE (source_object),
-	                                   res,
-	                                   &error)) {
-		g_object_unref (source_object);
-		g_task_return_new_error (task, NMCLI_ERROR, NMC_RESULT_ERROR_UNKNOWN,
-		                         _("Error: Could not create NMClient object: %s."),
-		                         error->message);
-	} else {
-		nmc->client = NM_CLIENT (source_object);
-		call_cmd (nmc, g_steal_pointer (&task), call->cmd, call->argc, call->argv);
-	}
-
-	g_slice_free (CmdCall, call);
-}
-
-static void
-call_cmd (NmCli *nmc, GTask *task, const NMCCommand *cmd, int argc, char **argv)
-{
-	CmdCall *call;
-
-	if (nmc->client || !cmd->needs_client) {
-
-		/* Check whether NetworkManager is running */
-		if (cmd->needs_nm_running && !nm_client_get_nm_running (nmc->client)) {
-			g_task_return_new_error (task, NMCLI_ERROR, NMC_RESULT_ERROR_NM_NOT_RUNNING,
-			                         _("Error: NetworkManager is not running."));
-		} else {
-			nmc->return_value = cmd->func (nmc, argc, argv);
-			g_task_return_boolean (task, TRUE);
-		}
-
-		g_object_unref (task);
-	} else {
-		nm_assert (nmc->client == NULL);
-
-		nmc->should_wait++;
-		call = g_slice_new0 (CmdCall);
-		call->cmd = cmd;
-		call->argc = argc;
-		call->argv = argv;
-		call->task = task;
-		nmc_client_new_async (NULL,
-		                      got_client,
-		                      call,
-		                      NM_CLIENT_INSTANCE_FLAGS, (guint) NM_CLIENT_INSTANCE_FLAGS_NO_AUTO_FETCH_PERMISSIONS,
-		                      NULL);
-	}
-}
-
-static void
 nmc_complete_help (const char *prefix)
 {
 	nmc_complete_strings (prefix, "help");
 	if (*prefix == '-')
 		nmc_complete_strings (prefix, "-help", "--help");
+}
+
+static void
+got_client (GObject *source_object, GAsyncResult *res, gpointer user_data)
+{
+	gs_unref_object NMClient *client = NM_CLIENT (source_object);
+	gs_free_error GError *error = NULL;
+	nm_auto_pop_run_status NmCli *nmc = NULL;
+	const NMCCommand *c;
+	gpointer argc_p;
+	int argc;
+	const char *const*argv;
+
+	nm_utils_user_data_unpack (user_data, &nmc, &c, &argc_p, &argv);
+
+	argc = GPOINTER_TO_INT (argc_p);
+
+	if (!g_async_initable_init_finish (G_ASYNC_INITABLE (source_object),
+	                                   res,
+	                                   &error)) {
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: Could not create NMClient object: %s."),
+		                       error->message);
+	}
+
+	nmc->client = g_steal_pointer (&client);
+
+	c->func (c, nmc, argc, argv);
 }
 
 /**
@@ -1313,26 +1256,30 @@ nmc_complete_help (const char *prefix)
  * no callback to free the memory in (for simplicity).
  */
 void
-nmc_do_cmd (NmCli *nmc, const NMCCommand cmds[], const char *cmd, int argc, char **argv)
+nmc_do_cmd (NmCli *nmc,
+            const NMCCommand *cmds,
+            const char *cmd,
+            int argc,
+            const char *const*argv)
 {
 	const NMCCommand *c;
-	gs_unref_object GTask *task = NULL;
 
-	task = nm_g_task_new (NULL, NULL, nmc_do_cmd, command_done, nmc);
-	g_task_set_task_data (task, nmc, NULL);
+	nmc_run_status_wait_push (&nmc->run_status);
 
-	if (argc == 0 && nmc->complete) {
-		g_task_return_boolean (task, TRUE);
+	if (   argc == 0
+	    && nmc->complete) {
+		nmc_run_status_return_success (&nmc->run_status);
 		return;
 	}
 
-	if (argc == 1 && nmc->complete) {
+	if (   argc == 1
+	    && nmc->complete) {
 		for (c = cmds; c->cmd; ++c) {
 			if (!*cmd || matches (cmd, c->cmd))
 				g_print ("%s\n", c->cmd);
 		}
 		nmc_complete_help (cmd);
-		g_task_return_boolean (task, TRUE);
+		nmc_run_status_return_success (&nmc->run_status);
 		return;
 	}
 
@@ -1343,31 +1290,61 @@ nmc_do_cmd (NmCli *nmc, const NMCCommand cmds[], const char *cmd, int argc, char
 
 	if (c->cmd) {
 		/* A valid command was specified. */
-		if (c->usage && argc == 2 && nmc->complete)
-			nmc_complete_help (*(argv+1));
-		if (!nmc->complete && c->usage && nmc_arg_is_help (*(argv+1))) {
+		if (   c->usage
+		    && argc == 2
+		    && nmc->complete)
+			nmc_complete_help (argv[1]);
+		if (   !nmc->complete
+		    && c->usage
+		    && nmc_arg_is_help (argv[1])) {
 			c->usage ();
-			g_task_return_boolean (task, TRUE);
-		} else {
-			call_cmd (nmc, g_steal_pointer (&task), c, argc, argv);
+			nmc_run_status_return_success (&nmc->run_status);
+			return;
 		}
 	} else if (cmd) {
 		/* Not a known command. */
 		if (nmc_arg_is_help (cmd) && c->usage) {
 			c->usage ();
-			g_task_return_boolean (task, TRUE);
-		} else {
-			g_task_return_new_error (task, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
-			                         _("Error: argument '%s' not understood. Try passing --help instead."), cmd);
+			nmc_run_status_return_success (&nmc->run_status);
+			return;
 		}
+
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: argument '%s' not understood. Try passing --help instead."),
+		                       cmd);
+		return;
 	} else if (c->func) {
 		/* No command, run the default handler. */
-		call_cmd (nmc, g_steal_pointer (&task), c, argc, argv);
 	} else {
 		/* No command and no default handler. */
-		g_task_return_new_error (task, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
-		                         _("Error: missing argument. Try passing --help."));
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: missing argument. Try passing --help."));
+		return;
 	}
+
+	if (   nmc->client
+	    || !c->needs_client) {
+
+		if (   c->needs_nm_running
+		    && !nm_client_get_nm_running (nmc->client)) {
+			nmc_run_status_return (&nmc->run_status,
+			                       NMC_RESULT_ERROR_NM_NOT_RUNNING,
+			                       _("Error: NetworkManager is not running."));
+			return;
+		}
+
+		c->func (c, nmc, argc, argv);
+		return;
+	}
+
+	nmc_run_status_wait_push (&nmc->run_status);
+	nmc_client_new_async (nmc->run_status.cancellable,
+	                      got_client,
+	                      nm_utils_user_data_pack (nmc, cmd, GINT_TO_POINTER (argc), argv),
+	                      NM_CLIENT_INSTANCE_FLAGS, (guint) NM_CLIENT_INSTANCE_FLAGS_NO_AUTO_FETCH_PERMISSIONS,
+	                      NULL);
 }
 
 /**

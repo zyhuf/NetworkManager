@@ -8,8 +8,6 @@
 
 #include "nmcli.h"
 
-/* === Types === */
-
 typedef struct {
 	const char *name;
 	gboolean has_value;
@@ -18,11 +16,26 @@ typedef struct {
 	gboolean found;
 } nmc_arg_t;
 
-/* === Functions === */
-int next_arg (NmCli *nmc, int *argc, char ***argv, ...);
+static inline void
+arg_move_next (int *argc, const char *const**argv)
+{
+	nm_assert (argc);
+	nm_assert (argv);
+	nm_assert (*argc > 0);
+	nm_assert ((gsize) *argc == NM_PTRARRAY_LEN (argv));
+
+	argc--;
+	argv++;
+}
+
+int next_arg (NmCli *nmc, int *argc, const char *const**argv, ...) G_GNUC_NULL_TERMINATED;
 gboolean nmc_arg_is_help (const char *arg);
 gboolean nmc_arg_is_option (const char *arg, const char *opt_name);
-gboolean nmc_parse_args (nmc_arg_t *arg_arr, gboolean last, int *argc, char ***argv, GError **error);
+gboolean nmc_parse_args (nmc_arg_t *arg_arr,
+                         gboolean last,
+                         int *argc,
+                         const char *const**argv,
+                         GError **error);
 char *ssid_to_hex (const char *str, gsize len);
 void nmc_terminal_erase_line (void);
 void nmc_terminal_show_progress (const char *str);
@@ -31,8 +44,11 @@ char *nmc_colorize (const NmcConfig *nmc_config, NMMetaColor color, const char *
 void nmc_filter_out_colors_inplace (char *str);
 char *nmc_filter_out_colors (const char *str);
 char *nmc_get_user_input (const char *ask_str);
-int nmc_string_to_arg_array (const char *line, const char *delim, gboolean unquote,
-                             char ***argv, int *argc);
+int nmc_string_to_arg_array (const char *line,
+                             const char *delim,
+                             gboolean unquote,
+                             char ***argv,
+                             int *argc);
 const char *nmc_string_is_valid (const char *input, const char **allowed, GError **error);
 char * nmc_util_strv_for_display (const char *const*strv, gboolean brackets);
 int nmc_string_screen_width (const char *start, const char *end);

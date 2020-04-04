@@ -885,8 +885,6 @@ const NmcMetaGenericInfo *const nmc_fields_con_active_details_groups[] = {
 #define CON_SHOW_DETAIL_GROUP_PROFILE "profile"
 #define CON_SHOW_DETAIL_GROUP_ACTIVE  "active"
 
-static guint progress_id = 0;  /* ID of event source for displaying progress */
-
 /* for readline TAB completion in editor */
 typedef struct {
 	NmCli *nmc;
@@ -1223,14 +1221,6 @@ usage_connection_export (void)
 	              "The data are directed to standard output or to a file if a name is given.\n\n"));
 }
 
-static void
-quit (void)
-{
-	if (nm_clear_g_source (&progress_id))
-		nmc_terminal_erase_line ();
-	g_main_loop_quit (loop);
-}
-
 static char *
 construct_header_name (const char *base, const char *spec)
 {
@@ -1346,9 +1336,9 @@ update_secrets_in_connection (NMRemoteConnection *remote, NMConnection *local)
 static gboolean
 nmc_connection_profile_details (NMConnection *connection, NmCli *nmc)
 {
-	GError *error = NULL;
-	GArray *print_settings_array;
-	GPtrArray *prop_array = NULL;
+	gs_free_error GError *error = NULL;
+	gs_unref_array GArray *print_settings_array = NULL;
+	gs_unref_ptrarray GPtrArray *prop_array = NULL;
 	guint i;
 	char *fields_str;
 	char *fields_all =    NMC_FIELDS_SETTINGS_NAMES_ALL;
@@ -1366,12 +1356,14 @@ nmc_connection_profile_details (NMConnection *connection, NmCli *nmc)
 	print_settings_array = parse_output_fields (fields_str, (const NMMetaAbstractInfo *const*) nm_meta_setting_infos_editor_p (),
 	                                            TRUE, &prop_array, &error);
 	if (error) {
-		g_string_printf (nmc->return_text, _("Error: 'connection show': %s"), error->message);
-		g_error_free (error);
-		nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: 'connection show': %s"),
+		                       error->message);
 		return FALSE;
 	}
-	g_assert (print_settings_array);
+
+	nm_assert (print_settings_array);
 
 	/* Main header */
 	{
@@ -1417,10 +1409,6 @@ nmc_connection_profile_details (NMConnection *connection, NmCli *nmc)
 		}
 	}
 
-	g_array_free (print_settings_array, TRUE);
-	if (prop_array)
-		g_ptr_array_free (prop_array, TRUE);
-
 	return TRUE;
 }
 
@@ -1440,9 +1428,9 @@ nmc_active_connection_state_to_color (NMActiveConnectionState state)
 static gboolean
 nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 {
-	GError *error = NULL;
-	GArray *print_groups;
-	GPtrArray *group_fields = NULL;
+	gs_free_error GError *error = NULL;
+	gs_unref_array GArray *print_groups = NULL;
+	gs_unref_ptrarray GPtrArray *group_fields = NULL;
 	int i;
 	const char *fields_str = NULL;
 	const char *base_hdr = _("Activate connection details");
@@ -1455,12 +1443,14 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 
 	print_groups = parse_output_fields (fields_str, (const NMMetaAbstractInfo *const*) nmc_fields_con_active_details_groups, TRUE, &group_fields, &error);
 	if (error) {
-		g_string_printf (nmc->return_text, _("Error: 'connection show': %s"), error->message);
-		g_error_free (error);
-		nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: 'connection show': %s"),
+		                       error->message);
 		return FALSE;
 	}
-	g_assert (print_groups);
+
+	nm_assert (print_groups);
 
 	/* Main header */
 	{
@@ -1489,7 +1479,7 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 	/* Loop through the groups and print them. */
 	for (i = 0; i < print_groups->len; i++) {
 		int group_idx = g_array_index (print_groups, int, i);
-		char *group_fld = (char *) g_ptr_array_index (group_fields, i);
+		char *group_fld = g_ptr_array_index (group_fields, i);
 
 		if (   NM_IN_SET (nmc->nmc_config.print_output, NMC_PRINT_NORMAL, NMC_PRINT_PRETTY)
 		    && !nmc->nmc_config.multiline_output
@@ -1565,10 +1555,6 @@ nmc_active_connection_details (NMActiveConnection *acon, NmCli *nmc)
 			continue;
 		}
 	}
-
-	g_array_free (print_groups, TRUE);
-	if (group_fields)
-		g_ptr_array_free (group_fields, TRUE);
 
 	return TRUE;
 }
@@ -1976,7 +1962,7 @@ parse_preferred_connection_order (const char *order, GError **error)
 static NMConnection *
 get_connection (NmCli *nmc,
                 int *argc,
-                char ***argv,
+                const char *const**argv,
                 const char **out_selector,
                 const char **out_value,
                 GPtrArray **out_result,
@@ -2027,8 +2013,8 @@ get_connection (NmCli *nmc,
 	return connection;
 }
 
-static NMCResultCode
-do_connections_show (NmCli *nmc, int argc, char **argv)
+static void
+do_connections_show (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv)
 {
 	gs_free_error GError *err = NULL;
 	gs_free char *profile_flds = NULL;
@@ -2132,9 +2118,10 @@ do_connections_show (NmCli *nmc, int argc, char **argv)
 
 		/* Before printing the connections check if we have a "--show-secret"
 		 * option after the connection ids */
-		if (!nmc->nmc_config.show_secrets && !nmc->complete) {
+		if (   !nmc->nmc_config.show_secrets
+		    && !nmc->complete) {
 			int argc_cp = argc;
-			char **argv_cp = argv;
+			const char *const*argv_cp = argv;
 
 			do {
 				if (NM_IN_STRSET (*argv_cp, "id", "uuid", "path", "filename", "apath")) {
@@ -2162,9 +2149,11 @@ do_connections_show (NmCli *nmc, int argc, char **argv)
 				argc--;
 				argv++;
 				if (!argc) {
-					g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
-					nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-					goto finish;
+					nmc_run_status_return (&nmc->run_status,
+					                       NMC_RESULT_ERROR_USER_INPUT,
+					                       _("Error: %s argument is missing."),
+					                       argv[-1]);
+					return;
 				}
 			}
 
@@ -2189,10 +2178,13 @@ do_connections_show (NmCli *nmc, int argc, char **argv)
 				}
 			}
 
-			if (!con && !explicit_acon) {
-				g_string_printf (nmc->return_text, _("Error: %s - no such connection profile."), *argv);
-				nmc->return_value = NMC_RESULT_ERROR_NOT_FOUND;
-				goto finish;
+			if (   !con
+			    && !explicit_acon) {
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_NOT_FOUND,
+				                       _("Error: %s - no such connection profile."),
+				                       *argv);
+				return;
 			}
 
 			/* Print connection details:
@@ -2281,10 +2273,11 @@ do_connections_show (NmCli *nmc, int argc, char **argv)
 
 finish:
 	if (err) {
-		g_string_printf (nmc->return_text, _("Error: %s."), err->message);
-		nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_USER_INPUT,
+		                       _("Error: %s."),
+		                       err->message);
 	}
-	return nmc->return_value;
 }
 
 static NMActiveConnection *
@@ -2453,10 +2446,11 @@ typedef struct {
 	NmCli *nmc;
 	NMDevice *device;
 	NMActiveConnection *active;
+	GSource *progress_source;
 } ActivateConnectionInfo;
 
 static void
-active_connection_hint (GString *return_text,
+active_connection_hint (NmcRunStatus *run_status,
                         NMActiveConnection *active,
                         NMDevice *device)
 {
@@ -2488,8 +2482,7 @@ active_connection_hint (GString *return_text,
 		}
 	}
 
-	g_string_append (return_text, "\n");
-	g_string_append_printf (return_text, _("Hint: use '%s' to get more details."), hint->str);
+	nmc_run_status_return_append_message (run_status, _("Hint: use '%s' to get more details."), hint->str);
 }
 
 static void activate_connection_info_finish (ActivateConnectionInfo *info);
@@ -2515,15 +2508,16 @@ check_activated (ActivateConnectionInfo *info)
 			         nm_object_get_path (NM_OBJECT (info->active)));
 		}
 		activate_connection_info_finish (info);
-		break;
+		return;
 	case NM_ACTIVE_CONNECTION_STATE_DEACTIVATED:
 		nm_assert (reason);
-		g_string_printf (nmc->return_text, _("Error: Connection activation failed: %s"),
-		                 reason);
-		active_connection_hint (nmc->return_text, info->active, info->device);
-		nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_CON_ACTIVATION,
+		                       _("Error: Connection activation failed: %s"),
+		                       reason);
+		active_connection_hint (&nmc->run_status, info->active, info->device);
 		activate_connection_info_finish (info);
-		break;
+		return;
 	case NM_ACTIVE_CONNECTION_STATE_ACTIVATING:
 		if (nmc->secret_agent) {
 			NMRemoteConnection *connection = nm_active_connection_get_connection (info->active);
@@ -2531,7 +2525,7 @@ check_activated (ActivateConnectionInfo *info)
 			nm_secret_agent_simple_enable (nmc->secret_agent,
 			                               nm_connection_get_path (NM_CONNECTION (connection)));
 		}
-		break;
+		return;
 	default:
 		break;
 	}
@@ -2552,32 +2546,25 @@ active_connection_state_cb (NMActiveConnection *active,
 	check_activated (info);
 }
 
-static void
-set_nmc_error_timeout (NmCli *nmc)
-{
-	g_string_printf (nmc->return_text, _("Error: Timeout expired (%d seconds)"), nmc->timeout);
-	nmc->return_value = NMC_RESULT_ERROR_TIMEOUT_EXPIRED;
-}
-
 static gboolean
 activate_connection_timeout_cb (gpointer user_data)
 {
 	ActivateConnectionInfo *info = user_data;
+	NmCli *nmc = info->nmc;
 
-	/* Time expired -> exit nmcli */
-	set_nmc_error_timeout (info->nmc);
+	nmc_run_status_return (&nmc->run_status,
+	                       NMC_RESULT_ERROR_TIMEOUT_EXPIRED,
+	                       _("Error: Timeout expired (%d seconds)"),
+	                       nmc->timeout);
 	activate_connection_info_finish (info);
-	return FALSE;
+	return G_SOURCE_REMOVE;
 }
 
 static gboolean
 progress_cb (gpointer user_data)
 {
-	const char *str = (const char *) user_data;
-
-	nmc_terminal_show_progress (str);
-
-	return TRUE;
+	nmc_terminal_show_progress (_("preparing"));
+	return G_SOURCE_CONTINUE;
 }
 
 static gboolean
@@ -2596,9 +2583,8 @@ progress_active_connection_cb (gpointer user_data)
 		 * is more interesting. */
 		ac_devs = nm_active_connection_get_devices (active);
 		device = ac_devs->len > 0 ? g_ptr_array_index (ac_devs, 0) : NULL;
-	} else {
+	} else
 		device = NULL;
-	}
 
 	str =   device
 	      ? gettext (nmc_device_state_to_string (nm_device_get_state (device)))
@@ -2606,12 +2592,14 @@ progress_active_connection_cb (gpointer user_data)
 
 	nmc_terminal_show_progress (str);
 
-	return TRUE;
+	return G_SOURCE_CONTINUE;
 }
 
 static void
 activate_connection_info_finish (ActivateConnectionInfo *info)
 {
+	NmCli *nmc = info->nmc;
+
 	if (info->device) {
 		g_signal_handlers_disconnect_by_func (info->device, G_CALLBACK (device_state_cb), info);
 		g_object_unref (info->device);
@@ -2622,8 +2610,12 @@ activate_connection_info_finish (ActivateConnectionInfo *info)
 		g_object_unref (info->active);
 	}
 
-	g_free (info);
-	quit ();
+	nm_clear_g_source_inst (&info->progress_source);
+
+	nm_g_slice_free (info);
+
+	nmc_run_status_return_success_if_necessary (&nmc->run_status);
+	nmc_run_status_wait_pop (&nmc->run_status);
 }
 
 static void
@@ -2635,58 +2627,63 @@ activate_connection_cb (GObject *client, GAsyncResult *result, gpointer user_dat
 	NMActiveConnection *active;
 	NMActiveConnectionState state;
 	const GPtrArray *ac_devs;
-	GError *error = NULL;
+	gs_free_error GError *error = NULL;
 
-	info->active = active = nm_client_activate_connection_finish (NM_CLIENT (client), result, &error);
+	active = nm_client_activate_connection_finish (NM_CLIENT (client), result, &error);
+	info->active = active;
 
 	if (error) {
-		g_string_printf (nmc->return_text, _("Error: Connection activation failed: %s"),
-		                 error->message);
-		g_error_free (error);
-		active_connection_hint (nmc->return_text, info->active, info->device);
-		nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_CON_ACTIVATION,
+		                       _("Error: Connection activation failed: %s"),
+		                       error->message);
+		active_connection_hint (&nmc->run_status, info->active, info->device);
+		activate_connection_info_finish (info);
+		return;
+	}
+
+	state = nm_active_connection_get_state (active);
+	if (!device && !nm_active_connection_get_vpn (active)) {
+		/* device could be NULL for virtual devices. Fill it here. */
+		ac_devs = nm_active_connection_get_devices (active);
+		device = ac_devs->len > 0 ? g_ptr_array_index (ac_devs, 0) : NULL;
+		if (device)
+			info->device = g_object_ref (device);
+	}
+
+	if (nmc->nowait_flag || state == NM_ACTIVE_CONNECTION_STATE_ACTIVATED) {
+		/* User doesn't want to wait or already activated */
+		if (state == NM_ACTIVE_CONNECTION_STATE_ACTIVATED) {
+			if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY)
+				nmc_terminal_erase_line ();
+			g_print (_("Connection successfully activated (D-Bus active path: %s)\n"),
+			         nm_object_get_path (NM_OBJECT (active)));
+		}
 		activate_connection_info_finish (info);
 	} else {
-		state = nm_active_connection_get_state (active);
-		if (!device && !nm_active_connection_get_vpn (active)) {
-			/* device could be NULL for virtual devices. Fill it here. */
-			ac_devs = nm_active_connection_get_devices (active);
-			device = ac_devs->len > 0 ? g_ptr_array_index (ac_devs, 0) : NULL;
-			if (device)
-				info->device = g_object_ref (device);
+		/* Monitor the active connection and device (if available) states */
+		g_signal_connect (active, "state-changed", G_CALLBACK (active_connection_state_cb), info);
+		if (device)
+			g_signal_connect (device, "notify::" NM_DEVICE_STATE, G_CALLBACK (device_state_cb), info);
+		/* Both active_connection_state_cb () and device_state_cb () will just
+		 * call check_activated (info). So, just call it once directly after
+		 * connecting on both the signals of the objects and skip the call to
+		 * the callbacks.
+		 */
+		check_activated (info);
+
+		/* Start progress indication showing VPN states */
+		if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY) {
+			nmc_run_status_wait_remove_source (&nmc->run_status,
+			                                   g_steal_pointer (&info->progress_source));
+			info->progress_source = g_source_ref (nmc_run_status_wait_add_timeout (&nmc->run_status,
+			                                                                       120,
+			                                                                       progress_active_connection_cb,
+			                                                                       active));
 		}
 
-		if (nmc->nowait_flag || state == NM_ACTIVE_CONNECTION_STATE_ACTIVATED) {
-			/* User doesn't want to wait or already activated */
-			if (state == NM_ACTIVE_CONNECTION_STATE_ACTIVATED) {
-				if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY)
-					nmc_terminal_erase_line ();
-				g_print (_("Connection successfully activated (D-Bus active path: %s)\n"),
-				         nm_object_get_path (NM_OBJECT (active)));
-			}
-			activate_connection_info_finish (info);
-		} else {
-			/* Monitor the active connection and device (if available) states */
-			g_signal_connect (active, "state-changed", G_CALLBACK (active_connection_state_cb), info);
-			if (device)
-				g_signal_connect (device, "notify::" NM_DEVICE_STATE, G_CALLBACK (device_state_cb), info);
-			/* Both active_connection_state_cb () and device_state_cb () will just
-			 * call check_activated (info). So, just call it once directly after
-			 * connecting on both the signals of the objects and skip the call to
-			 * the callbacks.
-			 */
-			check_activated (info);
-
-			/* Start progress indication showing VPN states */
-			if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY) {
-				if (progress_id)
-					g_source_remove (progress_id);
-				progress_id = g_timeout_add (120, progress_active_connection_cb, active);
-			}
-
-			/* Start timer not to loop forever when signals are not emitted */
-			g_timeout_add_seconds (nmc->timeout, activate_connection_timeout_cb, info);
-		}
+		/* Start timer not to loop forever when signals are not emitted */
+		g_timeout_add_seconds (nmc->timeout, activate_connection_timeout_cb, info);
 	}
 }
 
@@ -2783,6 +2780,7 @@ nmc_activate_connection (NmCli *nmc,
                          const char *nsp,
                          const char *pwds,
                          GAsyncReadyCallback callback,
+                         GSource ***out_progress_source_location,
                          GError **error)
 {
 	ActivateConnectionInfo *info;
@@ -2794,6 +2792,8 @@ nmc_activate_connection (NmCli *nmc,
 
 	g_return_val_if_fail (nmc, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	NM_SET_OUT (out_progress_source_location, NULL);
 
 	if (   connection
 	    && (   ifname
@@ -2839,23 +2839,27 @@ nmc_activate_connection (NmCli *nmc,
 		                  nmc);
 	}
 
-	info = g_malloc0 (sizeof (ActivateConnectionInfo));
-	info->nmc = nmc;
-	if (device)
-		info->device = g_object_ref (device);
+	info = g_slice_new (ActivateConnectionInfo);
+	*info = (ActivateConnectionInfo) {
+		.nmc    = nmc,
+		.device = nm_g_object_ref (device),
+	};
 
 	nm_client_activate_connection_async (nmc->client,
 	                                     connection,
 	                                     device,
 	                                     spec_object,
-	                                     NULL,
+	                                     nmc->run_status.cancellable,
 	                                     callback,
 	                                     info);
+
+	NM_SET_OUT (out_progress_source_location, &info->progress_source);
+
 	return TRUE;
 }
 
-static NMCResultCode
-do_connection_up (NmCli *nmc, int argc, char **argv)
+static void
+do_connection_up (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv)
 {
 	NMConnection *connection = NULL;
 	const char *ifname = NULL;
@@ -2863,10 +2867,11 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 	const char *nsp = NULL;
 	const char *pwds = NULL;
 	gs_free_error GError *error = NULL;
-	char **arg_arr = NULL;
+	gs_strfreev char **arg_arr = NULL;
 	int arg_num;
-	char ***argv_ptr;
+	const char *const**argv_ptr;
 	int *argc_ptr;
+	GSource **progress_source_location;
 
 	/*
 	 * Set default timeout for connection activation.
@@ -2879,7 +2884,8 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 	argv_ptr = &argv;
 	argc_ptr = &argc;
 
-	if (argc == 0 && nmc->ask) {
+	if (   argc == 0
+	    && nmc->ask) {
 		gs_free char *line = NULL;
 
 		/* nmc_do_cmd() should not call this with argc=0. */
@@ -2888,15 +2894,19 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 		line = nmc_readline (&nmc->nmc_config,
 		                     PROMPT_CONNECTION);
 		nmc_string_to_arg_array (line, NULL, TRUE, &arg_arr, &arg_num);
-		argv_ptr = &arg_arr;
+		argv_ptr = (const char *const**) &arg_arr;
 		argc_ptr = &arg_num;
 	}
 
-	if (argc > 0 && strcmp (*argv, "ifname") != 0) {
+	if (   argc > 0
+	    && nm_streq (*argv, "ifname")) {
 		connection = get_connection (nmc, argc_ptr, argv_ptr, NULL, NULL, NULL, &error);
 		if (!connection) {
-			g_string_printf (nmc->return_text, _("Error: %s."), error->message);
-			return error->code;
+			nmc_run_status_return (&nmc->run_status,
+			                       error->code,
+			                       _("Error: %s."),
+			                       error->message);
+			return;
 		}
 	}
 
@@ -2908,8 +2918,11 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
-				return NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: %s argument is missing."),
+				                       argv[-1]);
+				return;
 			}
 
 			ifname = *argv;
@@ -2920,8 +2933,11 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
-				return NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: %s argument is missing."),
+				                       argv[-1]);
+				return;
 			}
 
 			ap = *argv;
@@ -2932,45 +2948,63 @@ do_connection_up (NmCli *nmc, int argc, char **argv)
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
-				return NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: %s argument is missing."),
+				                       argv[-1]);
+				return;
 			}
 
 			if (argc == 1 && nmc->complete)
-				nmc->return_value = NMC_RESULT_COMPLETE_FILE;
+				nmc_run_status_set_complete_file (&nmc->run_status);
 
 			pwds = *argv;
 		}
 		else if (!nmc->complete) {
-			g_string_printf (nmc->return_text, _("Error: invalid extra argument '%s'."), *argv);
-			return NMC_RESULT_ERROR_USER_INPUT;
+			nmc_run_status_return (&nmc->run_status,
+			                       NMC_RESULT_ERROR_USER_INPUT,
+			                       _("Error: invalid extra argument '%s'."),
+			                       *argv);
+			return;
 		}
 
 		next_arg (nmc, &argc, &argv, NULL);
 	}
 
 	if (nmc->complete)
-		return nmc->return_value;
+		return;
 
 	/* Use nowait_flag instead of should_wait because exiting has to be postponed till
 	 * active_connection_state_cb() is called. That gives NM time to check our permissions
 	 * and we can follow activation progress.
 	 */
 	nmc->nowait_flag = (nmc->timeout == 0);
-	nmc->should_wait++;
 
-	if (!nmc_activate_connection (nmc, connection, ifname, ap, nsp, pwds, activate_connection_cb, &error)) {
-		g_string_printf (nmc->return_text, _("Error: %s."),
-		                 error->message);
-		nmc->should_wait--;
-		return error->code;
+	if (!nmc_activate_connection (nmc,
+	                              connection,
+	                              ifname,
+	                              ap,
+	                              nsp,
+	                              pwds,
+	                              activate_connection_cb,
+	                              &progress_source_location,
+	                              &error)) {
+		nmc_run_status_return (&nmc->run_status,
+		                       error->code,
+		                       _("Error: %s."),
+		                       error->message);
+		return;
 	}
 
-	/* Start progress indication */
-	if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY)
-		progress_id = g_timeout_add (120, progress_cb, _("preparing"));
+	nmc_run_status_wait_push (&nmc->run_status);
 
-	return nmc->return_value;
+	if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY) {
+		/* Start progress indication */
+		*progress_source_location = g_source_ref (nmc_run_status_wait_add_timeout (&nmc->run_status,
+		                                                                           120,
+		                                                                           progress_cb,
+		                                                                           NULL));
+	}
 }
 
 /*****************************************************************************/
@@ -2980,7 +3014,7 @@ typedef struct {
 	/* a list of object that is relevant for the callback. The object
 	 * type differs, and depends on the type of callback. */
 	GPtrArray *obj_list;
-	guint timeout_id;
+	GSource *timeout_source;
 	GCancellable *cancellable;
 } ConnectionCbInfo;
 
@@ -3044,6 +3078,8 @@ connection_cb_info_obj_list_steal (ConnectionCbInfo *info, gpointer obj)
 static void
 connection_cb_info_finish (ConnectionCbInfo *info, gpointer obj)
 {
+	NmCli *nmc = info->nmc;
+
 	if (obj) {
 		obj = connection_cb_info_obj_list_steal (info, obj);
 		if (obj)
@@ -3059,73 +3095,193 @@ connection_cb_info_finish (ConnectionCbInfo *info, gpointer obj)
 	if (info->obj_list->len > 0)
 		return;
 
-	nm_clear_g_source (&info->timeout_id);
+	//XXX
+#if 0
+	if (info->timeout_source) {
+		nmc_run_status_wait_remove_source (nmc, g_steal_pointer (&info->timeout_source));
+		nmc_run_status_wait_pop (&nmc->run_status);
+	}
+#endif
+
 	nm_clear_g_cancellable (&info->cancellable);
 	g_ptr_array_free (info->obj_list, TRUE);
 
 	g_signal_handlers_disconnect_by_func (info->nmc->client, connection_removed_cb, info);
 
-	g_slice_free (ConnectionCbInfo, info);
+	nm_g_slice_free (info);
 
-	quit ();
+	nmc_run_status_return_success_if_necessary (&nmc->run_status);
+	nmc_run_status_wait_pop (&nmc->run_status);
 }
 
 /*****************************************************************************/
 
+struct _ConnectionDownData;
+
+typedef struct {
+	struct _ConnectionDownData *info;
+	NMActiveConnection *active;
+	char *id;
+	gulong signal_id;
+	bool done:1;
+} ConnectionDownItem;
+
+typedef struct _ConnectionDownData {
+	NmCli *nmc;
+	GSource *timeout_source;
+	char *not_found_ac;
+	char *deactivation_failure;
+	ConnectionDownItem *items;
+	guint n_items;
+	guint timeout_sec;
+} ConnectionDownData;
+
 static void
-connection_removed_cb (NMClient *client, NMConnection *connection, ConnectionCbInfo *info)
+_down_connection_finish (ConnectionDownData *info)
 {
-	if (!connection_cb_info_obj_list_has (info, connection))
-		return;
-	g_print (_("Connection '%s' (%s) successfully deleted.\n"),
-	         nm_connection_get_id (connection),
-	         nm_connection_get_uuid (connection));
-	connection_cb_info_finish (info, connection);
+	nm_auto_pop_run_status NmCli *nmc = info->nmc;
+	guint i;
+
+	if (!nmc_run_status_is_returned (&nmc->run_status)) {
+		if (info->not_found_ac) {
+			nmc_run_status_return (&nmc->run_status,
+			                       NMC_RESULT_ERROR_NOT_FOUND,
+			                       _("Error: '%s' is not an active connection."),
+			                       info->not_found_ac);
+		} if (info->deactivation_failure) {
+			nmc_run_status_return_message_full (&nmc->run_status,
+			                                    NMC_RESULT_ERROR_CON_DEACTIVATION,
+			                                    g_steal_pointer (&info->deactivation_failure));
+		} else
+			nmc_run_status_return_success (&nmc->run_status);
+	}
+
+	g_free (info->not_found_ac);
+	g_free (info->deactivation_failure);
+	for (i = 0; i < info->n_items; i++) {
+		ConnectionDownItem *item = &info->items[i];
+
+		nm_clear_g_signal_handler (item->active, &item->signal_id);
+		g_object_unref (item->active);
+		g_free (item->id);
+	}
+	g_free (info->items);
+	if (info->timeout_source)
+		nmc_run_status_wait_remove_source (&nmc->run_status, info->timeout_source);
+
+	nm_g_slice_free (info);
 }
 
 static void
-down_active_connection_state_cb (NMActiveConnection *active,
-                                 GParamSpec *pspec,
-                                 ConnectionCbInfo *info)
+_down_connection_check_done (ConnectionDownItem *item)
 {
-	if (nm_active_connection_get_state (active) < NM_ACTIVE_CONNECTION_STATE_DEACTIVATED)
+	ConnectionDownData *info = item->info;
+	guint i;
+
+	if (   nm_object_get_client (NM_OBJECT (item->active))
+	    && nm_active_connection_get_state (item->active) < NM_ACTIVE_CONNECTION_STATE_DEACTIVATED)
 		return;
 
-	if (info->nmc->nmc_config.print_output == NMC_PRINT_PRETTY)
-		nmc_terminal_erase_line ();
-	g_print (_("Connection '%s' successfully deactivated (D-Bus active path: %s)\n"),
-	         nm_active_connection_get_id (active), nm_object_get_path (NM_OBJECT (active)));
+	nm_clear_g_signal_handler (item->active, &item->signal_id);
 
-	g_signal_handlers_disconnect_by_func (G_OBJECT (active),
-	                                      down_active_connection_state_cb,
-	                                      info);
-	connection_cb_info_finish (info, active);
+	if (!item->done) {
+		item->done = TRUE;
+		g_print (_("Connection '%s' successfully deactivated (D-Bus active path: %s)\n"),
+		         item->id,
+		         nm_object_get_path (NM_OBJECT (item->active)));
+	}
+
+	for (i = 0; i < info->n_items; i++) {
+		if (!info->items[i].done)
+			return;
+	}
+
+	_down_connection_finish (info);
+}
+
+static void
+_down_connection_ac_state_change (NMActiveConnection *active,
+                                  GParamSpec *pspec,
+                                  ConnectionDownItem *item)
+{
+	_down_connection_check_done (item);
 }
 
 static gboolean
-connection_op_timeout_cb (gpointer user_data)
+_down_connection_timeout_cb (gpointer user_data)
 {
-	ConnectionCbInfo *info = user_data;
+	ConnectionDownData *info = user_data;
+	NmCli *nmc = info->nmc;
+	guint i;
 
-	set_nmc_error_timeout (info->nmc);
-	connection_cb_info_finish (info, NULL);
+	for (i = 0; i < info->n_items; i++) {
+		ConnectionDownItem *item = &info->items[i];
+
+		if (!item->done) {
+			g_print (_("Connection '%s' deactivation failed: timeout reached\n"),
+			         item->id);
+		}
+	}
+
+	nmc_run_status_return (&nmc->run_status,
+	                       NMC_RESULT_ERROR_TIMEOUT_EXPIRED,
+	                       _("Error: Timeout expired (%u seconds)"),
+	                       info->timeout_sec);
+	_down_connection_finish (info);
 	return G_SOURCE_REMOVE;
 }
 
-static NMCResultCode
-do_connection_down (NmCli *nmc, int argc, char **argv)
+static void
+_down_connection_cb (GObject *source, GAsyncResult *result, gpointer user_data)
+{
+	nm_auto_pop_run_status NmCli *nmc = NULL;
+	ConnectionDownItem *item;
+	ConnectionDownData *info;
+	gs_free_error GError *error = NULL;
+	gboolean success;
+
+	nm_utils_user_data_unpack (user_data, &nmc, &item);
+
+	success = nm_client_deactivate_connection_finish (nmc->client,
+	                                                  result,
+	                                                  &error);
+
+	if (nm_utils_error_is_cancelled (error))
+		return;
+
+	item = user_data;
+	info = item->info;
+
+	if (!success) {
+		item->done = TRUE;
+
+		g_print (_("Connection '%s' deactivation failed: %s\n"),
+		         item->id, error->message);
+
+		if (!info->deactivation_failure)
+			info->deactivation_failure = g_strdup_printf (_("Failure to deactivate connect '%s'"), item->id);
+	} else {
+		item->signal_id = g_signal_connect (item->active,
+		                                    "notify::" NM_ACTIVE_CONNECTION_STATE,
+		                                    G_CALLBACK (_down_connection_ac_state_change),
+		                                    item);
+	}
+
+	_down_connection_check_done (item);
+}
+
+static void
+do_connection_down (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv)
 {
 	NMActiveConnection *active;
-	ConnectionCbInfo *info = NULL;
 	const GPtrArray *active_cons;
 	gs_strfreev char **arg_arr = NULL;
-	char **arg_ptr;
+	const char *const*arg_ptr;
 	int arg_num;
 	guint i;
 	gs_unref_ptrarray GPtrArray *found_active_cons = NULL;
-
-	if (nmc->timeout == -1)
-		nmc->timeout = 10;
+	const char *not_found_ac = NULL;
+	ConnectionDownData *info;
 
 	next_arg (nmc, &argc, &argv, NULL);
 	arg_ptr = argv;
@@ -3141,11 +3297,13 @@ do_connection_down (NmCli *nmc, int argc, char **argv)
 			line = nmc_readline (&nmc->nmc_config,
 			                     PROMPT_ACTIVE_CONNECTIONS);
 			nmc_string_to_arg_array (line, NULL, TRUE, &arg_arr, &arg_num);
-			arg_ptr = arg_arr;
+			arg_ptr = (const char *const*) arg_arr;
 		}
 		if (arg_num == 0) {
-			g_string_printf (nmc->return_text, _("Error: No connection specified."));
-			return NMC_RESULT_ERROR_USER_INPUT;
+			nmc_run_status_return (&nmc->run_status,
+			                       NMC_RESULT_ERROR_USER_INPUT,
+			                       _("Error: No connection specified."));
+			return;
 		}
 	}
 
@@ -3162,8 +3320,11 @@ do_connection_down (NmCli *nmc, int argc, char **argv)
 			arg_num--;
 			arg_ptr++;
 			if (!arg_num) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), selector);
-				return NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                      NMC_RESULT_ERROR_USER_INPUT,
+				                      _("Error: %s argument is missing."),
+				                      selector);
+				return;
 			}
 		}
 
@@ -3175,59 +3336,63 @@ do_connection_down (NmCli *nmc, int argc, char **argv)
 		if (!active) {
 			if (!nmc->complete)
 				g_printerr (_("Error: '%s' is not an active connection.\n"), *arg_ptr);
-			g_string_printf (nmc->return_text, _("Error: not all active connections found."));
-			nmc->return_value = NMC_RESULT_ERROR_NOT_FOUND;
+			if (!not_found_ac)
+				not_found_ac = *arg_ptr;
 		}
 
 		next_arg (nmc->ask ? NULL : nmc, &arg_num, &arg_ptr, NULL);
 	}
 
 	if (!found_active_cons) {
-		g_string_printf (nmc->return_text, _("Error: no active connection provided."));
-		return NMC_RESULT_ERROR_NOT_FOUND;
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_NOT_FOUND,
+		                       _("Error: no active connection provided."));
+		return;
 	}
+
 	nm_assert (found_active_cons->len > 0);
 
 	if (nmc->complete)
-		return nmc->return_value;
+		return;
 
-	if (nmc->timeout > 0) {
-		nmc->should_wait++;
+	nmc_run_status_wait_push (&nmc->run_status);
 
-		info = g_slice_new0 (ConnectionCbInfo);
-		info->nmc = nmc;
-		info->obj_list = g_ptr_array_sized_new (found_active_cons->len);
-		for (i = 0; i < found_active_cons->len; i++) {
-			active = found_active_cons->pdata[i];
-			g_ptr_array_add (info->obj_list, g_object_ref (active));
-			g_signal_connect (active,
-			                  "notify::" NM_ACTIVE_CONNECTION_STATE,
-			                  G_CALLBACK (down_active_connection_state_cb),
-			                  info);
-		}
-		info->timeout_id = g_timeout_add_seconds (nmc->timeout, connection_op_timeout_cb, info);
+	info = g_slice_new (ConnectionDownData);
+	*info = (ConnectionDownData) {
+		.nmc                 = nmc,
+		.not_found_ac        = g_strdup (not_found_ac),
+		.timeout_sec         =   nmc->timeout == -1
+		                       ? 10u
+		                       : nmc->timeout,
+	};
+
+	if (   info->timeout_sec != 0u
+	    && info->timeout_sec < G_MAXUINT / 1000u) {
+		info->timeout_source = g_source_ref (nmc_run_status_wait_add_timeout (&nmc->run_status,
+		                                                                      info->timeout_sec * 1000u,
+		                                                                      _down_connection_timeout_cb,
+		                                                                      info));
 	}
+
+	info->items = g_new (ConnectionDownItem, found_active_cons->len);
+	info->n_items = found_active_cons->len;
 
 	for (i = 0; i < found_active_cons->len; i++) {
-		GError *error = NULL;
+		ConnectionDownItem *item = &info->items[i];
 
-		active = found_active_cons->pdata[i];
+		*item = (ConnectionDownItem) {
+			.info   = info,
+			.active = g_object_ref (found_active_cons->pdata[i]),
+			.id     = g_strdup (nm_active_connection_get_id (active) ?: "???"),
+		};
 
-		if (!nm_client_deactivate_connection (nmc->client, active, NULL, &error)) {
-			g_print (_("Connection '%s' deactivation failed: %s\n"),
-			         nm_active_connection_get_id (active), error->message);
-			g_clear_error (&error);
-
-			if (info) {
-				g_signal_handlers_disconnect_by_func (active,
-				                                      down_active_connection_state_cb,
-				                                      info);
-				connection_cb_info_finish (info, active);
-			}
-		}
+		nmc_run_status_wait_push (&nmc->run_status);
+		nm_client_deactivate_connection_async (nmc->client,
+		                                       active,
+		                                       nmc->run_status.cancellable,
+		                                       _down_connection_cb,
+		                                       nm_utils_user_data_pack (nmc, item));
 	}
-
-	return nmc->return_value;
 }
 
 /*****************************************************************************/
@@ -3715,7 +3880,10 @@ prompt_yes_no (gboolean default_yes, char *delim)
 }
 
 static NMSetting *
-is_setting_valid (NMConnection *connection, const NMMetaSettingValidPartItem *const*valid_settings_main, const NMMetaSettingValidPartItem *const*valid_settings_slave, char *setting)
+is_setting_valid (NMConnection *connection,
+                  const NMMetaSettingValidPartItem *const*valid_settings_main,
+                  const NMMetaSettingValidPartItem *const*valid_settings_slave,
+                  const char *setting)
 {
 	const char *setting_name;
 
@@ -4656,7 +4824,7 @@ complete_option (NmCli *nmc, const NMMetaAbstractInfo *abstract_info, const char
 	                                         &complete_filename,
 	                                         &values_to_free);
 	if (complete_filename) {
-		nmc->return_value = NMC_RESULT_COMPLETE_FILE;
+		nmc_run_status_set_complete_file (&nmc->run_status);
 		return TRUE;
 	}
 	if (values) {
@@ -4726,7 +4894,7 @@ connection_remove_setting (NMConnection *connection, NMSetting *setting, GError 
 }
 
 static gboolean
-get_value (const char **value, int *argc, char ***argv, const char *option, GError **error)
+get_value (const char **value, int *argc, const char *const**argv, const char *option, GError **error)
 {
 	if (!**argv) {
 		g_set_error (error, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,
@@ -4749,7 +4917,7 @@ gboolean
 nmc_process_connection_properties (NmCli *nmc,
                                    NMConnection *connection,
                                    int *argc,
-                                   char ***argv,
+                                   const char *const**argv,
                                    gboolean allow_setting_removal,
                                    GError **error)
 {
@@ -4789,7 +4957,7 @@ nmc_process_connection_properties (NmCli *nmc,
 		    && modifier == NM_META_ACCESSOR_MODIFIER_SET
 		    && nm_streq (option, "remove")) {
 			NMSetting *ss;
-			char *setting_name;
+			const char *setting_name;
 
 			(*argc)--;
 			(*argv)++;
@@ -4961,49 +5129,48 @@ add_connection_cb (GObject *client,
                    gpointer user_data)
 {
 	nm_auto_free_add_connection_info AddConnectionInfo *info = user_data;
-	NmCli *nmc = info->nmc;
-	NMRemoteConnection *connection;
-	GError *error = NULL;
+	nm_auto_pop_run_status NmCli *nmc = info->nmc;
+	gs_unref_object NMRemoteConnection *connection = NULL;
+	gs_free_error GError *error = NULL;
 	const GPtrArray *connections;
 	guint i, found;
 
 	connection = nm_client_add_connection2_finish (NM_CLIENT (client), result, NULL, &error);
 	if (error) {
-		g_string_printf (nmc->return_text,
-		                 _("Error: Failed to add '%s' connection: %s"),
-		                 info->new_id, error->message);
-		g_error_free (error);
-		nmc->return_value = NMC_RESULT_ERROR_CON_ACTIVATION;
-	} else {
-		connections = nm_client_get_connections (nmc->client);
-		if (connections) {
-			found = 0;
-			for (i = 0; i < connections->len; i++) {
-				NMConnection *candidate = NM_CONNECTION (connections->pdata[i]);
-
-				if ((NMConnection *) connection == candidate)
-					continue;
-				if (nm_streq0 (nm_connection_get_id (candidate), info->new_id))
-					found++;
-			}
-			if (found > 0) {
-				g_printerr (g_dngettext (GETTEXT_PACKAGE,
-				                         "Warning: There is another connection with the name '%1$s'. Reference the connection by its uuid '%2$s'\n",
-				                         "Warning: There are %3$u other connections with the name '%1$s'. Reference the connection by its uuid '%2$s'\n",
-				                         found),
-				            info->new_id,
-				            nm_connection_get_uuid (NM_CONNECTION (connection)),
-				            found);
-			}
-		}
-
-		g_print (_("Connection '%s' (%s) successfully added.\n"),
-		         nm_connection_get_id (NM_CONNECTION (connection)),
-		         nm_connection_get_uuid (NM_CONNECTION (connection)));
-		g_object_unref (connection);
+		nmc_run_status_return (&nmc->run_status,
+		                       NMC_RESULT_ERROR_CON_ACTIVATION,
+		                       _("Error: Failed to add '%s' connection: %s"),
+		                       info->new_id,
+		                       error->message);
+		return;
 	}
 
-	quit ();
+	connections = nm_client_get_connections (nmc->client);
+	if (connections) {
+		found = 0;
+		for (i = 0; i < connections->len; i++) {
+			NMConnection *candidate = NM_CONNECTION (connections->pdata[i]);
+
+			if ((NMConnection *) connection == candidate)
+				continue;
+			if (nm_streq0 (nm_connection_get_id (candidate), info->new_id))
+				found++;
+		}
+		if (found > 0) {
+			g_printerr (g_dngettext (GETTEXT_PACKAGE,
+			                         "Warning: There is another connection with the name '%1$s'. Reference the connection by its uuid '%2$s'\n",
+			                         "Warning: There are %3$u other connections with the name '%1$s'. Reference the connection by its uuid '%2$s'\n",
+			                         found),
+			            info->new_id,
+			            nm_connection_get_uuid (NM_CONNECTION (connection)),
+			            found);
+		}
+	}
+
+	g_print (_("Connection '%s' (%s) successfully added.\n"),
+	         nm_connection_get_id (NM_CONNECTION (connection)),
+	         nm_connection_get_uuid (NM_CONNECTION (connection)));
+	nmc_run_status_return_success (&nmc->run_status);
 }
 
 static void
@@ -5348,8 +5515,8 @@ again:
 	return TRUE;
 }
 
-static NMCResultCode
-do_connection_add (NmCli *nmc, int argc, char **argv)
+static void
+do_connection_add (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv)
 {
 	gs_unref_object NMConnection *connection = NULL;
 	NMSettingConnection *s_con;
@@ -5362,8 +5529,6 @@ do_connection_add (NmCli *nmc, int argc, char **argv)
 
 	rl_attempted_completion_function = nmcli_con_add_tab_completion;
 
-	nmc->return_value = NMC_RESULT_SUCCESS;
-
 	connection = nm_simple_connection_new ();
 
 	s_con = (NMSettingConnection *) nm_setting_connection_new ();
@@ -5372,7 +5537,8 @@ do_connection_add (NmCli *nmc, int argc, char **argv)
 read_properties:
 	g_clear_error (&error);
 	/* Get the arguments from the command line if any */
-	if (argc && !nmc_process_connection_properties (nmc, connection, &argc, &argv, FALSE, &error)) {
+	if (   argc
+	    && !nmc_process_connection_properties (nmc, connection, &argc, &argv, FALSE, &error)) {
 		if (g_strcmp0 (*argv, "--") == 0 && !seen_dash_dash) {
 			/* This is for compatibility with older nmcli that required
 			 * options and properties to be separated with "--" */
@@ -5385,25 +5551,27 @@ read_properties:
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text,
-				                 _("Error: value for '%s' argument is required."),
-				                "save");
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: value for '%s' argument is required."),
+				                       "save");
 				goto finish;
 			}
 			g_clear_error (&error);
 			if (!nmc_string_to_bool (*argv, &save_bool, &error)) {
-				g_string_printf (nmc->return_text, _("Error: 'save': %s."),
-				                 error->message);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: 'save': %s."),
+				                       error->message);
 				goto finish;
 			}
 			next_arg (nmc, &argc, &argv, NULL);
 			goto read_properties;
 		}
 
-		g_string_assign (nmc->return_text, error->message);
-		nmc->return_value = error->code;
+		nmc_run_status_return_message (&nmc->run_status,
+		                               error->code,
+		                               error->message);
 		goto finish;
 	}
 
@@ -5478,8 +5646,10 @@ read_properties:
 					if (!option_relevant (connection, (const NMMetaAbstractInfo *) bi))
 						continue;
 					if (bi->base.inf_flags & NM_META_PROPERTY_INF_FLAG_REQD) {
-						g_string_printf (nmc->return_text, _("Error: '%s' argument is required."), bi->base.property_alias);
-						nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+						nmc_run_status_return (&nmc->run_status,
+						                       NMC_RESULT_ERROR_USER_INPUT,
+						                       _("Error: '%s' argument is required."),
+						                       bi->base.property_alias);
 						goto finish;
 					}
 				}
@@ -5489,24 +5659,25 @@ read_properties:
 				if (!option_relevant (connection, (const NMMetaAbstractInfo *) property_info))
 					continue;
 				if (property_info->inf_flags & NM_META_PROPERTY_INF_FLAG_REQD) {
-					g_string_printf (nmc->return_text, _("Error: '%s' argument is required."), property_info->property_alias);
-					nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
+					nmc_run_status_return (&nmc->run_status,
+					                       NMC_RESULT_ERROR_USER_INPUT,
+					                       _("Error: '%s' argument is required."),
+					                       property_info->property_alias);
 					goto finish;
 				}
 			}
 		}
 	}
 
+	nmc_run_status_wait_push (&nmc->run_status);
 	add_connection (nmc->client,
 	                connection,
 	                !save_bool,
 	                add_connection_cb,
 	                _add_connection_info_new (nmc, NULL, connection));
-	nmc->should_wait++;
 
 finish:
 	reset_options ();
-	return nmc->return_value;
 }
 
 /*****************************************************************************/
@@ -8113,8 +8284,15 @@ editor_menu_main (NmCli *nmc, NMConnection *connection, const char *connection_t
 			nmc->nowait_flag = FALSE;
 			nmc->should_wait++;
 			nmc->nmc_config_mutable.print_output = NMC_PRINT_PRETTY;
-			if (!nmc_activate_connection (nmc, NM_CONNECTION (rem_con), ifname, ap_nsp, ap_nsp, NULL,
-			                              activate_connection_editor_cb, &tmp_err)) {
+			if (!nmc_activate_connection (nmc,
+			                              NM_CONNECTION (rem_con),
+			                              ifname,
+			                              ap_nsp,
+			                              ap_nsp,
+			                              NULL,
+			                              activate_connection_editor_cb,
+			                              NULL,
+			                              &tmp_err)) {
 				g_print (_("Error: Cannot activate connection: %s.\n"), tmp_err->message);
 				g_clear_error (&tmp_err);
 				break;
@@ -8744,6 +8922,31 @@ delete_cb (GObject *con, GAsyncResult *result, gpointer user_data)
 	}
 }
 
+static gboolean
+connection_op_timeout_cb (gpointer user_data)
+{
+	ConnectionCbInfo *info = user_data;
+	NmCli *nmc = info->nmc;
+
+	nmc_run_status_return (&nmc->run_status,
+	                       NMC_RESULT_ERROR_TIMEOUT_EXPIRED,
+	                       _("Error: Timeout expired (%d seconds)"),
+	                       nmc->timeout);
+	connection_cb_info_finish (info, NULL);
+	return G_SOURCE_REMOVE;
+}
+
+static void
+connection_removed_cb (NMClient *client, NMConnection *connection, ConnectionCbInfo *info)
+{
+	if (!connection_cb_info_obj_list_has (info, connection))
+		return;
+	g_print (_("Connection '%s' (%s) successfully deleted.\n"),
+	         nm_connection_get_id (connection),
+	         nm_connection_get_uuid (connection));
+	connection_cb_info_finish (info, connection);
+}
+
 static NMCResultCode
 do_connection_delete (NmCli *nmc, int argc, char **argv)
 {
@@ -9053,7 +9256,7 @@ do_connection_import (NmCli *nmc, int argc, char **argv)
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
+				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), argv[-1]);
 				return NMC_RESULT_ERROR_USER_INPUT;
 			}
 
@@ -9074,7 +9277,7 @@ do_connection_import (NmCli *nmc, int argc, char **argv)
 			argc--;
 			argv++;
 			if (!argc) {
-				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), *(argv-1));
+				g_string_printf (nmc->return_text, _("Error: %s argument is missing."), argv[-1]);
 				return NMC_RESULT_ERROR_USER_INPUT;
 			}
 			if (argc == 1 && nmc->complete)
@@ -9129,14 +9332,12 @@ do_connection_import (NmCli *nmc, int argc, char **argv)
 		return NMC_RESULT_ERROR_UNKNOWN;
 	}
 
+	nmc_run_status_wait_push (&nmc->run_status);
 	add_connection (nmc->client,
 	                connection,
 	                temporary,
 	                add_connection_cb,
 	                _add_connection_info_new (nmc, NULL, connection));
-	nmc->should_wait++;
-
-	return nmc->return_value;
 }
 
 static NMCResultCode
@@ -9343,20 +9544,20 @@ nmcli_con_tab_completion (const char *text, int start, int end)
 }
 
 static const NMCCommand connection_cmds[] = {
-	{ "show",     do_connections_show,      usage_connection_show,     TRUE,   TRUE },
-	{ "up",       do_connection_up,         usage_connection_up,       TRUE,   TRUE },
-	{ "down",     do_connection_down,       usage_connection_down,     TRUE,   TRUE },
-	{ "add",      do_connection_add,        usage_connection_add,      TRUE,   TRUE },
-	{ "edit",     do_connection_edit,       usage_connection_edit,     TRUE,   TRUE },
-	{ "delete",   do_connection_delete,     usage_connection_delete,   TRUE,   TRUE },
-	{ "reload",   do_connection_reload,     usage_connection_reload,   FALSE,  FALSE },
-	{ "load",     do_connection_load,       usage_connection_load,     TRUE,   TRUE },
-	{ "modify",   do_connection_modify,     usage_connection_modify,   TRUE,   TRUE },
-	{ "clone",    do_connection_clone,      usage_connection_clone,    TRUE,   TRUE },
-	{ "import",   do_connection_import,     usage_connection_import,   TRUE,   TRUE },
-	{ "export",   do_connection_export,     usage_connection_export,   TRUE,   TRUE },
-	{ "monitor",  do_connection_monitor,    usage_connection_monitor,  TRUE,   TRUE },
-	{ NULL,       do_connections_show,      usage,                     TRUE,   TRUE },
+	{ "show",    do_connections_show,   usage_connection_show,    TRUE,  TRUE  },
+	{ "up",      do_connection_up,      usage_connection_up,      TRUE,  TRUE  },
+	{ "down",    do_connection_down,    usage_connection_down,    TRUE,  TRUE  },
+	{ "add",     do_connection_add,     usage_connection_add,     TRUE,  TRUE  },
+	{ "edit",    do_connection_edit,    usage_connection_edit,    TRUE,  TRUE  },
+	{ "delete",  do_connection_delete,  usage_connection_delete,  TRUE,  TRUE  },
+	{ "reload",  do_connection_reload,  usage_connection_reload,  FALSE, FALSE },
+	{ "load",    do_connection_load,    usage_connection_load,    TRUE,  TRUE  },
+	{ "modify",  do_connection_modify,  usage_connection_modify,  TRUE,  TRUE  },
+	{ "clone",   do_connection_clone,   usage_connection_clone,   TRUE,  TRUE  },
+	{ "import",  do_connection_import,  usage_connection_import,  TRUE,  TRUE  },
+	{ "export",  do_connection_export,  usage_connection_export,  TRUE,  TRUE  },
+	{ "monitor", do_connection_monitor, usage_connection_monitor, TRUE,  TRUE  },
+	{ NULL,      do_connections_show,   usage,                    TRUE,  TRUE  },
 };
 
 /* Entry point function for connections-related commands: 'nmcli connection' */

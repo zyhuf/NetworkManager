@@ -19,14 +19,13 @@
 #include <readline/history.h>
 
 #include "nm-client-utils.h"
+#include "nm-glib-aux/nm-c-list.h"
 
 #include "polkit-agent.h"
 #include "utils.h"
 #include "common.h"
 #include "connections.h"
 #include "devices.h"
-#include "general.h"
-#include "agent.h"
 #include "settings.h"
 
 #if defined(NM_DIST_VERSION)
@@ -75,7 +74,11 @@
 static NmCli nm_cli = {
 	.client = NULL,
 
-	.return_value = NMC_RESULT_SUCCESS,
+	.run_status = {
+	    ._priv = {
+	        .sources_lst_head = C_LIST_INIT (nm_cli.run_status._priv.sources_lst_head),
+	    },
+	},
 
 	.timeout = -1,
 
@@ -83,7 +86,6 @@ static NmCli nm_cli = {
 	.pwds_hash = NULL,
 	.pk_listener = NULL,
 
-	.should_wait = 0,
 	.nowait_flag = TRUE,
 	.nmc_config.print_output = NMC_PRINT_NORMAL,
 	.nmc_config.multiline_output = FALSE,
@@ -106,6 +108,76 @@ const NmCli *const nmc_meta_environment_arg = &nm_cli;
 
 /*****************************************************************************/
 
+void
+nmc_run_status_return_message_full (NmcRunStatus *run_status,
+                                    NMCResultCode result_code,
+                                    char *result_message_take)
+{
+	nm_assert (run_status);
+	nm_assert (!run_status->_priv.is_returned);
+	nm_assert (run_status->_priv.result_code == 0);
+	nm_assert (!run_status->_priv.result_message);
+
+	g_cancellable_cancel (run_status->cancellable);
+
+	run_status->_priv.is_returned = TRUE;
+	run_status->_priv.result_code = result_code;
+	run_status->_priv.result_message = result_message_take;
+}
+
+void
+_nmc_run_status_signal_finished (NmcRunStatus *run_status)
+{
+	nm_assert (run_status);
+	nm_assert (!run_status->_priv.is_finished);
+
+	if (!run_status->_priv.is_returned)
+		nmc_run_status_return_success (run_status);
+
+	run_status->_priv.is_finished = TRUE;
+	nm_c_list_elem_free_all (&run_status->_priv.sources_lst_head,
+	                         (GDestroyNotify) nm_g_source_destroy_and_unref);
+}
+
+GSource *
+nmc_run_status_wait_add_timeout_full (NmcRunStatus *run_status,
+                                      guint timeout_msec,
+                                      GSourceFunc func,
+                                      gpointer user_data,
+                                      GDestroyNotify destroy_notify)
+{
+	GSource *source;
+
+	nm_assert (run_status);
+	nm_assert (func);
+
+	source = nm_g_timeout_source_new (timeout_msec,
+	                                  G_PRIORITY_DEFAULT,
+	                                  func,
+	                                  user_data,
+	                                  destroy_notify);
+	g_source_attach (source, NULL);
+
+	c_list_link_tail (&run_status->_priv.sources_lst_head,
+	                  &nm_c_list_elem_new_stale (source)->lst);
+
+	return source;
+}
+
+void
+nmc_run_status_wait_remove_source (NmcRunStatus *run_status,
+                                   GSource *source_take)
+{
+	nm_auto_unref_gsource GSource *source = g_steal_pointer (&source_take);
+	NMCListElem *elem;
+
+	elem = nm_c_list_elem_find_first (&run_status->_priv.sources_lst_head, d, d == source);
+	if (elem)
+		nm_c_list_elem_free_full (elem, (GDestroyNotify) nm_g_source_destroy_and_unref);
+}
+
+/*****************************************************************************/
+
 typedef struct {
 	NmCli *nmc;
 	int argc;
@@ -113,7 +185,6 @@ typedef struct {
 } ArgsInfo;
 
 /* --- Global variables --- */
-GMainLoop *loop = NULL;
 struct termios termios_orig;
 
 NM_CACHED_QUARK_FCN ("nmcli-error-quark", nmcli_error_quark)
@@ -258,26 +329,22 @@ usage (void)
 	              "\n"));
 }
 
-static const NMCCommand nmcli_cmds[] = {
-	{ "general",     do_general,      NULL,   FALSE,  FALSE },
-	{ "monitor",     do_monitor,      NULL,   TRUE,   FALSE },
-	{ "networking",  do_networking,   NULL,   FALSE,  FALSE },
-	{ "radio",       do_radio,        NULL,   FALSE,  FALSE },
-	{ "connection",  do_connections,  NULL,   FALSE,  FALSE },
-	{ "device",      do_devices,      NULL,   FALSE,  FALSE },
-	{ "agent",       do_agent,        NULL,   FALSE,  FALSE },
-	{ NULL,          do_overview,     usage,  TRUE,   TRUE },
-};
-
 static gboolean
-matches_arg (NmCli *nmc, int *argc, char ***argv, const char *pattern, char **arg)
+matches_arg (NmCli *nmc,
+             int *argc,
+             const char *const**argv,
+             const char *pattern,
+             char **arg)
 {
-	char *opt = *argv[0];
+	gs_free char *opt_free = NULL;
+	const char *opt = (*argv)[0];
+	gs_free char *arg_tmp = NULL;
+	const char *s;
 
-	if (nmc->return_value != NMC_RESULT_SUCCESS) {
-		/* Don't process further matches if there has been an error. */
-		return FALSE;
-	}
+	nm_assert (!opt);
+	nm_assert (opt[0] == '-');
+	nm_assert (!arg || !*arg);
+	nm_assert (!nmc_run_status_is_returned (&nmc->run_status));
 
 	if (opt[1] == '-') {
 		/* We know one '-' was already seen by the caller.
@@ -288,33 +355,33 @@ matches_arg (NmCli *nmc, int *argc, char ***argv, const char *pattern, char **ar
 	if (arg) {
 		/* If there's a "=" separator, replace it with NUL so that matches()
 		 * works and consider the part after it to be the arguemnt's value. */
-		*arg = strchr (opt, '=');
-		if (*arg) {
-			**arg = '\0';
-			(*arg)++;
+		s = strchr (opt, '=');
+		if (s) {
+			opt = nm_strndup_a (300, opt, s - opt, &opt_free);
+			arg_tmp = g_strdup (&s[1]);
 		}
 	}
 
-	if (!matches (opt, pattern)) {
-		if (arg && *arg) {
-			/* Back off the replacement of "=". */
-			(*arg)--;
-			**arg = '=';
-		}
+	if (!matches (opt, pattern))
 		return FALSE;
-	}
 
-	if (arg && !*arg) {
-		/* We need a value, but the option didn't contain a "=<value>" part.
-		 * Proceed to the next argument. */
-		(*argc)--;
-		(*argv)++;
-		if (!*argc) {
-			g_string_printf (nmc->return_text, _("Error: missing argument for '%s' option."), opt);
-			nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-			return FALSE;
+	if (arg) {
+		if (arg_tmp)
+			*arg = g_steal_pointer (&arg_tmp);
+		else {
+			/* We need a value, but the option didn't contain a "=<value>" part.
+			 * Proceed to the next argument. */
+			if (*argc <= 1) {
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: missing argument for '%s' option."),
+				                       opt);
+				return FALSE;
+			}
+			(*argc)--;
+			(*argv)++;
+			*arg = g_strdup (*argv[0]);
 		}
-		*arg = *argv[0];
 	}
 
 	return TRUE;
@@ -699,32 +766,152 @@ set_colors (NmcColorOption color_option,
 
 /*************************************************************************************/
 
-static gboolean
-process_command_line (NmCli *nmc, int argc, char **argv)
+gboolean
+nmc_seen_sigint (NmcReadlineStatus *readline_status)
 {
+	return readline_status->seen_sigint;
+}
+
+void
+nmc_clear_sigint (NmcReadlineStatus *readline_status)
+{
+	readline_status->seen_sigint = FALSE;
+}
+
+static void
+nmc_set_sigint (NmcReadlineStatus *readline_status)
+{
+	readline_status->seen_sigint = TRUE;
+}
+
+void nmc_exit (void)
+{
+	tcsetattr (STDIN_FILENO, TCSADRAIN, &termios_orig);
+	nmc_cleanup_readline ();
+	exit (1);
+}
+
+typedef struct {
+	int signo;
+	NmCli *nmc;
+} SignalHandlerData;
+
+static SignalHandlerData *
+signal_handler_data_new (NmCli *nmc, int signo)
+{
+	SignalHandlerData *d;
+
+	d = g_new (SignalHandlerData, 1);
+	*d = (SignalHandlerData) {
+		.nmc   = nmc,
+		.signo = signo,
+	};
+	return d;
+}
+
+static gboolean
+signal_handler (gpointer user_data)
+{
+	SignalHandlerData *data = user_data;
+	NmCli *nmc = data->nmc;
+	int signo = data->signo;
+
+	switch (signo) {
+	case SIGINT:
+		if (nmc_get_in_readline (&nmc->readline_status)) {
+			nmc_set_sigint (&nmc->readline_status);
+		} else {
+			nmc_run_status_return (&nmc->run_status,
+			                       0x80 + signo,
+			                       _("Error: nmcli terminated by signal %s (%d)"),
+			                       strsignal (signo),
+			                       signo);
+		}
+		break;
+	case SIGTERM:
+		nmc_run_status_return (&nmc->run_status,
+		                       0x80 + signo,
+		                       _("Error: nmcli terminated by signal %s (%d)"),
+		                       strsignal (signo),
+		                       signo);
+		break;
+	}
+
+	return G_SOURCE_CONTINUE;
+}
+
+void
+nm_cli_spawn_pager (const NmcConfig *nmc_config,
+                    NmcPagerData *pager_data)
+{
+	if (pager_data->pid != 0)
+		return;
+	pager_data->pid = nmc_terminal_spawn_pager (nmc_config);
+}
+
+int
+main (int argc_orig, char **argv_orig)
+{
+	static const NMCCommand nmcli_cmds[] = {
+	    { "general",    nmc_command_do_general,    NULL,  FALSE, FALSE },
+	    { "monitor",    nmc_command_do_monitor,    NULL,  TRUE,  FALSE },
+	    { "networking", nmc_command_do_networking, NULL,  FALSE, FALSE },
+	    { "radio",      nmc_command_do_radio,      NULL,  FALSE, FALSE },
+	    { "connection", nmc_command_do_connection, NULL,  FALSE, FALSE },
+	    { "device",     nmc_command_do_device,     NULL,  FALSE, FALSE },
+	    { "agent",      nmc_command_do_agent,      NULL,  FALSE, FALSE },
+	    { NULL,         nmc_command_do_overview,   usage, TRUE,  TRUE },
+	};
 	NmcColorOption colors = NMC_USE_COLOR_AUTO;
-	char *base;
+	gs_free const char **argv_clone1 = NULL;
+	const char *base;
+	pid_t ret;
+	NmCli *nmc = &nm_cli;
+	guint signal_id_term;
+	guint signal_id_int;
+	int argc = argc_orig;
+	const char *const*argv = (const char *const*) argv_orig;
+
+	/* Set locale to use environment variables */
+	setlocale (LC_ALL, "");
+
+#ifdef GETTEXT_PACKAGE
+	/* Set i18n stuff */
+	bindtextdomain (GETTEXT_PACKAGE, NMLOCALEDIR);
+	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+	textdomain (GETTEXT_PACKAGE);
+#endif
+
+	signal_id_term = g_unix_signal_add_full (G_PRIORITY_DEFAULT, SIGTERM, signal_handler, signal_handler_data_new (nmc, SIGTERM), g_free);
+	signal_id_int  = g_unix_signal_add_full (G_PRIORITY_DEFAULT, SIGINT,  signal_handler, signal_handler_data_new (nmc, SIGINT),  g_free);
+
+	/* Save terminal settings */
+	tcgetattr (STDIN_FILENO, &termios_orig);
 
 	base = strrchr (argv[0], '/');
-	if (base == NULL)
+	if (!base)
 		base = argv[0];
 	else
 		base++;
-	if (argc > 1 && nm_streq (argv[1], "--complete-args")) {
-		nmc->complete = TRUE;
-		argv[1] = argv[0];
-		next_arg (nmc, &argc, &argv, NULL);
-	}
-	next_arg (nmc, &argc, &argv, NULL);
 
-	/* parse options */
-	while (argc) {
-		char *value;
+	arg_move_next (&argc, &argv);
+
+	if (   argc >= 1
+	    && nm_streq (argv[0], "--complete-args")) {
+		nmc->complete_mutable = TRUE;
+		arg_move_next (&argc, &argv);
+	}
+
+	nmc->run_status.cancellable_mutable = g_cancellable_new ();
+
+	while (argc > 0) {
+		gs_free char *value = NULL;
 
 		if (argv[0][0] != '-')
 			break;
 
-		if (argc == 1 && nmc->complete) {
+		if (   argc == 1
+		    && nmc->complete) {
 			nmc_complete_strings (argv[0], "--terse", "--pretty", "--mode", "--overview",
 			                               "--colors", "--escape",
 			                               "--fields", "--nocheck", "--get-values",
@@ -741,27 +928,31 @@ process_command_line (NmCli *nmc, int argc, char **argv)
 			nmc->nmc_config_mutable.overview = TRUE;
 		} else if (matches_arg (nmc, &argc, &argv, "-terse", NULL)) {
 			if (nmc->nmc_config.print_output == NMC_PRINT_TERSE) {
-				g_string_printf (nmc->return_text, _("Error: Option '--terse' is specified the second time."));
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: Option '--terse' is specified the second time."));
+				break;
 			}
 			else if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY) {
-				g_string_printf (nmc->return_text, _("Error: Option '--terse' is mutually exclusive with '--pretty'."));
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: Option '--terse' is mutually exclusive with '--pretty'."));
+				break;
 			}
 			else
 				nmc->nmc_config_mutable.print_output = NMC_PRINT_TERSE;
 		} else if (matches_arg (nmc, &argc, &argv, "-pretty", NULL)) {
 			if (nmc->nmc_config.print_output == NMC_PRINT_PRETTY) {
-				g_string_printf (nmc->return_text, _("Error: Option '--pretty' is specified the second time."));
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: Option '--pretty' is specified the second time."));
+				break;
 			}
 			else if (nmc->nmc_config.print_output == NMC_PRINT_TERSE) {
-				g_string_printf (nmc->return_text, _("Error: Option '--pretty' is mutually exclusive with '--terse'."));
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: Option '--pretty' is mutually exclusive with '--terse'."));
+				break;
 			}
 			else
 				nmc->nmc_config_mutable.print_output = NMC_PRINT_PRETTY;
@@ -774,9 +965,10 @@ process_command_line (NmCli *nmc, int argc, char **argv)
 			else if (matches (value, "multiline"))
 				nmc->nmc_config_mutable.multiline_output = TRUE;
 			else {
-				g_string_printf (nmc->return_text, _("Error: '%s' is not a valid argument for '%s' option."), value, argv[0]);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: '%s' is not a valid argument for '%s' option."), value, argv[0]);
+				break;
 			}
 		} else if (matches_arg (nmc, &argc, &argv, "-colors", &value)) {
 			if (argc == 1 && nmc->complete)
@@ -788,9 +980,10 @@ process_command_line (NmCli *nmc, int argc, char **argv)
 			else if (matches (value, "no"))
 				colors = NMC_USE_COLOR_NO;
 			else {
-				g_string_printf (nmc->return_text, _("Error: '%s' is not valid argument for '%s' option."), value, argv[0]);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: '%s' is not valid argument for '%s' option."), value, argv[0]);
+				break;
 			}
 		} else if (matches_arg (nmc, &argc, &argv, "-escape", &value)) {
 			if (argc == 1 && nmc->complete)
@@ -800,9 +993,10 @@ process_command_line (NmCli *nmc, int argc, char **argv)
 			else if (matches (value, "no"))
 				nmc->nmc_config_mutable.escape_values = FALSE;
 			else {
-				g_string_printf (nmc->return_text, _("Error: '%s' is not valid argument for '%s' option."), value, argv[0]);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: '%s' is not valid argument for '%s' option."), value, argv[0]);
+				break;
 			}
 		} else if (matches_arg (nmc, &argc, &argv, "-fields", &value)) {
 			if (argc == 1 && nmc->complete)
@@ -824,106 +1018,66 @@ process_command_line (NmCli *nmc, int argc, char **argv)
 			unsigned long timeout;
 
 			if (!nmc_string_to_uint (value, TRUE, 0, G_MAXINT, &timeout)) {
-				g_string_printf (nmc->return_text, _("Error: '%s' is not a valid timeout."), value);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-				return FALSE;
+				nmc_run_status_return (&nmc->run_status,
+				                       NMC_RESULT_ERROR_USER_INPUT,
+				                       _("Error: '%s' is not a valid timeout."), value);
+				break;
 			}
 			nmc->timeout = (int) timeout;
 		} else if (matches_arg (nmc, &argc, &argv, "-version", NULL)) {
 			if (!nmc->complete)
 				g_print (_("nmcli tool, version %s\n"), NMCLI_VERSION);
-			return NMC_RESULT_SUCCESS;
+			nmc_run_status_return_success (&nmc->run_status);
+			break;
 		} else if (matches_arg (nmc, &argc, &argv, "-help", NULL)) {
 			if (!nmc->complete)
 				usage ();
-			return NMC_RESULT_SUCCESS;
+			nmc_run_status_return_success (&nmc->run_status);
+			break;
 		} else {
-			if (nmc->return_value == NMC_RESULT_SUCCESS) {
-				g_string_printf (nmc->return_text, _("Error: Option '%s' is unknown, try 'nmcli -help'."), argv[0]);
-				nmc->return_value = NMC_RESULT_ERROR_USER_INPUT;
-			}
-			return FALSE;
+			nmc_run_status_return (&nmc->run_status,
+			                       NMC_RESULT_ERROR_USER_INPUT,
+			                       _("Error: Option '%s' is unknown, try 'nmcli -help'."), argv[0]);
+			break;
 		}
 
 		next_arg (nmc, &argc, &argv, NULL);
 	}
 
-	/* Ignore --overview when fields are set explicitly */
-	if (nmc->required_fields)
-		nmc->nmc_config_mutable.overview = FALSE;
+	if (!nmc_run_status_is_returned (&nmc->run_status)) {
+		/* Ignore --overview when fields are set explicitly */
+		if (nmc->required_fields)
+			nmc->nmc_config_mutable.overview = FALSE;
 
-	set_colors (colors,
-	            &nmc->nmc_config_mutable.use_colors,
-	            &nmc->palette_buffer,
-	            nmc->nmc_config_mutable.palette);
+		set_colors (colors,
+		            &nmc->nmc_config_mutable.use_colors,
+		            &nmc->palette_buffer,
+		            nmc->nmc_config_mutable.palette);
 
-	/* Now run the requested command */
-	nmc_do_cmd (nmc, nmcli_cmds, *argv, argc, argv);
-
-	return TRUE;
-}
-
-static gboolean nmcli_sigint = FALSE;
-
-gboolean
-nmc_seen_sigint (void)
-{
-	return nmcli_sigint;
-}
-
-void
-nmc_clear_sigint (void)
-{
-	nmcli_sigint = FALSE;
-}
-
-void nmc_exit (void)
-{
-	tcsetattr (STDIN_FILENO, TCSADRAIN, &termios_orig);
-	nmc_cleanup_readline ();
-	exit (1);
-}
-
-static gboolean
-signal_handler (gpointer user_data)
-{
-	int signo = GPOINTER_TO_INT (user_data);
-
-	switch (signo) {
-	case SIGINT:
-		if (nmc_get_in_readline ()) {
-			nmcli_sigint = TRUE;
-		} else {
-			nm_cli.return_value = 0x80 + signo;
-			g_string_printf (nm_cli.return_text, _("Error: nmcli terminated by signal %s (%d)"),
-			                 strsignal (signo), signo);
-			g_main_loop_quit (loop);
-		}
-		break;
-	case SIGTERM:
-		nm_cli.return_value = 0x80 + signo;
-		g_string_printf (nm_cli.return_text, _("Error: nmcli terminated by signal %s (%d)"),
-		                 strsignal (signo), signo);
-		nmc_exit ();
-		break;
+		/* Now run the requested command */
+		nmc_do_cmd (nmc, nmcli_cmds, *argv, argc, argv);
 	}
 
-	return G_SOURCE_CONTINUE;
-}
+	while (TRUE) {
+		if (nmc_run_status_wait_is_finished (&nmc->run_status)) {
+			nmc_run_status_return_success_if_necessary (&nmc->run_status);
+			break;
+		}
+		g_main_context_iteration (NULL, TRUE);
+	}
 
-void
-nm_cli_spawn_pager (const NmcConfig *nmc_config,
-                    NmcPagerData *pager_data)
-{
-	if (pager_data->pid != 0)
-		return;
-	pager_data->pid = nmc_terminal_spawn_pager (nmc_config);
-}
+	nm_clear_g_source (&
 
-static void
-nmc_cleanup (NmCli *nmc)
-{
-	pid_t ret;
+	if (nm_cli.complete) {
+		/* Remove error statuses from command completion runs. */
+		if (nm_cli.return_value < NMC_RESULT_COMPLETE_FILE)
+			nm_cli.return_value = NMC_RESULT_SUCCESS;
+	} else if (nm_cli.return_value != NMC_RESULT_SUCCESS) {
+		/* Print result descripting text */
+		g_printerr ("%s\n", nm_cli.return_text->str);
+	}
+
+	g_main_loop_unref (loop);
 
 	g_clear_object (&nmc->client);
 
@@ -952,44 +1106,8 @@ nmc_cleanup (NmCli *nmc)
 	nm_clear_g_free (&nmc->palette_buffer);
 
 	nmc_polkit_agent_fini (nmc);
-}
 
-int
-main (int argc, char *argv[])
-{
-	/* Set locale to use environment variables */
-	setlocale (LC_ALL, "");
+	g_clear_object (&nmc->run_status.cancellable_mutable);
 
-#ifdef GETTEXT_PACKAGE
-	/* Set i18n stuff */
-	bindtextdomain (GETTEXT_PACKAGE, NMLOCALEDIR);
-	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
-	textdomain (GETTEXT_PACKAGE);
-#endif
-
-	/* Save terminal settings */
-	tcgetattr (STDIN_FILENO, &termios_orig);
-
-	nm_cli.return_text = g_string_new (_("Success"));
-	loop = g_main_loop_new (NULL, FALSE);
-
-	g_unix_signal_add (SIGTERM, signal_handler, GINT_TO_POINTER (SIGTERM));
-	g_unix_signal_add (SIGINT, signal_handler, GINT_TO_POINTER (SIGINT));
-
-	if (process_command_line (&nm_cli, argc, argv))
-		g_main_loop_run (loop);
-
-	if (nm_cli.complete) {
-		/* Remove error statuses from command completion runs. */
-		if (nm_cli.return_value < NMC_RESULT_COMPLETE_FILE)
-			nm_cli.return_value = NMC_RESULT_SUCCESS;
-	} else if (nm_cli.return_value != NMC_RESULT_SUCCESS) {
-		/* Print result descripting text */
-		g_printerr ("%s\n", nm_cli.return_text->str);
-	}
-
-	g_main_loop_unref (loop);
-	nmc_cleanup (&nm_cli);
-
-	return nm_cli.return_value;
+	return nmc->run_status.result_code;
 }

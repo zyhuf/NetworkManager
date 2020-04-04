@@ -4479,17 +4479,15 @@ clients_cli_nmcli_SOURCES = \
 	clients/cli/utils.c \
 	clients/cli/utils.h \
 	clients/cli/agent.c \
-	clients/cli/agent.h \
 	clients/cli/general.c \
-	clients/cli/general.h \
+	clients/cli/nmcli.c \
+	clients/cli/nmcli.h \
 	clients/cli/connections.c \
 	clients/cli/connections.h \
 	clients/cli/devices.c \
 	clients/cli/devices.h \
 	clients/cli/settings.c \
 	clients/cli/settings.h \
-	clients/cli/nmcli.c \
-	clients/cli/nmcli.h \
 	clients/cli/polkit-agent.c \
 	clients/cli/polkit-agent.h \
 	$(NULL)

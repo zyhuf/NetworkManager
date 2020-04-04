@@ -8,6 +8,7 @@
 
 #include "nm-secret-agent-simple.h"
 #include "nm-meta-setting-desc.h"
+#include "c-list/src/c-list.h"
 
 struct _NMPolkitListener;
 
@@ -47,9 +48,6 @@ typedef enum {
 
 	/* Connection/Device/AP not found */
 	NMC_RESULT_ERROR_NOT_FOUND = 10,
-
-	/* --complete-args signals a file name may follow */
-	NMC_RESULT_COMPLETE_FILE = 65,
 } NMCResultCode;
 
 typedef enum {
@@ -105,6 +103,27 @@ typedef struct {
 	pid_t pid;
 } NmcPagerData;
 
+typedef struct {
+	union {
+		GCancellable *const cancellable;
+		GCancellable *cancellable_mutable;
+	};
+	struct {
+		CList sources_lst_head;
+		char *result_message;
+		int should_wait;
+		NMCResultCode result_code;
+		bool is_finished:1;
+		bool is_returned:1;
+		bool complete_file:1;
+	} _priv;
+} NmcRunStatus;
+
+typedef struct {
+	bool in_readline;
+	bool seen_sigint;
+} NmcReadlineStatus;
+
 typedef struct _NmcOutputData {
 	GPtrArray *output_data;                           /* GPtrArray of arrays of NmcOutputField structs - accumulates data for output */
 } NmcOutputData;
@@ -113,9 +132,8 @@ typedef struct _NmcOutputData {
 typedef struct _NmCli {
 	NMClient *client;                                 /* Pointer to NMClient of libnm */
 
-	NMCResultCode return_value;                       /* Return code of nmcli */
-	GString *return_text;                             /* Reason text */
-
+	NmcRunStatus run_status;
+	NmcReadlineStatus readline_status;
 	NmcPagerData pager_data;
 
 	int timeout;                                      /* Operation timeout */
@@ -124,7 +142,6 @@ typedef struct _NmCli {
 	GHashTable *pwds_hash;                            /* Hash table with passwords in passwd-file */
 	struct _NMPolkitListener *pk_listener;            /* polkit agent listener */
 
-	int should_wait;                                  /* Semaphore indicating whether nmcli should not end or not yet */
 	gboolean nowait_flag;                             /* '--nowait' option; used for passing to callbacks */
 	gboolean mode_specified;                          /* Whether tabular/multiline mode was specified via '--mode' option */
 	union {
@@ -133,7 +150,12 @@ typedef struct _NmCli {
 	};
 	char *required_fields;                            /* Required fields in output: '--fields' option */
 	gboolean ask;                                     /* Ask for missing parameters: option '--ask' */
-	gboolean complete;                                /* Autocomplete the command line */
+
+	union {
+		const bool complete;
+		bool complete_mutable;
+	};
+
 	gboolean editor_status_line;                      /* Whether to display status line in connection editor */
 	gboolean editor_save_confirmation;                /* Whether to ask for confirmation on saving connections with 'autoconnect=yes' */
 
@@ -148,8 +170,8 @@ GQuark nmcli_error_quark (void);
 
 extern GMainLoop *loop;
 
-gboolean nmc_seen_sigint (void);
-void     nmc_clear_sigint (void);
+gboolean nmc_seen_sigint (NmcReadlineStatus *readline_status);
+void     nmc_clear_sigint (NmcReadlineStatus *readline_status);
 void     nmc_set_sigquit_internal (void);
 void     nmc_exit (void);
 
@@ -163,5 +185,158 @@ void nmc_empty_output_fields (NmcOutputData *output_data);
 	nm_auto (nmc_empty_output_fields) NmcOutputData out = { \
 		.output_data = g_ptr_array_new_full (20, g_free), \
 	}
+
+/*****************************************************************************/
+
+void _nmc_run_status_signal_finished (NmcRunStatus *run_status);
+
+static inline void
+nmc_run_status_wait_push (NmcRunStatus *run_status)
+{
+	nm_assert (run_status);
+	nm_assert (run_status->_priv.should_wait < G_MAXINT);
+	nm_assert (!run_status->_priv.is_finished);
+
+	run_status->_priv.should_wait++;
+}
+
+static inline void
+nmc_run_status_wait_pop (NmcRunStatus *run_status)
+{
+	nm_assert (run_status);
+	nm_assert (run_status->_priv.should_wait > 0);
+	nm_assert (!run_status->_priv.is_finished);
+
+	if (--run_status->_priv.should_wait == 0)
+		_nmc_run_status_signal_finished (run_status);
+}
+
+static inline void
+_nm_auto_pop_run_status (NmCli **p_cli)
+{
+	if (*p_cli)
+		nmc_run_status_wait_pop (&((*p_cli)->run_status));
+}
+
+#define nm_auto_pop_run_status nm_auto (_nm_auto_pop_run_status)
+
+static inline gboolean
+nmc_run_status_wait_is_finished (NmcRunStatus *run_status)
+{
+	nm_assert (run_status);
+	nm_assert (run_status->_priv.should_wait >= 0);
+	nm_assert (!run_status->_priv.is_finished);
+
+	if (run_status->_priv.should_wait > 0)
+		return FALSE;
+	_nmc_run_status_signal_finished (run_status);
+	return TRUE;
+}
+
+GSource *nmc_run_status_wait_add_timeout_full (NmcRunStatus *run_status,
+                                               guint timeout_msec,
+                                               GSourceFunc func,
+                                               gpointer user_data,
+                                               GDestroyNotify destroy_notify);
+static inline GSource *
+nmc_run_status_wait_add_timeout (NmcRunStatus *run_status,
+                                 guint timeout_msec,
+                                 GSourceFunc func,
+                                 gpointer user_data)
+{
+	return nmc_run_status_wait_add_timeout_full (run_status, timeout_msec, func, user_data, NULL);
+}
+
+void nmc_run_status_wait_remove_source (NmcRunStatus *run_status,
+                                        GSource *source_take);
+
+static inline gboolean
+nmc_run_status_is_returned (NmcRunStatus *run_status)
+{
+	return run_status->_priv.is_returned;
+}
+
+void nmc_run_status_return_message_full (NmcRunStatus *run_status,
+                                         NMCResultCode result_code,
+                                         char *result_message_take);
+
+static inline void
+nmc_run_status_return_message (NmcRunStatus *run_status,
+                               NMCResultCode result_code,
+                               const char *result_message)
+{
+	nmc_run_status_return_message_full (run_status, result_code, g_strdup (result_message));
+}
+
+#define nmc_run_status_return(run_status, result_code, ...) \
+	G_STMT_START { \
+		NmcRunStatus *_run_status = (run_status); \
+		NMCResultCode _result_code = (result_code); \
+		\
+		if (NM_NARG (__VA_ARGS__) == 1) \
+			nmc_run_status_return_message (_run_status, _result_code, _NM_UTILS_MACRO_FIRST (__VA_ARGS__)); \
+		else { \
+			gs_free char *_msg = g_strdup_printf (__VA_ARGS__); \
+			\
+			nmc_run_status_return_message (_run_status, _result_code, _msg); \
+		} \
+	} G_STMT_END
+
+static inline void
+nmc_run_status_return_success (NmcRunStatus *run_status)
+{
+	nmc_run_status_return_message (run_status, NMC_RESULT_SUCCESS, NULL);
+}
+
+static inline void
+nmc_run_status_return_success_if_necessary (NmcRunStatus *run_status)
+{
+	/* By default, if the result was not set upon completion we anyway assume
+	 * success. So, this has only the purpose to mark the result as set so
+	 * that we assert that we won't try to set the result again. This is
+	 * only to catch bugs where we try to set the result multiple times. */
+	nm_assert (run_status);
+	if (!run_status->_priv.is_returned)
+		nmc_run_status_return_success (run_status);
+}
+
+void nmc_run_status_return_append_message (NmcRunStatus *run_status,
+                                           const char *fmt,
+                                           ...) G_GNUC_PRINTF (2, 3);
+
+static inline void
+nmc_run_status_set_complete_file (NmcRunStatus *run_status)
+{
+	nm_assert (run_status);
+	nm_assert (!run_status->_priv.is_returned);
+
+	run_status->_priv.complete_file = TRUE;
+}
+
+/*****************************************************************************/
+
+struct _NMCCommand;
+
+typedef struct _NMCCommand {
+	const char *cmd;
+	void (*func) (const struct _NMCCommand *cmd,
+	              NmCli *nmc,
+	              int argc,
+	              const char *const*argv);
+	void (*usage) (void);
+	bool needs_client;
+	bool needs_nm_running;
+} NMCCommand;
+
+void nmc_command_do_agent      (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_general    (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_networking (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_radio      (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_monitor    (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_overview   (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_connection (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+void nmc_command_do_device     (const NMCCommand *cmd, NmCli *nmc, int argc, const char *const*argv);
+
+/*****************************************************************************/
 
 #endif /* NMC_NMCLI_H */

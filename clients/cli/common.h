@@ -44,17 +44,20 @@ char *nmc_unique_connection_name (const GPtrArray *connections,
 
 void nmc_cleanup_readline (void);
 char *nmc_readline (const NmcConfig *nmc_config,
+                    NmcReadlineStatus *readline_status,
                     const char *prompt_fmt,
-                    ...) G_GNUC_PRINTF (2, 3);
+                    ...) G_GNUC_PRINTF (3, 4);
 char *nmc_readline_echo (const NmcConfig *nmc_config,
+                         NmcReadlineStatus *readline_status,
                          gboolean echo_on,
                          const char *prompt_fmt,
-                         ...) G_GNUC_PRINTF (3, 4);
+                         ...) G_GNUC_PRINTF (4, 5);
 NmcCompEntryFunc nmc_rl_compentry_func_wrap (const char *const*values);
 char *nmc_rl_gen_func_basic (const char *text, int state, const char *const*words);
 char *nmc_rl_gen_func_ifnames (const char *text, int state);
-gboolean nmc_get_in_readline (void);
-void nmc_set_in_readline (gboolean in_readline);
+
+gboolean nmc_get_in_readline (NmcReadlineStatus *readline_status);
+void nmc_set_in_readline (NmcReadlineStatus *readline_status, gboolean in_readline);
 
 /* for pre-filling a string to readline prompt */
 extern char *nmc_rl_pre_input_deftext;
@@ -62,15 +65,11 @@ int nmc_rl_set_deftext (void);
 
 char *nmc_parse_lldp_capabilities (guint value);
 
-typedef struct {
-	const char *cmd;
-	NMCResultCode (*func) (NmCli *nmc, int argc, char **argv);
-	void (*usage) (void);
-	gboolean needs_client;
-	gboolean needs_nm_running;
-} NMCCommand;
-
-void nmc_do_cmd (NmCli *nmc, const NMCCommand cmds[], const char *cmd, int argc, char **argv);
+void nmc_do_cmd (NmCli *nmc,
+                 const NMCCommand *cmds,
+                 const char *cmd,
+                 int argc,
+                 const char *const*argv);
 
 void nmc_complete_strv (const char *prefix, gssize nargs, const char *const*args);
 
