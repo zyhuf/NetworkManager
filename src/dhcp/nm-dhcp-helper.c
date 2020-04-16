@@ -115,19 +115,38 @@ main (int argc, char *argv[])
 	gs_unref_variant GVariant *parameters = NULL;
 	gs_unref_variant GVariant *result = NULL;
 	gboolean success = FALSE;
-	guint try_count = 0;
+	guint try_count;
+	gint64 time_start;
 	gint64 time_end;
 
-	/* FIXME: g_dbus_connection_new_for_address_sync() tries to connect to the socket in
-	 * non-blocking mode, which can easily fail with EAGAIN, causing the creation of the
-	 * socket to fail with "Could not connect: Resource temporarily unavailable".
-	 *
-	 * We should instead create the GIOStream ourself and block on connecting to
-	 * the socket. */
+	/* Connecting to the unix socket can fail with EAGAIN if there are too
+	 * many pending connections and the server can't accept them in time
+	 * before reaching backlog capacity. Ideally the server should increase
+	 * the backlog length, but GLib doesn't provide a way to change it for a
+	 * GDBus server. Retry for up to 5 seconds in case of failure. */
+	time_start = g_get_monotonic_time ();
+	time_end = time_start + (5000 * 1000L);
+	try_count = 0;
+
+do_connect:
+	try_count++;
 	connection = g_dbus_connection_new_for_address_sync ("unix:path=" NMRUNDIR "/private-dhcp",
 	                                                     G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT,
 	                                                     NULL, NULL, &error);
 	if (!connection) {
+		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+			gint64 time_remaining = time_end - g_get_monotonic_time ();
+
+			if (time_remaining > 0) {
+				_LOGi ("failure to connect: %s (retry %u, waited %lld ms)",
+				       error->message, try_count,
+				       (long long) (time_end - time_remaining - time_start) / 1000);
+				g_usleep (NM_MIN (NM_CLAMP ((gint64) (100L * (1L << try_count)), 5000, 100000), time_remaining));
+				g_clear_error (&error);
+				goto do_connect;
+			}
+		}
+
 		g_dbus_error_strip_remote_error (error);
 		_LOGE ("could not connect to NetworkManager D-Bus socket: %s",
 		       error->message);
@@ -135,8 +154,8 @@ main (int argc, char *argv[])
 	}
 
 	parameters = build_signal_parameters ();
-
 	time_end = g_get_monotonic_time () + (200 * 1000L); /* retry for at most 200 milliseconds */
+	try_count = 0;
 
 do_notify:
 	try_count++;
