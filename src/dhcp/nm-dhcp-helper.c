@@ -136,12 +136,16 @@ do_connect:
 	if (!connection) {
 		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
 			gint64 time_remaining = time_end - g_get_monotonic_time ();
+			gulong interval;
 
 			if (time_remaining > 0) {
 				_LOGi ("failure to connect: %s (retry %u, waited %lld ms)",
 				       error->message, try_count,
 				       (long long) (time_end - time_remaining - time_start) / 1000);
-				g_usleep (NM_MIN (NM_CLAMP ((gint64) (100L * (1L << try_count)), 5000, 100000), time_remaining));
+				interval = NM_CLAMP ((gint64) (100L * (1L << NM_MIN (try_count, 31))),
+				                     5000,
+				                     100000);
+				g_usleep (NM_MIN (interval, time_remaining));
 				g_clear_error (&error);
 				goto do_connect;
 			}
@@ -177,6 +181,7 @@ do_notify:
 		s_err = g_dbus_error_get_remote_error (error);
 		if (NM_IN_STRSET (s_err, "org.freedesktop.DBus.Error.UnknownMethod")) {
 			gint64 remaining_time = time_end - g_get_monotonic_time ();
+			gulong interval;
 
 			/* I am not sure that a race can actually happen, as we register the object
 			 * on the server side during GDBusServer:new-connection signal.
@@ -185,7 +190,10 @@ do_notify:
 			 * do some retry. */
 			if (remaining_time > 0) {
 				_LOGi ("failure to call notify: %s (retry %u)", error->message, try_count);
-				g_usleep (NM_MIN (NM_CLAMP ((gint64) (100L * (1L << try_count)), 5000, 25000), remaining_time));
+				interval = NM_CLAMP ((gint64) (100L * (1L << NM_MIN (try_count, 31))),
+				                     5000,
+				                     25000);
+				g_usleep (NM_MIN (interval, remaining_time));
 				g_clear_error (&error);
 				goto do_notify;
 			}
