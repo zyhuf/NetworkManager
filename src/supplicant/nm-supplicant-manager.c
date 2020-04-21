@@ -465,6 +465,8 @@ _create_iface_dbus_call_get_interface_cb (GObject *source,
 	gs_free_error GError *error = NULL;
 	const char *iface_path_str;
 
+	_LOGD (" ---- %s", __func__);
+
 	res = g_dbus_connection_call_finish (dbus_connection, result, &error);
 
 	if (nm_utils_error_is_cancelled (error))
@@ -524,6 +526,8 @@ _create_iface_dbus_call_create_interface_cb (GObject *source,
 
 	res = g_dbus_connection_call_finish (dbus_connection, result, &error);
 
+	_LOGD (" ---- %s:%d res %p, error %s", __func__, __LINE__, res, error ? error->message : "(NULL)");
+
 	nm_shutdown_wait_obj_unregister (g_steal_pointer (&handle->shutdown_handle));
 
 	if (!res) {
@@ -532,14 +536,14 @@ _create_iface_dbus_call_create_interface_cb (GObject *source,
 		    && _nm_dbus_error_has_name (error, NM_WPAS_ERROR_EXISTS_ERROR)
 		    && nm_platform_if_indextoname (NM_PLATFORM_GET, handle->ifindex, ifname)) {
 			self = handle->self;
-			_LOGT ("create-iface["NM_HASH_OBFUSCATE_PTR_FMT"]: D-Bus call failed to create interface. Try to get existing interface (ifname \"%s\")",
+			_LOGT (" ---- create-iface["NM_HASH_OBFUSCATE_PTR_FMT"]: D-Bus call failed to create interface. Try to get existing interface (ifname \"%s\")",
 			       NM_HASH_OBFUSCATE_PTR (handle),
 			       ifname);
 			_create_iface_dbus_call_get_interface (self, handle, ifname);
 			return;
 		}
 		g_clear_object (&handle->cancellable);
-		_LOGT ("create-iface["NM_HASH_OBFUSCATE_PTR_FMT"]: D-Bus call failed: %s",
+		_LOGD (" ---- create-iface["NM_HASH_OBFUSCATE_PTR_FMT"]: D-Bus call failed: %s",
 		       NM_HASH_OBFUSCATE_PTR (handle),
 		       error->message);
 		_create_iface_complete (handle, NULL, error);
@@ -632,7 +636,9 @@ _create_iface_dbus_call_create_interface (NMSupplicantManager *self,
 	                                                                          g_strdup_printf ("wpas-create-" NM_HASH_OBFUSCATE_PTR_FMT,
 	                                                                                           NM_HASH_OBFUSCATE_PTR (handle)),
 	                                                                          TRUE);
+
 	handle->create_iface_try_count++;
+	_LOGD (" ---- %s:%d try_count %u", __func__, __LINE__, handle->create_iface_try_count);
 	g_dbus_connection_call (priv->dbus_connection,
 	                        handle->name_owner->str,
 	                        NM_WPAS_DBUS_PATH,
@@ -653,6 +659,8 @@ _create_iface_dbus_start (NMSupplicantManager *self,
 {
 	NMSupplicantManagerPrivate *priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
 	char ifname[NMP_IFNAMSIZ];
+
+	_LOGD (" ---- %s", __func__);
 
 	nm_assert (priv->name_owner);
 	nm_assert (!handle->cancellable);
@@ -724,6 +732,8 @@ nm_supplicant_manager_create_interface (NMSupplicantManager *self,
 
 	priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
 
+	_LOGD (" ---- %s", __func__);
+
 	handle = g_slice_new (NMSupplMgrCreateIfaceHandle);
 	*handle = (NMSupplMgrCreateIfaceHandle) {
 		.self               = g_object_ref (self),
@@ -783,6 +793,8 @@ _create_iface_proceed_all (NMSupplicantManager *self,
 {
 	NMSupplicantManagerPrivate *priv = NM_SUPPLICANT_MANAGER_GET_PRIVATE (self);
 	NMSupplMgrCreateIfaceHandle *handle;
+
+	_LOGD (" ---- %s", __func__);
 
 	nm_assert (error || priv->name_owner);
 	nm_assert (error || !priv->get_capabilities_cancellable);

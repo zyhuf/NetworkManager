@@ -345,6 +345,8 @@ supplicant_interface_acquire_cb (NMSupplicantManager *supplicant_manager,
 
 	priv->sup_iface = g_object_ref (iface);
 
+	_LOGD (LOGD_WIFI, " ---- sup-iface now %p", priv->sup_iface);
+
 	g_signal_connect (priv->sup_iface,
 	                  NM_SUPPLICANT_INTERFACE_STATE,
 	                  G_CALLBACK (supplicant_iface_state_cb),
@@ -428,6 +430,7 @@ supplicant_interface_release (NMDeviceWifi *self)
 
 	_requested_scan_set (self, FALSE);
 
+	_LOGD (LOGD_WIFI, " ---- %s: clear pending scan id %u", __func__, priv->pending_scan_id);
 	nm_clear_g_source (&priv->pending_scan_id);
 
 	/* Reset the scan interval to be pretty frequent when disconnected */
@@ -445,6 +448,7 @@ supplicant_interface_release (NMDeviceWifi *self)
 		nm_supplicant_interface_disconnect (priv->sup_iface);
 
 		g_clear_object (&priv->sup_iface);
+		_LOGD (LOGD_WIFI, " ---- sup-iface NULL");
 	}
 
 	if (priv->p2p_device) {
@@ -1463,6 +1467,7 @@ request_wireless_scan (NMDeviceWifi *self,
 	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
 	gboolean request_started = FALSE;
 
+	_LOGD (LOGD_WIFI, " ---- %s: clear pending scan id %u", __func__, priv->pending_scan_id);
 	nm_clear_g_source (&priv->pending_scan_id);
 
 	if (!force_if_scanning && priv->requested_scan) {
@@ -1525,6 +1530,8 @@ request_wireless_scan_periodic (gpointer user_data)
 	NMDeviceWifi *self = user_data;
 	NMDeviceWifiPrivate *priv = NM_DEVICE_WIFI_GET_PRIVATE (self);
 
+	_LOGD (LOGD_WIFI, " ---- request wireless scan periodic %u", priv->pending_scan_id);
+
 	priv->pending_scan_id = 0;
 	request_wireless_scan (self, TRUE, FALSE, NULL);
 	return G_SOURCE_REMOVE;
@@ -1544,8 +1551,10 @@ schedule_scan (NMDeviceWifi *self, gboolean backoff)
 
 	/* Cancel the pending scan if it would happen later than (now + the scan_interval_sec) */
 	if (priv->pending_scan_id) {
-		if (now + priv->scan_interval_sec < priv->scheduled_scan_time)
+		if (now + priv->scan_interval_sec < priv->scheduled_scan_time) {
+			_LOGD (LOGD_WIFI, " ---- %s: clear pending scan id %u", __func__, priv->pending_scan_id);
 			nm_clear_g_source (&priv->pending_scan_id);
+		}
 	}
 
 	if (!priv->pending_scan_id) {
@@ -1559,6 +1568,7 @@ schedule_scan (NMDeviceWifi *self, gboolean backoff)
 		priv->pending_scan_id = g_timeout_add_seconds (next_scan,
 		                                               request_wireless_scan_periodic,
 		                                               self);
+		_LOGD (LOGD_WIFI, " ---- scheduled scan id %u", priv->pending_scan_id);
 
 		priv->scheduled_scan_time = now + priv->scan_interval_sec;
 		if (backoff && (priv->scan_interval_sec < (SCAN_INTERVAL_SEC_MAX / factor))) {
