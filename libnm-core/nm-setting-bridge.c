@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include "nm-prop-meta.h"
 #include "nm-connection-private.h"
 #include "nm-utils.h"
 #include "nm-utils-private.h"
@@ -24,42 +25,20 @@
 
 /*****************************************************************************/
 
-NM_GOBJECT_PROPERTIES_DEFINE (NMSettingBridge,
-	PROP_MAC_ADDRESS,
-	PROP_STP,
-	PROP_PRIORITY,
-	PROP_FORWARD_DELAY,
-	PROP_HELLO_TIME,
-	PROP_MAX_AGE,
-	PROP_AGEING_TIME,
-	PROP_GROUP_ADDRESS,
-	PROP_GROUP_FORWARD_MASK,
-	PROP_MULTICAST_HASH_MAX,
-	PROP_MULTICAST_LAST_MEMBER_COUNT,
-	PROP_MULTICAST_LAST_MEMBER_INTERVAL,
-	PROP_MULTICAST_MEMBERSHIP_INTERVAL,
-	PROP_MULTICAST_ROUTER,
-	PROP_MULTICAST_QUERIER,
-	PROP_MULTICAST_QUERIER_INTERVAL,
-	PROP_MULTICAST_QUERY_INTERVAL,
-	PROP_MULTICAST_QUERY_RESPONSE_INTERVAL,
-	PROP_MULTICAST_QUERY_USE_IFADDR,
-	PROP_MULTICAST_SNOOPING,
-	PROP_MULTICAST_STARTUP_QUERY_COUNT,
-	PROP_MULTICAST_STARTUP_QUERY_INTERVAL,
-	PROP_VLAN_FILTERING,
-	PROP_VLAN_DEFAULT_PVID,
-	PROP_VLAN_PROTOCOL,
-	PROP_VLAN_STATS_ENABLED,
-	PROP_VLANS,
-);
+#define _PropertyEnums       NMPropAttr
+#define _PROPERTY_ENUMS_LAST _NM_PROP_ATTR_BRIDGE_MASTER_NUM
+#define PROP_0               _NM_PROP_ATTR_0
+#define obj_properties       nm_prop_gobject_properties_bridge_master
+NM_GOBJECT_PROPERTIES_DEFINE_NOTIFY (, NMSettingBridge)
 
 typedef struct {
+	union {
+		NMPropSettingData d_parent;
+		NMPropSettingDataBridgeMaster d;
+	};
 	GPtrArray *vlans;
-	char *   mac_address;
 	char *   multicast_router;
 	char *   group_address;
-	char *   vlan_protocol;
 	guint64  multicast_last_member_interval;
 	guint64  multicast_membership_interval;
 	guint64  multicast_querier_interval;
@@ -70,15 +49,12 @@ typedef struct {
 	guint32  multicast_hash_max;
 	guint32  multicast_last_member_count;
 	guint32  multicast_startup_query_count;
-	guint16  priority;
-	guint16  forward_delay;
 	guint16  hello_time;
 	guint16  max_age;
 	guint16  vlan_default_pvid;
 	guint16  group_forward_mask;
 	bool multicast_snooping:1;
 	bool vlan_filtering:1;
-	bool stp:1;
 	bool vlan_stats_enabled:1;
 	bool multicast_query_use_ifaddr:1;
 	bool multicast_querier:1;
@@ -566,6 +542,13 @@ nm_bridge_vlan_from_str (const char *str, GError **error)
 
 /*****************************************************************************/
 
+static void
+_vlans_ensure (NMSettingBridgePrivate *priv)
+{
+	if (!priv->d.vlans)
+		priv->d.vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
+}
+
 static int
 vlan_ptr_cmp (gconstpointer a, gconstpointer b)
 {
@@ -584,9 +567,12 @@ _nm_setting_bridge_sort_vlans (NMSettingBridge *setting)
 
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	for (i = 1; i < priv->vlans->len; i++) {
-		NMBridgeVlan *vlan_prev = priv->vlans->pdata[i - 1];
-		NMBridgeVlan *vlan = priv->vlans->pdata[i];
+	if (!priv->d.vlans)
+		return FALSE;
+
+	for (i = 1; i < priv->d.vlans->len; i++) {
+		NMBridgeVlan *vlan_prev = priv->d.vlans->pdata[i - 1];
+		NMBridgeVlan *vlan = priv->d.vlans->pdata[i];
 
 		if (nm_bridge_vlan_cmp (vlan_prev, vlan) > 0) {
 			need_sort = TRUE;
@@ -595,8 +581,8 @@ _nm_setting_bridge_sort_vlans (NMSettingBridge *setting)
 	}
 
 	if (need_sort) {
-		g_ptr_array_sort (priv->vlans, vlan_ptr_cmp);
-		_notify (setting, PROP_VLANS);
+		g_ptr_array_sort (priv->d.vlans, vlan_ptr_cmp);
+		_notify (setting, NM_PROP_ATTR_BRIDGE_MASTER_VLANS);
 	}
 
 	return need_sort;
@@ -615,7 +601,7 @@ nm_setting_bridge_get_mac_address (NMSettingBridge *setting)
 {
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), NULL);
 
-	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->mac_address;
+	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->d.mac_address;
 }
 
 /**
@@ -629,7 +615,7 @@ nm_setting_bridge_get_stp (NMSettingBridge *setting)
 {
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), FALSE);
 
-	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->stp;
+	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->d.stp;
 }
 
 /**
@@ -643,7 +629,7 @@ nm_setting_bridge_get_priority (NMSettingBridge *setting)
 {
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), 0);
 
-	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->priority;
+	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->d.priority;
 }
 
 /**
@@ -657,7 +643,7 @@ nm_setting_bridge_get_forward_delay (NMSettingBridge *setting)
 {
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), 0);
 
-	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->forward_delay;
+	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->d.forward_delay;
 }
 
 /**
@@ -790,8 +776,10 @@ nm_setting_bridge_add_vlan (NMSettingBridge *setting,
 	nm_bridge_vlan_seal (vlan);
 	nm_bridge_vlan_ref (vlan);
 
-	g_ptr_array_add (priv->vlans, vlan);
-	_notify (setting, PROP_VLANS);
+	_vlans_ensure (priv);
+
+	g_ptr_array_add (priv->d.vlans, vlan);
+	_notify (setting, NM_PROP_ATTR_BRIDGE_MASTER_VLANS);
 }
 
 /**
@@ -810,7 +798,7 @@ nm_setting_bridge_get_num_vlans (NMSettingBridge *setting)
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), 0);
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	return priv->vlans->len;
+	return priv->d.vlans ? priv->d.vlans->len : 0;
 }
 
 /**
@@ -830,9 +818,9 @@ nm_setting_bridge_get_vlan (NMSettingBridge *setting, guint idx)
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), NULL);
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	g_return_val_if_fail (idx < priv->vlans->len, NULL);
+	g_return_val_if_fail (priv->d.vlans && idx < priv->d.vlans->len, NULL);
 
-	return priv->vlans->pdata[idx];
+	return priv->d.vlans->pdata[idx];
 }
 
 /**
@@ -852,10 +840,10 @@ nm_setting_bridge_remove_vlan (NMSettingBridge *setting, guint idx)
 	g_return_if_fail (NM_IS_SETTING_BRIDGE (setting));
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	g_return_if_fail (idx < priv->vlans->len);
+	g_return_if_fail (priv->d.vlans && idx < priv->d.vlans->len);
 
-	g_ptr_array_remove_index (priv->vlans, idx);
-	_notify (setting, PROP_VLANS);
+	g_ptr_array_remove_index (priv->d.vlans, idx);
+	_notify (setting, NM_PROP_ATTR_BRIDGE_MASTER_VLANS);
 }
 
 /**
@@ -884,14 +872,17 @@ nm_setting_bridge_remove_vlan_by_vid (NMSettingBridge *setting,
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), FALSE);
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
+	if (!priv->d.vlans)
+		return FALSE;
+
 	if (vid_end == 0)
 		vid_end = vid_start;
 
-	for (i = 0; i < priv->vlans->len; i++) {
-		vlan = (NMBridgeVlan *) priv->vlans->pdata[i];
+	for (i = 0; i < priv->d.vlans->len; i++) {
+		vlan = (NMBridgeVlan *) priv->d.vlans->pdata[i];
 		if (vlan->vid_start == vid_start && vlan->vid_end == vid_end) {
-			g_ptr_array_remove_index (priv->vlans, i);
-			_notify (setting, PROP_VLANS);
+			g_ptr_array_remove_index (priv->d.vlans, i);
+			_notify (setting, NM_PROP_ATTR_BRIDGE_MASTER_VLANS);
 			return TRUE;
 		}
 	}
@@ -914,9 +905,9 @@ nm_setting_bridge_clear_vlans (NMSettingBridge *setting)
 	g_return_if_fail (NM_IS_SETTING_BRIDGE (setting));
 	priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	if (priv->vlans->len != 0) {
-		g_ptr_array_set_size (priv->vlans, 0);
-		_notify (setting, PROP_VLANS);
+	if (nm_g_ptr_array_len (priv->d.vlans) != 0u) {
+		g_ptr_array_set_size (priv->d.vlans, 0);
+		_notify (setting, NM_PROP_ATTR_BRIDGE_MASTER_VLANS);
 	}
 }
 
@@ -949,7 +940,7 @@ nm_setting_bridge_get_vlan_protocol (const NMSettingBridge *setting)
 {
 	g_return_val_if_fail (NM_IS_SETTING_BRIDGE (setting), NULL);
 
-	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->vlan_protocol;
+	return NM_SETTING_BRIDGE_GET_PRIVATE (setting)->d.vlan_protocol;
 }
 
 /**
@@ -1190,7 +1181,8 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 {
 	NMSettingBridgePrivate *priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
 
-	if (priv->mac_address && !nm_utils_hwaddr_valid (priv->mac_address, ETH_ALEN)) {
+	if (   priv->d.mac_address
+	    && !nm_utils_hwaddr_valid (priv->d.mac_address, ETH_ALEN)) {
 		g_set_error_literal (error,
 		                     NM_CONNECTION_ERROR,
 		                     NM_CONNECTION_ERROR_INVALID_PROPERTY,
@@ -1199,10 +1191,10 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		return FALSE;
 	}
 
-	if (!check_range (priv->forward_delay,
+	if (!check_range (priv->d.forward_delay,
 	                  NM_BRIDGE_FORWARD_DELAY_MIN,
 	                  NM_BRIDGE_FORWARD_DELAY_MAX,
-	                  !priv->stp,
+	                  !priv->d.stp,
 	                  NM_SETTING_BRIDGE_FORWARD_DELAY,
 	                  error))
 		return FALSE;
@@ -1210,7 +1202,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	if (!check_range (priv->hello_time,
 	                  NM_BRIDGE_HELLO_TIME_MIN,
 	                  NM_BRIDGE_HELLO_TIME_MAX,
-	                  !priv->stp,
+	                  !priv->d.stp,
 	                  NM_SETTING_BRIDGE_HELLO_TIME,
 	                  error))
 		return FALSE;
@@ -1218,7 +1210,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	if (!check_range (priv->max_age,
 	                  NM_BRIDGE_MAX_AGE_MIN,
 	                  NM_BRIDGE_MAX_AGE_MAX,
-	                  !priv->stp,
+	                  !priv->d.stp,
 	                  NM_SETTING_BRIDGE_MAX_AGE,
 	                  error))
 		return FALSE;
@@ -1226,7 +1218,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	if (!check_range (priv->ageing_time,
 	                  NM_BRIDGE_AGEING_TIME_MIN,
 	                  NM_BRIDGE_AGEING_TIME_MAX,
-	                  !priv->stp,
+	                  !priv->d.stp,
 	                  NM_SETTING_BRIDGE_AGEING_TIME,
 	                  error))
 		return FALSE;
@@ -1243,7 +1235,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 	if (!_nm_connection_verify_required_interface_name (connection, error))
 		return FALSE;
 
-	if (!_nm_utils_bridge_vlan_verify_list (priv->vlans,
+	if (!_nm_utils_bridge_vlan_verify_list (priv->d.vlans,
 	                                        FALSE,
 	                                        error,
 	                                        NM_SETTING_BRIDGE_SETTING_NAME,
@@ -1260,8 +1252,8 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 		return FALSE;
 	}
 
-	if (   priv->vlan_protocol
-	    && !NM_IN_STRSET (priv->vlan_protocol,
+	if (   priv->d.vlan_protocol
+	    && !NM_IN_STRSET (priv->d.vlan_protocol,
 	                      "802.1Q",
 	                      "802.1ad")) {
 		g_set_error_literal (error,
@@ -1311,7 +1303,7 @@ verify (NMSetting *setting, NMConnection *connection, GError **error)
 
 	/* Failures from here on are NORMALIZABLE... */
 
-	if (!_nm_utils_bridge_vlan_verify_list (priv->vlans,
+	if (!_nm_utils_bridge_vlan_verify_list (priv->d.vlans,
 	                                        TRUE,
 	                                        error,
 	                                        NM_SETTING_BRIDGE_SETTING_NAME,
@@ -1336,13 +1328,15 @@ compare_property (const NMSettInfoSetting *sett_info,
 
 	if (nm_streq (sett_info->property_infos[property_idx].name, NM_SETTING_BRIDGE_VLANS)) {
 		if (set_b) {
+			guint len = nm_g_ptr_array_len (priv_a->d.vlans);
+
 			priv_a = NM_SETTING_BRIDGE_GET_PRIVATE (set_a);
 			priv_b = NM_SETTING_BRIDGE_GET_PRIVATE (set_b);
 
-			if (priv_a->vlans->len != priv_b->vlans->len)
+			if (len != nm_g_ptr_array_len (priv_b->d.vlans))
 				return FALSE;
-			for (i = 0; i < priv_a->vlans->len; i++) {
-				if (nm_bridge_vlan_cmp (priv_a->vlans->pdata[i], priv_b->vlans->pdata[i]))
+			for (i = 0; i < len; i++) {
+				if (nm_bridge_vlan_cmp (priv_a->d.vlans->pdata[i], priv_b->d.vlans->pdata[i]))
 					return FALSE;
 			}
 		}
@@ -1368,85 +1362,81 @@ get_property (GObject *object, guint prop_id,
 	NMSettingBridge *setting = NM_SETTING_BRIDGE (object);
 
 	switch (prop_id) {
-	case PROP_MAC_ADDRESS:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MAC_ADDRESS:
 		g_value_set_string (value, nm_setting_bridge_get_mac_address (setting));
 		break;
-	case PROP_STP:
-		g_value_set_boolean (value, priv->stp);
+	case NM_PROP_ATTR_BRIDGE_MASTER_STP:
+	case NM_PROP_ATTR_BRIDGE_MASTER_PRIORITY:
+	case NM_PROP_ATTR_BRIDGE_MASTER_FORWARD_DELAY:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_PROTOCOL:
+		nm_prop_setting_data_get_property (&priv->d_parent,
+		                                   nm_prop_attr_types_bridge_master (prop_id),
+		                                   value);
 		break;
-	case PROP_PRIORITY:
-		g_value_set_uint (value, priv->priority);
-		break;
-	case PROP_FORWARD_DELAY:
-		g_value_set_uint (value, priv->forward_delay);
-		break;
-	case PROP_HELLO_TIME:
+	case NM_PROP_ATTR_BRIDGE_MASTER_HELLO_TIME:
 		g_value_set_uint (value, priv->hello_time);
 		break;
-	case PROP_MAX_AGE:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MAX_AGE:
 		g_value_set_uint (value, priv->max_age);
 		break;
-	case PROP_AGEING_TIME:
+	case NM_PROP_ATTR_BRIDGE_MASTER_AGEING_TIME:
 		g_value_set_uint (value, priv->ageing_time);
 		break;
-	case PROP_GROUP_ADDRESS:
+	case NM_PROP_ATTR_BRIDGE_MASTER_GROUP_ADDRESS:
 		g_value_set_string (value, priv->group_address);
 		break;
-	case PROP_GROUP_FORWARD_MASK:
+	case NM_PROP_ATTR_BRIDGE_MASTER_GROUP_FORWARD_MASK:
 		g_value_set_uint (value, priv->group_forward_mask);
 		break;
-	case PROP_MULTICAST_HASH_MAX:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_HASH_MAX:
 		g_value_set_uint (value, priv->multicast_hash_max);
 		break;
-	case PROP_MULTICAST_LAST_MEMBER_COUNT:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_COUNT:
 		g_value_set_uint (value, priv->multicast_last_member_count);
 		break;
-	case PROP_MULTICAST_LAST_MEMBER_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_last_member_interval);
 		break;
-	case PROP_MULTICAST_MEMBERSHIP_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_MEMBERSHIP_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_membership_interval);
 		break;
-	case PROP_MULTICAST_SNOOPING:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_SNOOPING:
 		g_value_set_boolean (value, priv->multicast_snooping);
 		break;
-	case PROP_MULTICAST_ROUTER:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_ROUTER:
 		g_value_set_string (value, priv->multicast_router);
 		break;
-	case PROP_MULTICAST_QUERIER:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER:
 		g_value_set_boolean (value, priv->multicast_querier);
 		break;
-	case PROP_MULTICAST_QUERIER_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_querier_interval);
 		break;
-	case PROP_MULTICAST_QUERY_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_query_interval);
 		break;
-	case PROP_MULTICAST_QUERY_RESPONSE_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_RESPONSE_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_query_response_interval);
 		break;
-	case PROP_MULTICAST_QUERY_USE_IFADDR:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_USE_IFADDR:
 		g_value_set_boolean (value, priv->multicast_query_use_ifaddr);
 		break;
-	case PROP_MULTICAST_STARTUP_QUERY_COUNT:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_COUNT:
 		g_value_set_uint (value, priv->multicast_startup_query_count);
 		break;
-	case PROP_MULTICAST_STARTUP_QUERY_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_INTERVAL:
 		g_value_set_uint64 (value, priv->multicast_startup_query_interval);
 		break;
-	case PROP_VLAN_FILTERING:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_FILTERING:
 		g_value_set_boolean (value, priv->vlan_filtering);
 		break;
-	case PROP_VLAN_DEFAULT_PVID:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_DEFAULT_PVID:
 		g_value_set_uint (value, priv->vlan_default_pvid);
 		break;
-	case PROP_VLAN_PROTOCOL:
-		g_value_set_string (value, priv->vlan_protocol);
-		break;
-	case PROP_VLAN_STATS_ENABLED:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_STATS_ENABLED:
 		g_value_set_boolean (value, priv->vlan_stats_enabled);
 		break;
-	case PROP_VLANS:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLANS:
 		g_value_take_boxed (value, _nm_utils_copy_array (priv->vlans,
 		                                                 (NMUtilsCopyFunc) nm_bridge_vlan_ref,
 		                                                 (GDestroyNotify) nm_bridge_vlan_unref));
@@ -1464,96 +1454,97 @@ set_property (GObject *object, guint prop_id,
 	NMSettingBridgePrivate *priv = NM_SETTING_BRIDGE_GET_PRIVATE (object);
 
 	switch (prop_id) {
-	case PROP_MAC_ADDRESS:
-		g_free (priv->mac_address);
-		priv->mac_address = _nm_utils_hwaddr_canonical_or_invalid (g_value_get_string (value),
-		                                                           ETH_ALEN);
+	case NM_PROP_ATTR_BRIDGE_MASTER_MAC_ADDRESS:
+		g_free (priv->d.mac_address);
+		priv->d.mac_address = _nm_utils_hwaddr_canonical_or_invalid (g_value_get_string (value),
+		                                                             ETH_ALEN);
 		break;
-	case PROP_STP:
-		priv->stp = g_value_get_boolean (value);
+	case NM_PROP_ATTR_BRIDGE_MASTER_STP:
+	case NM_PROP_ATTR_BRIDGE_MASTER_PRIORITY:
+	case NM_PROP_ATTR_BRIDGE_MASTER_FORWARD_DELAY:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_PROTOCOL:
+		nm_prop_setting_data_set_property (&priv->d_parent,
+		                                   nm_prop_attr_types_bridge_master (prop_id),
+		                                   value);
 		break;
-	case PROP_PRIORITY:
-		priv->priority = (guint16) g_value_get_uint (value);
-		break;
-	case PROP_FORWARD_DELAY:
-		priv->forward_delay = (guint16) g_value_get_uint (value);
-		break;
-	case PROP_HELLO_TIME:
+	case NM_PROP_ATTR_BRIDGE_MASTER_HELLO_TIME:
 		priv->hello_time = (guint16) g_value_get_uint (value);
 		break;
-	case PROP_MAX_AGE:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MAX_AGE:
 		priv->max_age = (guint16) g_value_get_uint (value);
 		break;
-	case PROP_AGEING_TIME:
+	case NM_PROP_ATTR_BRIDGE_MASTER_AGEING_TIME:
 		priv->ageing_time = g_value_get_uint (value);
 		break;
-	case PROP_GROUP_ADDRESS:
+	case NM_PROP_ATTR_BRIDGE_MASTER_GROUP_ADDRESS:
 		g_free (priv->group_address);
 		priv->group_address = _nm_utils_hwaddr_canonical_or_invalid (g_value_get_string (value),
 		                                                             ETH_ALEN);
 		break;
-	case PROP_GROUP_FORWARD_MASK:
+	case NM_PROP_ATTR_BRIDGE_MASTER_GROUP_FORWARD_MASK:
 		priv->group_forward_mask = (guint16) g_value_get_uint (value);
 		break;
-	case PROP_MULTICAST_HASH_MAX:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_HASH_MAX:
 		priv->multicast_hash_max = g_value_get_uint (value);
 		break;
-	case PROP_MULTICAST_LAST_MEMBER_COUNT:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_COUNT:
 		priv->multicast_last_member_count = g_value_get_uint (value);
 		break;
-	case PROP_MULTICAST_LAST_MEMBER_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_INTERVAL:
 		priv->multicast_last_member_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_MULTICAST_MEMBERSHIP_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_MEMBERSHIP_INTERVAL:
 		priv->multicast_membership_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_MULTICAST_SNOOPING:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_SNOOPING:
 		priv->multicast_snooping = g_value_get_boolean (value);
 		break;
-	case PROP_MULTICAST_ROUTER:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_ROUTER:
 		g_free (priv->multicast_router);
 		priv->multicast_router = g_value_dup_string (value);
 		break;
-	case PROP_MULTICAST_QUERIER:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER:
 		priv->multicast_querier = g_value_get_boolean (value);
 		break;
-	case PROP_MULTICAST_QUERIER_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER_INTERVAL:
 		priv->multicast_querier_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_MULTICAST_QUERY_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_INTERVAL:
 		priv->multicast_query_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_MULTICAST_QUERY_RESPONSE_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_RESPONSE_INTERVAL:
 		priv->multicast_query_response_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_MULTICAST_QUERY_USE_IFADDR:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_USE_IFADDR:
 		priv->multicast_query_use_ifaddr = g_value_get_boolean (value);
 		break;
-	case PROP_MULTICAST_STARTUP_QUERY_COUNT:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_COUNT:
 		priv->multicast_startup_query_count = g_value_get_uint (value);
 		break;
-	case PROP_MULTICAST_STARTUP_QUERY_INTERVAL:
+	case NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_INTERVAL:
 		priv->multicast_startup_query_interval = g_value_get_uint64 (value);
 		break;
-	case PROP_VLAN_FILTERING:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_FILTERING:
 		priv->vlan_filtering = g_value_get_boolean (value);
 		break;
-	case PROP_VLAN_DEFAULT_PVID:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_DEFAULT_PVID:
 		priv->vlan_default_pvid = g_value_get_uint (value);
 		break;
-	case PROP_VLAN_PROTOCOL:
-		g_free (priv->vlan_protocol);
-		priv->vlan_protocol = g_value_dup_string (value);
-		break;
-	case PROP_VLAN_STATS_ENABLED:
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLAN_STATS_ENABLED:
 		priv->vlan_stats_enabled = g_value_get_boolean (value);
 		break;
-	case PROP_VLANS:
-		g_ptr_array_unref (priv->vlans);
-		priv->vlans = _nm_utils_copy_array (g_value_get_boxed (value),
-		                                    (NMUtilsCopyFunc) _nm_bridge_vlan_dup_and_seal,
-		                                    (GDestroyNotify) nm_bridge_vlan_unref);
+	case NM_PROP_ATTR_BRIDGE_MASTER_VLANS: {
+		const GPtrArray *src = g_value_get_boxed (value);
+
+		nm_clear_pointer (&priv->d.vlans, g_ptr_array_unref);
+		if (   src
+		    && src->len > 0u) {
+			priv->d.vlans = _nm_utils_copy_array (src,
+			                                      (NMUtilsCopyFunc) _nm_bridge_vlan_dup_and_seal,
+			                                      (GDestroyNotify) nm_bridge_vlan_unref);
+		}
 		break;
+	}
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -1566,30 +1557,12 @@ static void
 nm_setting_bridge_init (NMSettingBridge *setting)
 {
 	NMSettingBridgePrivate *priv = NM_SETTING_BRIDGE_GET_PRIVATE (setting);
+	NMPropAttr prop_attr;
 
-	priv->vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
-
-	priv->ageing_time                       = NM_BRIDGE_AGEING_TIME_DEF;
-	priv->forward_delay                     = NM_BRIDGE_FORWARD_DELAY_DEF;
-	priv->hello_time                        = NM_BRIDGE_HELLO_TIME_DEF;
-	priv->max_age                           = NM_BRIDGE_MAX_AGE_DEF;
-	priv->multicast_last_member_count       = NM_BRIDGE_MULTICAST_LAST_MEMBER_COUNT_DEF;
-	priv->multicast_last_member_interval    = NM_BRIDGE_MULTICAST_LAST_MEMBER_INTERVAL_DEF;
-	priv->multicast_membership_interval     = NM_BRIDGE_MULTICAST_MEMBERSHIP_INTERVAL_DEF;
-	priv->multicast_hash_max                = NM_BRIDGE_MULTICAST_HASH_MAX_DEF;
-	priv->multicast_snooping                = NM_BRIDGE_MULTICAST_SNOOPING_DEF;
-	priv->priority                          = NM_BRIDGE_PRIORITY_DEF;
-	priv->stp                               = NM_BRIDGE_STP_DEF;
-	priv->vlan_default_pvid                 = NM_BRIDGE_VLAN_DEFAULT_PVID_DEF;
-	priv->multicast_query_interval          = NM_BRIDGE_MULTICAST_QUERY_INTERVAL_DEF;
-	priv->multicast_query_response_interval = NM_BRIDGE_MULTICAST_QUERY_RESPONSE_INTERVAL_DEF;
-	priv->multicast_querier_interval        = NM_BRIDGE_MULTICAST_QUERIER_INTERVAL_DEF;
-	priv->multicast_startup_query_count     = NM_BRIDGE_MULTICAST_STARTUP_QUERY_COUNT_DEF;
-	priv->multicast_startup_query_interval  = NM_BRIDGE_MULTICAST_STARTUP_QUERY_INTERVAL_DEF;
-
-	nm_assert (priv->multicast_querier          == NM_BRIDGE_MULTICAST_QUERIER_DEF);
-	nm_assert (priv->multicast_query_use_ifaddr == NM_BRIDGE_MULTICAST_QUERY_USE_IFADDR_DEF);
-	nm_assert (priv->vlan_stats_enabled         == NM_BRIDGE_VLAN_STATS_ENABLED_DEF);
+	for (prop_attr = _NM_PROP_ATTR_START; prop_attr < _NM_PROP_ATTR_BRIDGE_MASTER_NUM; prop_attr++) {
+		nm_prop_setting_data_set_property_default (&priv->d_parent,
+		                                           nm_prop_attr_types_bridge_master (prop_attr));
+	}
 }
 
 /**
@@ -1609,12 +1582,12 @@ static void
 finalize (GObject *object)
 {
 	NMSettingBridgePrivate *priv = NM_SETTING_BRIDGE_GET_PRIVATE (object);
+	NMPropAttr prop_attr;
 
-	g_free (priv->mac_address);
-	g_free (priv->multicast_router);
-	g_free (priv->group_address);
-	g_free (priv->vlan_protocol);
-	g_ptr_array_unref (priv->vlans);
+	for (prop_attr = _NM_PROP_ATTR_START; prop_attr < _NM_PROP_ATTR_BRIDGE_MASTER_NUM; prop_attr++) {
+		nm_prop_setting_data_set_property_clear (&priv->d_parent,
+		                                         nm_prop_attr_types_bridge_master (prop_attr));
+	}
 
 	G_OBJECT_CLASS (nm_setting_bridge_parent_class)->finalize (object);
 }
@@ -1663,13 +1636,13 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *   BRIDGE_MACADDR for bridges is an NM extension.
 	 * ---end---
 	 */
-	obj_properties[PROP_MAC_ADDRESS] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MAC_ADDRESS] =
 	    g_param_spec_string (NM_SETTING_BRIDGE_MAC_ADDRESS, "", "",
 	                         NULL,
 	                         G_PARAM_READWRITE |
 	                         NM_SETTING_PARAM_INFERRABLE |
 	                         G_PARAM_STATIC_STRINGS);
-	_nm_properties_override_gobj (properties_override, obj_properties[PROP_MAC_ADDRESS], &nm_sett_info_propert_type_mac_address);
+	_nm_properties_override_gobj (properties_override, obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MAC_ADDRESS], &nm_sett_info_propert_type_mac_address);
 
 	/**
 	 * NMSettingBridge:stp:
@@ -1683,7 +1656,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: Span tree protocol participation.
 	 * ---end---
 	 */
-	obj_properties[PROP_STP] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_STP] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_STP, "", "",
 	                          NM_BRIDGE_STP_DEF,
 	                          G_PARAM_READWRITE |
@@ -1705,7 +1678,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: STP priority.
 	 * ---end---
 	 */
-	obj_properties[PROP_PRIORITY] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_PRIORITY] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_PRIORITY, "", "",
 	                       NM_BRIDGE_PRIORITY_MIN, NM_BRIDGE_PRIORITY_MAX, NM_BRIDGE_PRIORITY_DEF,
 	                       G_PARAM_READWRITE |
@@ -1725,7 +1698,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: STP forwarding delay.
 	 * ---end---
 	 */
-	obj_properties[PROP_FORWARD_DELAY] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_FORWARD_DELAY] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_FORWARD_DELAY, "", "",
 	                       0, NM_BRIDGE_FORWARD_DELAY_MAX, NM_BRIDGE_FORWARD_DELAY_DEF,
 	                       G_PARAM_READWRITE |
@@ -1745,7 +1718,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: STP hello time.
 	 * ---end---
 	 */
-	obj_properties[PROP_HELLO_TIME] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_HELLO_TIME] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_HELLO_TIME, "", "",
 	                       0, NM_BRIDGE_HELLO_TIME_MAX, NM_BRIDGE_HELLO_TIME_DEF,
 	                       G_PARAM_READWRITE |
@@ -1765,7 +1738,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: STP maximum message age.
 	 * ---end---
 	 */
-	obj_properties[PROP_MAX_AGE] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MAX_AGE] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_MAX_AGE, "", "",
 	                       0, NM_BRIDGE_MAX_AGE_MAX, NM_BRIDGE_MAX_AGE_DEF,
 	                       G_PARAM_READWRITE |
@@ -1785,7 +1758,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: Ethernet MAC ageing time.
 	 * ---end---
 	 */
-	obj_properties[PROP_AGEING_TIME] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_AGEING_TIME] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_AGEING_TIME, "", "",
 	                       NM_BRIDGE_AGEING_TIME_MIN, NM_BRIDGE_AGEING_TIME_MAX, NM_BRIDGE_AGEING_TIME_DEF,
 	                       G_PARAM_READWRITE |
@@ -1804,7 +1777,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.10
 	 **/
-	obj_properties[PROP_GROUP_FORWARD_MASK] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_GROUP_FORWARD_MASK] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_GROUP_FORWARD_MASK, "", "",
 	                       0, 0xFFFF, 0,
 	                       G_PARAM_READWRITE |
@@ -1829,7 +1802,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: IGMP snooping support.
 	 * ---end---
 	 */
-	obj_properties[PROP_MULTICAST_SNOOPING] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_SNOOPING] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_MULTICAST_SNOOPING, "", "",
 	                          NM_BRIDGE_MULTICAST_SNOOPING_DEF,
 	                          G_PARAM_READWRITE |
@@ -1851,7 +1824,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: VLAN filtering support.
 	 * ---end---
 	 */
-	obj_properties[PROP_VLAN_FILTERING] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLAN_FILTERING] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_VLAN_FILTERING, "", "",
 	                          FALSE,
 	                          G_PARAM_READWRITE |
@@ -1874,7 +1847,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * description: default VLAN PVID.
 	 * ---end---
 	 */
-	obj_properties[PROP_VLAN_DEFAULT_PVID] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLAN_DEFAULT_PVID] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, "", "",
 	                       0, NM_BRIDGE_VLAN_VID_MAX, NM_BRIDGE_VLAN_DEFAULT_PVID_DEF,
 	                       G_PARAM_READWRITE |
@@ -1905,13 +1878,13 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * example: BRIDGE_VLANS="1 pvid untagged,20,300-400 untagged"
 	 * ---end---
 	 */
-	obj_properties[PROP_VLANS] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLANS] =
 	    g_param_spec_boxed (NM_SETTING_BRIDGE_VLANS, "", "",
 	                        G_TYPE_PTR_ARRAY,
 	                        G_PARAM_READWRITE |
 	                        NM_SETTING_PARAM_INFERRABLE |
 	                        G_PARAM_STATIC_STRINGS);
-	_nm_properties_override_gobj (properties_override, obj_properties[PROP_VLANS], &nm_sett_info_propert_type_bridge_vlans);
+	_nm_properties_override_gobj (properties_override, obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLANS], &nm_sett_info_propert_type_bridge_vlans);
 
 	/* ---dbus---
 	 * property: interface-name
@@ -1941,13 +1914,13 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 * example: BRIDGING_OPTS="group_address=01:80:C2:00:00:0A"
 	 * ---end---
 	 */
-	obj_properties[PROP_GROUP_ADDRESS] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_GROUP_ADDRESS] =
 	    g_param_spec_string (NM_SETTING_BRIDGE_GROUP_ADDRESS, "", "",
 	                         NULL,
 	                         G_PARAM_READWRITE |
 	                         NM_SETTING_PARAM_INFERRABLE |
 	                         G_PARAM_STATIC_STRINGS);
-	_nm_properties_override_gobj (properties_override, obj_properties[PROP_GROUP_ADDRESS], &nm_sett_info_propert_type_mac_address);
+	_nm_properties_override_gobj (properties_override, obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_GROUP_ADDRESS], &nm_sett_info_propert_type_mac_address);
 
 	/**
 	 * NMSettingBridge:vlan-protocol:
@@ -1968,7 +1941,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.24
 	 */
-	obj_properties[PROP_VLAN_PROTOCOL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLAN_PROTOCOL] =
 	    g_param_spec_string (NM_SETTING_BRIDGE_VLAN_PROTOCOL, "", "",
 	                         NULL,
 	                         G_PARAM_READWRITE |
@@ -1989,7 +1962,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.24
 	 */
-	obj_properties[PROP_VLAN_STATS_ENABLED] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_VLAN_STATS_ENABLED] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_VLAN_STATS_ENABLED, "", "",
 	                          NM_BRIDGE_VLAN_STATS_ENABLED_DEF,
 	                          G_PARAM_READWRITE |
@@ -2015,7 +1988,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.24
 	 */
-	obj_properties[PROP_MULTICAST_ROUTER] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_ROUTER] =
 	    g_param_spec_string (NM_SETTING_BRIDGE_MULTICAST_ROUTER, "", "",
 	                         NULL,
 	                         G_PARAM_READWRITE |
@@ -2038,7 +2011,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.24
 	 */
-	obj_properties[PROP_MULTICAST_QUERY_USE_IFADDR] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_USE_IFADDR] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_MULTICAST_QUERY_USE_IFADDR, "", "",
 	                          NM_BRIDGE_MULTICAST_QUERY_USE_IFADDR_DEF,
 	                          G_PARAM_READWRITE |
@@ -2060,7 +2033,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.24
 	 */
-	obj_properties[PROP_MULTICAST_QUERIER] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER] =
 	    g_param_spec_boolean (NM_SETTING_BRIDGE_MULTICAST_QUERIER, "", "",
 	                          NM_BRIDGE_MULTICAST_QUERIER_DEF,
 	                          G_PARAM_READWRITE |
@@ -2081,7 +2054,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_HASH_MAX] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_HASH_MAX] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_MULTICAST_HASH_MAX, "", "",
 	                       NM_BRIDGE_MULTICAST_HASH_MAX_MIN, NM_BRIDGE_MULTICAST_HASH_MAX_MAX, NM_BRIDGE_MULTICAST_HASH_MAX_DEF,
 	                       G_PARAM_READWRITE |
@@ -2104,7 +2077,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_LAST_MEMBER_COUNT] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_COUNT] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_MULTICAST_LAST_MEMBER_COUNT, "", "",
 	                       NM_BRIDGE_MULTICAST_LAST_MEMBER_COUNT_MIN, NM_BRIDGE_MULTICAST_LAST_MEMBER_COUNT_MAX, NM_BRIDGE_MULTICAST_LAST_MEMBER_COUNT_DEF,
 	                       G_PARAM_READWRITE |
@@ -2126,7 +2099,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_LAST_MEMBER_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_LAST_MEMBER_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_LAST_MEMBER_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_LAST_MEMBER_INTERVAL_MIN, NM_BRIDGE_MULTICAST_LAST_MEMBER_INTERVAL_MAX, NM_BRIDGE_MULTICAST_LAST_MEMBER_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |
@@ -2149,7 +2122,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_MEMBERSHIP_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_MEMBERSHIP_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_MEMBERSHIP_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_MEMBERSHIP_INTERVAL_MIN, NM_BRIDGE_MULTICAST_MEMBERSHIP_INTERVAL_MAX, NM_BRIDGE_MULTICAST_MEMBERSHIP_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |
@@ -2171,7 +2144,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_QUERIER_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERIER_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_QUERIER_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_QUERIER_INTERVAL_MIN, NM_BRIDGE_MULTICAST_QUERIER_INTERVAL_MAX, NM_BRIDGE_MULTICAST_QUERIER_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |
@@ -2193,7 +2166,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_QUERY_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_QUERY_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_QUERY_INTERVAL_MIN, NM_BRIDGE_MULTICAST_QUERY_INTERVAL_MAX, NM_BRIDGE_MULTICAST_QUERY_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |
@@ -2215,7 +2188,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_QUERY_RESPONSE_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_QUERY_RESPONSE_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_QUERY_RESPONSE_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_QUERY_RESPONSE_INTERVAL_MIN, NM_BRIDGE_MULTICAST_QUERY_RESPONSE_INTERVAL_MAX, NM_BRIDGE_MULTICAST_QUERY_RESPONSE_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |
@@ -2236,7 +2209,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_STARTUP_QUERY_COUNT] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_COUNT] =
 	    g_param_spec_uint (NM_SETTING_BRIDGE_MULTICAST_STARTUP_QUERY_COUNT, "", "",
 	                       NM_BRIDGE_MULTICAST_STARTUP_QUERY_COUNT_MIN, NM_BRIDGE_MULTICAST_STARTUP_QUERY_COUNT_MAX, NM_BRIDGE_MULTICAST_STARTUP_QUERY_COUNT_DEF,
 	                       G_PARAM_READWRITE |
@@ -2258,7 +2231,7 @@ nm_setting_bridge_class_init (NMSettingBridgeClass *klass)
 	 *
 	 * Since: 1.26
 	 */
-	obj_properties[PROP_MULTICAST_STARTUP_QUERY_INTERVAL] =
+	obj_properties[NM_PROP_ATTR_BRIDGE_MASTER_MULTICAST_STARTUP_QUERY_INTERVAL] =
 	    g_param_spec_uint64 (NM_SETTING_BRIDGE_MULTICAST_STARTUP_QUERY_INTERVAL, "", "",
 	                         NM_BRIDGE_MULTICAST_STARTUP_QUERY_INTERVAL_MIN, NM_BRIDGE_MULTICAST_STARTUP_QUERY_INTERVAL_MAX, NM_BRIDGE_MULTICAST_STARTUP_QUERY_INTERVAL_DEF,
 	                         G_PARAM_READWRITE |

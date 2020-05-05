@@ -950,6 +950,7 @@ libnm_core_lib_h_priv = \
 	libnm-core/nm-core-types-internal.h \
 	libnm-core/nm-crypto-impl.h \
 	libnm-core/nm-crypto.h \
+	libnm-core/nm-prop-meta.h \
 	libnm-core/nm-property-compare.h \
 	libnm-core/nm-setting-private.h \
 	libnm-core/nm-team-utils.h \
@@ -1013,6 +1014,7 @@ libnm_core_lib_c_real = \
 	libnm-core/nm-crypto.c \
 	libnm-core/nm-dbus-utils.c \
 	libnm-core/nm-errors.c \
+	libnm-core/nm-prop-meta.c \
 	libnm-core/nm-property-compare.c \
 	libnm-core/nm-setting.c \
 	libnm-core/nm-simple-connection.c \
