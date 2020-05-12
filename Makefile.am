@@ -1609,6 +1609,67 @@ EXTRA_DIST += \
 
 ###############################################################################
 
+lib_LTLIBRARIES += libnm_gpl/libnm-gpl.la
+
+libnm_gpl_libnm_gpl_la_CPPFLAGS = \
+	$(dflt_cppflags) \
+	-I$(srcdir)/shared \
+	-I$(builddir)/shared \
+	-I$(srcdir)/libnm-core \
+	-I$(builddir)/libnm-core \
+	$(CODE_COVERAGE_CFLAGS) \
+	$(GLIB_CFLAGS) \
+	$(SANITIZER_LIB_CFLAGS) \
+	-DG_LOG_DOMAIN=\""libnm"\" \
+	-DNETWORKMANAGER_COMPILATION='(NM_NETWORKMANAGER_COMPILATION_WITH_LIBNM_CORE_INTERNAL|NM_NETWORKMANAGER_COMPILATION_WITH_GLIB|NM_NETWORKMANAGER_COMPILATION_WITH_GLIB_I18N_LIB)' \
+	$(NULL)
+
+libnm_gpl_lib_h_pub_real = \
+	shared/nm-keyfile/nm-keyfile.h \
+	$(NULL)
+
+libnm_gpl_libnm_gpl_la_SOURCES = \
+	$(libnm_gpl_lib_h_pub_real) \
+	$(NULL)
+
+libnminclude_HEADERS += \
+	$(libnm_gpl_lib_h_pub_real)
+
+libnm_gpl_libnm_gpl_la_LDFLAGS = \
+	-Wl,--version-script="$(srcdir)/libnm-gpl/libnm-gpl.ver" \
+	$(CODE_COVERAGE_LDFLAGS) \
+	$(SANITIZER_LIB_LDFLAGS) \
+	-version-info "1:0:1" \
+	$(NULL)
+
+libnm_gpl_libnm_gpl_la_LIBADD = \
+	$(GLIB_LIBS) \
+	libnm/libnm.la \
+	shared/nm-keyfile/libnm-keyfile.la \
+	$(NULL)
+
+$(libnm_gpl_libnm_gpl_la_OBJECTS): $(libnm_lib_h_pub_mkenums)
+
+EXTRA_libnm_gpl_libnm_gpl_la_DEPENDENCIES = \
+	libnm-gpl/libnm-gpl.ver
+
+check-local-exports-libnm-gpl: libnm_gpl/libnm-gpl.la
+	$(srcdir)/tools/check-exports.sh "$(builddir)/libnm-gpl/.libs/libnm-gpl.so" "$(srcdir)/libnm-gpl/libnm-gpl.ver"
+
+check_local += check-local-exports-libnm-gpl
+
+pkgconfig_DATA += libnm-gpl/libnm-gpl.pc
+
+DISTCLEANFILES += \
+	libnm-gpl/libnm-gpl.pc
+
+EXTRA_DIST += \
+	libnm-gpl/libnm-gpl.pc.in \
+	libnm-gpl/libnm-gpl.ver \
+	$(NULL)
+
+###############################################################################
+
 check_programs += libnm/tests/test-libnm
 
 libnm_tests_programs_req_introspection = \
