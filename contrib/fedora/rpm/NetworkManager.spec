@@ -399,6 +399,16 @@ This package contains the libraries that make it easier to use some
 NetworkManager functionality from applications.
 
 
+%package libnm-gpl
+Summary: GPL licensed Libraries for NetworkManager.
+Group: Development/Libraries
+License: GPLv2+
+
+%description libnm-gpl
+This package contains helper code for NetworkManager under GPL2+ license.
+In particular, this provides code to handle NetworkManager's keyfile format.
+
+
 %package libnm-devel
 Summary: Header files for adding NetworkManager support to applications.
 Group: Development/Libraries
@@ -406,6 +416,19 @@ Requires: %{name}-libnm%{?_isa} = %{epoch}:%{version}-%{release}
 Requires: glib2-devel
 Requires: pkgconfig
 License: LGPLv2+
+
+%description libnm-devel
+This package contains the header and pkg-config files for development
+applications using NetworkManager functionality from applications.
+
+
+%package libnm-gpl-devel
+Summary: Header files for libnm-gpl.
+Group: Development/Libraries
+Requires: %{name}-libnm-gpl%{?_isa} = %{epoch}:%{version}-%{release}
+Requires: glib2-devel
+Requires: pkgconfig
+License: GPLv2+
 
 %description libnm-devel
 This package contains the header and pkg-config files for development
@@ -872,6 +895,8 @@ fi
 %if (0%{?fedora} && 0%{?fedora} < 28) || 0%{?rhel}
 %post   libnm -p /sbin/ldconfig
 %postun libnm -p /sbin/ldconfig
+%post   libnm-gpl -p /sbin/ldconfig
+%postun libnm-gpl -p /sbin/ldconfig
 %endif
 
 
@@ -995,6 +1020,9 @@ fi
 %{_libdir}/girepository-1.0/NM-1.0.typelib
 
 
+%files libnm-gpl
+%{_libdir}/libnm-gpl.so.*
+
 %files libnm-devel
 %dir %{_includedir}/libnm
 %{_includedir}/libnm/*.h
@@ -1009,6 +1037,9 @@ fi
 %{_datadir}/vala/vapi/libnm.vapi
 %{_datadir}/dbus-1/interfaces/*.xml
 
+%files libnm-gpl-devel
+%{_libdir}/libnm-gpl.so
+%{_libdir}/pkgconfig/libnm-gpl.pc
 
 %if %{with connectivity_fedora}
 %files config-connectivity-fedora
