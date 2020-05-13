@@ -37,20 +37,6 @@
 <h2>List of Defects</h2>
 <pre style="white-space: pre-wrap;">
 
-<a name="def7"><b>Error: <span style="background: #C0FF00;">CHECKED_RETURN</span> (CWE-252):</b> </a><a href="#def7">[#def7]</a>
-NetworkManager-1.25.1/clients/cli/connections.c:6436: <b>check_return</b>: Calling "g_file_set_contents" without checking return value (as is done elsewhere 18 out of 21 times).
-<span style="color: #808080;">NetworkManager-1.25.1/src/dhcp/nm-dhcp-dhclient-utils.c:714: <b>example_checked</b>: Example 1: "g_file_set_contents(leasefile, s-&gt;str, -1L, error)" has its value checked in "g_file_set_contents(leasefile, s-&gt;str, -1L, error)".</span>
-<span style="color: #808080;">NetworkManager-1.25.1/src/dhcp/tests/test-dhcp-dhclient.c:904: <b>example_assign</b>: Example 2: Assigning: "success" = return value from "g_file_set_contents(path, "#default-duid \"\\000\\001\\000\\001\\027X\\350X\\000#\\025\\010~\\254\";\n", -1L, &amp;error)".</span>
-<span style="color: #808080;">NetworkManager-1.25.1/src/dhcp/tests/test-dhcp-dhclient.c:905: <b>example_checked</b>: Example 2 (cont.): "success" has its value checked in "success".</span>
-<span style="color: #808080;">NetworkManager-1.25.1/src/dns/nm-dns-manager.c:881: <b>example_checked</b>: Example 3: "g_file_set_contents(rc_path, content, -1L, &amp;local)" has its value checked in "g_file_set_contents(rc_path, content, -1L, &amp;local)".</span>
-<span style="color: #808080;">NetworkManager-1.25.1/src/dns/nm-dns-manager.c:820: <b>example_checked</b>: Example 4: "g_file_set_contents("/run/NetworkManager/no-stub-resolv.conf", content, -1L, &amp;local)" has its value checked in "g_file_set_contents("/run/NetworkManager/no-stub-resolv.conf", content, -1L, &amp;local)".</span>
-<span style="color: #808080;">NetworkManager-1.25.1/src/initrd/nm-initrd-generator.c:146: <b>example_checked</b>: Example 5: "g_file_set_contents(hostname_file, data, strlen(data), &amp;error)" has its value checked in "g_file_set_contents(hostname_file, data, strlen(data), &amp;error)".</span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 6434|   		data = g_key_file_to_data (kf, &amp;len, NULL);</span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 6435|   		if (data) {</span></span>
-<span style="color: #00C0C0;">#<span style="color: #000000;"> 6436|-&gt; 			g_file_set_contents (filename, data, len, NULL);</span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 6437|   			g_free (data);</span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 6438|   		}</span></span>
-
 <a name="def8"><b>Error: <span style="background: #C0FF00;">INFINITE_LOOP</span> (CWE-835):</b> </a><a href="#def8">[#def8]</a>
 NetworkManager-1.25.1/clients/cli/connections.c:8033: <b>loop_top</b>: Top of the loop.
 <span style="color: #808080;">NetworkManager-1.25.1/clients/cli/connections.c:8034: <b>loop_bottom</b>: Bottom of the loop.</span>
