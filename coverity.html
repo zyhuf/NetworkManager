@@ -37,15 +37,6 @@
 <h2>List of Defects</h2>
 <pre style="white-space: pre-wrap;">
 
-<a name="def6"><b>Error: <span style="background: #C0FF00;">FORWARD_NULL</span> (CWE-476):</b> </a><a href="#def6">[#def6]</a>
-<span style="color: #808080;">NetworkManager-1.25.1/clients/cli/connections.c:2716: <b>assign_zero</b>: Assigning: "local_err" = "NULL".</span>
-NetworkManager-1.25.1/clients/cli/connections.c:2728: <b>var_deref_op</b>: Dereferencing null pointer "local_err".
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 2726|   </span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 2727|   	if (!g_file_get_contents (passwd_file, &amp;contents, &amp;len, &amp;local_err)) {</span></span>
-<span style="color: #00C0C0;">#<span style="color: #000000;"> 2728|-&gt; 		g_set_error (error, NMCLI_ERROR, NMC_RESULT_ERROR_USER_INPUT,</span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 2729|   		             _("failed to read passwd-file '%s': %s"),</span></span>
-<span style="color: #00C0C0;">#<span style="color: #C0C0C0;"> 2730|   		             passwd_file, local_err-&gt;message);</span></span>
-
 <a name="def7"><b>Error: <span style="background: #C0FF00;">CHECKED_RETURN</span> (CWE-252):</b> </a><a href="#def7">[#def7]</a>
 NetworkManager-1.25.1/clients/cli/connections.c:6436: <b>check_return</b>: Calling "g_file_set_contents" without checking return value (as is done elsewhere 18 out of 21 times).
 <span style="color: #808080;">NetworkManager-1.25.1/src/dhcp/nm-dhcp-dhclient-utils.c:714: <b>example_checked</b>: Example 1: "g_file_set_contents(leasefile, s-&gt;str, -1L, error)" has its value checked in "g_file_set_contents(leasefile, s-&gt;str, -1L, error)".</span>
