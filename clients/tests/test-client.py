@@ -764,6 +764,7 @@ class TestNmcli(NmTestBase):
         env['LIBNM_USE_NO_UDEV'] = '1'
         env['TERM'] = 'linux'
         env['ASAN_OPTIONS'] = 'detect_leaks=0'
+        env['UBSAN_OPTIONS'] = 'print_stacktrace=1:halt_on_error=1'
         env['XDG_CONFIG_HOME'] = PathConfiguration.srcdir()
         env['NM_TEST_CALLING_NUM'] = str(calling_num)
         if fatal_warnings is _DEFAULT_ARG or fatal_warnings:
