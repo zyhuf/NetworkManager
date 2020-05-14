@@ -2601,6 +2601,61 @@ _nm_setting_option_reset_from_hash (NMSetting *setting,
 	return TRUE;
 }
 
+/**
+ * NMSettingOptionClearByNamePredicate:
+ * @name: the option name to check
+ *
+ * Specifies the type of the function passed to nm_setting_option_clear_by_name().
+ * It is called with the option name to check.
+ *
+ * Returns: should return %TRUE if the option should be removed from
+ *     the #NMSetting.
+ *
+ * Since: 1.26
+ */
+
+/**
+ * nm_setting_option_clear_by_name:
+ * @setting: the #NMSetting
+ * @predicate: (allow-none) (scope call): the predicate for which names to clear.
+ *   If the predicate returns %TRUE for an option name, the option
+ *   gets removed. If %NULL, all options will be removed.
+ *
+ * Since: 1.26
+ */
+void
+nm_setting_option_clear_by_name (NMSetting *setting,
+                                 NMSettingOptionClearByNamePredicate predicate)
+{
+	GHashTable *hash;
+	GHashTableIter iter;
+	const char *name;
+	gboolean changed = FALSE;
+
+	g_return_if_fail (NM_IS_SETTING (setting));
+
+	hash = _nm_setting_option_hash (NM_SETTING (setting), FALSE);
+	if (!hash)
+		return;
+
+	if (!predicate) {
+		changed = (g_hash_table_size (hash) > 0);
+		if (changed)
+			g_hash_table_remove_all (hash);
+	} else {
+		g_hash_table_iter_init (&iter, hash);
+		while (g_hash_table_iter_next (&iter, (gpointer *) &name, NULL)) {
+			if (predicate (name)) {
+				g_hash_table_iter_remove (&iter);
+				changed = TRUE;
+			}
+		}
+	}
+
+	if (changed)
+		_nm_setting_option_notify (setting, TRUE);
+}
+
 /*****************************************************************************/
 
 /**
