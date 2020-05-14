@@ -548,6 +548,7 @@ shared_nm_keyfile_libnm_keyfile_la_SOURCES = \
 	shared/nm-keyfile/nm-keyfile-utils.c \
 	shared/nm-keyfile/nm-keyfile-utils.h \
 	shared/nm-keyfile/nm-keyfile.c \
+	shared/nm-keyfile/nm-keyfile.h \
 	$(NULL)
 
 shared_nm_keyfile_libnm_keyfile_la_LDFLAGS = \
