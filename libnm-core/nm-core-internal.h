@@ -326,8 +326,6 @@ gboolean _nm_setting_option_reset_from_hash (NMSetting *setting,
 void _nm_setting_option_to_gvalue (NMSetting *setting,
                                    GValue *value);
 
-GVariant *const*_nm_setting_option_get_all_values (NMSetting *setting);
-
 /*****************************************************************************/
 
 guint nm_setting_ethtool_init_features (NMSettingEthtool *setting,
