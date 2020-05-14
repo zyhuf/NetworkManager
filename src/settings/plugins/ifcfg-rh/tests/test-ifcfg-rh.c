@@ -10383,7 +10383,8 @@ test_ethtool_names (void)
 
 		g_assert_cmpstr (nms_ifcfg_rh_utils_get_ethtool_name (id), ==, ifcfg_rh_name);
 
-		data = nms_ifcfg_rh_utils_get_ethtool_by_name (ifcfg_rh_name);
+		data = nms_ifcfg_rh_utils_get_ethtool_by_name (ifcfg_rh_name, nm_ethtool_id_to_type (id));
+
 		g_assert (data);
 		g_assert (data->id == id);
 	}
@@ -10392,7 +10393,9 @@ test_ethtool_names (void)
 		const char *name = kernel_names[i].kernel_name;
 
 		id = kernel_names[i].ethtool_id;
-		data = nms_ifcfg_rh_utils_get_ethtool_by_name (name);
+
+		data = nms_ifcfg_rh_utils_get_ethtool_by_name (name, nm_ethtool_id_to_type (id));
+
 		g_assert (data);
 		g_assert (data->id == id);
 		g_assert_cmpstr (nms_ifcfg_rh_utils_get_ethtool_name (id), !=, name);
