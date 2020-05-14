@@ -320,12 +320,6 @@ guint _nm_setting_option_get_all (NMSetting *setting,
                                   const char *const**out_names,
                                   GVariant *const**out_values);
 
-gboolean _nm_setting_option_reset_from_hash (NMSetting *setting,
-                                             GHashTable *new);
-
-void _nm_setting_option_to_gvalue (NMSetting *setting,
-                                   GValue *value);
-
 /*****************************************************************************/
 
 guint nm_setting_ethtool_init_features (NMSettingEthtool *setting,
