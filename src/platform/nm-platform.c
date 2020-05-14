@@ -3329,6 +3329,67 @@ nm_platform_ethtool_set_coalesce (NMPlatform *self,
 	return nmp_utils_ethtool_set_coalesce (ifindex, coalesce, do_set);
 }
 
+NMEthtoolRingStates *
+nm_platform_ethtool_get_link_ring (NMPlatform *self, int ifindex)
+{
+	_CHECK_SELF_NETNS (self, klass, netns, NULL);
+
+	g_return_val_if_fail (ifindex > 0, NULL);
+
+	return nmp_utils_ethtool_get_ring (ifindex);
+}
+
+gboolean
+nm_platform_ethtool_init_ring (NMPlatform *self,
+                                   NMEthtoolRingStates *ring,
+                                   const char *option_name,
+                                   guint32 value)
+{
+	NMEthtoolID ethtool_id;
+	NMEthtoolRingState *state;
+
+	g_return_val_if_fail (ring, FALSE);
+	g_return_val_if_fail (option_name, FALSE);
+
+	state = &ring->requested_state;
+	ethtool_id = nm_ethtool_id_get_by_name (option_name);
+
+	if (!nm_ethtool_id_is_ring (ethtool_id))
+		return FALSE;
+
+	switch (ethtool_id) {
+		case NM_ETHTOOL_ID_RING_RX:
+			state->rx_pending = value;
+			break;
+		case NM_ETHTOOL_ID_RING_RX_JUMBO:
+			state->rx_jumbo_pending = value;
+			break;
+		case NM_ETHTOOL_ID_RING_RX_MINI:
+			state->rx_mini_pending = value;
+			break;
+		case NM_ETHTOOL_ID_RING_TX:
+			state->tx_pending = value;
+			break;
+		default:
+			g_return_val_if_reached (FALSE);
+	}
+
+	return TRUE;
+}
+
+gboolean
+nm_platform_ethtool_set_ring (NMPlatform *self,
+                              int ifindex,
+                              const NMEthtoolRingStates *ring,
+                              gboolean do_set)
+{
+	_CHECK_SELF_NETNS (self, klass, netns, FALSE);
+
+	g_return_val_if_fail (ifindex > 0, FALSE);
+
+	return nmp_utils_ethtool_set_ring (ifindex, ring, do_set);
+}
+
 /*****************************************************************************/
 
 const NMDedupMultiHeadEntry *

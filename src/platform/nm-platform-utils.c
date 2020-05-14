@@ -269,6 +269,7 @@ NM_UTILS_ENUM2STR_DEFINE (_ethtool_cmd_to_string, guint32,
 	NM_UTILS_ENUM2STR (ETHTOOL_GFEATURES,  "ETHTOOL_GFEATURES"),
 	NM_UTILS_ENUM2STR (ETHTOOL_GLINK,      "ETHTOOL_GLINK"),
 	NM_UTILS_ENUM2STR (ETHTOOL_GPERMADDR,  "ETHTOOL_GPERMADDR"),
+	NM_UTILS_ENUM2STR (ETHTOOL_GRINGPARAM, "ETHTOOL_GRINGPARAM"),
 	NM_UTILS_ENUM2STR (ETHTOOL_GSET,       "ETHTOOL_GSET"),
 	NM_UTILS_ENUM2STR (ETHTOOL_GSSET_INFO, "ETHTOOL_GSSET_INFO"),
 	NM_UTILS_ENUM2STR (ETHTOOL_GSTATS,     "ETHTOOL_GSTATS"),
@@ -276,6 +277,7 @@ NM_UTILS_ENUM2STR_DEFINE (_ethtool_cmd_to_string, guint32,
 	NM_UTILS_ENUM2STR (ETHTOOL_GWOL,       "ETHTOOL_GWOL"),
 	NM_UTILS_ENUM2STR (ETHTOOL_SCOALESCE,  "ETHTOOL_SCOALESCE"),
 	NM_UTILS_ENUM2STR (ETHTOOL_SFEATURES,  "ETHTOOL_SFEATURES"),
+	NM_UTILS_ENUM2STR (ETHTOOL_SRINGPARAM, "ETHTOOL_SRINGPARAM"),
 	NM_UTILS_ENUM2STR (ETHTOOL_SSET,       "ETHTOOL_SSET"),
 	NM_UTILS_ENUM2STR (ETHTOOL_SWOL,       "ETHTOOL_SWOL"),
 );
@@ -941,6 +943,108 @@ nmp_utils_ethtool_set_coalesce (int ifindex,
 	nm_log_trace (LOGD_PLATFORM, "ethtool[%d]: %s: %s kernel coalesce settings",
 	              ifindex,
 	              "set-coalesce",
+	              do_set ? "set" : "reset");
+	return TRUE;
+}
+
+static gboolean
+ethtool_get_ring (SocketHandle *shandle,
+                  NMEthtoolRingState *out_state)
+{
+	struct ethtool_ringparam eth_data;
+
+	eth_data.cmd = ETHTOOL_GRINGPARAM;
+
+	if (_ethtool_call_handle (shandle,
+	                          &eth_data,
+	                          sizeof (struct ethtool_ringparam)) != 0)
+		return FALSE;
+
+	out_state->rx_pending       = eth_data.rx_pending;
+	out_state->rx_jumbo_pending = eth_data.rx_jumbo_pending;
+	out_state->rx_mini_pending  = eth_data.rx_mini_pending;
+	out_state->tx_pending       = eth_data.tx_pending;
+
+	return TRUE;
+}
+
+NMEthtoolRingStates *
+nmp_utils_ethtool_get_ring (int ifindex)
+{
+	gs_free NMEthtoolRingStates *ring = NULL;
+	nm_auto_socket_handle SocketHandle shandle = SOCKET_HANDLE_INIT (ifindex);
+
+	g_return_val_if_fail (ifindex > 0, NULL);
+
+	ring = g_new0 (NMEthtoolRingStates, 1);
+
+	if (!ethtool_get_ring (&shandle, &ring->old_state)) {
+		nm_log_trace (LOGD_PLATFORM, "ethtool[%d]: %s: failure getting ring settings",
+		              ifindex,
+		              "get-ring");
+		return NULL;
+	}
+
+	/* copy into requested as well, so that they're merged when applying */
+	ring->requested_state = ring->old_state;
+
+	nm_log_trace (LOGD_PLATFORM, "ethtool[%d]: %s: retrieved kernel ring settings",
+	              ifindex,
+	              "get-ring");
+	return g_steal_pointer (&ring);
+}
+
+static gboolean
+ethtool_set_ring (SocketHandle *shandle,
+                  const NMEthtoolRingState *state)
+{
+	gboolean success;
+	struct ethtool_ringparam eth_data;
+
+	g_return_val_if_fail (shandle, FALSE);
+	g_return_val_if_fail (state, FALSE);
+
+	eth_data = (struct ethtool_ringparam) {
+		.cmd = ETHTOOL_SRINGPARAM,
+		.rx_pending       = state->rx_pending,
+		.rx_jumbo_pending = state->rx_jumbo_pending,
+		.rx_mini_pending  = state->rx_mini_pending,
+		.tx_pending       = state->tx_pending,
+	};
+
+	success = (_ethtool_call_handle (shandle,
+	                                 &eth_data,
+	                                 sizeof (struct ethtool_ringparam)) == 0);
+	return success;
+}
+
+gboolean
+nmp_utils_ethtool_set_ring (int ifindex,
+                            const NMEthtoolRingStates *ring,
+                            gboolean do_set)
+{
+	gboolean success;
+	nm_auto_socket_handle SocketHandle shandle = SOCKET_HANDLE_INIT (ifindex);
+
+	g_return_val_if_fail (ifindex > 0, FALSE);
+	g_return_val_if_fail (ring, FALSE);
+
+	if (do_set)
+		success = ethtool_set_ring (&shandle, &ring->requested_state);
+	else
+		success = ethtool_set_ring (&shandle, &ring->old_state);
+
+	if (!success) {
+		nm_log_trace (LOGD_PLATFORM, "ethtool[%d]: %s: failure %s ring settings",
+		              ifindex,
+		              "set-ring",
+		              do_set ? "setting" : "resetting");
+		return FALSE;
+	}
+
+	nm_log_trace (LOGD_PLATFORM, "ethtool[%d]: %s: %s kernel ring settings",
+	              ifindex,
+	              "set-ring",
 	              do_set ? "set" : "reset");
 	return TRUE;
 }

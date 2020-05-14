@@ -1967,6 +1967,21 @@ gboolean nm_platform_ethtool_set_coalesce (NMPlatform *self,
                                            const NMEthtoolCoalesceStates *coalesce,
                                            gboolean do_set);
 
+typedef struct _NMEthtoolRingStates NMEthtoolRingStates;
+
+NMEthtoolRingStates *nm_platform_ethtool_get_link_ring (NMPlatform *self,
+                                                        int ifindex);
+
+gboolean nm_platform_ethtool_init_ring (NMPlatform *self,
+                                        NMEthtoolRingStates *ring,
+                                        const char *option_name,
+                                        guint32 value);
+
+gboolean nm_platform_ethtool_set_ring (NMPlatform *self,
+                                       int ifindex,
+                                       const NMEthtoolRingStates *ring,
+                                       gboolean do_set);
+
 const char * nm_platform_link_duplex_type_to_string (NMPlatformLinkDuplexType duplex);
 
 void nm_platform_ip4_dev_route_blacklist_set (NMPlatform *self,

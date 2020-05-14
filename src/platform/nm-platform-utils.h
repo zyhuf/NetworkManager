@@ -128,6 +128,24 @@ gboolean nmp_utils_ethtool_set_coalesce (int ifindex,
                                          const NMEthtoolCoalesceStates *coalesce,
                                          gboolean do_set);
 
+typedef struct {
+	guint32 rx_pending;
+	guint32 rx_mini_pending;
+	guint32 rx_jumbo_pending;
+	guint32 tx_pending;
+} NMEthtoolRingState;
+
+struct _NMEthtoolRingStates {
+	NMEthtoolRingState old_state;
+	NMEthtoolRingState requested_state;
+};
+
+NMEthtoolRingStates * nmp_utils_ethtool_get_ring (int ifindex);
+
+gboolean nmp_utils_ethtool_set_ring (int ifindex,
+                                     const NMEthtoolRingStates *ring,
+                                     gboolean do_set);
+
 /*****************************************************************************/
 
 gboolean nmp_utils_mii_supports_carrier_detect (int ifindex);
