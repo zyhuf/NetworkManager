@@ -326,9 +326,6 @@ gboolean _nm_setting_option_reset_from_hash (NMSetting *setting,
 void _nm_setting_option_to_gvalue (NMSetting *setting,
                                    GValue *value);
 
-GVariant *_nm_setting_option_get (NMSetting *setting,
-                                  const char *name);
-
 const char *const*_nm_setting_option_get_all_names (NMSetting *setting,
                                                     guint *out_len);
 

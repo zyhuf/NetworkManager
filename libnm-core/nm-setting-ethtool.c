@@ -114,7 +114,7 @@ nm_setting_ethtool_get_feature (NMSettingEthtool *setting,
 	g_return_val_if_fail (NM_IS_SETTING_ETHTOOL (setting), NM_TERNARY_DEFAULT);
 	g_return_val_if_fail (optname && nm_ethtool_optname_is_feature (optname), NM_TERNARY_DEFAULT);
 
-	v = _nm_setting_option_get (NM_SETTING (setting), optname);
+	v = nm_setting_option_get (NM_SETTING (setting), optname);
 	if (   v
 	    && g_variant_is_of_type (v, G_VARIANT_TYPE_BOOLEAN)) {
 		return g_variant_get_boolean (v)
@@ -281,7 +281,7 @@ nm_setting_ethtool_get_coalesce (NMSettingEthtool *setting,
 	g_return_val_if_fail (NM_IS_SETTING_ETHTOOL (setting), FALSE);
 	g_return_val_if_fail (nm_ethtool_optname_is_coalesce (optname), FALSE);
 
-	v = _nm_setting_option_get (NM_SETTING (setting), optname);
+	v = nm_setting_option_get (NM_SETTING (setting), optname);
 	if (   v
 	    && g_variant_is_of_type (v, G_VARIANT_TYPE_UINT32)) {
 		NM_SET_OUT (out_value, g_variant_get_uint32 (v));
