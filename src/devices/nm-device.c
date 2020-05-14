@@ -911,7 +911,7 @@ _ethtool_coalesce_set (NMDevice *self,
 	nm_assert (ethtool_state);
 	nm_assert (!ethtool_state->coalesce);
 
-	hash = _nm_setting_gendata_hash (NM_SETTING (s_ethtool), FALSE);
+	hash = _nm_setting_option_hash (NM_SETTING (s_ethtool), FALSE);
 	if (!hash)
 		return;
 

@@ -715,7 +715,7 @@ _nm_setting_to_dbus (NMSetting *setting,
 
 	g_variant_builder_init (&builder, NM_VARIANT_TYPE_SETTING);
 
-	n_properties = _nm_setting_gendata_get_all (setting, &gendata_keys, NULL);
+	n_properties = _nm_setting_option_get_all (setting, &gendata_keys, NULL);
 	for (i = 0; i < n_properties; i++) {
 		g_variant_builder_add (&builder,
 		                       "{sv}",
@@ -873,7 +873,7 @@ init_from_dbus (NMSetting *setting,
 				g_hash_table_remove (keys, key);
 		}
 
-		_nm_setting_gendata_notify (setting, TRUE);
+		_nm_setting_option_notify (setting, TRUE);
 
 		/* Currently, only NMSettingEthtool supports gendata based options, and
 		 * that one has no other properties (except "name"). That means, we
@@ -1792,7 +1792,7 @@ nm_setting_enumerate_values (NMSetting *setting,
 		/* the properties of this setting are not real GObject properties.
 		 * Hence, this API makes little sense (or does it?). Still, call
 		 * @func with each value. */
-		n_properties = _nm_setting_gendata_get_all (setting, &names, NULL);
+		n_properties = _nm_setting_option_get_all (setting, &names, NULL);
 		if (n_properties > 0) {
 			gs_strfreev char **keys = g_strdupv ((char **) names);
 			GHashTable *h = _gendata_hash (setting, FALSE)->hash;
@@ -2389,7 +2389,7 @@ _gendata_hash (NMSetting *setting, gboolean create_if_necessary)
 }
 
 GHashTable *
-_nm_setting_gendata_hash (NMSetting *setting, gboolean create_if_necessary)
+_nm_setting_option_hash (NMSetting *setting, gboolean create_if_necessary)
 {
 	GenData *gendata;
 
@@ -2398,8 +2398,8 @@ _nm_setting_gendata_hash (NMSetting *setting, gboolean create_if_necessary)
 }
 
 void
-_nm_setting_gendata_notify (NMSetting *setting,
-                            gboolean names_changed)
+_nm_setting_option_notify (NMSetting *setting,
+                           gboolean names_changed)
 {
 	GenData *gendata;
 
@@ -2434,7 +2434,7 @@ out:
 }
 
 GVariant *
-nm_setting_gendata_get (NMSetting *setting,
+_nm_setting_option_get (NMSetting *setting,
                         const char *name)
 {
 	GenData *gendata;
@@ -2447,9 +2447,9 @@ nm_setting_gendata_get (NMSetting *setting,
 }
 
 guint
-_nm_setting_gendata_get_all (NMSetting *setting,
-                             const char *const**out_names,
-                             GVariant *const**out_values)
+_nm_setting_option_get_all (NMSetting *setting,
+                            const char *const**out_names,
+                            GVariant *const**out_values)
 {
 	GenData *gendata;
 	GHashTable *hash;
@@ -2495,7 +2495,7 @@ out_zero:
 }
 
 /**
- * nm_setting_gendata_get_all_names:
+ * _nm_setting_option_get_all_names:
  * @setting: the #NMSetting
  * @out_len: (allow-none) (out):
  *
@@ -2511,7 +2511,7 @@ out_zero:
  * Since: 1.14
  **/
 const char *const*
-nm_setting_gendata_get_all_names (NMSetting *setting,
+_nm_setting_option_get_all_names (NMSetting *setting,
                                   guint *out_len)
 {
 	const char *const*names;
@@ -2519,13 +2519,13 @@ nm_setting_gendata_get_all_names (NMSetting *setting,
 
 	g_return_val_if_fail (NM_IS_SETTING (setting), NULL);
 
-	len = _nm_setting_gendata_get_all (setting, &names, NULL);
+	len = _nm_setting_option_get_all (setting, &names, NULL);
 	NM_SET_OUT (out_len, len);
 	return names;
 }
 
 /**
- * nm_setting_gendata_get_all_values:
+ * _nm_setting_option_get_all_values:
  * @setting: the #NMSetting
  *
  * Gives the number of generic data elements and optionally returns all their
@@ -2535,25 +2535,25 @@ nm_setting_gendata_get_all_names (NMSetting *setting,
  * Returns: (array zero-terminated=1) (transfer none):
  *   A %NULL terminated array of #GVariant. If no data is present, this returns
  *   %NULL. The returned array and the variants are owned by %NMSetting and might be invalidated
- *   soon. The sort order of nm_setting_gendata_get_all_names() and nm_setting_gendata_get_all_values()
- *   is consistent. That means, the nth value has the nth name returned by nm_setting_gendata_get_all_names().
+ *   soon. The sort order of _nm_setting_option_get_all_names() and _nm_setting_option_get_all_values()
+ *   is consistent. That means, the nth value has the nth name returned by _nm_setting_option_get_all_names().
  *
  * Since: 1.14
  **/
 GVariant *const*
-nm_setting_gendata_get_all_values (NMSetting *setting)
+_nm_setting_option_get_all_values (NMSetting *setting)
 {
 	GVariant *const*values;
 
 	g_return_val_if_fail (NM_IS_SETTING (setting), NULL);
 
-	_nm_setting_gendata_get_all (setting, NULL, &values);
+	_nm_setting_option_get_all (setting, NULL, &values);
 	return values;
 }
 
 void
-_nm_setting_gendata_to_gvalue (NMSetting *setting,
-                               GValue *value)
+_nm_setting_option_to_gvalue (NMSetting *setting,
+                              GValue *value)
 {
 	GenData *gendata;
 	GHashTable *new;
@@ -2578,8 +2578,8 @@ _nm_setting_gendata_to_gvalue (NMSetting *setting,
 }
 
 gboolean
-_nm_setting_gendata_reset_from_hash (NMSetting *setting,
-                                     GHashTable *new)
+_nm_setting_option_reset_from_hash (NMSetting *setting,
+                                    GHashTable *new)
 {
 	GenData *gendata;
 	GHashTableIter iter;
@@ -2600,7 +2600,7 @@ _nm_setting_gendata_reset_from_hash (NMSetting *setting,
 			return FALSE;
 
 		g_hash_table_remove_all (gendata->hash);
-		_nm_setting_gendata_notify (setting, TRUE);
+		_nm_setting_option_notify (setting, TRUE);
 		return TRUE;
 	}
 
@@ -2612,7 +2612,7 @@ _nm_setting_gendata_reset_from_hash (NMSetting *setting,
 		while (g_hash_table_iter_next (&iter, (gpointer *) &key, (gpointer *) &val))
 			g_hash_table_insert (gendata->hash, g_strdup (key), g_variant_ref (val));
 	}
-	_nm_setting_gendata_notify (setting, TRUE);
+	_nm_setting_option_notify (setting, TRUE);
 	return TRUE;
 }
 
