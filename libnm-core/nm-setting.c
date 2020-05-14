@@ -2482,24 +2482,22 @@ out_zero:
 }
 
 /**
- * _nm_setting_option_get_all_names:
+ * nm_setting_option_get_all_names:
  * @setting: the #NMSetting
  * @out_len: (allow-none) (out):
  *
- * Gives the number of generic data elements and optionally returns all their
- * key names and values. This API is low level access and unless you know what you
- * are doing, it might not be what you want.
+ * Gives the name of all set options.
  *
  * Returns: (array length=out_len zero-terminated=1) (transfer none):
  *   A %NULL terminated array of key names. If no names are present, this returns
  *   %NULL. The returned array and the names are owned by %NMSetting and might be invalidated
- *   soon.
+ *   by the next operation.
  *
- * Since: 1.14
+ * Since: 1.26
  **/
 const char *const*
-_nm_setting_option_get_all_names (NMSetting *setting,
-                                  guint *out_len)
+nm_setting_option_get_all_names (NMSetting *setting,
+                                 guint *out_len)
 {
 	const char *const*names;
 	guint len;
@@ -2522,8 +2520,8 @@ _nm_setting_option_get_all_names (NMSetting *setting,
  * Returns: (array zero-terminated=1) (transfer none):
  *   A %NULL terminated array of #GVariant. If no data is present, this returns
  *   %NULL. The returned array and the variants are owned by %NMSetting and might be invalidated
- *   soon. The sort order of _nm_setting_option_get_all_names() and _nm_setting_option_get_all_values()
- *   is consistent. That means, the nth value has the nth name returned by _nm_setting_option_get_all_names().
+ *   soon. The sort order of nm_setting_option_get_all_names() and _nm_setting_option_get_all_values()
+ *   is consistent. That means, the nth value has the nth name returned by nm_setting_option_get_all_names().
  *
  * Since: 1.14
  **/
