@@ -1183,17 +1183,16 @@ write_ethtool_setting (NMConnection *connection, shvarFile *ifcfg, GError **erro
 
 		for (ethtool_id = _NM_ETHTOOL_ID_FEATURE_FIRST; ethtool_id <= _NM_ETHTOOL_ID_FEATURE_LAST; ethtool_id++) {
 			const NMEthtoolData *ed = nm_ethtool_data[ethtool_id];
-			NMTernary val;
+			gboolean val;
 
 			nm_assert (nms_ifcfg_rh_utils_get_ethtool_name (ethtool_id));
 
-			val = nm_setting_ethtool_get_feature (s_ethtool, ed->optname);
-			if (val == NM_TERNARY_DEFAULT)
+			if (!nm_setting_option_get_boolean (NM_SETTING (s_ethtool), ed->optname, &val))
 				continue;
 
 			g_string_append_c (str, ' ');
 			g_string_append (str, nms_ifcfg_rh_utils_get_ethtool_name (ethtool_id));
-			g_string_append (str, val == NM_TERNARY_TRUE ? " on" : " off");
+			g_string_append (str, val ? " on" : " off");
 		}
 
 		g_string_append (str, " ; -C ");
@@ -1205,7 +1204,7 @@ write_ethtool_setting (NMConnection *connection, shvarFile *ifcfg, GError **erro
 
 			nm_assert (nms_ifcfg_rh_utils_get_ethtool_name (ethtool_id));
 
-			if (!nm_setting_ethtool_get_coalesce (s_ethtool, ed->optname, &val))
+			if (!nm_setting_option_get_uint32 (NM_SETTING (s_ethtool), ed->optname, &val))
 				continue;
 
 			g_string_append_c (str, ' ');

@@ -4104,32 +4104,30 @@ _get_fcn_ethtool (ARGS_GET_FCN)
 	RETURN_UNSUPPORTED_GET_TYPE ();
 
 	if (nm_ethtool_id_is_coalesce (ethtool_id)) {
-		if (!nm_setting_ethtool_get_coalesce (NM_SETTING_ETHTOOL (setting),
-		                                      nm_ethtool_data[ethtool_id]->optname,
-		                                      &u32)) {
+		if (!nm_setting_option_get_uint32 (setting,
+		                                   nm_ethtool_data[ethtool_id]->optname,
+		                                   &u32)) {
 			NM_SET_OUT (out_is_default, TRUE);
 			return NULL;
 		}
 
-		return_str = g_strdup_printf ("%"G_GUINT32_FORMAT, u32);
+		return_str = nm_strdup_int (u32);
 		RETURN_STR_TO_FREE (return_str);
 	} else if (nm_ethtool_id_is_feature (ethtool_id)) {
 		const char *s;
-		NMTernary val;
+		gboolean val;
 
-		val = nm_setting_ethtool_get_feature (NM_SETTING_ETHTOOL (setting),
-		                                      nm_ethtool_data[ethtool_id]->optname);
-
-		if (val == NM_TERNARY_TRUE)
-			s = N_("on");
-		else if (val == NM_TERNARY_FALSE)
-			s = N_("off");
-		else {
-			s = NULL;
+		if (!nm_setting_option_get_boolean (setting,
+		                                    nm_ethtool_data[ethtool_id]->optname,
+		                                    &val)) {
 			NM_SET_OUT (out_is_default, TRUE);
+			return NULL;
 		}
 
-		if (s && get_type == NM_META_ACCESSOR_GET_TYPE_PRETTY)
+		s =   val
+		    ? N_("on")
+		    : N_("off");
+		if (get_type == NM_META_ACCESSOR_GET_TYPE_PRETTY)
 			s = gettext (s);
 		return s;
 	}
@@ -4145,11 +4143,8 @@ _set_fcn_ethtool (ARGS_SET_FCN)
 
 	if (nm_ethtool_id_is_coalesce (ethtool_id)) {
 
-		if (_SET_FCN_DO_RESET_DEFAULT (property_info, modifier, value)) {
-			nm_setting_ethtool_clear_coalesce (NM_SETTING_ETHTOOL (setting),
-			                                   nm_ethtool_data[ethtool_id]->optname);
-			return TRUE;
-		}
+		if (_SET_FCN_DO_RESET_DEFAULT (property_info, modifier, value))
+			goto do_unset;
 
 		i64 = _nm_utils_ascii_str_to_int64 (value, 10, 0, G_MAXUINT32, -1);
 
@@ -4160,29 +4155,27 @@ _set_fcn_ethtool (ARGS_SET_FCN)
 			return FALSE;
 		}
 
-		nm_setting_ethtool_set_coalesce (NM_SETTING_ETHTOOL (setting),
-		                                 nm_ethtool_data[ethtool_id]->optname,
-		                                 (guint32) i64);
+		nm_setting_option_set_uint32 (setting,
+		                              nm_ethtool_data[ethtool_id]->optname,
+		                              i64);
 		return TRUE;
 	}
 
 	if (nm_ethtool_id_is_feature (ethtool_id)) {
 		gs_free char *value_to_free = NULL;
-		NMTernary val;
+		gboolean b;
 
-		if (_SET_FCN_DO_RESET_DEFAULT (property_info, modifier, value)) {
-			val = NM_TERNARY_DEFAULT;
-			goto set;
-		}
+		if (_SET_FCN_DO_RESET_DEFAULT (property_info, modifier, value))
+			goto do_unset;
 
 		value = nm_strstrip_avoid_copy_a (300, value, &value_to_free);
 
 		if (NM_IN_STRSET (value, "1", "yes", "true", "on"))
-			val = NM_TERNARY_TRUE;
+			b = TRUE;
 		else if (NM_IN_STRSET (value, "0", "no", "false", "off"))
-			val = NM_TERNARY_FALSE;
+			b = FALSE;
 		else if (NM_IN_STRSET (value, "", "ignore", "default"))
-			val = NM_TERNARY_DEFAULT;
+			goto do_unset;
 		else {
 			g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_INVALID_ARGUMENT,
 			             _("'%s' is not valid; use 'on', 'off', or 'ignore'"),
@@ -4190,10 +4183,9 @@ _set_fcn_ethtool (ARGS_SET_FCN)
 			return FALSE;
 		}
 
-set:
-		nm_setting_ethtool_set_feature (NM_SETTING_ETHTOOL (setting),
-	                                nm_ethtool_data[ethtool_id]->optname,
-	                                val);
+		nm_setting_option_set_boolean (setting,
+		                               nm_ethtool_data[ethtool_id]->optname,
+		                               b);
 		return TRUE;
 	}
 
@@ -4202,6 +4194,12 @@ set:
 	g_set_error (error, NM_UTILS_ERROR, NM_UTILS_ERROR_SETTING_MISSING,
 	             _("ethtool property not supported"));
 	return FALSE;
+
+do_unset:
+	nm_setting_option_set (setting,
+	                       nm_ethtool_data[ethtool_id]->optname,
+	                       NULL);
+	return TRUE;
 }
 
 static const char *const*

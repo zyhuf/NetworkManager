@@ -4306,9 +4306,9 @@ parse_ethtool_option (const char *value,
 					continue;
 				}
 
-				nm_setting_ethtool_set_feature (*out_s_ethtool,
-				                                d->optname,
-				                                onoff);
+				nm_setting_option_set_boolean (NM_SETTING (*out_s_ethtool),
+				                               d->optname,
+				                               onoff);
 			}
 		} else if (NM_IN_STRSET (words[0], "-C", "--coalesce")) {
 			if (!words[1]) {
@@ -4345,9 +4345,9 @@ parse_ethtool_option (const char *value,
 					continue;
 				}
 
-				nm_setting_ethtool_set_coalesce (*out_s_ethtool,
-				                                 d->optname,
-				                                 (guint32) i64);
+				nm_setting_option_set_uint32 (NM_SETTING (*out_s_ethtool),
+				                              d->optname,
+				                              i64);
 			}
 		}
 		return;
